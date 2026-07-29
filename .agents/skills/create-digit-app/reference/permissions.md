@@ -22,18 +22,39 @@ Add every permission your GraphQL operations need. Examples:
 | List purchase orders | `read:purchaseOrder` |
 | Read org profile | (often covered by base role access — confirm via schema/tools) |
 
-Use the exact `resource:action` strings (e.g. `read:item`), not GraphQL field names.
+Use the exact colon-delimited strings (e.g. `read:item`), **not** GraphQL enum names
+(`READ_ITEM`) and **not** GraphQL field names.
 
-## Staying current
+## Looking up permissions (required when connected)
 
-Prefer a live lookup when connected:
+Use Digit MCP — do **not** invent strings or convert screaming-snake enum names yourself
+(that conversion is lossy: `READ_ITEM_COST_INFO` is `read:item:costInfo`, not
+`read:item:cost:info`).
 
-- GraphQL `apiPermissions` — grantable permission keys + descriptions
-- GraphQL `currentPermissions` — what the current user/token holds
+Call the MCP tool **`apiPermissions`** and put **`value`** into `manifest.json`. Equivalent
+GraphQL:
 
-If those are unavailable, use a known-good string from an existing Digit app or from
-`DigitPermissions` in digit-api (`read:item`, `read:order`, …). Unknown strings cause
-publish to fail with:
+```graphql
+query AppPermissionValues {
+  apiPermissions {
+    key
+    value
+    description
+  }
+}
+```
+
+| Field | Meaning | Use in apps? |
+| --- | --- | --- |
+| `value` | Colon-delimited string (`read:item`) | **Yes — this is what `manifest.json` needs** |
+| `key` | GraphQL enum (`READ_ITEM`) | No — schema/API-token inputs only |
+| `description` | Human label (`Read Item`) | Optional, for choosing the right permission |
+
+The GraphQL schema resource `graphql-schema://type/Permission` documents these fields; the
+`apiPermissions` tool returns the live catalog.
+
+If MCP is unavailable, copy a known-good `value` from an existing Digit app example.
+Unknown strings cause publish to fail with:
 
 ```text
 manifest.json "permissions" contains unknown permissions: …
@@ -41,6 +62,7 @@ manifest.json "permissions" contains unknown permissions: …
 
 ## Tips for agents
 
+- Always copy `apiPermissions` → `value` into the manifest
 - Start minimal — only permissions the queries/mutations actually need
 - After adding a new Digit API call, update `permissions` in the same change
 - Do not copy admin-only permissions into an app unless the product explicitly needs them

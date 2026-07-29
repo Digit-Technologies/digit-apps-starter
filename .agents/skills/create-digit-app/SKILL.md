@@ -35,6 +35,7 @@ Digit app progress:
 - [ ] 5. Add backend/ only if env/secrets or server logic needed
 - [ ] 6. Build + zip frontend/ (+ backend/ if any)
 - [ ] 7. Publish via MCP (upload zip out-of-band)
+- [ ] 8. Write SPEC.md (what it does, prompts, context) and commit app source
 ```
 
 ### 1. Pick a template
@@ -131,9 +132,10 @@ Details: [reference/manifest.md](reference/manifest.md)
 Digit intersects that list with the viewing user's live permissions.
 
 - Declare only what the app's GraphQL operations need (e.g. `read:item`).
-- Prefer looking up current permission strings via GraphQL `apiPermissions` when available.
+- Look up strings via Digit MCP tool **`apiPermissions`** and put **`value`** in the
+  manifest — never use `key` (`READ_ITEM`) or invent a conversion from the schema enum.
 - Unknown strings fail publish validation.
-- Common values and guidance: [reference/permissions.md](reference/permissions.md)
+- Details: [reference/permissions.md](reference/permissions.md)
 
 ### 7. Env vars and secrets
 
@@ -157,6 +159,25 @@ user.
 
 Full steps: [reference/publish.md](reference/publish.md)
 
+### 9. Write SPEC.md and commit the app
+
+Publishing to Digit is not the same as preserving the app. Every app directory in this repo
+must also be committed as source, with a `SPEC.md` that lets a different agent — with no
+memory of this conversation — rebuild it from scratch:
+
+- **What it does** — purpose, users, key behaviors and constraints
+- **Data & permissions** — permissions declared, GraphQL fields relied on, env vars/secrets
+  (names only), any schema gotchas discovered
+- **Prompts** — the verbatim prompts (original + refinements) that produced the app, in order
+- **Context supplied** — anything else that shaped it: example copied from, docs/tickets
+  linked, screenshots, existing objects used as a model
+
+Commit `src/`, `worker/` (if any), `public/manifest.json`, `package.json`, `README.md`, and
+`SPEC.md`. Do not commit `node_modules/`, `*.zip`, or the generated `frontend/`/`backend/`
+build output (gitignored, rebuild via `npm run build`).
+
+Details: [reference/spec.md](reference/spec.md)
+
 ## Decision guide
 
 | Need | Path |
@@ -174,3 +195,4 @@ Full steps: [reference/publish.md](reference/publish.md)
 - [reference/permissions.md](reference/permissions.md) — permission model and common values
 - [reference/backend-env-secrets.md](reference/backend-env-secrets.md) — env/secrets in Workers
 - [reference/publish.md](reference/publish.md) — MCP publish workflow and zip rules
+- [reference/spec.md](reference/spec.md) — SPEC.md template, provenance, and committing app source
