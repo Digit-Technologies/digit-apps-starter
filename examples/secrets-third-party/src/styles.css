@@ -1,0 +1,65 @@
+:root {
+  color-scheme: light dark;
+  --bg: #eef4f8;
+  --ink: #12202a;
+  --muted: #4d6270;
+  --accent: #1d5f8a;
+  --panel: #ffffff;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0f171d;
+  --ink: #e7eef3;
+  --muted: #9bb0be;
+  --accent: #6eb6e3;
+  --panel: #18232c;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 16%, transparent), transparent 42%),
+    var(--bg);
+  color: var(--ink);
+}
+
+.app { max-width: 42rem; padding: 2.5rem 1.5rem; }
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+h1 { margin: 0 0 0.5rem; font-size: 2rem; }
+.lede, .status { color: var(--muted); line-height: 1.5; }
+
+button {
+  margin-top: 1rem;
+  border: 0;
+  border-radius: 0.35rem;
+  padding: 0.7rem 1rem;
+  background: var(--accent);
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.output {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--panel);
+  border-radius: 0.35rem;
+  overflow: auto;
+}
+
+code, .output {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9rem;
+}
