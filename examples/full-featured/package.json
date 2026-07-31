@@ -1,0 +1,31 @@
+{
+  "name": "@digit-apps/example-full-featured",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config vite.frontend.config.ts",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:backend": "vite build --config vite.backend.config.ts && mkdir -p backend/migrations && cp worker/migrations/*.sql backend/migrations/",
+    "preview": "vite preview --config vite.frontend.config.ts",
+    "build:frontend": "vite build --config vite.frontend.config.ts"
+  },
+  "dependencies": {
+    "@digit/app-backend": "file:../../packages/app-backend",
+    "@digit/app-frontend": "file:../../packages/app-frontend",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^7.3.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@digit/app-shared": "file:../../packages/app-shared"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.4.1",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-css-injected-by-js": "^3.5.2"
+  }
+}

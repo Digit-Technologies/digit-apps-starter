@@ -1,8 +1,0 @@
-{
-  "name": "Third-Party Secrets Demo",
-  "entryFile": "main.js",
-  "permissions": [],
-  "backend": {
-    "kind": "cloudflare-worker"
-  }
-}

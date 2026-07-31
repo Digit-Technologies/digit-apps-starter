@@ -1,26 +1,21 @@
 # Examples
 
-Each example is a self-contained Vite app that builds a Digit-publishable `frontend/`
-tree (and `backend/` when needed).
+[`full-featured/`](full-featured) is the reference Digit app. Copy it and remove tabs /
+routes you don’t need rather than inventing a new project shape.
 
-**Stack:** React + MUI + [`@digit/app-theme`](../packages/digit-theme) (`DigitThemeProvider`).
-
-| Directory | Template for |
-| --- | --- |
-| `hello-world/` | UI only |
-| `digit-api/` | Digit GraphQL via `DigitProxyClient` |
-| `env-vars/` | Worker env var injection |
-| `secrets-third-party/` | Worker secret used for upstream HTTP |
-| `top-customers/` | Client-side aggregation over a paginated GraphQL list |
-| `sales-order-progress/` | Read-only dashboard driven by a computed GraphQL field |
-| `maintenance-log/` | App-owned data via a Worker + D1 backend (no Digit permissions) |
+**Stack:** React + MUI + [`@digit/app-frontend`](../packages/app-frontend). Workers use
+[`@digit/app-backend`](../packages/app-backend). Shared codes / results / validation live
+in [`@digit/app-shared`](../packages/app-shared).
 
 Shared conventions (also enforced by the skill):
 
 - Wrap UI in `DigitThemeProvider`; use MUI components
 - Mount to `#root`
-- Build IIFE `main.js` (classic script, not ESM module)
+- Harness types come from `@digit/app-frontend` — no local `digit.d.ts`
+- Prefer `useDigitApiQuery` / `useBackendQuery` (and mutations) from `@digit/app-frontend`
+- Build IIFE `main.js` via `vite.frontend.config.ts` (`npm run build:frontend`)
+- Bundle the Worker with `vite.backend.config.ts` (`npm run build:backend`) when shipping a backend
 - Inline CSS with `vite-plugin-css-injected-by-js`
-- `resolve.preserveSymlinks: true` for the `file:` theme package
+- `resolve.preserveSymlinks: true` for `file:` packages
 - Put `manifest.json` in `public/` so Vite copies it into `frontend/`
 - Zip with `frontend/` (and optional `backend/`) at the archive root

@@ -13,7 +13,7 @@ description: >-
 Build Digit custom apps that run inside Digit as sandboxed iframes. Follow this skill
 end-to-end — do not invent alternate layouts, mount targets, stacks, or publish flows.
 
-**Default stack (required):** React + MUI + `@digit/app-theme` (`DigitThemeProvider`).
+**Default stack (required):** React + MUI + `@digit/app-frontend` (`DigitThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
 package. Users are often non-developers — one path keeps apps looking and behaving
 like Digit.
@@ -45,17 +45,15 @@ Digit app progress:
 
 ### 1. Pick a template
 
-Start from the closest example and copy it — do not invent a new project shape:
+Start from [`examples/full-featured`](../../../examples/full-featured) and trim what you
+don’t need — do not invent a new project shape.
 
-| Example | Use when |
-| --- | --- |
-| [`examples/hello-world`](../../../examples/hello-world) | UI-only app, no Digit API, no backend |
-| [`examples/digit-api`](../../../examples/digit-api) | App that queries Digit via `DigitProxyClient` |
-| [`examples/env-vars`](../../../examples/env-vars) | Backend reads non-secret env vars |
-| [`examples/secrets-third-party`](../../../examples/secrets-third-party) | Backend uses a secret to call a third-party API |
+It covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API + secrets + D1 via
+the Worker (`useBackendQuery` / `@digit/app-backend`), and env config. Copy its
+`vite.frontend.config.ts` / `vite.backend.config.ts` and `build:frontend` /
+`build:backend` scripts when you keep a Worker (helpers bundle into `backend/worker.js`).
 
-All examples share React + MUI + `@digit/app-theme`, Vite IIFE, and the same folder
-conventions. Copy one of those directories; preserve the layout and theming setup.
+All apps share React + MUI + `@digit/app-frontend` and the same folder conventions.
 
 ### 2. App must already exist in Digit
 
@@ -70,30 +68,37 @@ Source project builds into a publishable folder:
 
 ```
 my-app/
-├── package.json            # includes @digit/app-theme (file:…/packages/digit-theme)
-├── vite.config.ts          # React plugin + IIFE main.js + preserveSymlinks
+├── package.json            # @digit/app-frontend (+ @digit/app-backend when using a Worker)
+├── vite.frontend.config.ts # React plugin + IIFE main.js + preserveSymlinks
+├── vite.backend.config.ts  # optional — Vite lib build → backend/worker.js
 ├── index.html              # local/dev only — not published
 ├── src/
 │   ├── main.tsx            # createRoot(#root) + DigitThemeProvider
-│   ├── App.tsx             # MUI UI
-│   └── digit.d.ts          # DigitProxyClient / DigitHost types (as needed)
+│   └── App.tsx             # MUI UI
 ├── public/
 │   └── manifest.json       # copied into frontend/ on build
+├── worker/                 # source Worker (when using a backend)
+│   ├── worker.js
+│   └── migrations/
 ├── frontend/               # BUILD OUTPUT — what gets zipped
 │   ├── manifest.json
 │   └── main.js
-└── backend/                # only if manifest.backend is set
-    ├── worker.js           # single-file Worker ESM
+└── backend/                # BUILD OUTPUT when manifest.backend is set
+    ├── worker.js           # single-file Worker ESM (Vite-bundled if using @digit/app-backend)
     └── migrations/         # optional *.sql when using D1
         └── 0001_init.sql
 ```
 
+Harness types (`DigitHost`, `DigitProxyClient`) come from `@digit/app-frontend` — do not
+add a local `digit.d.ts`.
+
 Zip root must contain `frontend/` (with `frontend/manifest.json`) and, iff the manifest
-declares a backend, `backend/worker.js`.
+declares a backend, `backend/worker.js`. Scripts: `build:frontend`, optional `build:backend`,
+and `build` that runs both.
 
 ### 4. Frontend rules
 
-- **Stack:** React + MUI + `DigitThemeProvider` from `@digit/app-theme`. Use MUI
+- **Stack:** React + MUI + `DigitThemeProvider` from `@digit/app-frontend`. Use MUI
   components (`Box`, `Typography`, `Button`, `TextField`, `Stack`, tables, etc.).
   Prefer theme palette / typography over hard-coded colors or custom CSS.
 - **Mount to `#root`.** The Digit harness provides `<div id="root"></div>`. Do not create a
@@ -102,7 +107,7 @@ declares a backend, `backend/worker.js`.
 
   ```tsx
   import { createRoot } from 'react-dom/client';
-  import { DigitThemeProvider } from '@digit/app-theme';
+  import { DigitThemeProvider } from '@digit/app-frontend';
   import App from './App';
 
   const rootEl = document.getElementById('root');
@@ -123,14 +128,16 @@ declares a backend, `backend/worker.js`.
   `main.js` (see example Vite configs).
 - **Inline CSS into JS.** Use `vite-plugin-css-injected-by-js` (examples already do). Do not
   rely on a separate CSS file being loaded by the harness.
-- **Vite + `file:` theme package:** set `resolve: { preserveSymlinks: true }` so React/MUI
-  peers resolve from the app’s `node_modules`.
+- **Vite + `file:` packages:** set `resolve: { preserveSymlinks: true }` so React/MUI
+  peers resolve from the app’s `node_modules`. Use `vite.frontend.config.ts` /
+  `npm run build:frontend` (and `vite.backend.config.ts` / `build:backend` when shipping a
+  Worker).
 - **Reserved names:** `entryFile` must not be `index.html` or `loader.js`.
-- **Digit API calls:** only via `window.DigitProxyClient.callProxy({ query, variables? })`.
-  Never call Digit GraphQL with a bearer token from the browser.
-- **Backend calls:** prefer `window.DigitProxyClient.callBackend(path, options?)` when
-  available; otherwise
-  `fetch('/proxy/backend/...', { credentials: 'include', headers: { 'X-Digit-Proxy-Client': '1' } })`.
+- **Digit API calls:** prefer `useDigitApiQuery` / `useDigitApiMutation` from
+  `@digit/app-frontend` (or imperative `digitRequest`). Never call Digit GraphQL with a
+  bearer token from the browser.
+- **Backend calls:** prefer `useBackendQuery` / `useBackendMutation` (or `backendFetch`).
+  Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client`.
 
 ### 5. `manifest.json`
 
@@ -150,7 +157,7 @@ With Digit API access + optional backend:
 {
   "name": "Items Browser",
   "entryFile": "main.js",
-  "permissions": ["read:item"],
+  "permissions": ["READ_ITEM"],
   "backend": {
     "kind": "cloudflare-worker",
     "d1": { "binding": "MY_APP_DB" }
@@ -165,9 +172,9 @@ Details: [reference/manifest.md](reference/manifest.md)
 `permissions` is the **ceiling** for what the app may do through `/proxy/digit`. At runtime
 Digit intersects that list with the viewing user's live permissions.
 
-- Declare only what the app's GraphQL operations need (e.g. `read:item`).
-- Look up strings via Digit MCP tool **`apiPermissions`** and put **`value`** in the
-  manifest — never use `key` (`READ_ITEM`) or invent a conversion from the schema enum.
+- Declare only what the app's GraphQL operations need (e.g. `READ_ITEM`).
+- Look up strings via Digit MCP tool **`apiPermissions`** and put **`key`**
+  (`READ_ITEM`, `READ_ORDER_COST_INFO`) in the manifest — never invent strings.
 - Unknown strings fail publish validation.
 - Details: [reference/permissions.md](reference/permissions.md)
 
@@ -216,17 +223,20 @@ Details: [reference/spec.md](reference/spec.md)
 
 | Need | Path |
 | --- | --- |
-| Static UI only | `hello-world` — no permissions, no backend |
-| Read/write Digit data | `digit-api` — add permissions, use `DigitProxyClient` |
-| Non-secret config (API base URL, feature flag) | `env-vars` — backend + env var |
-| Third-party API key / credential | `secrets-third-party` — backend + secret |
-| Persist app-own data | backend + `backend.d1` + migrations |
+| Any new app | Copy `full-featured`, delete unused tabs/routes |
+| Digit GraphQL | `useDigitApiQuery` / `useDigitApiMutation` + manifest permissions |
+| Env / secrets / D1 / third-party HTTP | Worker + `@digit/app-backend` (`requireEnv`, `ok`/`fail`, `fetchJson`) |
+| Shared validation / results | `@digit/app-shared` (`parseObject`, `requiredString`, …) — also re-exported from frontend/backend |
 
-Always keep React + MUI + `@digit/app-theme` regardless of which row you pick.
+Always keep React + MUI + `@digit/app-frontend`. Prefer `@digit/app-backend` helpers in
+Workers so result shapes match `useBackendQuery` / `parseBackendResponse` on the frontend.
 
-## Theming
+## Theming & packages
 
-- Package: [`packages/digit-theme`](../../../packages/digit-theme) (`@digit/app-theme`)
+- Frontend: [`packages/app-frontend`](../../../packages/app-frontend) (`@digit/app-frontend`)
+- Backend: [`packages/app-backend`](../../../packages/app-backend) (`@digit/app-backend`)
+- Shared: [`packages/app-shared`](../../../packages/app-shared) (`@digit/app-shared`) — codes,
+  results, pure validation
 - Docs: [reference/theming.md](reference/theming.md)
 - Do **not** invent cream/teal palettes, alternate fonts, or card-heavy custom CSS.
 - Do **not** put React/MUI in the harness HTML — the bundle owns UI; the harness only

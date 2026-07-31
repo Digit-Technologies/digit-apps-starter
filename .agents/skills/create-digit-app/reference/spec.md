@@ -41,7 +41,7 @@ object referenced as a model, schema introspection output relied on, etc.
 Source must be committed to this repo, not just published to Digit via MCP:
 
 - Commit: `src/`, `worker/` (if a backend exists), `public/manifest.json`, `package.json`,
-  `package-lock.json`, `tsconfig.json`, `vite.config.ts`, `README.md`, `SPEC.md`
+  `package-lock.json`, `tsconfig.json`, `vite.frontend.config.ts`, `README.md`, `SPEC.md`
 - Do not commit: `node_modules/`, `*.zip`, or the generated `frontend/`/`backend/` build
   output — these are gitignored and rebuild from source via `npm run build`
 - If a build artifact must ship for reference, `git add -f` it explicitly — source +

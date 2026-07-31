@@ -10,7 +10,7 @@ derives `active.json` / bundle assets from it.
 type AppManifest = {
   name: string;                 // non-empty
   entryFile: string;            // must end in .js; must exist under frontend/
-  permissions: DigitPermission[]; // strings like "read:item"
+  permissions: DigitPermission[]; // SCREAMING_SNAKE_CASE, e.g. "READ_ITEM"
   backend?: {
     kind: 'cloudflare-worker';
     d1?: { binding: string };   // UPPER_SNAKE_CASE, e.g. "MY_APP_DB"
@@ -47,7 +47,7 @@ Digit API + Worker + D1:
 {
   "name": "Stock Helper",
   "entryFile": "main.js",
-  "permissions": ["read:item", "read:inventory"],
+  "permissions": ["READ_ITEM", "READ_INVENTORY"],
   "backend": {
     "kind": "cloudflare-worker",
     "d1": { "binding": "STOCK_HELPER_DB" }

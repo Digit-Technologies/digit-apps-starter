@@ -10,33 +10,29 @@ Agents should follow:
 
 That skill covers:
 
-- **React + MUI + `@digit/app-theme`** (required default stack)
+- **React + MUI + `@digit/app-frontend`** (required default stack)
 - Vite + folder conventions (`frontend/`, optional `backend/`)
 - Mounting to `#root` with `DigitThemeProvider`
 - `manifest.json` schema (permissions, Cloudflare Worker / D1)
-- Digit API access via `DigitProxyClient` / `/proxy/digit`
+- Digit API access via `useDigitApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
 - Publishing with Digit MCP (`apps` → upload zip → `publishApp` → poll)
 
-## Theme package
+## Packages
 
-[`packages/digit-theme`](packages/digit-theme) (`@digit/app-theme`) is a public
-snapshot of Digit’s MUI theme. Apps depend on it via `file:…` — not on private
-`digit-web`.
-
-## Examples
-
-| Example | What it shows |
+| Package | Role |
 | --- | --- |
-| [`examples/hello-world`](examples/hello-world) | Minimal UI-only React + MUI app |
-| [`examples/digit-api`](examples/digit-api) | Digit GraphQL via `DigitProxyClient` |
-| [`examples/env-vars`](examples/env-vars) | Backend reads an app env var |
-| [`examples/secrets-third-party`](examples/secrets-third-party) | Backend uses a secret for a third-party API |
-| [`examples/top-customers`](examples/top-customers) | Aggregates a paginated GraphQL list client-side |
-| [`examples/sales-order-progress`](examples/sales-order-progress) | Read-only dashboard driven by a computed GraphQL field |
-| [`examples/maintenance-log`](examples/maintenance-log) | App-owned data via a Worker + D1 backend, no Digit permissions |
+| [`packages/app-shared`](packages/app-shared) (`@digit/app-shared`) | Shared codes, results, pure validation (no React / no `Response`) |
+| [`packages/app-frontend`](packages/app-frontend) (`@digit/app-frontend`) | Theme, harness types, Digit/backend hooks, error UI |
+| [`packages/app-backend`](packages/app-backend) (`@digit/app-backend`) | Worker `Response` helpers, env/secrets, path, upstream `fetch` |
 
-Copy the closest example, then adapt. Do not invent a different layout or styling stack.
+Apps depend on them via `file:…` — not on private `digit-web`. Frontend and backend
+packages already pull in `@digit/app-shared`.
+
+## Example
+
+[`examples/full-featured`](examples/full-featured) is the reference app: theme, errors, Digit
+API, public API, secrets, D1 CRUD, and env config. Copy it and trim what you don’t need.
 
 ## Publish reminder
 

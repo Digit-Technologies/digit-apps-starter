@@ -1,8 +1,0 @@
-{
-  "name": "Env Vars Demo",
-  "entryFile": "main.js",
-  "permissions": [],
-  "backend": {
-    "kind": "cloudflare-worker"
-  }
-}

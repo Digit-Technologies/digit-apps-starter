@@ -1,5 +1,0 @@
-{
-  "name": "Sales Order Progress",
-  "entryFile": "main.js",
-  "permissions": ["read:order", "read:order:costInfo", "read:company"]
-}

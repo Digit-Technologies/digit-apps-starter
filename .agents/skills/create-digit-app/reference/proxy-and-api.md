@@ -3,87 +3,76 @@
 Apps run on a per-app origin. The only egress the frontend CSP allows is same-origin, so
 Digit data and app backends are reached through Digit-hosted proxies.
 
-## Digit GraphQL — `DigitProxyClient`
-
-The harness defines `window.DigitProxyClient` before loading your bundle:
-
-```ts
-declare global {
-  interface Window {
-    DigitProxyClient: {
-      callProxy: (payload: {
-        query: string;
-        variables?: Record<string, unknown>;
-      }) => Promise<unknown>;
-    };
-  }
-}
-```
-
-Usage:
+Prefer the React hooks from `@digit/app-frontend` — they wrap the harness client and
+normalize errors for `AppErrorAlert`:
 
 ```ts
-const result = await window.DigitProxyClient.callProxy({
-  query: `
+import {
+  AppErrorAlert,
+  useDigitApiQuery,
+  useBackendQuery,
+  useBackendMutation,
+} from '@digit/app-frontend';
+
+const { data, error, loading, refetch } = useDigitApiQuery(
+  `
     query Items($connection: ConnectionInput) {
       items(connection: $connection) {
         nodes { id name sku }
       }
     }
   `,
-  variables: { connection: { first: 10 } },
-});
+  { variables: { connection: { first: 10 } } },
+);
+
+if (error) {
+  // <AppErrorAlert error={error} onRetry={() => void refetch()} />
+}
+
+const notes = useBackendQuery<{ notes: Note[] }>('/notes');
+const [mutateNote] = useBackendMutation();
+await mutateNote('/notes', { method: 'POST', body: { title: 'Hi' } });
 ```
+
+For non-React call sites, use `digitRequest` / `backendFetch` (same Result shape).
+
+Types for `window.DigitHost` and `window.DigitProxyClient` are exported from the same
+package (`DigitHost`, `DigitHostSettings`, `DigitProxyClient`). Importing
+`@digit/app-frontend` augments `Window` — do not maintain a local `digit.d.ts`.
+
+## Digit GraphQL API
+
+`useDigitApiQuery` / `useDigitApiMutation` (and `digitRequest`) use the harness
+`DigitProxyClient`, which POSTs `/proxy/digit` with `credentials: 'include'` and
+`X-Digit-Proxy-Client: 1`.
 
 Notes:
 
 - Credentials stay server-side (HttpOnly session cookie + scoped token in Redis)
 - Your query must be covered by `manifest.permissions` ∩ the user's live permissions
 - Do **not** call Digit GraphQL with a bearer token from app JS
-- Do **not** invent a different proxy URL — always use `DigitProxyClient`
+- Do **not** invent a different proxy URL
 
-Under the hood this POSTs `/proxy/digit` with `credentials: 'include'` and
-`X-Digit-Proxy-Client: 1`.
+## App backend
 
-## App backend — `/proxy/backend`
+When `manifest.backend` is set, `useBackendQuery` / `useBackendMutation` (and
+`backendFetch`) hit `/proxy/backend/...`. Rules:
 
-When `manifest.backend` is set, the frontend calls the app's Cloudflare Worker through:
-
-```ts
-async function callBackend(path: string, init: RequestInit = {}) {
-  const response = await fetch(`/proxy/backend${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Digit-Proxy-Client': '1',
-      ...(init.headers ?? {}),
-    },
-  });
-  if (!response.ok) {
-    throw new Error(`Backend ${response.status}`);
-  }
-  return response.json();
-}
-```
-
-Rules:
-
-- Path is appended after `/proxy/backend` (e.g. `/proxy/backend/greeting`)
-- Always send `X-Digit-Proxy-Client: 1` and `credentials: 'include'` (CSRF)
+- Always go through these helpers (or the harness client) so `X-Digit-Proxy-Client` is set
 - Paths starting with `/__` are reserved and refused
 - The platform sets `X-Digit-App-Id` from the Host header — the browser cannot spoof another app's worker
+- Pair with `@digit/app-backend` on the Worker (`ok` / `fail` result responses)
 
 ## Host display settings
 
-Optional read-only settings from Digit:
-
 ```ts
-window.DigitHost?.getSettings(); // { theme?: 'light'|'dark', language?: string } | null
+import type { DigitHostSettings } from '@digit/app-frontend';
+
+window.DigitHost?.getSettings(); // DigitHostSettings | null
 window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
 ```
 
 `data-theme` and `lang` are also set on `<html>` for CSS-only theming.
 
-Apps using `@digit/app-theme` get light/dark sync automatically via
+Apps using `@digit/app-frontend` get light/dark sync automatically via
 `DigitThemeProvider` — see [theming.md](theming.md).

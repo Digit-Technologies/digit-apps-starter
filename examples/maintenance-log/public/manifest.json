@@ -1,9 +1,0 @@
-{
-  "name": "Maintenance Log",
-  "entryFile": "main.js",
-  "permissions": [],
-  "backend": {
-    "kind": "cloudflare-worker",
-    "d1": { "binding": "MAINTENANCE_LOG_DB" }
-  }
-}

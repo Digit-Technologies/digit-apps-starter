@@ -2,14 +2,14 @@
 
 Digit apps should look like Digit. Use **one stack only**:
 
-**React + MUI + `@digit/app-theme` (`DigitThemeProvider`)**
+**React + MUI + `@digit/app-frontend` (`DigitThemeProvider`)**
 
-Do not invent a parallel design system, skip the theme package, or ship vanilla
+Do not invent a parallel design system, skip the frontend package, or ship vanilla
 HTML/CSS UI for new apps.
 
 ## Package
 
-[`packages/digit-theme`](../../../../packages/digit-theme) is a public snapshot of
+[`packages/app-frontend`](../../../../packages/app-frontend) is a public snapshot of
 Digit web’s MUI theme (palette, typography, component overrides). The private
 `digit-web` repo is **not** a dependency — keep this package self-contained.
 
@@ -18,7 +18,7 @@ Depend on it from an app:
 ```json
 {
   "dependencies": {
-    "@digit/app-theme": "file:../../packages/digit-theme",
+    "@digit/app-frontend": "file:../../packages/app-frontend",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^7.3.9",
@@ -28,16 +28,20 @@ Depend on it from an app:
 }
 ```
 
-Use `file:../packages/digit-theme` when the app sits at the repo root (not under
+Use `file:../packages/app-frontend` when the app sits at the repo root (not under
 `examples/`).
 
 Vite must set `resolve: { preserveSymlinks: true }` so peer deps resolve from the
-app’s `node_modules` when the theme is linked via `file:`.
+app’s `node_modules` when the package is linked via `file:`.
+
+For shared Worker helpers (JSON results, env, upstream fetch), depend on
+[`@digit/app-backend`](../../../../packages/app-backend) and bundle with
+`vite.backend.config.ts` — see `examples/full-featured`.
 
 ## Provider
 
 ```tsx
-import { DigitThemeProvider } from '@digit/app-theme';
+import { DigitThemeProvider } from '@digit/app-frontend';
 
 createRoot(rootEl).render(
   <DigitThemeProvider>
@@ -48,14 +52,19 @@ createRoot(rootEl).render(
 
 `DigitThemeProvider`:
 
-1. Reads light/dark from `window.DigitHost` (host pushes theme via postMessage)
+1. Reads light/dark from `window.DigitHost` (types: `DigitHost` / `DigitHostSettings`
+   exported from `@digit/app-frontend`; importing the package augments `Window`)
 2. Falls back to `document.documentElement.dataset.theme`, then `prefers-color-scheme`
 3. Calls `createTheme(themeOptions(darkMode))` and renders MUI `CssBaseline`
+
+Do not add a local `digit.d.ts` for `DigitHost` / `DigitProxyClient`.
 
 ## Host settings
 
 ```ts
-window.DigitHost?.getSettings(); // { theme?: 'light'|'dark', language?: string } | null
+import type { DigitHostSettings } from '@digit/app-frontend';
+
+window.DigitHost?.getSettings(); // DigitHostSettings | null
 window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
 ```
 

@@ -1,5 +1,0 @@
-{
-  "name": "Items Browser",
-  "entryFile": "main.js",
-  "permissions": ["read:item"]
-}
