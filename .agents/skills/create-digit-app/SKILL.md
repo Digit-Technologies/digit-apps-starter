@@ -89,8 +89,9 @@ my-app/
         └── 0001_init.sql
 ```
 
-Harness types (`DigitHost`, `DigitProxyClient`) come from `@digit/app-frontend` — do not
-add a local `digit.d.ts`.
+Harness types (`DigitHost`, `DigitHostSettings`) come from `@digit/app-frontend` — do not
+add a local `digit.d.ts`. Prefer the data hooks over calling `window.DigitProxyClient`
+yourself.
 
 Zip root must contain `frontend/` (with `frontend/manifest.json`) and, iff the manifest
 declares a backend, `backend/worker.js`. Scripts: `build:frontend`, optional `build:backend`,
@@ -134,9 +135,9 @@ and `build` that runs both.
   Worker).
 - **Reserved names:** `entryFile` must not be `index.html` or `loader.js`.
 - **Digit API calls:** prefer `useDigitApiQuery` / `useDigitApiMutation` from
-  `@digit/app-frontend` (or imperative `digitRequest`). Never call Digit GraphQL with a
+  `@digit/app-frontend`. Never call Digit GraphQL with a
   bearer token from the browser.
-- **Backend calls:** prefer `useBackendQuery` / `useBackendMutation` (or `backendFetch`).
+- **Backend calls:** prefer `useBackendQuery` / `useBackendMutation`.
   Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client`.
 
 ### 5. `manifest.json`
@@ -225,7 +226,7 @@ Details: [reference/spec.md](reference/spec.md)
 | --- | --- |
 | Any new app | Copy `full-featured`, delete unused tabs/routes |
 | Digit GraphQL | `useDigitApiQuery` / `useDigitApiMutation` + manifest permissions |
-| Env / secrets / D1 / third-party HTTP | Worker + `@digit/app-backend` (`requireEnv`, `ok`/`fail`) + plain `fetch` |
+| Env / secrets / D1 / third-party HTTP | Worker + `@digit/app-backend` (`requireEnv`, `ok`/`err`) + plain `fetch` |
 | Shared validation / results | `@digit/app-shared` (`parseObject`, `requiredString`, …) — also re-exported from frontend/backend |
 
 Always keep React + MUI + `@digit/app-frontend`. Prefer `@digit/app-backend` helpers in
@@ -233,7 +234,7 @@ Workers so result shapes match `useBackendQuery` on the frontend.
 
 ## Theming & packages
 
-Import from the package root only (`DigitThemeProvider`, hooks, `ok`/`fail`, …).
+Import from the package root only (`DigitThemeProvider`, hooks, `ok`/`err`, …).
 Other files under each package’s `src/` are implementation details.
 
 - Frontend: [`packages/app-frontend`](../../../packages/app-frontend) (`@digit/app-frontend`)

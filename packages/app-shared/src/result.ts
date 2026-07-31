@@ -6,14 +6,14 @@ export type SuccessResult<T = unknown> = {
   data: T;
 };
 
-/** Standard JSON failure body returned by app Workers. */
-export type FailureResult = {
+/** Standard JSON error body returned by app Workers. */
+export type ErrorResult = {
   ok: false;
   error: AppErrorDetail;
 };
 
 /** Discriminated `{ ok, data }` / `{ ok, error }` result for Worker JSON responses. */
-export type Result<T = unknown> = SuccessResult<T> | FailureResult;
+export type Result<T = unknown> = SuccessResult<T> | ErrorResult;
 
 export function okResult<T>({ data }: { data: T }): SuccessResult<T> {
   return { ok: true, data };
@@ -25,7 +25,7 @@ export function errResult({
 }: {
   code: AppErrorCode;
   message: string;
-}): FailureResult {
+}): ErrorResult {
   return { ok: false, error: { code, message } };
 }
 

@@ -10,7 +10,7 @@ export type DigitHost = {
   onSettingsChange: (cb: (settings: DigitHostSettings | null) => void) => () => void;
 };
 
-/** Harness credential proxy (`window.DigitProxyClient`). */
+/** Harness credential proxy (`window.DigitProxyClient`) — used by data hooks; not a public app API. */
 export type DigitProxyClient = {
   callProxy: (payload: {
     query: string;

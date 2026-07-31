@@ -45,7 +45,67 @@ function supportInfo(error: AppError): string {
 
 /**
  * Shared error surface for Digit apps. Shows a safe user message, optional machine
- * code / request id, Copy support info, and an optional Retry when the error looks transient.
+ * code / request id, Copy support info, and Retry when `onRetry` is set and the error
+ * looks transient (`isRetryable`).
+ *
+ * @example Query failure with refetch
+ * import { AppErrorAlert, useBackendQuery } from '@digit/app-frontend';
+ *
+ * function NotesList() {
+ *   const { data, error, loading, refetch } = useBackendQuery({ path: '/notes' });
+ *
+ *   if (error) {
+ *     return <AppErrorAlert error={error} onRetry={() => void refetch()} />;
+ *   }
+ *   if (loading) return null;
+ *   return <pre>{JSON.stringify(data)}</pre>;
+ * }
+ *
+ * @example Mutation failure (no retry button — validation / config errors)
+ * import { AppErrorAlert, useBackendMutation } from '@digit/app-frontend';
+ *
+ * function SaveNote() {
+ *   const [saveNote, { error, loading }] = useBackendMutation();
+ *
+ *   return (
+ *     <>
+ *       <button
+ *         disabled={loading}
+ *         onClick={() => void saveNote({ path: '/notes', method: 'POST', body: { title: '' } })}
+ *       >
+ *         Save
+ *       </button>
+ *       {error ? <AppErrorAlert error={error} /> : null}
+ *     </>
+ *   );
+ * }
+ *
+ * @example Digit GraphQL query + custom title
+ * import { AppErrorAlert, useDigitApiQuery } from '@digit/app-frontend';
+ *
+ * function Items() {
+ *   const { error, refetch } = useDigitApiQuery({
+ *     query: `query Items { items(connection: { first: 10 }) { nodes { id } } }`,
+ *   });
+ *
+ *   if (error) {
+ *     return (
+ *       <AppErrorAlert
+ *         error={error}
+ *         title="Couldn’t load items"
+ *         onRetry={() => void refetch()}
+ *       />
+ *     );
+ *   }
+ *   return null;
+ * }
+ *
+ * @example Extra guidance via children
+ * <AppErrorAlert error={error} onRetry={() => void refetch()}>
+ *   <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
+ *     If this keeps happening, check the app’s env vars in Digit settings.
+ *   </Typography>
+ * </AppErrorAlert>
  */
 export const AppErrorAlert = ({ error, onRetry, title, children }: AppErrorAlertProps) => {
   const [copied, setCopied] = useState(false);

@@ -17,8 +17,7 @@ export type DigitRequestArgs = {
  * Call Digit GraphQL through the harness (`DigitProxyClient.callProxy`) and
  * normalize platform / GraphQL errors.
  *
- * On success, returns the GraphQL `data` payload (not the full `{ data, errors }` body).
- * Prefer `useDigitApiQuery` / `useDigitApiMutation` from React components.
+ * Used internally by `useDigitApiQuery` / `useDigitApiMutation`.
  */
 export async function digitRequest<T = unknown>({
   query,

@@ -12,7 +12,7 @@ export type BackendFetchArgs = BackendFetchOptions & {
  * Call the app Worker through `/proxy/backend` (`DigitProxyClient.callBackend`)
  * and normalize platform / backend results.
  *
- * Prefer `useBackendQuery` / `useBackendMutation` from React components.
+ * Used internally by `useBackendQuery` / `useBackendMutation`.
  */
 export async function backendFetch<T = unknown>({
   path,

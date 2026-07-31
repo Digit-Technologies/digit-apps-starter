@@ -4,7 +4,7 @@
  */
 
 // Result Responses
-export { ok, fail, AppErrorCode } from './respond';
+export { ok, err, AppErrorCode } from './respond';
 
 // Worker entry wrapper (always returns structured JSON)
 export { createHandler, HandlerError } from './createHandler';
@@ -16,8 +16,7 @@ export type { RequireEnvArgs } from './env';
 
 // Validation (from `@digit/app-shared`)
 export {
-  asObject,
-  parseJsonObject,
+  parseJsonResponse,
   requiredString,
   optionalString,
   parseObject,
@@ -26,6 +25,6 @@ export type {
   AppErrorDetail,
   ParseResult,
   SuccessResult,
-  FailureResult,
+  ErrorResult,
   Result,
 } from '@digit/app-shared';

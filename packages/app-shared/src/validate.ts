@@ -1,44 +1,19 @@
 import { AppErrorCode } from './codes';
 import { err, ok, type ParseResult } from './result';
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-/** Require a plain object (typical JSON body). */
-export function asObject({ value }: { value: unknown }): ParseResult<Record<string, unknown>> {
-  if (!isPlainObject(value)) {
+/** Require a non-null, non-array object. Returns a typed `ParseResult`. */
+function parsePlainObject({
+  value,
+}: {
+  value: unknown;
+}): ParseResult<Record<string, unknown>> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return err({
       code: AppErrorCode.VALIDATION_ERROR,
       message: 'Request body must be a JSON object.',
     });
   }
-  return ok({ value });
-}
-
-/**
- * Await a JSON value (e.g. `request.json()`) and require a plain object.
- * Returns a `ParseResult` — does not throw.
- *
- * @example
- * const body = await parseJsonObject({ value: request.json() });
- * if (!body.ok) return fail({ code: body.error.code, message: body.error.message });
- */
-export async function parseJsonObject({
-  value,
-}: {
-  value: Promise<unknown> | unknown;
-}): Promise<ParseResult<Record<string, unknown>>> {
-  let raw: unknown;
-  try {
-    raw = await value;
-  } catch {
-    return err({
-      code: AppErrorCode.VALIDATION_ERROR,
-      message: 'Request body must be valid JSON.',
-    });
-  }
-  return asObject({ value: raw });
+  return ok({ value: value as Record<string, unknown> });
 }
 
 export type StringFieldOptions = {
@@ -98,9 +73,13 @@ export function optionalString({
   return ok({ value: trim ? raw.trim() : raw });
 }
 
+export type ParseFields<T extends Record<string, unknown>> = {
+  [K in keyof T]: (obj: Record<string, unknown>) => ParseResult<T[K]>;
+};
+
 export type ParseObjectArgs<T extends Record<string, unknown>> = {
   value: unknown;
-  fields: { [K in keyof T]: (obj: Record<string, unknown>) => ParseResult<T[K]> };
+  fields: ParseFields<T>;
 };
 
 /**
@@ -120,7 +99,7 @@ export function parseObject<T extends Record<string, unknown>>({
   value,
   fields,
 }: ParseObjectArgs<T>): ParseResult<T> {
-  const obj = asObject({ value });
+  const obj = parsePlainObject({ value });
   if (!obj.ok) return obj;
 
   const out = {} as T;
@@ -130,4 +109,57 @@ export function parseObject<T extends Record<string, unknown>>({
     out[key] = parsed.value;
   }
   return ok({ value: out });
+}
+
+export type ParseJsonResponseArgs<T extends Record<string, unknown>> = {
+  /** `request.json()`, a `Response.json()` promise, or an already-parsed value. */
+  value: Promise<unknown> | unknown;
+  /** Same field parsers as `parseObject`. Omit to keep a plain object. */
+  fields?: ParseFields<T>;
+};
+
+/**
+ * Await JSON (e.g. `request.json()`), require a plain object, optionally parse `fields`.
+ * Returns a typed `ParseResult` — does not throw.
+ *
+ * @example With fields (typed)
+ * const parsed = await parseJsonResponse({
+ *   value: request.json(),
+ *   fields: {
+ *     title: (obj) => requiredString({ obj, key: 'title' }),
+ *     body: (obj) => optionalString({ obj, key: 'body', default: '' }),
+ *   },
+ * });
+ * if (!parsed.ok) {
+ *   return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
+ * }
+ * // parsed.value.title: string
+ *
+ * @example Object only
+ * const body = await parseJsonResponse({ value: request.json() });
+ * if (!body.ok) {
+ *   return err({ code: body.error.code, message: body.error.message, status: 400 });
+ * }
+ */
+export async function parseJsonResponse<T extends Record<string, unknown> = Record<string, unknown>>({
+  value,
+  fields,
+}: ParseJsonResponseArgs<T>): Promise<ParseResult<T>> {
+  let raw: unknown;
+  try {
+    raw = await value;
+  } catch {
+    return err({
+      code: AppErrorCode.VALIDATION_ERROR,
+      message: 'Request body must be valid JSON.',
+    });
+  }
+
+  if (fields) {
+    return parseObject({ value: raw, fields });
+  }
+
+  const obj = parsePlainObject({ value: raw });
+  if (!obj.ok) return obj;
+  return ok({ value: obj.value as T });
 }

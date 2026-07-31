@@ -10,8 +10,8 @@ import Typography from '@mui/material/Typography';
 
 import {
   AppErrorAlert,
-  backendFetch,
-  digitRequest,
+  useBackendMutation,
+  useDigitApiMutation,
   type AppError,
 } from '@digit/app-frontend';
 
@@ -66,15 +66,20 @@ type LiveState =
   | { status: 'error'; error: AppError }
   | { status: 'ok'; detail: string };
 
+const BAD_GRAPHQL = 'query { __thisFieldDoesNotExist }';
+
 export default function ErrorLabPanel() {
   const [fixtureKey, setFixtureKey] = useState('platform_session');
   const fixture = useMemo(() => FIXTURES[fixtureKey]!, [fixtureKey]);
   const [live, setLive] = useState<LiveState>({ status: 'idle' });
 
+  const [runGraphql] = useDigitApiMutation({ mutation: BAD_GRAPHQL });
+  const [runBackend] = useBackendMutation();
+
   const runLive = async (kind: 'graphql' | 'validation' | 'server') => {
     setLive({ status: 'loading' });
     if (kind === 'graphql') {
-      const result = await digitRequest({ query: 'query { __thisFieldDoesNotExist }' });
+      const result = await runGraphql();
       setLive(
         result.ok
           ? { status: 'ok', detail: 'Unexpected success' }
@@ -82,7 +87,7 @@ export default function ErrorLabPanel() {
       );
       return;
     }
-    const result = await backendFetch({
+    const result = await runBackend({
       path: '/error/demo',
       method: 'POST',
       body: { kind },

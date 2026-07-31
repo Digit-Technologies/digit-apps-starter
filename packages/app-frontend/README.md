@@ -7,8 +7,8 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 ## Public API
 
 Import from the package root only. Theme tokens, error parsers, and other modules
-under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
-`AppErrorAlert`, and `digitRequest` / `backendFetch`.
+under `src/` are implementation details — use `DigitThemeProvider`, the hooks, and
+`AppErrorAlert`.
 
 ## Why a copy (not an import from digit-web)
 
@@ -41,9 +41,10 @@ The provider:
 - Syncs light/dark from `window.DigitHost` (falls back to `data-theme` / `prefers-color-scheme`)
 - Applies Digit `CssBaseline`
 
-Harness types (`DigitHost`, `DigitHostSettings`, `DigitProxyClient`) are exported from
-this package — importing `@digit/app-frontend` augments `Window`. Do not add a local
-`digit.d.ts` for those.
+Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`) are exported
+from this package — importing `@digit/app-frontend` also augments `Window`. Prefer the
+data hooks over calling `window.DigitProxyClient` yourself. Do not add a local
+`digit.d.ts` for the harness.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
@@ -75,9 +76,6 @@ const [mutateNote, { error: saveError, loading: saving }] = useBackendMutation()
 await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
-Imperative helpers (`digitRequest`, `backendFetch`) remain for non-React call sites
-(e.g. event handlers that don’t need hook state).
-
 | Hook | Hits |
 | --- | --- |
 | `useDigitApiQuery` / `useDigitApiMutation` | Digit GraphQL via `/proxy/digit` |
@@ -93,12 +91,12 @@ Error kinds:
 | `unavailable` | Missing `DigitProxyClient` (local Vite without harness) |
 | `unknown` | Thrown / non-JSON / unexpected shapes |
 
-Platform codes stay distinct from app-backend codes (`AppErrorCode.VALIDATION_ERROR`,
-`MISSING_CONFIG`, `UPSTREAM_ERROR`, … from `@digit/app-shared`). Pair with
-`@digit/app-backend` on the Worker so result shapes match.
+Platform codes stay distinct from app-backend codes (`AppErrorCode` on
+`@digit/app-shared` / `@digit/app-backend`). Pair with `@digit/app-backend` on the
+Worker so result shapes match.
 
 `AppErrorAlert` shows a safe user message, optional code/request id, Copy
-support info, and Retry when `isRetryable` is true.
+support info, and Retry when the error looks retryable.
 
 ## Depend from an app
 

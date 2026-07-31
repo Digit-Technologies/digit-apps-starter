@@ -8,14 +8,13 @@ export * from './codes';
 export { okResult, errResult } from './result';
 export type {
   SuccessResult,
-  FailureResult,
+  ErrorResult,
   Result,
   ParseResult,
 } from './result';
 
 export {
-  asObject,
-  parseJsonObject,
+  parseJsonResponse,
   requiredString,
   optionalString,
   parseObject,
@@ -24,4 +23,7 @@ export type {
   StringFieldOptions,
   RequiredStringArgs,
   OptionalStringArgs,
+  ParseFields,
+  ParseObjectArgs,
+  ParseJsonResponseArgs,
 } from './validate';

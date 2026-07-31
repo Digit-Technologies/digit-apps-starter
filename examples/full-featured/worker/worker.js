@@ -12,11 +12,10 @@
 import {
   AppErrorCode,
   createHandler,
-  fail,
+  err,
   ok,
   optionalString,
-  parseJsonObject,
-  parseObject,
+  parseJsonResponse,
   requireEnv,
   requiredString,
 } from '@digit/app-backend';
@@ -31,15 +30,10 @@ function toNote(row) {
   };
 }
 
-function parseNote(body) {
-  return parseObject({
-    value: body,
-    fields: {
-      title: (obj) => requiredString({ obj, key: 'title' }),
-      body: (obj) => optionalString({ obj, key: 'body', default: '' }),
-    },
-  });
-}
+const noteFields = {
+  title: (obj) => requiredString({ obj, key: 'title' }),
+  body: (obj) => optionalString({ obj, key: 'body', default: '' }),
+};
 
 async function handleNotes({ request, env, idPart }) {
   const db = requireEnv({ env, key: 'FULL_FEATURED_DB' });
@@ -50,13 +44,9 @@ async function handleNotes({ request, env, idPart }) {
   }
 
   if (request.method === 'POST' && !idPart) {
-    const body = await parseJsonObject({ value: request.json() });
-    if (!body.ok) {
-      return fail({ code: body.error.code, message: body.error.message, status: 400 });
-    }
-    const parsed = parseNote(body.value);
+    const parsed = await parseJsonResponse({ value: request.json(), fields: noteFields });
     if (!parsed.ok) {
-      return fail({
+      return err({
         code: parsed.error.code,
         message: parsed.error.message,
         status: 400,
@@ -72,17 +62,13 @@ async function handleNotes({ request, env, idPart }) {
 
   const id = Number(idPart);
   if (!Number.isInteger(id) || id < 1) {
-    return fail({ code: AppErrorCode.VALIDATION_ERROR, message: 'Invalid note id.', status: 400 });
+    return err({ code: AppErrorCode.VALIDATION_ERROR, message: 'Invalid note id.', status: 400 });
   }
 
   if (request.method === 'PUT') {
-    const body = await parseJsonObject({ value: request.json() });
-    if (!body.ok) {
-      return fail({ code: body.error.code, message: body.error.message, status: 400 });
-    }
-    const parsed = parseNote(body.value);
+    const parsed = await parseJsonResponse({ value: request.json(), fields: noteFields });
     if (!parsed.ok) {
-      return fail({
+      return err({
         code: parsed.error.code,
         message: parsed.error.message,
         status: 400,
@@ -100,7 +86,7 @@ async function handleNotes({ request, env, idPart }) {
       .first();
 
     if (!result) {
-      return fail({ code: AppErrorCode.NOT_FOUND, message: 'Note not found.', status: 404 });
+      return err({ code: AppErrorCode.NOT_FOUND, message: 'Note not found.', status: 404 });
     }
     return ok({ data: { note: toNote(result) } });
   }
@@ -111,12 +97,12 @@ async function handleNotes({ request, env, idPart }) {
       .bind(id)
       .first();
     if (!result) {
-      return fail({ code: AppErrorCode.NOT_FOUND, message: 'Note not found.', status: 404 });
+      return err({ code: AppErrorCode.NOT_FOUND, message: 'Note not found.', status: 404 });
     }
     return ok({ data: { deleted: true } });
   }
 
-  return fail({ code: AppErrorCode.VALIDATION_ERROR, message: 'Method not allowed.', status: 405 });
+  return err({ code: AppErrorCode.VALIDATION_ERROR, message: 'Method not allowed.', status: 405 });
 }
 
 export default createHandler({
@@ -142,7 +128,7 @@ export default createHandler({
 
       const response = await fetch(weatherUrl);
       if (!response.ok) {
-        return fail({
+        return err({
           code: AppErrorCode.UPSTREAM_ERROR,
           message: `Weather upstream failed (HTTP ${response.status}).`,
           status: 502,
@@ -168,7 +154,7 @@ export default createHandler({
         headers: { Authorization: `Bearer ${apiKey}` },
       });
       if (!response.ok) {
-        return fail({
+        return err({
           code: AppErrorCode.UPSTREAM_ERROR,
           message: `Upstream request failed (HTTP ${response.status}).`,
           status: 502,
@@ -190,31 +176,31 @@ export default createHandler({
     }
 
     if (resource === 'error' && idPart === 'demo' && request.method === 'POST') {
-      const body = await parseJsonObject({ value: request.json() });
+      const body = await parseJsonResponse({ value: request.json() });
       if (!body.ok) {
-        return fail({ code: body.error.code, message: body.error.message, status: 400 });
+        return err({ code: body.error.code, message: body.error.message, status: 400 });
       }
       if (body.value.kind === 'validation') {
-        return fail({
+        return err({
           code: AppErrorCode.VALIDATION_ERROR,
           message: 'Demo validation failure.',
           status: 400,
         });
       }
       if (body.value.kind === 'server') {
-        return fail({
+        return err({
           code: AppErrorCode.SERVER_ERROR,
           message: 'Demo server failure.',
           status: 500,
         });
       }
-      return fail({
+      return err({
         code: AppErrorCode.VALIDATION_ERROR,
         message: 'Body must include kind: "validation" | "server".',
         status: 400,
       });
     }
 
-    return fail({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });
+    return err({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });
   },
 });

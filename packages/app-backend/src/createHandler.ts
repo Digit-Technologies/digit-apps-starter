@@ -1,11 +1,11 @@
 import { AppErrorCode, type AppErrorCode as AppErrorCodeType } from '@digit/app-shared';
 
-import { fail } from './respond';
+import { err } from './respond';
 
 /**
  * Thrown by `requireEnv` (and similar) for expected config failures.
  * Caught by `createHandler` and turned into a structured `{ ok: false, error }` Response.
- * Prefer `return fail(...)` for domain errors you handle inline.
+ * Prefer `return err(...)` for domain errors you handle inline.
  */
 export class HandlerError extends Error {
   readonly code: AppErrorCodeType;
@@ -44,9 +44,9 @@ export type CreateHandlerArgs = {
  * Wrap a Worker `fetch` handler so every response is structured JSON
  * (`{ ok: true, data }` / `{ ok: false, error }`).
  *
- * - Expected config throws (`HandlerError` from `requireEnv`) → `fail(...)`
+ * - Expected config throws (`HandlerError` from `requireEnv`) → `err(...)`
  * - Anything else thrown → `SERVER_ERROR` (details are not leaked)
- * - Prefer `return fail(...)` for domain errors you handle inline
+ * - Prefer `return err(...)` for domain errors you handle inline
  *
  * `ctx` is Cloudflare’s `ExecutionContext` (e.g. `waitUntil`) — not an app bag.
  *
@@ -61,7 +61,7 @@ export type CreateHandlerArgs = {
  * });
  *
  * @example Route + domain failure
- * import { createHandler, fail, ok, AppErrorCode } from '@digit/app-backend';
+ * import { createHandler, err, ok, AppErrorCode } from '@digit/app-backend';
  *
  * export default createHandler({
  *   fetch: async ({ request }) => {
@@ -71,7 +71,7 @@ export type CreateHandlerArgs = {
  *     if (resource === 'notes' && request.method === 'GET' && id) {
  *       const note = await loadNote(id); // your code
  *       if (!note) {
- *         return fail({
+ *         return err({
  *           code: AppErrorCode.NOT_FOUND,
  *           message: 'Note not found.',
  *           status: 404,
@@ -80,7 +80,7 @@ export type CreateHandlerArgs = {
  *       return ok({ data: { note } });
  *     }
  *
- *     return fail({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });
+ *     return err({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });
  *   },
  * });
  *
@@ -88,36 +88,30 @@ export type CreateHandlerArgs = {
  * import {
  *   AppErrorCode,
  *   createHandler,
- *   fail,
+ *   err,
  *   ok,
- *   parseJsonObject,
- *   parseObject,
+ *   parseJsonResponse,
  *   requiredString,
  * } from '@digit/app-backend';
  *
  * export default createHandler({
  *   fetch: async ({ request }) => {
  *     if (request.method !== 'POST') {
- *       return fail({
+ *       return err({
  *         code: AppErrorCode.VALIDATION_ERROR,
  *         message: 'POST only.',
  *         status: 405,
  *       });
  *     }
  *
- *     const body = await parseJsonObject({ value: request.json() });
- *     if (!body.ok) {
- *       return fail({ code: body.error.code, message: body.error.message, status: 400 });
- *     }
- *
- *     const parsed = parseObject({
- *       value: body.value,
+ *     const parsed = await parseJsonResponse({
+ *       value: request.json(),
  *       fields: {
  *         title: (obj) => requiredString({ obj, key: 'title' }),
  *       },
  *     });
  *     if (!parsed.ok) {
- *       return fail({ code: parsed.error.code, message: parsed.error.message, status: 400 });
+ *       return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
  *     }
  *
  *     return ok({ data: { note: parsed.value }, status: 201 });
@@ -125,7 +119,7 @@ export type CreateHandlerArgs = {
  * });
  *
  * @example Secret + upstream fetch + waitUntil
- * import { createHandler, requireEnv, fail, ok, AppErrorCode } from '@digit/app-backend';
+ * import { createHandler, requireEnv, err, ok, AppErrorCode } from '@digit/app-backend';
  *
  * export default createHandler({
  *   fetch: async ({ env, ctx }) => {
@@ -135,7 +129,7 @@ export type CreateHandlerArgs = {
  *     });
  *
  *     if (!response.ok) {
- *       return fail({
+ *       return err({
  *         code: AppErrorCode.UPSTREAM_ERROR,
  *         message: `Upstream failed (HTTP ${response.status}).`,
  *         status: 502,
@@ -158,14 +152,14 @@ export function createHandler({ fetch: handleFetch }: CreateHandlerArgs): {
         return await handleFetch({ request, env, ctx });
       } catch (error) {
         if (error instanceof HandlerError) {
-          return fail({
+          return err({
             code: error.code,
             message: error.message,
             status: error.status,
           });
         }
         console.error('Unhandled worker error', error);
-        return fail({
+        return err({
           code: AppErrorCode.SERVER_ERROR,
           message: 'Unexpected worker error.',
           status: 500,

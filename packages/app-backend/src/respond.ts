@@ -16,13 +16,16 @@ export function ok({ data, ...init }: OkArgs): Response {
   return Response.json(okResult({ data }), { ...init, status });
 }
 
-export type FailArgs = {
+export type ErrArgs = {
   code: AppErrorCodeType;
   message: string;
   status?: number;
 } & ResponseInit;
 
-export function fail({ code, message, status = 400, ...init }: FailArgs): Response {
+/**
+ * JSON error Response for Digit app Workers (`{ ok: false, error }`).
+ */
+export function err({ code, message, status = 400, ...init }: ErrArgs): Response {
   return Response.json(errResult({ code, message }), { ...init, status });
 }
 

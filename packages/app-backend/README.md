@@ -13,7 +13,7 @@ Wrap the Worker with `createHandler` so every response is structured JSON
 (`{ ok: true, data }` / `{ ok: false, error }`), including unexpected throws.
 
 ```js
-import { createHandler, requireEnv, ok, fail, AppErrorCode } from '@digit/app-backend';
+import { createHandler, requireEnv, ok, err, AppErrorCode } from '@digit/app-backend';
 
 export default createHandler({
   fetch: async ({ request, env }) => {
@@ -23,38 +23,33 @@ export default createHandler({
 });
 ```
 
-- **Expected domain failures** → `return fail({ code, message, status })`
-- **Missing env / bindings** → `requireEnv` throws `HandlerError`; `createHandler` maps it to `fail`
+- **Expected domain failures** → `return err({ code, message, status })`
+- **Missing env / bindings** → `requireEnv` throws `HandlerError`; `createHandler` maps it to `err`
 - **Anything else thrown** → `SERVER_ERROR` (details are not leaked to the client)
 
 ## Result responses
 
 ```js
-import { ok, fail, AppErrorCode } from '@digit/app-backend';
+import { ok, err, AppErrorCode } from '@digit/app-backend';
 
 ok({ data: { notes: [] } }); // Response.json({ ok: true, data })
-fail({ code: AppErrorCode.VALIDATION_ERROR, message: 'title is required.', status: 400 });
+err({ code: AppErrorCode.VALIDATION_ERROR, message: 'title is required.', status: 400 });
 ```
 
 ## Validation
 
 ```js
-import { parseJsonObject, parseObject, requiredString, optionalString, fail, ok } from '@digit/app-backend';
+import { parseJsonResponse, requiredString, optionalString, err, ok } from '@digit/app-backend';
 
-const body = await parseJsonObject({ value: request.json() });
-if (!body.ok) {
-  return fail({ code: body.error.code, message: body.error.message, status: 400 });
-}
-
-const parsed = parseObject({
-  value: body.value,
+const parsed = await parseJsonResponse({
+  value: request.json(),
   fields: {
     title: (obj) => requiredString({ obj, key: 'title' }),
     body: (obj) => optionalString({ obj, key: 'body', default: '' }),
   },
 });
 if (!parsed.ok) {
-  return fail({ code: parsed.error.code, message: parsed.error.message, status: 400 });
+  return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
 }
 return ok({ data: { note: parsed.value } });
 ```
@@ -63,7 +58,7 @@ return ok({ data: { note: parsed.value } });
 
 - `requireEnv` / `optionalEnv` — env vars, secrets, and bindings (D1, …)
 
-Use plain `fetch` for third-party HTTP. Map failures with `fail({ code: AppErrorCode.UPSTREAM_ERROR, … })`
+Use plain `fetch` for third-party HTTP. Map failures with `err({ code: AppErrorCode.UPSTREAM_ERROR, … })`
 and never put secret values or raw upstream bodies into `error.message` / `data`.
 
 ## Bundle with Vite

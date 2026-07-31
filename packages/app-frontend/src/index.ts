@@ -7,17 +7,15 @@
 export { DigitThemeProvider } from "./theme"
 
 // Host / proxy types (importing this package augments Window)
-export type { DigitHost, DigitHostSettings, DigitProxyClient } from "./globals"
+export type { DigitHost, DigitHostSettings } from "./globals"
 import "./globals"
 
 // Errors
 export { AppErrorAlert } from "./errors"
-export type { AppError, AppErrorKind, AppErrorAlertProps } from "./errors"
+export type { AppError } from "./errors"
 
-// Digit API + app backend
+// Digit API + app backend (hooks only — imperative fetch helpers are internal)
 export {
-  digitRequest,
-  backendFetch,
   useDigitApiQuery,
   useDigitApiMutation,
   useBackendQuery,
@@ -33,7 +31,3 @@ export type {
   UseDigitApiMutationArgs,
   UseBackendQueryArgs,
 } from "./api"
-
-// Shared error codes (handy when branching on `error.code`)
-export { AppErrorCode } from "@digit/app-shared"
-export type { AppErrorDetail } from "@digit/app-shared"

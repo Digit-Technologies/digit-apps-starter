@@ -11,7 +11,7 @@ No React, no `Response` — those live in `@digit/app-frontend` / `@digit/app-ba
 ## Public API
 
 Import from the package root only (`AppErrorCode`, `okResult` / `errResult`,
-`asObject`, `parseObject` + string field helpers). Other files under `src/` are
+`parseJsonResponse`, `parseObject` + string field helpers). Other files under `src/` are
 implementation details.
 
 `@digit/app-frontend` and `@digit/app-backend` already re-export the common pieces;
@@ -42,16 +42,15 @@ const parsed = parseObject({
 });
 
 if (!parsed.ok) {
-  // parsed.error.code / .message — map to fail() on the Worker or AppError in the UI
+  // parsed.error.code / .message — map to err() on the Worker or AppError in the UI
 } else {
   // parsed.value.title, parsed.value.body
 }
 ```
 
-For “is this a plain object?” use `asObject({ value })`. To parse a request (or other)
-JSON promise into an object, use `parseJsonObject({ value: request.json() })` — both
-return a `ParseResult` and live in `@digit/app-shared` (also re-exported from the
-backend package).
+Require a JSON object (and optionally typed fields) with
+`parseJsonResponse({ value: request.json(), fields? })`. For already-parsed values,
+use `parseObject({ value, fields })`.
 
 ## Depend
 

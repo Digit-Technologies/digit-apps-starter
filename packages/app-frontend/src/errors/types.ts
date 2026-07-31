@@ -1,4 +1,4 @@
-import type { FailureResult, SuccessResult } from '@digit/app-shared';
+import type { ErrorResult, SuccessResult } from '@digit/app-shared';
 
 /** Kind of failure after normalizing a Digit proxy / backend / GraphQL result. */
 export type AppErrorKind = 'platform' | 'graphql' | 'backend' | 'unavailable' | 'unknown';
@@ -23,5 +23,5 @@ export type PlatformErrorBody = {
   };
 };
 
-export type BackendErrorBody = FailureResult;
+export type BackendErrorBody = ErrorResult;
 export type BackendSuccessBody<T = unknown> = SuccessResult<T>;

@@ -57,7 +57,8 @@ createRoot(rootEl).render(
 2. Falls back to `document.documentElement.dataset.theme`, then `prefers-color-scheme`
 3. Calls `createTheme(themeOptions(darkMode))` and renders MUI `CssBaseline`
 
-Do not add a local `digit.d.ts` for `DigitHost` / `DigitProxyClient`.
+Do not add a local `digit.d.ts` for `DigitHost`. Prefer hooks over calling
+`window.DigitProxyClient` yourself.
 
 ## Host settings
 

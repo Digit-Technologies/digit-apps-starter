@@ -34,17 +34,15 @@ const [mutateNote] = useBackendMutation();
 await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
-For non-React call sites, use `digitRequest` / `backendFetch` (same Result shape).
-
-Types for `window.DigitHost` and `window.DigitProxyClient` are exported from the same
-package (`DigitHost`, `DigitHostSettings`, `DigitProxyClient`). Importing
-`@digit/app-frontend` augments `Window` — do not maintain a local `digit.d.ts`.
+Types for `window.DigitHost` are exported from the same package (`DigitHost`,
+`DigitHostSettings`). Importing `@digit/app-frontend` augments `Window` — do not
+maintain a local `digit.d.ts`. Prefer the hooks over calling `window.DigitProxyClient`
+yourself.
 
 ## Digit GraphQL API
 
-`useDigitApiQuery` / `useDigitApiMutation` (and `digitRequest`) use the harness
-`DigitProxyClient`, which POSTs `/proxy/digit` with `credentials: 'include'` and
-`X-Digit-Proxy-Client: 1`.
+`useDigitApiQuery` / `useDigitApiMutation` use the harness proxy client, which POSTs
+`/proxy/digit` with `credentials: 'include'` and `X-Digit-Proxy-Client: 1`.
 
 Notes:
 
@@ -55,13 +53,13 @@ Notes:
 
 ## App backend
 
-When `manifest.backend` is set, `useBackendQuery` / `useBackendMutation` (and
-`backendFetch`) hit `/proxy/backend/...`. Rules:
+When `manifest.backend` is set, `useBackendQuery` / `useBackendMutation` hit
+`/proxy/backend/...`. Rules:
 
 - Always go through these helpers (or the harness client) so `X-Digit-Proxy-Client` is set
 - Paths starting with `/__` are reserved and refused
 - The platform sets `X-Digit-App-Id` from the Host header — the browser cannot spoof another app's worker
-- Pair with `@digit/app-backend` on the Worker (`ok` / `fail` result responses)
+- Pair with `@digit/app-backend` on the Worker (`ok` / `err` result responses)
 
 ## Host display settings
 
