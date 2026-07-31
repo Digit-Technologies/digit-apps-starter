@@ -5,7 +5,8 @@ import type { AppError } from '../errors/types';
 import { digitRequest } from './digitRequest';
 import type { QueryHookResult } from './types';
 
-export type UseDigitApiQueryOptions = {
+export type UseDigitApiQueryArgs = {
+  query: string;
   variables?: Record<string, unknown>;
   /** When true, do not fetch until `refetch()` is called. */
   skip?: boolean;
@@ -14,14 +15,14 @@ export type UseDigitApiQueryOptions = {
 /**
  * Query the Digit GraphQL API. Returns `{ data, error, loading, refetch }`.
  */
-export function useDigitApiQuery<T = unknown>(
-  query: string,
-  options?: UseDigitApiQueryOptions,
-): QueryHookResult<T> {
-  const skip = options?.skip ?? false;
-  const variablesKey = JSON.stringify(options?.variables ?? null);
-  const variablesRef = useRef(options?.variables);
-  variablesRef.current = options?.variables;
+export function useDigitApiQuery<T = unknown>({
+  query,
+  variables,
+  skip = false,
+}: UseDigitApiQueryArgs): QueryHookResult<T> {
+  const variablesKey = JSON.stringify(variables ?? null);
+  const variablesRef = useRef(variables);
+  variablesRef.current = variables;
 
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<AppError | null>(null);
@@ -32,7 +33,7 @@ export function useDigitApiQuery<T = unknown>(
     const id = ++requestId.current;
     setLoading(true);
     setError(null);
-    const result = await digitRequest<T>(query, variablesRef.current);
+    const result = await digitRequest<T>({ query, variables: variablesRef.current });
     if (id !== requestId.current) return;
     if (!result.ok) {
       setData(undefined);

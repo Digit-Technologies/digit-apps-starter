@@ -14,7 +14,8 @@ type WeatherData = {
 };
 
 export default function PublicApiPanel() {
-  const { data, error, loading, refetch } = useBackendQuery<WeatherData>('/weather', {
+  const { data, error, loading, refetch } = useBackendQuery<WeatherData>({
+    path: '/weather',
     skip: true,
   });
 

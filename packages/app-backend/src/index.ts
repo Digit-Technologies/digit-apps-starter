@@ -1,18 +1,26 @@
-export { ok, fail, orFail, readJsonObject, AppErrorCode } from './respond';
-export { HttpError, toErrorResponse, throwHttpError } from './httpError';
-export { requireEnv, optionalEnv, assertExists } from './env';
-export type { AssertExistsArgs, AssertExistsVariant } from './env';
-export { pathSegments } from './path';
-export { fetchJson } from './upstream';
+/**
+ * Public API for Digit app Cloudflare Workers.
+ * Only import from this package root — other files are implementation details.
+ */
 
-// Re-export shared validation / result helpers so Workers can import one package.
+// Result Responses
+export { ok, fail, AppErrorCode } from './respond';
+
+// Worker entry wrapper (always returns structured JSON)
+export { createHandler, HandlerError } from './createHandler';
+export type { FetchHandler, CreateHandlerArgs, HandlerFetchArgs } from './createHandler';
+
+// Env / bindings
+export { requireEnv, optionalEnv } from './env';
+export type { RequireEnvArgs } from './env';
+
+// Validation (from `@digit/app-shared`)
 export {
   asObject,
+  parseJsonObject,
   requiredString,
   optionalString,
   parseObject,
-  okResult,
-  errResult,
 } from '@digit/app-shared';
 export type {
   AppErrorDetail,

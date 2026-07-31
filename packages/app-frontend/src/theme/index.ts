@@ -1,3 +1,7 @@
+/**
+ * Theme module. Public apps should import `DigitThemeProvider` from
+ * `@digit/app-frontend` only.
+ */
 export { DigitThemeProvider } from "./DigitThemeProvider"
 export { themeOptions, mobileScaleFactor } from "./themeOptions"
 export { palette } from "./palette"

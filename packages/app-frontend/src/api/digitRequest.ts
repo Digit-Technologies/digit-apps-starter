@@ -8,6 +8,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+export type DigitRequestArgs = {
+  query: string;
+  variables?: Record<string, unknown>;
+};
+
 /**
  * Call Digit GraphQL through the harness (`DigitProxyClient.callProxy`) and
  * normalize platform / GraphQL errors.
@@ -15,10 +20,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * On success, returns the GraphQL `data` payload (not the full `{ data, errors }` body).
  * Prefer `useDigitApiQuery` / `useDigitApiMutation` from React components.
  */
-export async function digitRequest<T = unknown>(
-  query: string,
-  variables?: Record<string, unknown>,
-): Promise<DigitResult<T>> {
+export async function digitRequest<T = unknown>({
+  query,
+  variables,
+}: DigitRequestArgs): Promise<DigitResult<T>> {
   const client = window.DigitProxyClient;
   if (!client?.callProxy) {
     return { ok: false, error: unavailableClient() };

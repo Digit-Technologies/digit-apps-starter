@@ -1,60 +1,37 @@
 import { AppErrorCode } from '@digit/app-shared';
 
-import { throwHttpError } from './httpError';
+import { HandlerError } from './createHandler';
 
 type EnvLike = Record<string, unknown>;
 
-/**
- * Read a required env var / secret. Missing or empty → throws HttpError (MISSING_CONFIG).
- * Never put the value into error messages (secrets are bindings too).
- */
-export function requireEnv(env: EnvLike, key: string): string {
-  const value = env[key];
-  if (typeof value !== 'string' || value.length === 0) {
-    throwHttpError(
-      AppErrorCode.MISSING_CONFIG,
-      `Set ${key} on the Digit app (env var or secret), then republish.`,
-      500,
-    );
-  }
-  return value;
-}
-
-/**
- * Optional env: returns null when unset (not an error).
- */
-export function optionalEnv(env: EnvLike, key: string): string | null {
-  const value = env[key];
-  if (typeof value !== 'string' || value.length === 0) return null;
-  return value;
-}
-
-/** Resource kinds that live on Worker `env` (extend as the platform grows). */
-export type AssertExistsVariant = 'database';
-
-const VARIANT_LABEL: Record<AssertExistsVariant, string> = {
-  database: 'Database',
-};
-
-export type AssertExistsArgs = {
+export type RequireEnvArgs = {
   env: EnvLike;
-  variant: AssertExistsVariant;
-  /** Name of the handle on `env` (from the app manifest). */
   key: string;
 };
 
 /**
- * Assert a required resource handle is present on `env`.
- * Missing / nullish → throws HttpError (MISSING_CONFIG).
+ * Read a required value from Worker `env` (string env/secret or a binding).
+ * Missing / nullish / empty string → throws `HandlerError` (MISSING_CONFIG).
+ * Use inside `createHandler` so the throw becomes a structured `{ ok: false, error }` Response.
+ * Never put the value into error messages (secrets are bindings too).
  */
-export function assertExists<T = unknown>({ env, variant, key }: AssertExistsArgs): T {
+export function requireEnv<T = string>({ env, key }: RequireEnvArgs): T {
   const value = env[key];
-  if (value === undefined || value === null) {
-    throwHttpError(
-      AppErrorCode.MISSING_CONFIG,
-      `${VARIANT_LABEL[variant]} ${key} is not configured on this app.`,
-      500,
-    );
+  if (value === undefined || value === null || value === '') {
+    throw new HandlerError({
+      code: AppErrorCode.MISSING_CONFIG,
+      message: `Set ${key} on the Digit app, then republish.`,
+      status: 500,
+    });
   }
   return value as T;
+}
+
+/**
+ * Optional string env: returns null when unset / empty (not an error).
+ */
+export function optionalEnv({ env, key }: RequireEnvArgs): string | null {
+  const value = env[key];
+  if (typeof value !== 'string' || value.length === 0) return null;
+  return value;
 }

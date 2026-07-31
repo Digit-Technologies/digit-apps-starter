@@ -2,17 +2,17 @@ import { useCallback, useState } from 'react';
 
 import type { AppError } from '../errors/types';
 
-import { backendFetch } from './backendFetch';
-import type { BackendFetchOptions, DigitResult, MutationHookResult } from './types';
+import { backendFetch, type BackendFetchArgs } from './backendFetch';
+import type { DigitResult, MutationHookResult } from './types';
 
 /**
  * Call the app Worker on demand (POST/PUT/DELETE/…).
  * Returns `[mutate, { data, error, loading, reset }]`.
  *
- * `mutate(path, options?)` — path is required per call so CRUD can target `/notes/:id`.
+ * `mutate({ path, method?, body? })` — path is required per call so CRUD can target `/notes/:id`.
  */
 export function useBackendMutation<T = unknown>(): [
-  (path: string, options?: BackendFetchOptions) => Promise<DigitResult<T>>,
+  (args: BackendFetchArgs) => Promise<DigitResult<T>>,
   MutationHookResult<T>,
 ] {
   const [data, setData] = useState<T | undefined>(undefined);
@@ -25,10 +25,10 @@ export function useBackendMutation<T = unknown>(): [
     setLoading(false);
   }, []);
 
-  const mutate = useCallback(async (path: string, options?: BackendFetchOptions) => {
+  const mutate = useCallback(async (args: BackendFetchArgs) => {
     setLoading(true);
     setError(null);
-    const result = await backendFetch<T>(path, options);
+    const result = await backendFetch<T>(args);
     if (!result.ok) {
       setError(result.error);
       setLoading(false);

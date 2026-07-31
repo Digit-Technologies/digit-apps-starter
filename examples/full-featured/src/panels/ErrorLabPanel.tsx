@@ -74,7 +74,7 @@ export default function ErrorLabPanel() {
   const runLive = async (kind: 'graphql' | 'validation' | 'server') => {
     setLive({ status: 'loading' });
     if (kind === 'graphql') {
-      const result = await digitRequest('query { __thisFieldDoesNotExist }');
+      const result = await digitRequest({ query: 'query { __thisFieldDoesNotExist }' });
       setLive(
         result.ok
           ? { status: 'ok', detail: 'Unexpected success' }
@@ -82,7 +82,8 @@ export default function ErrorLabPanel() {
       );
       return;
     }
-    const result = await backendFetch('/error/demo', {
+    const result = await backendFetch({
+      path: '/error/demo',
       method: 'POST',
       body: { kind },
     });

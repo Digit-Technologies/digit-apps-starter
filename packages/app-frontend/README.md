@@ -4,6 +4,12 @@ Digit frontend kit for custom apps: MUI theme (`DigitThemeProvider`), React data
 hooks for the Digit API and app backend, and error normalization/display.
 Snapshot of Digit web’s theme adapted for the public apps starter.
 
+## Public API
+
+Import from the package root only. Theme tokens, error parsers, and other modules
+under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
+`AppErrorAlert`, and `digitRequest` / `backendFetch`.
+
 ## Why a copy (not an import from digit-web)
 
 `digit-web` is private; this starter is public. Tokens and helpers live here so
@@ -57,20 +63,20 @@ import {
 } from '@digit/app-frontend';
 
 // Digit GraphQL API
-const { data, error, loading, refetch } = useDigitApiQuery(ITEMS_QUERY, {
+const { data, error, loading, refetch } = useDigitApiQuery({
+  query: ITEMS_QUERY,
   variables: { connection: { first: 10 } },
 });
-const [createItem] = useDigitApiMutation(CREATE_ITEM);
+const [createItem] = useDigitApiMutation({ mutation: CREATE_ITEM });
 
 // App Worker (/proxy/backend)
-const notes = useBackendQuery<{ notes: Note[] }>('/notes');
+const notes = useBackendQuery<{ notes: Note[] }>({ path: '/notes' });
 const [mutateNote, { error: saveError, loading: saving }] = useBackendMutation();
-await mutateNote('/notes', { method: 'POST', body: { title: 'Hi' } });
+await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 Imperative helpers (`digitRequest`, `backendFetch`) remain for non-React call sites
-(e.g. event handlers that don’t need hook state). Lower-level parsers
-(`parseProxyBody`, `parseBackendResponse`) remain if you already hold a raw body/`Response`.
+(e.g. event handlers that don’t need hook state).
 
 | Hook | Hits |
 | --- | --- |

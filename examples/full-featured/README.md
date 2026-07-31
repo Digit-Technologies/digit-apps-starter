@@ -5,7 +5,7 @@ Reference Digit app that exercises the main platform surfaces in one place:
 | Tab | What it shows |
 | --- | --- |
 | Theme | Typography, buttons, fields, chips, alerts, table via `DigitThemeProvider` |
-| Error lab | Canned + live failures through `AppErrorAlert` / `parseProxyBody` / `parseBackendResponse` |
+| Error lab | Canned + live failures through `AppErrorAlert` / `digitRequest` / `backendFetch` |
 | Digit API | `useDigitApiQuery` items query (`READ_ITEM`) |
 | Public API | Worker → Open-Meteo (no key) via `/proxy/backend/weather` |
 | Secrets | Worker → httpbin bearer using `API_BASE_URL` + `THIRD_PARTY_API_KEY` |

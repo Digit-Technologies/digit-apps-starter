@@ -8,7 +8,7 @@ import { AppErrorAlert, useBackendQuery } from '@digit/app-frontend';
 type GreetingData = { message: string };
 
 export default function ConfigPanel() {
-  const { data, error, loading, refetch } = useBackendQuery<GreetingData>('/greeting');
+  const { data, error, loading, refetch } = useBackendQuery<GreetingData>({ path: '/greeting' });
 
   return (
     <Stack spacing={2}>

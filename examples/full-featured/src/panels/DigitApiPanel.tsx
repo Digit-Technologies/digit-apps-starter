@@ -26,7 +26,8 @@ const ITEMS_QUERY = `
 `;
 
 export default function DigitApiPanel() {
-  const { data, error, loading, refetch } = useDigitApiQuery<ItemsData>(ITEMS_QUERY, {
+  const { data, error, loading, refetch } = useDigitApiQuery<ItemsData>({
+    query: ITEMS_QUERY,
     variables: { connection: { first: 10 } },
   });
   const nodes = data?.items?.nodes ?? [];

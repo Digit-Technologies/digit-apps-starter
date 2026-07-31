@@ -5,61 +5,66 @@ Helpers for Digit app Cloudflare Workers (bundled into `backend/worker.js`).
 Depends on [`@digit/app-shared`](../app-shared) for results, codes, and pure
 validation — this package adds `Response` helpers and Worker utilities.
 
-## Errors without `instanceof Response`
+## Public API
 
-Assert/require helpers **throw** `HttpError` instead of returning `T | Response`.
-Catch once at the Worker entry:
+Import from the package root only. Helpers take named arguments.
+
+Wrap the Worker with `createHandler` so every response is structured JSON
+(`{ ok: true, data }` / `{ ok: false, error }`), including unexpected throws.
 
 ```js
-import { toErrorResponse, assertExists, requireEnv, ok } from '@digit/app-backend';
+import { createHandler, requireEnv, ok, fail, AppErrorCode } from '@digit/app-backend';
 
-export default {
-  async fetch(request, env) {
-    try {
-      const db = assertExists({ env, variant: 'database', key: 'MY_APP_DB' });
-      const message = requireEnv(env, 'WELCOME_MESSAGE');
-      return ok({ message });
-    } catch (error) {
-      return toErrorResponse(error);
-    }
+export default createHandler({
+  fetch: async ({ request, env }) => {
+    const message = requireEnv({ env, key: 'WELCOME_MESSAGE' });
+    return ok({ data: { message } });
   },
-};
+});
 ```
 
-Use `return fail(code, message, status)` for expected domain failures you handle inline
-(e.g. not found). Use throws for missing config / bad input / upstream failures.
+- **Expected domain failures** → `return fail({ code, message, status })`
+- **Missing env / bindings** → `requireEnv` throws `HandlerError`; `createHandler` maps it to `fail`
+- **Anything else thrown** → `SERVER_ERROR` (details are not leaked to the client)
 
 ## Result responses
 
 ```js
 import { ok, fail, AppErrorCode } from '@digit/app-backend';
 
-ok({ notes: [] }); // Response.json({ ok: true, data })
-fail(AppErrorCode.VALIDATION_ERROR, 'title is required.', 400); // { ok: false, error }
+ok({ data: { notes: [] } }); // Response.json({ ok: true, data })
+fail({ code: AppErrorCode.VALIDATION_ERROR, message: 'title is required.', status: 400 });
 ```
 
 ## Validation
 
 ```js
-import { parseObject, requiredString, optionalString, readJsonObject, orFail, ok } from '@digit/app-backend';
+import { parseJsonObject, parseObject, requiredString, optionalString, fail, ok } from '@digit/app-backend';
 
-const note = orFail(
-  parseObject(await readJsonObject(request), {
-    title: (obj) => requiredString(obj, 'title'),
-    body: (obj) => optionalString(obj, 'body', { default: '' }),
-  }),
-);
-return ok({ note });
+const body = await parseJsonObject({ value: request.json() });
+if (!body.ok) {
+  return fail({ code: body.error.code, message: body.error.message, status: 400 });
+}
+
+const parsed = parseObject({
+  value: body.value,
+  fields: {
+    title: (obj) => requiredString({ obj, key: 'title' }),
+    body: (obj) => optionalString({ obj, key: 'body', default: '' }),
+  },
+});
+if (!parsed.ok) {
+  return fail({ code: parsed.error.code, message: parsed.error.message, status: 400 });
+}
+return ok({ data: { note: parsed.value } });
 ```
 
 ## Other helpers
 
-- `requireEnv` / `optionalEnv` — string env vars and secrets
-- `assertExists({ env, variant, key })` — e.g. `variant: 'database'`
-- `pathSegments` — strip `/proxy/backend` prefix
-- `fetchJson` — upstream HTTP (throws `UPSTREAM_ERROR` on failure)
+- `requireEnv` / `optionalEnv` — env vars, secrets, and bindings (D1, …)
 
-Never put secret values into `error.message` or `data`.
+Use plain `fetch` for third-party HTTP. Map failures with `fail({ code: AppErrorCode.UPSTREAM_ERROR, … })`
+and never put secret values or raw upstream bodies into `error.message` / `data`.
 
 ## Bundle with Vite
 

@@ -5,13 +5,24 @@ import type { AppError } from '../errors/types';
 import { digitRequest } from './digitRequest';
 import type { DigitResult, MutationHookResult } from './types';
 
+export type UseDigitApiMutationArgs = {
+  mutation: string;
+};
+
+export type DigitApiMutateArgs = {
+  variables?: Record<string, unknown>;
+};
+
 /**
  * Mutate via the Digit GraphQL API on demand.
  * Returns `[mutate, { data, error, loading, reset }]`.
  */
-export function useDigitApiMutation<T = unknown>(
-  mutation: string,
-): [(variables?: Record<string, unknown>) => Promise<DigitResult<T>>, MutationHookResult<T>] {
+export function useDigitApiMutation<T = unknown>({
+  mutation,
+}: UseDigitApiMutationArgs): [
+  (args?: DigitApiMutateArgs) => Promise<DigitResult<T>>,
+  MutationHookResult<T>,
+] {
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<AppError | null>(null);
   const [loading, setLoading] = useState(false);
@@ -23,10 +34,10 @@ export function useDigitApiMutation<T = unknown>(
   }, []);
 
   const mutate = useCallback(
-    async (variables?: Record<string, unknown>) => {
+    async (args: DigitApiMutateArgs = {}) => {
       setLoading(true);
       setError(null);
-      const result = await digitRequest<T>(mutation, variables);
+      const result = await digitRequest<T>({ query: mutation, variables: args.variables });
       if (!result.ok) {
         setError(result.error);
         setLoading(false);

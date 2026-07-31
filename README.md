@@ -26,6 +26,9 @@ That skill covers:
 | [`packages/app-frontend`](packages/app-frontend) (`@digit/app-frontend`) | Theme, harness types, Digit/backend hooks, error UI |
 | [`packages/app-backend`](packages/app-backend) (`@digit/app-backend`) | Worker `Response` helpers, env/secrets, path, upstream `fetch` |
 
+Each package exposes a slim root export for everyday app/Worker code. Other files
+under `src/` are implementation details — do not deep-import them.
+
 Apps depend on them via `file:…` — not on private `digit-web`. Frontend and backend
 packages already pull in `@digit/app-shared`.
 

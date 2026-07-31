@@ -5,7 +5,8 @@ import type { AppError } from '../errors/types';
 import { backendFetch } from './backendFetch';
 import type { BackendFetchOptions, QueryHookResult } from './types';
 
-export type UseBackendQueryOptions = BackendFetchOptions & {
+export type UseBackendQueryArgs = BackendFetchOptions & {
+  path: string;
   /** When true, do not fetch until `refetch()` is called. */
   skip?: boolean;
 };
@@ -13,18 +14,15 @@ export type UseBackendQueryOptions = BackendFetchOptions & {
 /**
  * GET (or otherwise fetch) from the app Worker. Returns `{ data, error, loading, refetch }`.
  */
-export function useBackendQuery<T = unknown>(
-  path: string,
-  options?: UseBackendQueryOptions,
-): QueryHookResult<T> {
-  const skip = options?.skip ?? false;
-  const method = options?.method;
-  const bodyKey = JSON.stringify(options?.body ?? null);
-  const optionsRef = useRef<BackendFetchOptions>({
-    method: options?.method,
-    body: options?.body,
-  });
-  optionsRef.current = { method: options?.method, body: options?.body };
+export function useBackendQuery<T = unknown>({
+  path,
+  skip = false,
+  method,
+  body,
+}: UseBackendQueryArgs): QueryHookResult<T> {
+  const bodyKey = JSON.stringify(body ?? null);
+  const optionsRef = useRef<BackendFetchOptions>({ method, body });
+  optionsRef.current = { method, body };
 
   const [data, setData] = useState<T | undefined>(undefined);
   const [error, setError] = useState<AppError | null>(null);
@@ -35,7 +33,7 @@ export function useBackendQuery<T = unknown>(
     const id = ++requestId.current;
     setLoading(true);
     setError(null);
-    const result = await backendFetch<T>(path, optionsRef.current);
+    const result = await backendFetch<T>({ path, ...optionsRef.current });
     if (id !== requestId.current) return;
     if (!result.ok) {
       setData(undefined);

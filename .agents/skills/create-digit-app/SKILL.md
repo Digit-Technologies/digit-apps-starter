@@ -225,13 +225,16 @@ Details: [reference/spec.md](reference/spec.md)
 | --- | --- |
 | Any new app | Copy `full-featured`, delete unused tabs/routes |
 | Digit GraphQL | `useDigitApiQuery` / `useDigitApiMutation` + manifest permissions |
-| Env / secrets / D1 / third-party HTTP | Worker + `@digit/app-backend` (`requireEnv`, `ok`/`fail`, `fetchJson`) |
+| Env / secrets / D1 / third-party HTTP | Worker + `@digit/app-backend` (`requireEnv`, `ok`/`fail`) + plain `fetch` |
 | Shared validation / results | `@digit/app-shared` (`parseObject`, `requiredString`, …) — also re-exported from frontend/backend |
 
 Always keep React + MUI + `@digit/app-frontend`. Prefer `@digit/app-backend` helpers in
-Workers so result shapes match `useBackendQuery` / `parseBackendResponse` on the frontend.
+Workers so result shapes match `useBackendQuery` on the frontend.
 
 ## Theming & packages
+
+Import from the package root only (`DigitThemeProvider`, hooks, `ok`/`fail`, …).
+Other files under each package’s `src/` are implementation details.
 
 - Frontend: [`packages/app-frontend`](../../../packages/app-frontend) (`@digit/app-frontend`)
 - Backend: [`packages/app-backend`](../../../packages/app-backend) (`@digit/app-backend`)

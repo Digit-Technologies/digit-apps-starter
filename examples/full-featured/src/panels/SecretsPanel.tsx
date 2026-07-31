@@ -12,7 +12,8 @@ type StatusData = {
 };
 
 export default function SecretsPanel() {
-  const { data, error, loading, refetch } = useBackendQuery<StatusData>('/external-status', {
+  const { data, error, loading, refetch } = useBackendQuery<StatusData>({
+    path: '/external-status',
     skip: true,
   });
 

@@ -32,7 +32,9 @@ type FormState = { id: string; title: string; body: string };
 const EMPTY: FormState = { id: '', title: '', body: '' };
 
 export default function NotesPanel() {
-  const { data, error: listError, loading, refetch } = useBackendQuery<NotesData>('/notes');
+  const { data, error: listError, loading, refetch } = useBackendQuery<NotesData>({
+    path: '/notes',
+  });
   const [saveNote, { error: formError, loading: saving, reset: resetFormError }] =
     useBackendMutation();
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -41,7 +43,8 @@ export default function NotesPanel() {
   const save = async () => {
     resetFormError();
     const editing = form.id !== '';
-    const result = await saveNote(editing ? `/notes/${form.id}` : '/notes', {
+    const result = await saveNote({
+      path: editing ? `/notes/${form.id}` : '/notes',
       method: editing ? 'PUT' : 'POST',
       body: { title: form.title, body: form.body },
     });
@@ -52,7 +55,7 @@ export default function NotesPanel() {
 
   const remove = async (id: number) => {
     resetFormError();
-    const result = await saveNote(`/notes/${id}`, { method: 'DELETE' });
+    const result = await saveNote({ path: `/notes/${id}`, method: 'DELETE' });
     if (!result.ok) return;
     if (form.id === String(id)) setForm(EMPTY);
     await refetch();

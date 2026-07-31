@@ -14,24 +14,24 @@ import {
   useBackendMutation,
 } from '@digit/app-frontend';
 
-const { data, error, loading, refetch } = useDigitApiQuery(
-  `
+const { data, error, loading, refetch } = useDigitApiQuery({
+  query: `
     query Items($connection: ConnectionInput) {
       items(connection: $connection) {
         nodes { id name sku }
       }
     }
   `,
-  { variables: { connection: { first: 10 } } },
-);
+  variables: { connection: { first: 10 } },
+});
 
 if (error) {
   // <AppErrorAlert error={error} onRetry={() => void refetch()} />
 }
 
-const notes = useBackendQuery<{ notes: Note[] }>('/notes');
+const notes = useBackendQuery<{ notes: Note[] }>({ path: '/notes' });
 const [mutateNote] = useBackendMutation();
-await mutateNote('/notes', { method: 'POST', body: { title: 'Hi' } });
+await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 For non-React call sites, use `digitRequest` / `backendFetch` (same Result shape).
