@@ -1,7 +1,8 @@
 # Env vars example
 
-Shows a frontend calling `/proxy/backend/greeting` while the Worker reads a non-secret
-env var (`WELCOME_MESSAGE`) injected by Digit.
+React + MUI, themed with `@digit/app-theme`'s `DigitThemeProvider`. Shows a frontend
+calling `/proxy/backend/greeting` while the Worker reads a non-secret env var
+(`WELCOME_MESSAGE`) injected by Digit.
 
 ## Setup in Digit
 

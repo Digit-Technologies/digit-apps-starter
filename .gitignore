@@ -5,3 +5,4 @@ backend/
 .DS_Store
 *.log
 .vite/
+*.zip

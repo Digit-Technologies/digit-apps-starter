@@ -84,3 +84,6 @@ window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
 ```
 
 `data-theme` and `lang` are also set on `<html>` for CSS-only theming.
+
+Apps using `@digit/app-theme` get light/dark sync automatically via
+`DigitThemeProvider` — see [theming.md](theming.md).

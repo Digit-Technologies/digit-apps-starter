@@ -1,0 +1,35 @@
+/**
+ * Digit palette CSS custom properties for harness / non-MUI surfaces.
+ * Values mirror palette.ts (stone / neutral) and theme-extensions border.
+ */
+
+:root,
+:root[data-theme="light"] {
+  --digit-bg-default: rgba(245, 245, 244, 1); /* stone[100] */
+  --digit-bg-paper: #ffffff; /* neutral.white */
+  --digit-bg-surface: rgba(250, 250, 250, 1); /* neutral[50] */
+  --digit-text-primary: rgba(12, 10, 9, 1); /* stone[950] */
+  --digit-text-secondary: rgba(77, 73, 68, 1); /* stone[650] */
+  --digit-border-default: rgba(0, 0, 0, 0.05); /* neutralAlpha.darken[50] */
+  --digit-font-family:
+    Inter var, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif,
+    Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  --digit-radius: 16px;
+}
+
+:root[data-theme="dark"] {
+  --digit-bg-default: rgba(28, 25, 23, 1); /* stone[900] */
+  --digit-bg-paper: rgba(41, 37, 36, 1); /* stone[800] */
+  --digit-bg-surface: rgba(28, 25, 23, 1); /* stone[900] */
+  --digit-text-primary: #ffffff; /* neutral.white */
+  --digit-text-secondary: rgba(190, 185, 182, 1); /* stone[350] */
+  --digit-border-default: rgba(255, 255, 255, 0.05); /* neutralAlpha.lighten[50] */
+}
+
+body {
+  margin: 0;
+  background: var(--digit-bg-default);
+  color: var(--digit-text-primary);
+  font-family: var(--digit-font-family);
+}

@@ -1,0 +1,5 @@
+{
+  "name": "Top Customers",
+  "entryFile": "main.js",
+  "permissions": ["read:order", "read:order:costInfo", "read:company"]
+}

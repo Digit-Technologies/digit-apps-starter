@@ -1,6 +1,7 @@
 # Hello World
 
-Minimal Digit app: mounts to `#root`, no Digit API permissions, no backend.
+Minimal Digit app: React + MUI, themed with `@digit/app-theme`'s `DigitThemeProvider`.
+Mounts to `#root`, no Digit API permissions, no backend.
 
 ## Develop
 

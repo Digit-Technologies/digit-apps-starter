@@ -1,7 +1,8 @@
 # Secrets + third-party API example
 
-Frontend never sees the API key. The Worker reads `env.THIRD_PARTY_API_KEY` and calls an
-upstream API, returning only a safe summary through `/proxy/backend/external-status`.
+React + MUI, themed with `@digit/app-theme`'s `DigitThemeProvider`. Frontend never sees
+the API key. The Worker reads `env.THIRD_PARTY_API_KEY` and calls an upstream API,
+returning only a safe summary through `/proxy/backend/external-status`.
 
 ## Setup in Digit
 

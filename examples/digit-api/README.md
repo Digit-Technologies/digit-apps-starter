@@ -1,7 +1,7 @@
 # Digit API example
 
-Calls Digit GraphQL through `window.DigitProxyClient` with `read:item` declared in
-`public/manifest.json`.
+React + MUI, themed with `@digit/app-theme`'s `DigitThemeProvider`. Calls Digit GraphQL
+through `window.DigitProxyClient` with `read:item` declared in `public/manifest.json`.
 
 ## Notes
 
