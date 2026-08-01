@@ -11,9 +11,10 @@ fields — fine for UI-only apps.
 
 ## Declaring permissions
 
-Add every permission your GraphQL operations need. Examples:
+Add every permission your GraphQL operations need. Manifest strings are **SCREAMING_SNAKE_CASE**
+`apiPermissions.key` values:
 
-| App need | Permission strings |
+| App need | Permission (`key`) |
 | --- | --- |
 | List/read items | `READ_ITEM` |
 | List inventory | `READ_INVENTORY` |
@@ -23,8 +24,8 @@ Add every permission your GraphQL operations need. Examples:
 | Read order cost info | `READ_ORDER_COST_INFO` |
 | Read org profile | (often covered by base role access — confirm via schema/tools) |
 
-Use the exact SCREAMING_SNAKE_CASE strings (e.g. `READ_ITEM`, `READ_ORDER_COST_INFO`),
-**not** GraphQL field names.
+Copy `key` exactly (e.g. `READ_ITEM`, `READ_ORDER_COST_INFO`). Never invent strings and
+never convert formats.
 
 ## Looking up permissions (required when connected)
 
@@ -40,15 +41,15 @@ query AppPermissionValues {
 }
 ```
 
-| Field | Meaning | Use in apps? |
+| Field | Meaning | Use in `manifest.json`? |
 | --- | --- | --- |
-| `key` | SCREAMING_SNAKE_CASE enum (`READ_ITEM`) | **Yes — this is what `manifest.json` needs** |
-| `description` | Human label (`Read Item`) | Optional, for choosing the right permission |
+| `key` | SCREAMING_SNAKE_CASE (`READ_ITEM`) | **Yes — only this** |
+| `description` | Human label (`Read Item`) | No — for choosing, not for the manifest |
+| `value` (if present) | Legacy colon form (`read:item`) | **No — do not use** |
 
-The GraphQL schema resource `graphql-schema://type/Permission` documents these fields; the
-`apiPermissions` tool returns the live catalog.
+If MCP is unavailable, copy a known-good `key` from an existing Digit app example (e.g.
+`examples/full-featured` uses `READ_ITEM`).
 
-If MCP is unavailable, copy a known-good `key` from an existing Digit app example.
 Unknown strings cause publish to fail with:
 
 ```text
@@ -57,7 +58,8 @@ manifest.json "permissions" contains unknown permissions: …
 
 ## Tips for agents
 
-- Always copy `apiPermissions` → `key` into the manifest
+- Always copy `apiPermissions` → **`key`** into the manifest
+- Keep SCREAMING_SNAKE_CASE as returned — do not rewrite to colon-delimited forms
 - Start minimal — only permissions the queries/mutations actually need
 - After adding a new Digit API call, update `permissions` in the same change
 - Do not copy admin-only permissions into an app unless the product explicitly needs them

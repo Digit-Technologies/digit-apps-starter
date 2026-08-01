@@ -25,13 +25,14 @@ That skill covers:
 | [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
 | [`packages/lib-frontend`](packages/lib-frontend) (`@digit/lib-frontend`) | Theme, harness types, Digit/backend **hooks**, error UI |
 | [`packages/lib-backend`](packages/lib-backend) (`@digit/lib-backend`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
+| [`packages/lib-build`](packages/lib-build) (`@digit/lib-build`) | `digit-app pack` — shared Vite build + `app.zip` |
 
-Each package exposes a slim root export for everyday app/Worker code. Other files
+Runtime packages expose a slim root export for everyday app/Worker code. Other files
 under `src/` are implementation details — do not deep-import them. Helpers use named
-arguments. Packages do **not** re-export each other.
+arguments. Runtime packages do **not** re-export each other.
 
 Apps depend on them via `file:…` — not on private `digit-web`. With a Worker, depend on
-`lib-frontend` + `lib-backend` + `lib-common`.
+`lib-frontend` + `lib-backend` + `lib-common`, plus `lib-build` as a devDependency.
 
 ## Example
 

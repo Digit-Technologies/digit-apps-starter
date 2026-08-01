@@ -5,7 +5,8 @@ routes you don’t need rather than inventing a new project shape.
 
 **Stack:** React + MUI + [`@digit/lib-frontend`](../packages/lib-frontend). Workers use
 [`@digit/lib-backend`](../packages/lib-backend) + [`@digit/lib-common`](../packages/lib-common)
-(codes / validation — depend directly; packages do not re-export each other).
+(codes / validation — depend directly; packages do not re-export each other). Tooling:
+[`@digit/lib-build`](../packages/lib-build) (`digit-app pack`).
 
 Shared conventions (also enforced by the skill):
 
@@ -18,7 +19,8 @@ Shared conventions (also enforced by the skill):
   (hooks only — pair errors with `AppErrorAlert`)
 - Workers: `createHandler` + `backendPath` + `requireEnv` / `ok` / `err` from
   `lib-backend`; `AppErrorCode` / parsers from `lib-common`
-- Root `manifest.json`; `build:frontend` copies it into `frontend/`
+- Root `manifest.json`; `digit-app pack` copies it into `frontend/`
 - `npm run pack` → `app.zip` with `frontend/` (+ `backend/`) for Digit deploy and
-  `project/` (source, `SPEC.md`, tooling, vendored `@digit/lib-*`) for later agents
-- Ignore `node_modules/`, `.vite/`, `*.zip` only — not the build folders
+  `project/` (source, `SPEC.md`, tooling, vendored `@digit/lib-*` incl. `lib-build`)
+- Do not copy Vite configs or pack scripts into each example — use `@digit/lib-build`
+- Ignore `node_modules/`, `.vite/`, `*.zip`, and build folders

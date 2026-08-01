@@ -4,12 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build": "npm run build:frontend && npm run build:backend",
-    "build:backend": "vite build --config vite.backend.config.ts && mkdir -p backend/migrations && cp src/backend/migrations/*.sql backend/migrations/",
-    "build:frontend": "vite build --config vite.frontend.config.ts && cp manifest.json frontend/",
-    "dev": "vite --config vite.frontend.config.ts",
-    "pack": "npm run build && bash scripts/pack.sh",
-    "preview": "vite preview --config vite.frontend.config.ts"
+    "pack": "digit-app pack"
   },
   "dependencies": {
     "@digit/lib-backend": "file:../../packages/lib-backend",
@@ -22,11 +17,9 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@digit/lib-build": "file:../../packages/lib-build",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "@vitejs/plugin-react": "^4.4.1",
-    "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "vite-plugin-css-injected-by-js": "^3.5.2"
+    "typescript": "^5.8.3"
   }
 }

@@ -31,12 +31,9 @@ Depend on it from an app:
 Use `file:../packages/lib-frontend` when the app sits at the repo root (not under
 `examples/`).
 
-Vite must set `resolve: { preserveSymlinks: true }` so peer deps resolve from the
-app’s `node_modules` when the package is linked via `file:`.
-
 For Worker helpers (`createHandler`, `backendPath`, `ok`/`err`, `requireEnv`), depend on
-[`@digit/lib-backend`](../../../../packages/lib-backend) and bundle with
-`vite.backend.config.ts` — see `examples/full-featured`.
+[`@digit/lib-backend`](../../../../packages/lib-backend). Bundling is handled by
+`@digit/lib-build` (`digit-app pack`) — see `examples/full-featured`.
 
 ## Provider
 
@@ -69,8 +66,9 @@ window.DigitHost?.getSettings(); // DigitHostSettings | null
 window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
 ```
 
-The harness also sets `data-theme` and `lang` on `<html>`, and injects Digit CSS
-tokens (`--digit-bg-default`, etc.) plus self-hosted Inter before the bundle loads.
+The harness also sets `data-theme` and `lang` on `<html>`, and may inject self-hosted
+Inter before the bundle loads. App look-and-feel comes from MUI + `DigitThemeProvider`,
+not a parallel CSS-variable theme.
 
 ## UI rules for agents
 
@@ -79,4 +77,5 @@ tokens (`--digit-bg-default`, etc.) plus self-hosted Inter before the bundle loa
 - Prefer `theme.palette.*` / typography variants over hard-coded hex colors
 - Do not reintroduce cream/teal “starter” palettes or IBM Plex / decorative
   gradients from older vanilla examples
-- Do not assume the harness injects React or MUI — only fonts, CSS vars, and host APIs
+- Do not invent a CSS custom-property theme — use MUI + `DigitThemeProvider`
+- Do not assume the harness injects React or MUI — only fonts and host APIs

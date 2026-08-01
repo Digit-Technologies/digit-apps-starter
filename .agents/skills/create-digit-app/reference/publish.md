@@ -6,8 +6,11 @@ Requires the org `CUSTOM_APPS` feature flag and `publish:app` permission.
 
 1. User has **created the app in Digit** (UI). Publishing never creates apps.
 2. You know the app `id` — resolve with MCP `apps`, or ask the user.
-3. `app.zip` ready via `npm run pack` (build + archive). Local `pack` only prepares the
-   zip; MCP `publishApp` is what goes live.
+3. `app.zip` ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`). Local
+   `pack` only prepares the zip; MCP `publishApp` is what goes live.
+
+Local Digit preview is not supported yet — there is no faithful local Worker / env / D1
+harness. Pack + publish is the workflow.
 
 ## Workflow
 
@@ -54,8 +57,8 @@ curl -X POST "$UPLOAD_URL" \
   -F "file=@app.zip"
 ```
 
-Build the zip with `npm run pack` so paths sit at the **archive root** (not
-`my-app/frontend/...`):
+Build the zip with `npm run pack` (`digit-app pack`) and upload **`app.zip` as produced**
+(paths at the archive root — not `my-app/frontend/...`):
 
 ```
 app.zip
@@ -65,18 +68,18 @@ app.zip
 ├── backend/                  # Digit deploy — when manifest.backend is set
 │   ├── worker.js
 │   └── migrations/           # optional D1 *.sql
-└── project/                  # Next-agent rehydrate (source, SPEC, tooling)
+└── project/                  # required — next-agent rehydrate (source, SPEC, tooling)
     ├── src/
     ├── SPEC.md
     ├── package.json          # @digit/lib-* → file:./packages/...
-    ├── scripts/pack.sh
-    ├── packages/             # vendored libs (until registry publish)
-    └── …
+    └── packages/             # vendored libs + lib-build (until registry publish)
 ```
 
-Digit **runs** only `frontend/` and `backend/`. `project/` is for a later agent to
-extract, `cd project`, `npm install`, edit, and `npm run pack` again. End users often
-have no Git — the zip is the source of truth after publish.
+**Do not modify the zip after pack.** Do not `zip -d` / re-zip to drop `project/`, and do
+not hand-build a frontend/backend-only archive. Digit deploys from `frontend/` /
+`backend/`; `project/` is still part of the published artifact so a later agent can
+iterate without Git. If a validator rejects `project/`, stop and report it — that is a
+platform/docs mismatch to fix, not something to work around by stripping the tree.
 
 ### 4. Publish
 
@@ -101,16 +104,13 @@ bundle, and restart at step 2.
 
 ## Zip validation reminders
 
-**Deploy (required for go-live)**
+**Required in the upload zip**
 
-- Must include `frontend/manifest.json`
-- `manifest.entryFile` must exist under `frontend/`
-- When `manifest.backend` is set, `backend/worker.js` is required (plus migrations if used)
+- `frontend/manifest.json` and `manifest.entryFile` under `frontend/`
+- When `manifest.backend` is set: `backend/worker.js` (plus migrations if used)
+- `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` (including `lib-build`)
+- `manifest.permissions` use SCREAMING_SNAKE_CASE `apiPermissions.key` values (e.g.
+  `READ_ITEM`) — not colon-delimited legacy strings
 
-**Iteration archive (should include)**
-
-- `project/` with source, `SPEC.md`, build configs, and `scripts/pack.sh`
-- Vendored `@digit/lib-*` under `project/packages/` (until packages are on a registry)
-
-Extra root entries such as `project/` are allowed. Digit deploy still only consumes
-`frontend/` and `backend/`.
+Digit deploy consumes `frontend/` / `backend/`; `project/` must still be present in the
+same zip.

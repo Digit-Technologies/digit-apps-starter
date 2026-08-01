@@ -97,7 +97,5 @@ window.DigitHost?.getSettings(); // DigitHostSettings | null
 window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
 ```
 
-`data-theme` and `lang` are also set on `<html>` for CSS-only theming.
-
-Apps using `@digit/lib-frontend` get light/dark sync automatically via
-`DigitThemeProvider` — see [theming.md](theming.md).
+`data-theme` and `lang` are also set on `<html>`. Apps using `@digit/lib-frontend` get
+light/dark sync automatically via `DigitThemeProvider` — see [theming.md](theming.md).

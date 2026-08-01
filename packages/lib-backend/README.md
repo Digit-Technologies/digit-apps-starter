@@ -88,13 +88,10 @@ return ok({ data: { note: parsed.value } });
 Use plain `fetch` for third-party HTTP. Map failures with `err({ code: AppErrorCode.UPSTREAM_ERROR, … })`
 and never put secret values or raw upstream bodies into `error.message` / `data`.
 
-## Bundle with Vite
+## Bundle
 
-```json
-"build:backend": "vite build --config vite.backend.config.ts && mkdir -p backend/migrations && cp src/backend/migrations/*.sql backend/migrations/"
-```
-
-See `examples/full-featured` for `vite.backend.config.ts`.
+Use `@digit/lib-build` (`digit-app pack`) — do not add a per-app Vite backend config.
+See `examples/full-featured`.
 
 ## Depend
 

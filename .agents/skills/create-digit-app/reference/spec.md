@@ -61,12 +61,13 @@ realistic builder-perspective SPEC.
 - `src/frontend/` — UI source
 - `src/backend/` — Worker source (when the app has a backend)
 - Root config: `manifest.json`, `package.json`, `package-lock.json`, `tsconfig.json`,
-  `vite.frontend.config.ts`, `vite.backend.config.ts` (if any), `index.html`, `README.md`,
-  `SPEC.md`, `scripts/pack.sh`
+  `index.html` (if any), `README.md`, `SPEC.md`
+- `package.json` must use `@digit/lib-build` (`"pack": "digit-app pack"`)
 
 ### Do not commit
 
 - Built `frontend/` and `backend/` (gitignored; only packed into `app.zip`)
+- Per-app Vite configs or `scripts/pack.sh` — owned by `@digit/lib-build`
 - `node_modules/`
 - `.vite/`
 - `*.zip` (`npm run pack` creates `app.zip` for Digit upload only)
@@ -76,7 +77,7 @@ realistic builder-perspective SPEC.
 ```bash
 # …verify… update SPEC.md if purpose/constraints changed…
 git add src manifest.json package.json package-lock.json \
-  vite.*.config.ts tsconfig.json index.html README.md SPEC.md scripts
+  tsconfig.json index.html README.md SPEC.md
 git commit
-npm run pack           # builds + writes app.zip (includes frontend/ + backend/)
+npm run pack           # digit-app pack → build + app.zip
 ```

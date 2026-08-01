@@ -42,7 +42,7 @@ Digit app progress:
 - [ ] 6. Write/update SPEC.md (iteration context for the next agent)
 - [ ] 7. `npm run pack` → app.zip (frontend/ + backend/ + project/)
 - [ ] 8. Publish via MCP (upload zip out-of-band)
-- [ ] 9. Commit app source + builds in this starter repo (when working here)
+- [ ] 9. Commit app source in this starter repo (when working here) — not build outputs
 ```
 
 ### 1. Pick a template
@@ -51,11 +51,13 @@ Start from [`examples/full-featured`](../../../examples/full-featured) and trim 
 don’t need — do not invent a new project shape.
 
 It covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API + secrets + D1 via
-the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Copy its
-`vite.frontend.config.ts` / `vite.backend.config.ts` and `build:frontend` /
-`build:backend` scripts when you keep a Worker (helpers bundle into `backend/worker.js`).
+the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Depend on
+`@digit/lib-build` and use `"pack": "digit-app pack"` — do **not** copy Vite configs or
+a local pack script.
 
 All apps share React + MUI + `@digit/lib-frontend` and the same folder conventions.
+Local Digit preview is **not** supported yet (Worker / env / D1 are platform-injected);
+pack + publish is the path.
 
 ### 2. App must already exist in Digit
 
@@ -70,25 +72,24 @@ Source project builds into a publishable folder:
 
 ```
 my-app/
-├── package.json            # @digit/lib-frontend (+ @digit/lib-backend + @digit/lib-common when using a Worker)
-├── manifest.json           # app config — copied into frontend/ on build
+├── package.json            # @digit/lib-frontend (+ lib-backend/lib-common when Worker);
+│                           #   devDependency @digit/lib-build; script "pack": "digit-app pack"
+├── manifest.json           # app config — copied into frontend/ by digit-app pack
 ├── SPEC.md                 # iteration context for the next agent (no chat history)
-├── scripts/pack.sh         # pack → app.zip (frontend/ + backend/ + project/)
-├── vite.frontend.config.ts # React plugin + IIFE main.js + preserveSymlinks
-├── vite.backend.config.ts  # optional — Vite lib build → backend/worker.js
-├── index.html              # local/dev only
+├── tsconfig.json
+├── index.html              # optional local HTML shell (not a Digit preview)
 ├── src/
 │   ├── frontend/           # UI source
 │   │   ├── main.tsx        # createRoot(#root) + DigitThemeProvider
 │   │   └── App.tsx         # MUI UI
 │   └── backend/            # Worker source (when using a backend)
-│       ├── worker.js       # entry → backend/worker.js
+│       ├── worker.js       # entry → backend/worker.js (built by pack)
 │       ├── notes.js        # optional — split handlers when a resource grows
 │       └── migrations/
-├── frontend/               # BUILD OUTPUT — gitignored; only in app.zip via pack
+├── frontend/               # BUILD OUTPUT — gitignored; produced by digit-app pack
 │   ├── manifest.json
 │   └── main.js
-└── backend/                # BUILD OUTPUT when manifest.backend is set — gitignored
+└── backend/                # BUILD OUTPUT when Worker present — gitignored
     ├── worker.js           # single-file Worker ESM
     └── migrations/         # optional *.sql when using D1
         └── 0001_init.sql
@@ -98,22 +99,22 @@ Harness types (`DigitHost`, `DigitHostSettings`) come from `@digit/lib-frontend`
 add a local `digit.d.ts`. Prefer the data hooks over calling `window.DigitProxyClient`
 yourself.
 
-**Source vs publish:** edit under `src/frontend` and `src/backend`. `npm run build` writes
-sibling `frontend/` and `backend/` folders — **do not commit them**. They are gitignored
-and only enter `app.zip` via `npm run pack`. Also ignore `node_modules/`, `.vite/`, and
-`*.zip`.
+**Source vs publish:** edit under `src/frontend` and `src/backend`. `npm run pack`
+(`digit-app pack` from `@digit/lib-build`) builds sibling `frontend/` / `backend/` and
+writes `app.zip` — **do not commit** those build folders. Also ignore `node_modules/`,
+`.vite/`, and `*.zip`. Do not add per-app Vite configs or `scripts/pack.sh`.
 
-`npm run pack` builds then creates `app.zip` with:
+`app.zip` contains:
 
-- **Zip root `frontend/`** (+ `backend/` when declared) — what Digit deploys
-- **Zip root `project/`** — source, `SPEC.md`, configs, `scripts/pack.sh`, and vendored
-  `@digit/lib-*` under `project/packages/` so a later agent can extract, iterate, and pack
-  again without Git
+- **Zip root `frontend/`** (+ `backend/` when present) — what Digit deploys
+- **Zip root `project/`** — source, `SPEC.md`, tooling, and vendored `@digit/lib-*`
+  (including `lib-build`) under `project/packages/` so a later agent can extract, iterate,
+  and pack again without Git
 
 Digit requires `frontend/manifest.json` and, iff the manifest declares a backend,
-`backend/worker.js`. Extra root entries like `project/` are for rehydrate; deploy still
-only uses `frontend/` / `backend/`. Scripts: `build:frontend`, optional `build:backend`,
-`build`, and `pack` (not named `publish` — MCP `publishApp` is what goes live).
+`backend/worker.js`. The same zip **must** include `project/` for rehydrate. Digit deploys
+from `frontend/` / `backend/` only. The local script is `pack` (not `publish` — MCP
+`publishApp` is what goes live).
 
 ### 4. Frontend rules
 
@@ -140,17 +141,14 @@ only uses `frontend/` / `backend/`. Scripts: `build:frontend`, optional `build:b
   ```
 
 - **Theme sync:** `DigitThemeProvider` reads `window.DigitHost` (light/dark). The harness
-  also sets `data-theme` on `<html>` and ships Digit CSS tokens + Inter. Do not invent a
-  separate theme toggle unless the product requires it.
+  also sets `data-theme` on `<html>` and may ship Inter. Styling is MUI +
+  `DigitThemeProvider` — do not invent a CSS-variable theme or a separate theme toggle
+  unless the product requires it.
 - **Entry file must be classic-script compatible.** The harness injects
-  `<script src="/app/{entryFile}">` without `type="module"`. Build as **IIFE** named
-  `main.js` (see example Vite configs).
-- **Inline CSS into JS.** Use `vite-plugin-css-injected-by-js` (examples already do). Do not
-  rely on a separate CSS file being loaded by the harness.
-- **Vite + `file:` packages:** set `resolve: { preserveSymlinks: true }` so React/MUI
-  peers resolve from the app’s `node_modules`. Use `vite.frontend.config.ts` /
-  `npm run build:frontend` (and `vite.backend.config.ts` / `build:backend` when shipping a
-  Worker).
+  `<script src="/app/{entryFile}">` without `type="module"`. `@digit/lib-build` packs an
+  **IIFE** `main.js` — do not invent another bundler setup.
+- **Inline CSS into JS.** Handled by `@digit/lib-build` — do not rely on a separate CSS
+  file being loaded by the harness.
 - **Reserved names:** `entryFile` must not be `index.html` or `loader.js`.
 - **Digit API calls:** prefer `useDigitApiQuery` / `useDigitApiMutation` from
   `@digit/lib-frontend`. Never call Digit GraphQL with a
@@ -165,8 +163,8 @@ only uses `frontend/` / `backend/`. Scripts: `build:frontend`, optional `build:b
 
 ### 5. `manifest.json`
 
-Keep the source file at the **project root** (next to `package.json`). Copy it into
-`frontend/` during `build:frontend` — the publish zip requires `frontend/manifest.json`.
+Keep the source file at the **project root** (next to `package.json`). `digit-app pack`
+copies it into `frontend/` — the publish zip requires `frontend/manifest.json`.
 
 Minimal:
 
@@ -224,6 +222,9 @@ apps → generateAppUploadLink → POST zip to uploadUrl → publishApp → poll
 The zip does **not** travel through MCP. If you cannot HTTP POST the zip, stop and tell the
 user.
 
+Run `npm run pack`, then upload **`app.zip` unchanged** (includes required `project/`).
+Do not strip folders or re-zip by hand.
+
 Full steps: [reference/publish.md](reference/publish.md)
 
 ### 9. Write SPEC.md (and commit when in this repo)
@@ -242,8 +243,8 @@ SPEC is iteration context — not a second README or route list:
 Prefer intent / provenance / gotchas; do **not** mirror `manifest.json` or list every
 backend path. Model: [`examples/full-featured/SPEC.md`](../../../examples/full-featured/SPEC.md).
 
-In this starter repo, also commit `src/`, root config, `SPEC.md`, and `scripts/`. Do not
-commit built `frontend/` / `backend/`, `node_modules/`, `.vite/`, or `*.zip`.
+In this starter repo, also commit `src/`, root config, and `SPEC.md`. Do not commit built
+`frontend/` / `backend/`, `node_modules/`, `.vite/`, or `*.zip`.
 
 Details: [reference/spec.md](reference/spec.md)
 
@@ -261,15 +262,17 @@ Workers so result shapes match `useBackendQuery` on the frontend.
 
 ## Packages (`lib-*`)
 
-Three packages under [`packages/`](../../../packages). Import from each package **root
-only** — files under `src/` are implementation details. Helpers use **named arguments**.
-Packages do **not** re-export each other.
+Packages under [`packages/`](../../../packages). For runtime libs, import from each package
+**root only** — files under `src/` are implementation details. Helpers use **named
+arguments**. Runtime packages do **not** re-export each other. Use `@digit/lib-build` only
+via the `digit-app` CLI (`npm run pack`).
 
 | Package | Depend from apps? | Role |
 | --- | --- | --- |
 | [`@digit/lib-frontend`](../../../packages/lib-frontend) | Always | `DigitThemeProvider`, harness types, data hooks, `AppErrorAlert` |
 | [`@digit/lib-backend`](../../../packages/lib-backend) | When shipping a Worker | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv` |
 | [`@digit/lib-common`](../../../packages/lib-common) | With a Worker (or UI that branches on codes) | `AppErrorCode`, result **types**, pure validation |
+| [`@digit/lib-build`](../../../packages/lib-build) | Always (devDependency) | `digit-app pack` — Vite build + `app.zip` |
 
 **Import map**
 
@@ -343,14 +346,15 @@ See `examples/full-featured/src/backend/worker.js` for the reference layout.
 - Docs: [reference/theming.md](reference/theming.md)
 - Do **not** invent cream/teal palettes, alternate fonts, or card-heavy custom CSS
 - Do **not** put React/MUI in the harness HTML — the bundle owns UI; the harness only
-  provides `#root`, Inter, CSS tokens, and `DigitHost` / `DigitProxyClient`
+  provides `#root`, fonts, and `DigitHost` / `DigitProxyClient`
 
 ## Additional resources
 
-- [reference/theming.md](reference/theming.md) — DigitThemeProvider, tokens, DigitHost
+- [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, DigitHost
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — DigitProxyClient + backend proxy
 - [reference/permissions.md](reference/permissions.md) — permission model and common values
 - [reference/backend-env-secrets.md](reference/backend-env-secrets.md) — env/secrets in Workers
 - [reference/publish.md](reference/publish.md) — MCP publish workflow and zip rules
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context, provenance, zip vs git
+- [`packages/lib-build`](../../../packages/lib-build) — `digit-app pack` shared tooling

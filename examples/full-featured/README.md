@@ -12,22 +12,21 @@ Reference Digit app that exercises the main platform surfaces in one place:
 | Notes | D1 CRUD (`FULL_FEATURED_DB`) |
 | Config | Env `WELCOME_MESSAGE` via `/proxy/backend/greeting` |
 
-Uses `@digit/lib-frontend`, `@digit/lib-backend`, and `@digit/lib-common` for theme,
-errors, Worker helpers, codes, and validation.
+Uses `@digit/lib-frontend`, `@digit/lib-backend`, `@digit/lib-common`, and
+`@digit/lib-build` (`digit-app pack`).
 
 Layout:
 
 - `src/frontend/` — React UI
 - `src/backend/` — Worker (`worker.js`, `notes.js`, migrations)
-- `frontend/` / `backend/` — build outputs (gitignored; Digit deploy gets them from `app.zip`)
-- Root `manifest.json`, Vite configs, `package.json`, `SPEC.md`, `scripts/pack.sh`
+- `frontend/` / `backend/` — build outputs (gitignored; produced by pack)
+- Root `manifest.json`, `package.json`, `SPEC.md`
 
 Scripts:
 
-- `npm run build:frontend` → `frontend/main.js` + copies `manifest.json`
-- `npm run build:backend` → `backend/worker.js` + migrations
-- `npm run build` — both
-- `npm run pack` — build + `app.zip` for Digit upload
+- `npm run pack` — `digit-app pack`: build + `app.zip` for Digit upload
+
+Local Digit preview is not supported yet (no local Worker / env / D1 harness).
 
 ### What `pack` puts in `app.zip`
 
@@ -35,8 +34,8 @@ Scripts:
 frontend/                 # Digit deploy
 backend/                  # Digit deploy
 project/                  # Next-agent rehydrate
-  src/, SPEC.md, configs, scripts/pack.sh
-  packages/lib-*          # vendored until registry publish
+  src/, SPEC.md, configs
+  packages/lib-*          # vendored (incl. lib-build) until registry publish
 ```
 
 After extract: `cd project && npm install`, edit, then `npm run pack` again.
@@ -51,7 +50,5 @@ After extract: `cd project && npm install`, edit, then `npm run pack` again.
 
 ## Notes
 
-- Local `npm run dev` has no harness / Worker / D1 — tabs that call Digit will show
-  unavailable or request errors until published
 - Secrets never leave the Worker; the Secrets tab only shows a short token prefix
 - See `SPEC.md` for iteration context for a later agent (prompts, constraints, gotchas)

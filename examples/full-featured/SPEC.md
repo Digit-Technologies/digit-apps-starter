@@ -23,8 +23,9 @@ wired to a real host).
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
 
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code.
-`@digit/lib-*` is linked via `file:` in the monorepo; `npm run pack` vendors those packages
-under `project/packages/` in `app.zip` so a later agent can rebuild outside this repo.
+`@digit/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@digit/lib-build`)
+vendors those packages (including `lib-build`) under `project/packages/` in `app.zip` so a
+later agent can rebuild outside this repo. Local Digit preview is not supported yet.
 
 ## Prompts
 

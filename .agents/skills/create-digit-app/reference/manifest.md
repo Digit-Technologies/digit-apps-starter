@@ -3,8 +3,8 @@
 **Source:** keep `manifest.json` at the **app project root** (next to `package.json`) —
 it is Digit publish config, not a Vite static asset.
 
-**Publish zip:** required at `frontend/manifest.json`. `build:frontend` should copy the
-root file into `frontend/` (see `examples/full-featured`). Validated at publish time.
+**Publish zip:** required at `frontend/manifest.json`. `digit-app pack` (`@digit/lib-build`)
+copies the root file into `frontend/`. Validated at publish time.
 Not uploaded to the serving bucket as-is — Digit snapshots it onto the publish row and
 derives `active.json` / bundle assets from it.
 
@@ -27,7 +27,8 @@ type AppManifest = {
 
 - `entryFile` must be a `.js` file present under `frontend/`
 - `entryFile` must **not** be `index.html` or `loader.js` (harness-reserved)
-- `permissions` must be an array of known Digit permission strings
+- `permissions` must be an array of known Digit permission **`key`** strings
+  (SCREAMING_SNAKE_CASE, e.g. `READ_ITEM`) — not colon-delimited legacy values
 - If `backend` is present, the zip **must** include `backend/worker.js`
 - If the zip includes `backend/` files but the manifest has no `backend` block → reject
 - `backend.d1.binding` must match `^[A-Z][A-Z0-9_]{0,63}$`
@@ -61,15 +62,22 @@ Digit API + Worker + D1:
 
 ## Zip layout
 
+Produced by `digit-app pack`. Upload that zip **unchanged**.
+
 ```
-frontend/
+frontend/                # Digit deploy — required
   manifest.json
   main.js
-  …other assets…
-backend/                 # only if manifest.backend is set
+backend/                 # Digit deploy — when manifest.backend is set
   worker.js
   migrations/
     0001_init.sql
+project/                 # required — source, SPEC, tooling for later agents
+  src/
+  SPEC.md
+  package.json
+  packages/              # vendored @digit/lib-* (+ lib-build)
 ```
 
-Max zip size: **10MB**.
+Max zip size: **10MB**. Do not strip `project/` to shrink the archive or to match an
+older “frontend/backend only” mental model.

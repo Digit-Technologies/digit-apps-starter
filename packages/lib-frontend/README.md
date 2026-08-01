@@ -115,7 +115,5 @@ so peers resolve from the app’s `node_modules` when the package is linked via 
 
 See also [`@digit/lib-backend`](../lib-backend) for Worker helpers.
 
-## CSS tokens
-
-`tokens.css` exposes `--digit-*` variables for non-MUI surfaces. The Digit app
-harness also injects the same tokens + self-hosted Inter on the shell HTML.
+Styling is MUI + `DigitThemeProvider` only — do not add parallel CSS variable themes.
+The Digit harness may inject Inter on the shell HTML.
