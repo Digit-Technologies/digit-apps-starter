@@ -14,58 +14,75 @@ frontend bundle.
 
 ## Worker access
 
-In `backend/worker.js`, read bindings from the Worker `env` object:
+Prefer `@digit/lib-backend`: wrap with `createHandler`, read bindings with `requireEnv`
+(or `optionalEnv` when absence is a valid branch). Missing required keys become structured
+`{ ok: false, error }` responses — do not read `env.KEY` ad hoc and return plain text.
 
 ```js
-export default {
-  async fetch(request, env) {
-    const apiBase = env.API_BASE_URL;     // env var
-    const apiKey = env.THIRD_PARTY_API_KEY; // secret
-    // ...
+import { AppErrorCode } from '@digit/lib-common';
+import {
+  backendPath,
+  createHandler,
+  err,
+  ok,
+  requireEnv,
+} from '@digit/lib-backend';
+
+export default createHandler({
+  fetch: async ({ request, env }) => {
+    const path = backendPath(request);
+
+    if (request.method === 'GET' && path === '/external-status') {
+      const apiBase = requireEnv({ env, key: 'API_BASE_URL' });
+      const apiKey = requireEnv({ env, key: 'THIRD_PARTY_API_KEY' });
+      const response = await fetch(`${apiBase.replace(/\/$/, '')}/status`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+      });
+      if (!response.ok) {
+        return err({
+          code: AppErrorCode.UPSTREAM_ERROR,
+          message: `Upstream failed (HTTP ${response.status}).`,
+          status: 502,
+        });
+      }
+      return ok({ data: await response.json() });
+    }
+
+    return err({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });
   },
-};
+});
 ```
 
-D1 (when declared in the manifest) appears under the binding name you chose:
+D1 (when declared in the manifest) appears under the binding name you chose — also via
+`requireEnv`:
 
 ```js
-await env.MY_APP_DB.prepare('SELECT 1').first();
+const db = requireEnv({ env, key: 'MY_APP_DB' });
+await db.prepare('SELECT 1').first();
 ```
+
+Never put secret values or raw upstream bodies into `error.message` / success `data`.
 
 ## Frontend pattern
 
-Frontend calls the backend proxy; the Worker uses env/secrets server-side:
+Frontend reads env-backed data only through the backend proxy, via hooks:
 
 ```ts
-// frontend
-const data = await fetch('/proxy/backend/external-status', {
-  credentials: 'include',
-  headers: { 'X-Digit-Proxy-Client': '1' },
-}).then((r) => r.json());
+import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
+
+const { data, error, loading, refetch } = useBackendQuery<{ authenticated: boolean }>({
+  path: '/external-status',
+});
 ```
 
-```js
-// backend/worker.js
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url);
-    if (url.pathname === '/external-status') {
-      const res = await fetch(`${env.API_BASE_URL}/status`, {
-        headers: { Authorization: `Bearer ${env.THIRD_PARTY_API_KEY}` },
-      });
-      return Response.json(await res.json());
-    }
-    return new Response('Not found', { status: 404 });
-  },
-};
-```
+Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the hooks set it).
 
 ## When you need a backend
 
 | Situation | Backend required? |
 | --- | --- |
 | Pure UI | No |
-| Digit GraphQL via `DigitProxyClient` | No |
+| Digit GraphQL via `useDigitApiQuery` / `DigitProxyClient` | No |
 | Read non-secret config from Digit app settings | Yes |
 | Call third-party APIs with secrets | Yes |
 | App-own persistence (D1) | Yes (`backend.d1`) |
@@ -75,4 +92,4 @@ export default {
 1. Create the app in Digit
 2. Set env vars / secrets on the app in Digit
 3. Publish a bundle whose manifest declares `backend.kind: "cloudflare-worker"`
-4. Ship `backend/worker.js` that reads those keys from `env`
+4. Ship `backend/worker.js` that reads those keys via `requireEnv` inside `createHandler`

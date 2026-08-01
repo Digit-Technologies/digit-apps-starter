@@ -3,8 +3,9 @@
 Apps run on a per-app origin. The only egress the frontend CSP allows is same-origin, so
 Digit data and app backends are reached through Digit-hosted proxies.
 
-Prefer the React hooks from `@digit/app-frontend` — they wrap the harness client and
-normalize errors for `AppErrorAlert`:
+Prefer the React hooks from `@digit/lib-frontend` — they wrap the harness client and
+normalize errors for `AppErrorAlert`. The package’s public data API is **hooks only**
+(imperative fetch helpers stay private):
 
 ```ts
 import {
@@ -12,7 +13,7 @@ import {
   useDigitApiQuery,
   useBackendQuery,
   useBackendMutation,
-} from '@digit/app-frontend';
+} from '@digit/lib-frontend';
 
 const { data, error, loading, refetch } = useDigitApiQuery({
   query: `
@@ -35,7 +36,7 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 Types for `window.DigitHost` are exported from the same package (`DigitHost`,
-`DigitHostSettings`). Importing `@digit/app-frontend` augments `Window` — do not
+`DigitHostSettings`). Importing `@digit/lib-frontend` augments `Window` — do not
 maintain a local `digit.d.ts`. Prefer the hooks over calling `window.DigitProxyClient`
 yourself.
 
@@ -59,12 +60,38 @@ When `manifest.backend` is set, `useBackendQuery` / `useBackendMutation` hit
 - Always go through these helpers (or the harness client) so `X-Digit-Proxy-Client` is set
 - Paths starting with `/__` are reserved and refused
 - The platform sets `X-Digit-App-Id` from the Host header — the browser cannot spoof another app's worker
-- Pair with `@digit/app-backend` on the Worker (`ok` / `err` result responses)
+- Pair with `@digit/lib-backend` on the Worker (`createHandler`, `backendPath`, `ok` / `err`)
+
+Worker routing — strip `/proxy/backend`, then match with normal `method` + `path` checks:
+
+```js
+import { AppErrorCode } from '@digit/lib-common';
+import { backendPath, createHandler, ok, err, requireEnv } from '@digit/lib-backend';
+
+export default createHandler({
+  fetch: async ({ request, env }) => {
+    const path = backendPath(request);
+    const { method } = request;
+
+    if (method === 'GET' && path === '/greeting') {
+      return ok({ data: { message: requireEnv({ env, key: 'WELCOME_MESSAGE' }) } });
+    }
+    if (method === 'PUT' && path.startsWith('/notes/')) {
+      return ok({ data: { id: path.slice('/notes/'.length) } });
+    }
+
+    return err({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });
+  },
+});
+```
+
+Import codes / validation from `@digit/lib-common`; Worker Response helpers from
+`@digit/lib-backend` (no re-exports between packages).
 
 ## Host display settings
 
 ```ts
-import type { DigitHostSettings } from '@digit/app-frontend';
+import type { DigitHostSettings } from '@digit/lib-frontend';
 
 window.DigitHost?.getSettings(); // DigitHostSettings | null
 window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
@@ -72,5 +99,5 @@ window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
 
 `data-theme` and `lang` are also set on `<html>` for CSS-only theming.
 
-Apps using `@digit/app-frontend` get light/dark sync automatically via
+Apps using `@digit/lib-frontend` get light/dark sync automatically via
 `DigitThemeProvider` — see [theming.md](theming.md).

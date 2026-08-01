@@ -1,6 +1,10 @@
 # manifest.json
 
-Required at `frontend/manifest.json` inside the publish zip. Validated at publish time.
+**Source:** keep `manifest.json` at the **app project root** (next to `package.json`) —
+it is Digit publish config, not a Vite static asset.
+
+**Publish zip:** required at `frontend/manifest.json`. `build:frontend` should copy the
+root file into `frontend/` (see `examples/full-featured`). Validated at publish time.
 Not uploaded to the serving bucket as-is — Digit snapshots it onto the publish row and
 derives `active.json` / bundle assets from it.
 
