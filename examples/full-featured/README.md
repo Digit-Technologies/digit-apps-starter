@@ -12,31 +12,46 @@ Reference Digit app that exercises the main platform surfaces in one place:
 | Notes | D1 CRUD (`FULL_FEATURED_DB`) |
 | Config | Env `WELCOME_MESSAGE` via `/proxy/backend/greeting` |
 
-Uses `@digit/app-frontend`, `@digit/app-backend`, and `@digit/app-shared` (via those
-packages) for theme, errors, results, and validation.
+Uses `@digit/lib-frontend`, `@digit/lib-backend`, and `@digit/lib-common` for theme,
+errors, Worker helpers, codes, and validation.
 
-- `npm run build:frontend` → `vite.frontend.config.ts` → `frontend/main.js`
-- `npm run build:backend` → `vite.backend.config.ts` → `backend/worker.js`
-- `npm run build` runs both
+Layout:
 
+- `src/frontend/` — React UI
+- `src/backend/` — Worker (`worker.js`, `notes.js`, migrations)
+- `frontend/` / `backend/` — build outputs (gitignored; Digit deploy gets them from `app.zip`)
+- Root `manifest.json`, Vite configs, `package.json`, `SPEC.md`, `scripts/pack.sh`
+
+Scripts:
+
+- `npm run build:frontend` → `frontend/main.js` + copies `manifest.json`
+- `npm run build:backend` → `backend/worker.js` + migrations
+- `npm run build` — both
+- `npm run pack` — build + `app.zip` for Digit upload
+
+### What `pack` puts in `app.zip`
+
+```
+frontend/                 # Digit deploy
+backend/                  # Digit deploy
+project/                  # Next-agent rehydrate
+  src/, SPEC.md, configs, scripts/pack.sh
+  packages/lib-*          # vendored until registry publish
+```
+
+After extract: `cd project && npm install`, edit, then `npm run pack` again.
 
 ## Setup in Digit
 
 1. Create the app in Digit
 2. Add env var `WELCOME_MESSAGE`
 3. Add env var `API_BASE_URL` (e.g. `https://httpbin.org`) and secret `THIRD_PARTY_API_KEY`
-4. Apply D1 migration `worker/migrations/0001_init.sql` against the app database
-5. Build and publish
-
-```bash
-npm install
-npm run build
-```
-
-Zip must contain `frontend/` and `backend/` (including `backend/migrations/`).
+4. Apply D1 migration `src/backend/migrations/0001_init.sql` against the app database
+5. `npm run pack` and publish via MCP (see the create-digit-app skill)
 
 ## Notes
 
 - Local `npm run dev` has no harness / Worker / D1 — tabs that call Digit will show
   unavailable or request errors until published
 - Secrets never leave the Worker; the Secrets tab only shows a short token prefix
+- See `SPEC.md` for iteration context for a later agent (prompts, constraints, gotchas)

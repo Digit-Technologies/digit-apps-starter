@@ -6,7 +6,8 @@ Requires the org `CUSTOM_APPS` feature flag and `publish:app` permission.
 
 1. User has **created the app in Digit** (UI). Publishing never creates apps.
 2. You know the app `id` — resolve with MCP `apps`, or ask the user.
-3. Built folder ready to zip: `frontend/` (+ `backend/` if declared).
+3. `app.zip` ready via `npm run pack` (build + archive). Local `pack` only prepares the
+   zip; MCP `publishApp` is what goes live.
 
 ## Workflow
 
@@ -53,8 +54,29 @@ curl -X POST "$UPLOAD_URL" \
   -F "file=@app.zip"
 ```
 
-Build the zip from the app folder so paths are `frontend/...` and optional `backend/...`
-at the zip root (not `my-app/frontend/...`).
+Build the zip with `npm run pack` so paths sit at the **archive root** (not
+`my-app/frontend/...`):
+
+```
+app.zip
+├── frontend/                 # Digit deploy — required
+│   ├── main.js
+│   └── manifest.json
+├── backend/                  # Digit deploy — when manifest.backend is set
+│   ├── worker.js
+│   └── migrations/           # optional D1 *.sql
+└── project/                  # Next-agent rehydrate (source, SPEC, tooling)
+    ├── src/
+    ├── SPEC.md
+    ├── package.json          # @digit/lib-* → file:./packages/...
+    ├── scripts/pack.sh
+    ├── packages/             # vendored libs (until registry publish)
+    └── …
+```
+
+Digit **runs** only `frontend/` and `backend/`. `project/` is for a later agent to
+extract, `cd project`, `npm install`, edit, and `npm run pack` again. End users often
+have no Git — the zip is the source of truth after publish.
 
 ### 4. Publish
 
@@ -79,7 +101,16 @@ bundle, and restart at step 2.
 
 ## Zip validation reminders
 
+**Deploy (required for go-live)**
+
 - Must include `frontend/manifest.json`
 - `manifest.entryFile` must exist under `frontend/`
-- Backend files only when `manifest.backend` is set; then `backend/worker.js` is required
-- No files outside `frontend/` and `backend/`
+- When `manifest.backend` is set, `backend/worker.js` is required (plus migrations if used)
+
+**Iteration archive (should include)**
+
+- `project/` with source, `SPEC.md`, build configs, and `scripts/pack.sh`
+- Vendored `@digit/lib-*` under `project/packages/` (until packages are on a registry)
+
+Extra root entries such as `project/` are allowed. Digit deploy still only consumes
+`frontend/` and `backend/`.

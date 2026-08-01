@@ -1,8 +1,11 @@
 node_modules/
 dist/
-frontend/
-backend/
 .DS_Store
 *.log
 .vite/
 *.zip
+
+# Digit app build outputs (pack into app.zip only — not committed)
+# Sibling to package.json; do not match src/frontend or src/backend.
+examples/*/frontend/
+examples/*/backend/

@@ -10,10 +10,10 @@ Agents should follow:
 
 That skill covers:
 
-- **React + MUI + `@digit/app-frontend`** (required default stack)
-- Vite + folder conventions (`frontend/`, optional `backend/`)
+- **React + MUI + `@digit/lib-frontend`** (required default stack)
+- `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
 - Mounting to `#root` with `DigitThemeProvider`
-- `manifest.json` schema (permissions, Cloudflare Worker / D1)
+- Root `manifest.json` (copied into `frontend/` on build)
 - Digit API access via `useDigitApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
 - Publishing with Digit MCP (`apps` → upload zip → `publishApp` → poll)
@@ -22,15 +22,16 @@ That skill covers:
 
 | Package | Role |
 | --- | --- |
-| [`packages/app-shared`](packages/app-shared) (`@digit/app-shared`) | Shared codes, results, pure validation (no React / no `Response`) |
-| [`packages/app-frontend`](packages/app-frontend) (`@digit/app-frontend`) | Theme, harness types, Digit/backend hooks, error UI |
-| [`packages/app-backend`](packages/app-backend) (`@digit/app-backend`) | Worker `Response` helpers, env/secrets, path, upstream `fetch` |
+| [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
+| [`packages/lib-frontend`](packages/lib-frontend) (`@digit/lib-frontend`) | Theme, harness types, Digit/backend **hooks**, error UI |
+| [`packages/lib-backend`](packages/lib-backend) (`@digit/lib-backend`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
 
 Each package exposes a slim root export for everyday app/Worker code. Other files
-under `src/` are implementation details — do not deep-import them.
+under `src/` are implementation details — do not deep-import them. Helpers use named
+arguments. Packages do **not** re-export each other.
 
-Apps depend on them via `file:…` — not on private `digit-web`. Frontend and backend
-packages already pull in `@digit/app-shared`.
+Apps depend on them via `file:…` — not on private `digit-web`. With a Worker, depend on
+`lib-frontend` + `lib-backend` + `lib-common`.
 
 ## Example
 
@@ -40,8 +41,9 @@ API, public API, secrets, D1 CRUD, and env config. Copy it and trim what you don
 ## Publish reminder
 
 1. Create the app in the Digit UI first (MCP cannot create apps yet)
-2. `npm run build` in the example / your app
-3. Zip so the archive root contains `frontend/` (and `backend/` if declared)
+2. Write/update `SPEC.md`, then `npm run pack` in the example / your app
+3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, and
+   `project/` (source, SPEC, tooling, vendored libs) so a later agent can iterate without Git
 4. Use the MCP publish flow documented in the skill
 
 ## License

@@ -4,21 +4,22 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --config vite.frontend.config.ts",
     "build": "npm run build:frontend && npm run build:backend",
-    "build:backend": "vite build --config vite.backend.config.ts && mkdir -p backend/migrations && cp worker/migrations/*.sql backend/migrations/",
-    "preview": "vite preview --config vite.frontend.config.ts",
-    "build:frontend": "vite build --config vite.frontend.config.ts"
+    "build:backend": "vite build --config vite.backend.config.ts && mkdir -p backend/migrations && cp src/backend/migrations/*.sql backend/migrations/",
+    "build:frontend": "vite build --config vite.frontend.config.ts && cp manifest.json frontend/",
+    "dev": "vite --config vite.frontend.config.ts",
+    "pack": "npm run build && bash scripts/pack.sh",
+    "preview": "vite preview --config vite.frontend.config.ts"
   },
   "dependencies": {
-    "@digit/app-backend": "file:../../packages/app-backend",
-    "@digit/app-frontend": "file:../../packages/app-frontend",
+    "@digit/lib-backend": "file:../../packages/lib-backend",
+    "@digit/lib-common": "file:../../packages/lib-common",
+    "@digit/lib-frontend": "file:../../packages/lib-frontend",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@mui/material": "^7.3.9",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "@digit/app-shared": "file:../../packages/app-shared"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.18",

@@ -1,48 +1,82 @@
 # App spec & provenance (`SPEC.md`)
 
-Every app directory must ship a `SPEC.md` alongside its `README.md`. `README.md` is for
-humans using the app; `SPEC.md` is the recreation record — enough for a different agent,
-with no memory of the original conversation, to rebuild the app from scratch using only
-this skill and `SPEC.md`.
+Every app must ship a `SPEC.md`. It is **iteration context for a later agent** that has no
+chat history and no harness memory — not a second README and not an API dump.
 
-Write or update it as part of the workflow, not as an afterthought after publish.
+`README.md` is for humans using or setting up the app. `SPEC.md` answers: why this app
+exists, what the user asked for, what constraints matter, and what gotchas aren’t obvious
+from the source.
 
-## Required sections
+Write or update it as part of the workflow (before `npm run pack`), not as an afterthought.
+
+In the publish zip, SPEC lives at `project/SPEC.md`. In this starter repo it lives at the
+app root next to `package.json`.
+
+## What belongs in SPEC
+
+Prefer **intent, provenance, and non-obvious gotchas**. Do **not** mirror `manifest.json`
+or list every backend route — those live in source and drift when duplicated.
 
 ### What it does
 
-2-4 sentences: purpose, who uses it, key behaviors, and any constraints (pagination
-limits, currency/unit handling, aggregation done client-side vs server-side, etc).
+2–4 sentences: purpose, who uses it, key behaviors, and constraints that aren’t obvious
+from reading the code (pagination limits, units, client vs server aggregation, etc.).
 
 ### Data & permissions
 
-- Permissions declared in `manifest.json` and why each is needed
-- GraphQL queries/fields relied on (root fields, filters, sort keys)
-- Backend env vars / secrets and their purpose (names only — never values)
-- Schema quirks or gotchas discovered while building (mismatched field names, pagination
-  caps, rate limits, etc.)
+- Permissions declared in `manifest.json` and **why** each is needed
+- GraphQL fields relied on when relevant (root fields, important filters) — not a full schema dump
+- Backend env vars / secrets and their purpose (**names only** — never values)
+- Schema quirks or gotchas discovered while building
+
+Skip a full route inventory; the Worker source is authoritative.
 
 ### Prompts
 
-The prompts that produced this app, verbatim, in chronological order — the original
-request plus any follow-up refinement prompts. Do not paraphrase or summarize them; paste
-them as given. If a prompt only makes sense with surrounding context (e.g. "user rejected
-the first approach because X"), include a one-line note before it, but keep the prompt
-text itself unedited.
+The prompts that produced this app, **verbatim**, in chronological order — the original
+request plus follow-up refinements. This is the stand-in for missing chat history. Do not
+paraphrase. If a prompt only makes sense with a note (e.g. “user rejected approach X”),
+add a one-line note before it, but keep the prompt text unedited.
 
 ### Context supplied
 
-Anything given to the agent beyond the prompts that shaped the result: an existing example
-app it was copied from, screenshots or mockups, links to tickets/docs, an existing Digit
-object referenced as a model, schema introspection output relied on, etc.
+Anything beyond the prompts that shaped the result: example app copied from, screenshots
+or mockups, tickets/docs, an existing Digit object used as a model, schema notes, product
+decisions the user made mid-build.
 
-## Committing the app
+## Example
 
-Source must be committed to this repo, not just published to Digit via MCP:
+See [`examples/full-featured/SPEC.md`](../../../../examples/full-featured/SPEC.md) for a
+realistic builder-perspective SPEC.
 
-- Commit: `src/`, `worker/` (if a backend exists), `public/manifest.json`, `package.json`,
-  `package-lock.json`, `tsconfig.json`, `vite.frontend.config.ts`, `README.md`, `SPEC.md`
-- Do not commit: `node_modules/`, `*.zip`, or the generated `frontend/`/`backend/` build
-  output — these are gitignored and rebuild from source via `npm run build`
-- If a build artifact must ship for reference, `git add -f` it explicitly — source +
-  `SPEC.md` remain the source of truth
+## Starter repo vs Digit zip
+
+| Where | How the app is preserved |
+| --- | --- |
+| This starter repo | Commit **source** + tooling to git (not build outputs) |
+| Published Digit app | `npm run pack` → `app.zip` (users may have no Git). The zip is what the next agent extracts |
+
+### Commit (starter repo)
+
+- `src/frontend/` — UI source
+- `src/backend/` — Worker source (when the app has a backend)
+- Root config: `manifest.json`, `package.json`, `package-lock.json`, `tsconfig.json`,
+  `vite.frontend.config.ts`, `vite.backend.config.ts` (if any), `index.html`, `README.md`,
+  `SPEC.md`, `scripts/pack.sh`
+
+### Do not commit
+
+- Built `frontend/` and `backend/` (gitignored; only packed into `app.zip`)
+- `node_modules/`
+- `.vite/`
+- `*.zip` (`npm run pack` creates `app.zip` for Digit upload only)
+
+### Workflow
+
+```bash
+# …verify… update SPEC.md if purpose/constraints changed…
+git add src manifest.json package.json package-lock.json \
+  vite.*.config.ts tsconfig.json index.html README.md SPEC.md scripts
+git commit
+npm run pack           # builds + writes app.zip (includes frontend/ + backend/)
+```
