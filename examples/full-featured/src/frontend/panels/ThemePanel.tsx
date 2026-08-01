@@ -20,7 +20,7 @@ export default function ThemePanel() {
         </Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary' }}>
           MUI components styled by <code>DigitThemeProvider</code> from{' '}
-          <code>@digit/app-frontend</code>. Prefer palette / typography tokens over hard-coded
+          <code>@digit/lib-frontend</code>. Prefer palette / typography tokens over hard-coded
           colors.
         </Typography>
       </Box>

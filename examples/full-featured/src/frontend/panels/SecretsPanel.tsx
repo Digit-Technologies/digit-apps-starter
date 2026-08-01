@@ -4,7 +4,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useBackendQuery } from '@digit/app-frontend';
+import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
 
 type StatusData = {
   authenticated: boolean;

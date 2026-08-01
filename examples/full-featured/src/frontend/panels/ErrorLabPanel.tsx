@@ -13,7 +13,7 @@ import {
   useBackendMutation,
   useDigitApiMutation,
   type AppError,
-} from '@digit/app-frontend';
+} from '@digit/lib-frontend';
 
 const FIXTURES: Record<string, AppError> = {
   platform_session: {
@@ -182,8 +182,8 @@ function BoxHeader() {
         Error lab
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-        Preview how <code>AppErrorAlert</code> renders platform, GraphQL, and backend failures —
-        then trigger live ones.
+        Preview how <code>AppErrorAlert</code> renders known platform / backend codes
+        (titles, messages, guidance) — then trigger live ones.
       </Typography>
     </Stack>
   );

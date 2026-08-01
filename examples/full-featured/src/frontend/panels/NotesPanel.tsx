@@ -15,7 +15,7 @@ import {
   AppErrorAlert,
   useBackendMutation,
   useBackendQuery,
-} from '@digit/app-frontend';
+} from '@digit/lib-frontend';
 
 type Note = {
   id: number;

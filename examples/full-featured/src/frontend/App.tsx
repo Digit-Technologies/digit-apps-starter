@@ -36,7 +36,7 @@ export default function App() {
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
         Reference app for theme, errors, Digit GraphQL, public APIs, secrets, D1 CRUD, and
-        env config — using <code>@digit/app-frontend</code> and <code>@digit/app-backend</code>.
+        env config — using <code>@digit/lib-frontend</code> and <code>@digit/lib-backend</code>.
       </Typography>
 
       <Tabs
