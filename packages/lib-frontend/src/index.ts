@@ -21,13 +21,4 @@ export {
   useBackendQuery,
   useBackendMutation,
 } from "./api"
-export type {
-  DigitResult,
-  BackendFetchOptions,
-  BackendFetchArgs,
-  QueryHookResult,
-  MutationHookResult,
-  UseDigitApiQueryArgs,
-  UseDigitApiMutationArgs,
-  UseBackendQueryArgs,
-} from "./api"
+export type { DigitResult } from "./api"

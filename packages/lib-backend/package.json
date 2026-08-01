@@ -1,5 +1,5 @@
 {
-  "name": "@digit/app-backend",
+  "name": "@digit/lib-backend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@digit/app-shared": "file:../app-shared"
+    "@digit/lib-common": "file:../lib-common"
   },
   "devDependencies": {
     "typescript": "^5.8"

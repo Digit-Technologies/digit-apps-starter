@@ -1,19 +1,19 @@
 import {
-  AppErrorCode,
-  errResult,
-  okResult,
   type AppErrorCode as AppErrorCodeType,
-} from '@digit/app-shared';
+  type ErrorResult,
+  type SuccessResult,
+} from '@digit/lib-common';
 
 export type OkArgs = { data: unknown } & ResponseInit;
 
 /**
  * JSON success Response for Digit app Workers.
- * Result shape comes from `@digit/app-shared`.
+ * Result shape comes from `@digit/lib-common`.
  */
 export function ok({ data, ...init }: OkArgs): Response {
   const status = init.status ?? 200;
-  return Response.json(okResult({ data }), { ...init, status });
+  const body = { ok: true, data } satisfies SuccessResult;
+  return Response.json(body, { ...init, status });
 }
 
 export type ErrArgs = {
@@ -26,7 +26,6 @@ export type ErrArgs = {
  * JSON error Response for Digit app Workers (`{ ok: false, error }`).
  */
 export function err({ code, message, status = 400, ...init }: ErrArgs): Response {
-  return Response.json(errResult({ code, message }), { ...init, status });
+  const body = { ok: false, error: { code, message } } satisfies ErrorResult;
+  return Response.json(body, { ...init, status });
 }
-
-export { AppErrorCode };

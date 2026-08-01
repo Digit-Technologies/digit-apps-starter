@@ -1,4 +1,4 @@
-import { AppErrorCode, type AppErrorCode as AppErrorCodeType } from '@digit/app-shared';
+import { AppErrorCode, type AppErrorCode as AppErrorCodeType } from '@digit/lib-common';
 
 import { err } from './respond';
 
@@ -51,7 +51,7 @@ export type CreateHandlerArgs = {
  * `ctx` is Cloudflare’s `ExecutionContext` (e.g. `waitUntil`) — not an app bag.
  *
  * @example Env var + success
- * import { createHandler, requireEnv, ok } from '@digit/app-backend';
+ * import { createHandler, requireEnv, ok } from '@digit/lib-backend';
  *
  * export default createHandler({
  *   fetch: async ({ env }) => {
@@ -60,16 +60,16 @@ export type CreateHandlerArgs = {
  *   },
  * });
  *
- * @example Route + domain failure
- * import { createHandler, err, ok, AppErrorCode } from '@digit/app-backend';
+ * @example Path match + domain failure
+ * import { AppErrorCode } from '@digit/lib-common';
+ * import { backendPath, createHandler, err, ok } from '@digit/lib-backend';
  *
  * export default createHandler({
  *   fetch: async ({ request }) => {
- *     const url = new URL(request.url);
- *     const [, resource, id] = url.pathname.replace(/^\/proxy\/backend/, '').split('/');
+ *     const path = backendPath(request);
  *
- *     if (resource === 'notes' && request.method === 'GET' && id) {
- *       const note = await loadNote(id); // your code
+ *     if (request.method === 'GET' && path.startsWith('/notes/')) {
+ *       const note = await loadNote(path.slice('/notes/'.length)); // your code
  *       if (!note) {
  *         return err({
  *           code: AppErrorCode.NOT_FOUND,
@@ -85,14 +85,8 @@ export type CreateHandlerArgs = {
  * });
  *
  * @example Validate JSON body
- * import {
- *   AppErrorCode,
- *   createHandler,
- *   err,
- *   ok,
- *   parseJsonResponse,
- *   requiredString,
- * } from '@digit/app-backend';
+ * import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-common';
+ * import { createHandler, err, ok } from '@digit/lib-backend';
  *
  * export default createHandler({
  *   fetch: async ({ request }) => {
@@ -119,7 +113,8 @@ export type CreateHandlerArgs = {
  * });
  *
  * @example Secret + upstream fetch + waitUntil
- * import { createHandler, requireEnv, err, ok, AppErrorCode } from '@digit/app-backend';
+ * import { AppErrorCode } from '@digit/lib-common';
+ * import { createHandler, requireEnv, err, ok } from '@digit/lib-backend';
  *
  * export default createHandler({
  *   fetch: async ({ env, ctx }) => {

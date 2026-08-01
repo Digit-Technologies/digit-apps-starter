@@ -1,24 +1,45 @@
-# `@digit/app-backend`
+# `@digit/lib-backend`
 
 Helpers for Digit app Cloudflare Workers (bundled into `backend/worker.js`).
 
-Depends on [`@digit/app-shared`](../app-shared) for results, codes, and pure
-validation — this package adds `Response` helpers and Worker utilities.
+Depends on [`@digit/lib-common`](../lib-common) internally. Apps should also depend on
+`@digit/lib-common` and import codes / validation from there — this package does **not**
+re-export them.
 
 ## Public API
 
 Import from the package root only. Helpers take named arguments.
 
-Wrap the Worker with `createHandler` so every response is structured JSON
-(`{ ok: true, data }` / `{ ok: false, error }`), including unexpected throws.
+| Export | Role |
+| --- | --- |
+| `createHandler` | Wrap `fetch` so every response is structured JSON |
+| `backendPath` | Strip `/proxy/backend` from the request path |
+| `ok` / `err` | Success / error `Response` helpers |
+| `requireEnv` / `optionalEnv` | Read env vars, secrets, and bindings |
+| `HandlerError` | Thrown by `requireEnv`; mapped by `createHandler` (apps rarely throw it) |
+
+Wrap the Worker with `createHandler`. Use `backendPath(request)`, then match with normal
+`method` + `path` checks:
 
 ```js
-import { createHandler, requireEnv, ok, err, AppErrorCode } from '@digit/app-backend';
+import { AppErrorCode } from '@digit/lib-common';
+import { backendPath, createHandler, requireEnv, ok, err } from '@digit/lib-backend';
 
 export default createHandler({
   fetch: async ({ request, env }) => {
-    const message = requireEnv({ env, key: 'WELCOME_MESSAGE' });
-    return ok({ data: { message } });
+    const path = backendPath(request);
+    const { method } = request;
+
+    if (method === 'GET' && path === '/greeting') {
+      return ok({ data: { message: requireEnv({ env, key: 'WELCOME_MESSAGE' }) } });
+    }
+
+    if (method === 'PUT' && path.startsWith('/notes/')) {
+      const id = path.slice('/notes/'.length);
+      return ok({ data: { id } });
+    }
+
+    return err({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });
   },
 });
 ```
@@ -30,7 +51,8 @@ export default createHandler({
 ## Result responses
 
 ```js
-import { ok, err, AppErrorCode } from '@digit/app-backend';
+import { AppErrorCode } from '@digit/lib-common';
+import { ok, err } from '@digit/lib-backend';
 
 ok({ data: { notes: [] } }); // Response.json({ ok: true, data })
 err({ code: AppErrorCode.VALIDATION_ERROR, message: 'title is required.', status: 400 });
@@ -38,8 +60,11 @@ err({ code: AppErrorCode.VALIDATION_ERROR, message: 'title is required.', status
 
 ## Validation
 
+Import parsers from `@digit/lib-common`, then map failures with `err` from this package:
+
 ```js
-import { parseJsonResponse, requiredString, optionalString, err, ok } from '@digit/app-backend';
+import { parseJsonResponse, requiredString, optionalString } from '@digit/lib-common';
+import { err, ok } from '@digit/lib-backend';
 
 const parsed = await parseJsonResponse({
   value: request.json(),
@@ -56,7 +81,9 @@ return ok({ data: { note: parsed.value } });
 
 ## Other helpers
 
-- `requireEnv` / `optionalEnv` — env vars, secrets, and bindings (D1, …)
+- `backendPath` — pathname with `/proxy/backend` stripped
+- `requireEnv` — required env vars, secrets, and bindings (D1, …); missing → `HandlerError`
+- `optionalEnv` — optional value (`T | null`); use when absence is a valid branch
 
 Use plain `fetch` for third-party HTTP. Map failures with `err({ code: AppErrorCode.UPSTREAM_ERROR, … })`
 and never put secret values or raw upstream bodies into `error.message` / `data`.
@@ -64,7 +91,7 @@ and never put secret values or raw upstream bodies into `error.message` / `data`
 ## Bundle with Vite
 
 ```json
-"build:backend": "vite build --config vite.backend.config.ts && mkdir -p backend/migrations && cp worker/migrations/*.sql backend/migrations/"
+"build:backend": "vite build --config vite.backend.config.ts && mkdir -p backend/migrations && cp src/backend/migrations/*.sql backend/migrations/"
 ```
 
 See `examples/full-featured` for `vite.backend.config.ts`.
@@ -74,7 +101,8 @@ See `examples/full-featured` for `vite.backend.config.ts`.
 ```json
 {
   "dependencies": {
-    "@digit/app-backend": "file:../../packages/app-backend"
+    "@digit/lib-backend": "file:../../packages/lib-backend",
+    "@digit/lib-common": "file:../../packages/lib-common"
   }
 }
 ```

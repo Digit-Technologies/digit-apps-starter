@@ -1,5 +1,5 @@
 {
-  "name": "@digit/app-frontend",
+  "name": "@digit/lib-frontend",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
     "./tokens.css": "./src/theme/tokens.css"
   },
   "dependencies": {
-    "@digit/app-shared": "file:../app-shared"
+    "@digit/lib-common": "file:../lib-common"
   },
   "peerDependencies": {
     "@emotion/react": "^11",

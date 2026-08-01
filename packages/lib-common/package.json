@@ -1,5 +1,5 @@
 {
-  "name": "@digit/app-shared",
+  "name": "@digit/lib-common",
   "version": "0.1.0",
   "private": true,
   "type": "module",

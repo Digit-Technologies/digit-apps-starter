@@ -1,4 +1,4 @@
-import { AppErrorCode } from '@digit/app-shared';
+import { AppErrorCode } from '@digit/lib-common';
 
 import type { AppError } from './types';
 
@@ -18,6 +18,7 @@ const PLATFORM_USER_MESSAGES: Record<string, string> = {
   REDEEM_FAILED: 'Could not start a session. Re-open the app from Digit.',
 };
 
+/** Fallback when the Worker did not send a specific message. */
 const BACKEND_USER_MESSAGES: Record<string, string> = {
   [AppErrorCode.MISSING_CONFIG]:
     'This app is missing required configuration. Set the env var or secret in Digit.',
@@ -27,8 +28,62 @@ const BACKEND_USER_MESSAGES: Record<string, string> = {
   [AppErrorCode.SERVER_ERROR]: 'Something went wrong on the server. Try again shortly.',
 };
 
+const CODE_TITLES: Record<string, string> = {
+  NO_SESSION: 'Sign-in required',
+  SESSION_EXPIRED: 'Session expired',
+  SESSION_APP_MISMATCH: 'Wrong app session',
+  RATE_LIMITED: 'Too many requests',
+  APP_UNAVAILABLE: 'App unavailable',
+  NO_BACKEND: 'Backend not configured',
+  BACKEND_UNAVAILABLE: 'Backend unavailable',
+  OPERATION_NOT_ALLOWED: 'Not allowed',
+  [AppErrorCode.MISSING_CONFIG]: 'Configuration needed',
+  [AppErrorCode.VALIDATION_ERROR]: 'Check your input',
+  [AppErrorCode.UPSTREAM_ERROR]: 'Upstream error',
+  [AppErrorCode.NOT_FOUND]: 'Not found',
+  [AppErrorCode.SERVER_ERROR]: 'Server error',
+  CLIENT_UNAVAILABLE: 'Unavailable',
+};
+
+/** Extra next-step copy shown under the main message for known codes. */
+const CODE_GUIDANCE: Record<string, string> = {
+  NO_SESSION: 'Close this view and open the app again from Digit.',
+  SESSION_EXPIRED: 'Close this view and open the app again from Digit.',
+  SESSION_APP_MISMATCH: 'Reload the app from Digit so the session matches this app.',
+  NO_BACKEND:
+    'Publish a bundle whose manifest declares backend.kind: "cloudflare-worker".',
+  [AppErrorCode.MISSING_CONFIG]:
+    'In Digit, open the app → Env vars / Secrets, set the missing key, then republish.',
+  CLIENT_UNAVAILABLE:
+    'This screen only works inside the Digit app harness (not plain local Vite alone).',
+};
+
+export type ErrorPresentation = {
+  title: string;
+  message: string;
+  /** Optional next-step guidance for known codes — baked into AppErrorAlert. */
+  guidance: string | null;
+  retryable: boolean;
+};
+
+function kindTitle(error: AppError): string {
+  switch (error.kind) {
+    case 'platform':
+      return 'Platform error';
+    case 'graphql':
+      return 'GraphQL error';
+    case 'backend':
+      return 'Backend error';
+    case 'unavailable':
+      return 'Unavailable';
+    default:
+      return 'Error';
+  }
+}
+
 /**
- * Prefer a short, user-facing sentence. Falls back to the error's own message.
+ * Prefer a short, user-facing sentence. For backend codes, prefer the Worker’s
+ * message when present (often names the field or env key).
  */
 export function userMessage(error: AppError): string {
   if (error.code) {
@@ -36,6 +91,7 @@ export function userMessage(error: AppError): string {
       return PLATFORM_USER_MESSAGES[error.code];
     }
     if (error.kind === 'backend' && BACKEND_USER_MESSAGES[error.code]) {
+      if (error.message?.trim()) return error.message;
       return BACKEND_USER_MESSAGES[error.code];
     }
   }
@@ -48,10 +104,34 @@ export function userMessage(error: AppError): string {
   return error.message || 'Something went wrong.';
 }
 
+export function errorTitle(error: AppError): string {
+  if (error.code && CODE_TITLES[error.code]) return CODE_TITLES[error.code];
+  return kindTitle(error);
+}
+
+export function errorGuidance(error: AppError): string | null {
+  if (error.code && CODE_GUIDANCE[error.code]) return CODE_GUIDANCE[error.code];
+  return null;
+}
+
 export function isRetryable(error: AppError): boolean {
   if (error.code === 'RATE_LIMITED' || error.code === 'BACKEND_UNAVAILABLE') return true;
   if (error.code === AppErrorCode.UPSTREAM_ERROR) return true;
   if (error.code === AppErrorCode.SERVER_ERROR) return true;
-  if (error.status !== null && error.status >= 500) return true;
+  if (error.status !== null && error.status >= 500) {
+    // Config mistakes are 500 from requireEnv but are not transient.
+    if (error.code === AppErrorCode.MISSING_CONFIG) return false;
+    return true;
+  }
   return false;
+}
+
+/** Title, message, guidance, and retryability for AppErrorAlert. */
+export function presentError(error: AppError): ErrorPresentation {
+  return {
+    title: errorTitle(error),
+    message: userMessage(error),
+    guidance: errorGuidance(error),
+    retryable: isRetryable(error),
+  };
 }

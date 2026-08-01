@@ -1,37 +1,43 @@
-# `@digit/app-shared`
+# `@digit/lib-common`
 
 Zero-dependency types and helpers shared by Digit app **frontend** and **backend**:
 
 - App error codes (`VALIDATION_ERROR`, `MISSING_CONFIG`, …)
-- JSON results `{ ok: true, data }` / `{ ok: false, error: { code, message } }`
-- Pure validation (`requiredString`, `optionalString`, `parseObject`)
+- JSON result **types** `{ ok: true, data }` / `{ ok: false, error: { code, message } }`
+- Pure validation (`requiredString`, `optionalString`, `parseObject`, `parseJsonResponse`)
 
-No React, no `Response` — those live in `@digit/app-frontend` / `@digit/app-backend`.
+No React, no `Response` — those live in `@digit/lib-frontend` / `@digit/lib-backend`.
 
 ## Public API
 
-Import from the package root only (`AppErrorCode`, `okResult` / `errResult`,
-`parseJsonResponse`, `parseObject` + string field helpers). Other files under `src/` are
-implementation details.
+Import from the package root only (`AppErrorCode`, result types, validation helpers).
+Other files under `src/` are implementation details.
 
-`@digit/app-frontend` and `@digit/app-backend` already re-export the common pieces;
-most apps never depend on this package directly.
+Apps that use a Worker (or that branch on app error codes in the UI) should depend on this
+package **directly**. `@digit/lib-frontend` and `@digit/lib-backend` do **not** re-export
+these helpers.
 
-## Result
+## Result wire shape
+
+Worker responses use this JSON shape (built with `ok` / `err` from `@digit/lib-backend`):
 
 ```ts
-import { okResult, errResult, AppErrorCode } from '@digit/app-shared';
+import type { SuccessResult, ErrorResult, Result } from '@digit/lib-common';
 
-okResult({ data: { notes: [] } });
-errResult({ code: AppErrorCode.VALIDATION_ERROR, message: 'title is required.' });
+// SuccessResult: { ok: true, data: T }
+// ErrorResult:   { ok: false, error: { code, message } }
 ```
+
+App Workers should return `ok({ data })` / `err({ code, message })` from
+`@digit/lib-backend` — do not hand-build these objects.
 
 ## Validation
 
-Parsers return `{ ok: true, value }` or `{ ok: false, error: { code, message } }`:
+Parsers return `{ ok: true, value }` or `{ ok: false, error: { code, message } }`
+(note: `value`, not `data`):
 
 ```ts
-import { parseObject, requiredString, optionalString } from '@digit/app-shared';
+import { parseObject, requiredString, optionalString } from '@digit/lib-common';
 
 const parsed = parseObject({
   value: body,
@@ -57,9 +63,10 @@ use `parseObject({ value, fields })`.
 ```json
 {
   "dependencies": {
-    "@digit/app-shared": "file:../../packages/app-shared"
+    "@digit/lib-common": "file:../../packages/lib-common"
   }
 }
 ```
 
-`@digit/app-frontend` and `@digit/app-backend` already depend on this package.
+With a Worker, depend on `@digit/lib-common` alongside `@digit/lib-backend`.
+Frontend-only apps can skip it unless they import codes/types in UI code.

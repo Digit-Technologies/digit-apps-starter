@@ -1,4 +1,4 @@
-import { AppErrorCode } from '@digit/app-shared';
+import { AppErrorCode } from '@digit/lib-common';
 
 import { HandlerError } from './createHandler';
 
@@ -28,10 +28,12 @@ export function requireEnv<T = string>({ env, key }: RequireEnvArgs): T {
 }
 
 /**
- * Optional string env: returns null when unset / empty (not an error).
+ * Optional env / binding: returns null when unset (not an error).
+ * Empty string → null. Prefer `requireEnv` when the handler cannot run without the value.
  */
-export function optionalEnv({ env, key }: RequireEnvArgs): string | null {
+export function optionalEnv<T = string>({ env, key }: RequireEnvArgs): T | null {
   const value = env[key];
-  if (typeof value !== 'string' || value.length === 0) return null;
-  return value;
+  if (value === undefined || value === null) return null;
+  if (value === '') return null;
+  return value as T;
 }

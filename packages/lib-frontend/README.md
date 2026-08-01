@@ -1,4 +1,4 @@
-# `@digit/app-frontend`
+# `@digit/lib-frontend`
 
 Digit frontend kit for custom apps: MUI theme (`DigitThemeProvider`), React data
 hooks for the Digit API and app backend, and error normalization/display.
@@ -25,7 +25,7 @@ Every app template wraps its UI in `DigitThemeProvider`:
 
 ```tsx
 import { createRoot } from 'react-dom/client';
-import { DigitThemeProvider } from '@digit/app-frontend';
+import { DigitThemeProvider } from '@digit/lib-frontend';
 import App from './App';
 
 createRoot(document.getElementById('root')!).render(
@@ -42,7 +42,7 @@ The provider:
 - Applies Digit `CssBaseline`
 
 Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`) are exported
-from this package — importing `@digit/app-frontend` also augments `Window`. Prefer the
+from this package — importing `@digit/lib-frontend` also augments `Window`. Prefer the
 data hooks over calling `window.DigitProxyClient` yourself. Do not add a local
 `digit.d.ts` for the harness.
 
@@ -61,7 +61,7 @@ import {
   useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
-} from '@digit/app-frontend';
+} from '@digit/lib-frontend';
 
 // Digit GraphQL API
 const { data, error, loading, refetch } = useDigitApiQuery({
@@ -91,19 +91,20 @@ Error kinds:
 | `unavailable` | Missing `DigitProxyClient` (local Vite without harness) |
 | `unknown` | Thrown / non-JSON / unexpected shapes |
 
-Platform codes stay distinct from app-backend codes (`AppErrorCode` on
-`@digit/app-shared` / `@digit/app-backend`). Pair with `@digit/app-backend` on the
-Worker so result shapes match.
+Platform codes stay distinct from app codes (`AppErrorCode` on `@digit/lib-common`).
+Pair with `@digit/lib-backend` on the Worker so result shapes match.
 
-`AppErrorAlert` shows a safe user message, optional code/request id, Copy
-support info, and Retry when the error looks retryable.
+`AppErrorAlert` maps known platform / backend codes to a title, safe message, optional
+next-step guidance (e.g. `MISSING_CONFIG` → set env/secrets in Digit), Copy support
+info, and Retry when the error looks transient. Prefer rendering `AppErrorAlert` over
+branching on codes in app UI.
 
 ## Depend from an app
 
 ```json
 {
   "dependencies": {
-    "@digit/app-frontend": "file:../../packages/app-frontend"
+    "@digit/lib-frontend": "file:../../packages/lib-frontend"
   }
 }
 ```
@@ -112,7 +113,7 @@ Apps must also depend on the peer packages (`react`, `react-dom`, `@mui/material
 `@emotion/react`, `@emotion/styled`). Vite configs need `resolve.preserveSymlinks: true`
 so peers resolve from the app’s `node_modules` when the package is linked via `file:`.
 
-See also [`@digit/app-backend`](../app-backend) for Worker helpers.
+See also [`@digit/lib-backend`](../lib-backend) for Worker helpers.
 
 ## CSS tokens
 

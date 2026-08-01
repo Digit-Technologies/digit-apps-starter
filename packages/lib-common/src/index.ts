@@ -5,7 +5,6 @@
 
 export * from './codes';
 
-export { okResult, errResult } from './result';
 export type {
   SuccessResult,
   ErrorResult,
@@ -18,12 +17,4 @@ export {
   requiredString,
   optionalString,
   parseObject,
-} from './validate';
-export type {
-  StringFieldOptions,
-  RequiredStringArgs,
-  OptionalStringArgs,
-  ParseFields,
-  ParseObjectArgs,
-  ParseJsonResponseArgs,
 } from './validate';

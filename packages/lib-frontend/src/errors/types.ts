@@ -1,11 +1,11 @@
-import type { ErrorResult, SuccessResult } from '@digit/app-shared';
+import type { ErrorResult, SuccessResult } from '@digit/lib-common';
 
 /** Kind of failure after normalizing a Digit proxy / backend / GraphQL result. */
 export type AppErrorKind = 'platform' | 'graphql' | 'backend' | 'unavailable' | 'unknown';
 
 export type AppError = {
   kind: AppErrorKind;
-  /** Stable machine code when available (platform or app-backend). */
+  /** Stable machine code when available (platform or app Worker). */
   code: string | null;
   /** Safe-to-show explanation (may still be technical). Prefer userMessage(). */
   message: string;

@@ -7,31 +7,16 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { isRetryable, userMessage } from './messages';
+import { presentError } from './messages';
 import type { AppError } from './types';
 
 export type AppErrorAlertProps = {
   error: AppError;
   onRetry?: () => void;
-  /** Override the Alert title. Defaults to a kind-based label. */
+  /** Override the Alert title. Defaults to a code-aware label when known. */
   title?: string;
   children?: ReactNode;
 };
-
-function defaultTitle(error: AppError): string {
-  switch (error.kind) {
-    case 'platform':
-      return 'Platform error';
-    case 'graphql':
-      return 'GraphQL error';
-    case 'backend':
-      return 'Backend error';
-    case 'unavailable':
-      return 'Unavailable';
-    default:
-      return 'Error';
-  }
-}
 
 function supportInfo(error: AppError): string {
   const parts = [
@@ -44,12 +29,13 @@ function supportInfo(error: AppError): string {
 }
 
 /**
- * Shared error surface for Digit apps. Shows a safe user message, optional machine
- * code / request id, Copy support info, and Retry when `onRetry` is set and the error
- * looks transient (`isRetryable`).
+ * Shared error surface for Digit apps. Maps known platform / backend codes to a
+ * title, safe message, optional next-step guidance, Copy support info, and Retry
+ * when the error looks transient. Apps should render this instead of branching on
+ * `AppErrorCode` in UI.
  *
  * @example Query failure with refetch
- * import { AppErrorAlert, useBackendQuery } from '@digit/app-frontend';
+ * import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
  *
  * function NotesList() {
  *   const { data, error, loading, refetch } = useBackendQuery({ path: '/notes' });
@@ -62,7 +48,7 @@ function supportInfo(error: AppError): string {
  * }
  *
  * @example Mutation failure (no retry button — validation / config errors)
- * import { AppErrorAlert, useBackendMutation } from '@digit/app-frontend';
+ * import { AppErrorAlert, useBackendMutation } from '@digit/lib-frontend';
  *
  * function SaveNote() {
  *   const [saveNote, { error, loading }] = useBackendMutation();
@@ -81,7 +67,7 @@ function supportInfo(error: AppError): string {
  * }
  *
  * @example Digit GraphQL query + custom title
- * import { AppErrorAlert, useDigitApiQuery } from '@digit/app-frontend';
+ * import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
  *
  * function Items() {
  *   const { error, refetch } = useDigitApiQuery({
@@ -100,16 +86,17 @@ function supportInfo(error: AppError): string {
  *   return null;
  * }
  *
- * @example Extra guidance via children
+ * @example Extra app-specific guidance via children (known codes already have baked-in hints)
  * <AppErrorAlert error={error} onRetry={() => void refetch()}>
  *   <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
- *     If this keeps happening, check the app’s env vars in Digit settings.
+ *     Notes are stored in this app’s D1 database.
  *   </Typography>
  * </AppErrorAlert>
  */
 export const AppErrorAlert = ({ error, onRetry, title, children }: AppErrorAlertProps) => {
   const [copied, setCopied] = useState(false);
-  const showRetry = Boolean(onRetry) && isRetryable(error);
+  const presentation = presentError(error);
+  const showRetry = Boolean(onRetry) && presentation.retryable;
   const info = supportInfo(error);
 
   const handleCopy = async () => {
@@ -140,8 +127,13 @@ export const AppErrorAlert = ({ error, onRetry, title, children }: AppErrorAlert
         </Stack>
       }
     >
-      <AlertTitle>{title ?? defaultTitle(error)}</AlertTitle>
-      <Typography variant="body2">{userMessage(error)}</Typography>
+      <AlertTitle>{title ?? presentation.title}</AlertTitle>
+      <Typography variant="body2">{presentation.message}</Typography>
+      {presentation.guidance ? (
+        <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+          {presentation.guidance}
+        </Typography>
+      ) : null}
       {(error.code || error.requestId) && (
         <Box sx={{ mt: 1 }}>
           <Typography variant="caption" component="p" sx={{ color: 'text.secondary' }}>

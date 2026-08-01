@@ -1,4 +1,4 @@
-import type { AppErrorCode, AppErrorDetail } from './codes';
+import type { AppErrorDetail } from './codes';
 
 /** Standard JSON success body returned by app Workers. */
 export type SuccessResult<T = unknown> = {
@@ -14,20 +14,6 @@ export type ErrorResult = {
 
 /** Discriminated `{ ok, data }` / `{ ok, error }` result for Worker JSON responses. */
 export type Result<T = unknown> = SuccessResult<T> | ErrorResult;
-
-export function okResult<T>({ data }: { data: T }): SuccessResult<T> {
-  return { ok: true, data };
-}
-
-export function errResult({
-  code,
-  message,
-}: {
-  code: AppErrorCode;
-  message: string;
-}): ErrorResult {
-  return { ok: false, error: { code, message } };
-}
 
 /** Parse-time result (uses `value`, not `data`) for validation helpers. */
 export type ParseOk<T> = { ok: true; value: T };
