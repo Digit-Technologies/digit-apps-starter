@@ -1,0 +1,9 @@
+{
+  "name": "Full Featured",
+  "entryFile": "main.js",
+  "permissions": ["READ_ITEM"],
+  "backend": {
+    "kind": "cloudflare-worker",
+    "d1": { "binding": "FULL_FEATURED_DB" }
+  }
+}
