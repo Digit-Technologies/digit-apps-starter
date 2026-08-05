@@ -62,11 +62,11 @@ Build the zip with `npm run pack` (`digit-app pack`) and upload **`app.zip` as p
 
 ```
 app.zip
+├── manifest.json             # Digit publish config — required at the zip root
 ├── frontend/                 # Digit deploy — required
-│   ├── main.js
-│   └── manifest.json
+│   └── index.js              # the entry, by convention
 ├── backend/                  # Digit deploy — when manifest.backend is set
-│   ├── worker.js
+│   ├── index.js              # single-file Worker ESM
 │   └── migrations/           # optional D1 *.sql
 └── project/                  # required — next-agent rehydrate (source, SPEC, tooling)
     ├── src/
@@ -106,8 +106,10 @@ bundle, and restart at step 2.
 
 **Required in the upload zip**
 
-- `frontend/manifest.json` and `manifest.entryFile` under `frontend/`
-- When `manifest.backend` is set: `backend/worker.js` (plus migrations if used)
+- `manifest.json` at the **zip root** (sibling of `frontend/` / `backend/`) and
+  `frontend/index.js` (the entry, by convention)
+- When `manifest.backend` is set: `backend/index.js` (plus migrations if used — these
+  require a `database` binding in `manifest.backend.bindings`)
 - `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` (including `lib-build`)
 - `manifest.permissions` use SCREAMING_SNAKE_CASE `apiPermissions.key` values (e.g.
   `READ_ITEM`) — not colon-delimited legacy strings

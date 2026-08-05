@@ -145,17 +145,15 @@ export async function pack({ root = process.cwd() } = {}) {
   console.log('Building backend (if present)…');
   const builtBackend = await buildBackend({ root: appRoot });
   if (!builtBackend) {
-    console.log('No src/backend/worker.js — skipping backend build');
-  }
-
-  if (!(await pathExists(path.join(appRoot, 'frontend', 'manifest.json')))) {
-    throw new Error('frontend/manifest.json missing after build');
+    console.log('No src/backend/index.js — skipping backend build');
   }
 
   const packagesDir = await resolvePackagesDir({ root: appRoot });
   const staging = await fs.mkdtemp(path.join(os.tmpdir(), 'digit-app-pack-'));
 
   try {
+    // Digit expects manifest.json at the zip root, sibling of frontend/ and backend/.
+    await copyPath(path.join(appRoot, 'manifest.json'), path.join(staging, 'manifest.json'));
     await copyPath(path.join(appRoot, 'frontend'), path.join(staging, 'frontend'));
     if (await pathExists(path.join(appRoot, 'backend'))) {
       await copyPath(path.join(appRoot, 'backend'), path.join(staging, 'backend'));

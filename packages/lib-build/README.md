@@ -22,11 +22,13 @@ the platform). Pack builds deploy assets and writes `app.zip` for MCP publish.
 
 | Input | Output |
 | --- | --- |
-| `src/frontend/main.tsx` + root `manifest.json` | `frontend/main.js` + `frontend/manifest.json` |
-| `src/backend/worker.js` (optional) | `backend/worker.js` (+ `backend/migrations/*.sql`) |
+| `src/frontend/main.tsx` | `frontend/index.js` (IIFE — the entry, by convention) |
+| `src/backend/index.js` (optional) | `backend/index.js` (+ `backend/migrations/*.sql`) |
+| Root `manifest.json` | `manifest.json` at the zip root |
 | `SPEC.md` + source/tooling | `project/` inside `app.zip` (vendored `@digit/lib-*`) |
 
-Zip root: `frontend/` (+ `backend/`) for Digit deploy, `project/` for later agents.
+Zip root: `manifest.json` + `frontend/` (+ `backend/`) for Digit deploy, `project/` for
+later agents.
 
 ## Commands
 

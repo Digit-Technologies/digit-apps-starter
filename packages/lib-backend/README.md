@@ -1,6 +1,6 @@
 # `@digit/lib-backend`
 
-Helpers for Digit app Cloudflare Workers (bundled into `backend/worker.js`).
+Helpers for Digit app Cloudflare Workers (bundled into `backend/index.js`).
 
 Depends on [`@digit/lib-common`](../lib-common) internally. Apps should also depend on
 `@digit/lib-common` and import codes / validation from there — this package does **not**

@@ -37,7 +37,7 @@ Digit app progress:
 - [ ] 1. Pick an examples/ template
 - [ ] 2. Confirm the user created the app in Digit (get appId)
 - [ ] 3. Implement frontend (React + MUI + DigitThemeProvider → #root)
-- [ ] 4. Write root manifest.json (copied into frontend/ on build)
+- [ ] 4. Write root manifest.json (staged at the zip root by pack)
 - [ ] 5. Add src/backend/ only if env/secrets or server logic needed
 - [ ] 6. Write/update SPEC.md (iteration context for the next agent)
 - [ ] 7. `npm run pack` → app.zip (frontend/ + backend/ + project/)
@@ -74,7 +74,7 @@ Source project builds into a publishable folder:
 my-app/
 ├── package.json            # @digit/lib-frontend (+ lib-backend/lib-common when Worker);
 │                           #   devDependency @digit/lib-build; script "pack": "digit-app pack"
-├── manifest.json           # app config — copied into frontend/ by digit-app pack
+├── manifest.json           # app config — staged at the zip root by digit-app pack
 ├── SPEC.md                 # iteration context for the next agent (no chat history)
 ├── tsconfig.json
 ├── index.html              # optional local HTML shell (not a Digit preview)
@@ -83,14 +83,13 @@ my-app/
 │   │   ├── main.tsx        # createRoot(#root) + DigitThemeProvider
 │   │   └── App.tsx         # MUI UI
 │   └── backend/            # Worker source (when using a backend)
-│       ├── worker.js       # entry → backend/worker.js (built by pack)
+│       ├── index.js        # entry → backend/index.js (built by pack)
 │       ├── notes.js        # optional — split handlers when a resource grows
 │       └── migrations/
 ├── frontend/               # BUILD OUTPUT — gitignored; produced by digit-app pack
-│   ├── manifest.json
-│   └── main.js
+│   └── index.js            # the entry, by convention (not configurable)
 └── backend/                # BUILD OUTPUT when Worker present — gitignored
-    ├── worker.js           # single-file Worker ESM
+    ├── index.js            # single-file Worker ESM
     └── migrations/         # optional *.sql when using D1
         └── 0001_init.sql
 ```
@@ -106,15 +105,16 @@ writes `app.zip` — **do not commit** those build folders. Also ignore `node_mo
 
 `app.zip` contains:
 
+- **Zip root `manifest.json`** — Digit publish config, sibling of the trees below
 - **Zip root `frontend/`** (+ `backend/` when present) — what Digit deploys
 - **Zip root `project/`** — source, `SPEC.md`, tooling, and vendored `@digit/lib-*`
   (including `lib-build`) under `project/packages/` so a later agent can extract, iterate,
   and pack again without Git
 
-Digit requires `frontend/manifest.json` and, iff the manifest declares a backend,
-`backend/worker.js`. The same zip **must** include `project/` for rehydrate. Digit deploys
-from `frontend/` / `backend/` only. The local script is `pack` (not `publish` — MCP
-`publishApp` is what goes live).
+Digit requires root `manifest.json`, `frontend/index.js`, and, iff the manifest declares a
+backend, `backend/index.js`. The same zip **must** include `project/` for rehydrate. Digit
+deploys from `frontend/` / `backend/` only. The local script is `pack` (not `publish` —
+MCP `publishApp` is what goes live).
 
 ### 4. Frontend rules
 
@@ -145,11 +145,13 @@ from `frontend/` / `backend/` only. The local script is `pack` (not `publish` �
   `DigitThemeProvider` — do not invent a CSS-variable theme or a separate theme toggle
   unless the product requires it.
 - **Entry file must be classic-script compatible.** The harness injects
-  `<script src="/app/{entryFile}">` without `type="module"`. `@digit/lib-build` packs an
-  **IIFE** `main.js` — do not invent another bundler setup.
+  `<script src="/app/index.js">` without `type="module"` — the entry is `frontend/index.js`
+  by convention, not configurable. `@digit/lib-build` packs an **IIFE** `index.js` — do not
+  invent another bundler setup.
 - **Inline CSS into JS.** Handled by `@digit/lib-build` — do not rely on a separate CSS
   file being loaded by the harness.
-- **Reserved names:** `entryFile` must not be `index.html` or `loader.js`.
+- **Reserved names:** the bundle must not contain `frontend/index.html` or
+  `frontend/loader.js` (harness-owned).
 - **Digit API calls:** prefer `useDigitApiQuery` / `useDigitApiMutation` from
   `@digit/lib-frontend`. Never call Digit GraphQL with a
   bearer token from the browser.
@@ -164,14 +166,17 @@ from `frontend/` / `backend/` only. The local script is `pack` (not `publish` �
 ### 5. `manifest.json`
 
 Keep the source file at the **project root** (next to `package.json`). `digit-app pack`
-copies it into `frontend/` — the publish zip requires `frontend/manifest.json`.
+stages it at the **zip root** — the publish zip requires `manifest.json` as a sibling of
+`frontend/` / `backend/`.
+
+No `name`, no `entryFile`, no `compatibilityFlags` — the display name lives on the app in
+Digit, entries are conventions (`frontend/index.js`, `backend/index.js`), and compat flags
+are platform-set.
 
 Minimal:
 
 ```json
 {
-  "name": "Hello World",
-  "entryFile": "main.js",
   "permissions": []
 }
 ```
@@ -180,15 +185,17 @@ With Digit API access + optional backend:
 
 ```json
 {
-  "name": "Items Browser",
-  "entryFile": "main.js",
   "permissions": ["READ_ITEM"],
   "backend": {
     "kind": "cloudflare-worker",
-    "d1": { "binding": "MY_APP_DB" }
+    "bindings": { "MY_APP_DB": "database" }
   }
 }
 ```
+
+`bindings` maps `BINDING_NAME` → type (`"database"` = a platform-provisioned D1; one
+database per app for now). Names are `UPPER_SNAKE_CASE` and must not start with the
+reserved `DIGIT_` prefix.
 
 Details: [reference/manifest.md](reference/manifest.md)
 
@@ -335,11 +342,11 @@ export default createHandler({
 - **Wire shape:** Worker `ok`/`err` use `data` on success. Validation helpers return
   `{ ok, value }` / `{ ok, error }` — different from the Response helpers
 
-When a resource grows (CRUD), keep dispatch in `src/backend/worker.js` and move handlers to
+When a resource grows (CRUD), keep dispatch in `src/backend/index.js` and move handlers to
 a sibling file (see `examples/full-featured/src/backend/notes.js`) — still plain functions,
 not a router.
 
-See `examples/full-featured/src/backend/worker.js` for the reference layout.
+See `examples/full-featured/src/backend/index.js` for the reference layout.
 
 ### Theme / UI don’ts
 

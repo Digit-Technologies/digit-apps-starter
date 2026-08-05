@@ -4,8 +4,9 @@ import react from '@vitejs/plugin-react';
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js';
 
 /**
- * Internal Vite config: Digit loads entryFile as a classic <script> (no type="module"),
- * so build IIFE → frontend/main.js. CSS is injected into the JS bundle.
+ * Internal Vite config: Digit loads the entry as a classic <script> (no type="module"),
+ * so build IIFE → frontend/index.js (the platform entry convention). CSS is injected into
+ * the JS bundle.
  */
 export function frontendViteConfig({ root }) {
   return {
@@ -23,7 +24,7 @@ export function frontendViteConfig({ root }) {
         input: path.join(root, 'src/frontend/main.tsx'),
         output: {
           format: 'iife',
-          entryFileNames: 'main.js',
+          entryFileNames: 'index.js',
           name: 'DigitApp',
         },
       },

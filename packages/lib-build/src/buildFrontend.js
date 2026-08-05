@@ -16,6 +16,4 @@ export async function buildFrontend({ root }) {
     configFile: false,
     ...frontendViteConfig({ root }),
   });
-
-  await fs.copyFile(manifest, path.join(root, 'frontend', 'manifest.json'));
 }
