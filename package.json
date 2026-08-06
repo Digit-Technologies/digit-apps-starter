@@ -1,0 +1,17 @@
+{
+  "name": "digit-apps-starter",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "examples/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "new-app": "node scripts/new-app.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

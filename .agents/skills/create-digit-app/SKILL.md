@@ -4,8 +4,8 @@ description: >-
   Build and publish Digit custom apps (React + MUI + Digit theme via
   @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Use when creating
-  a Digit app, editing an app in this repo, publishing via MCP, or when the user
-  mentions Digit apps, manifest.json, DigitProxyClient, DigitThemeProvider,
+  a Digit app, editing an app in a local clone of this starter, publishing via MCP, or when
+  the user mentions Digit apps, manifest.json, DigitProxyClient, DigitThemeProvider,
   /proxy/digit, or /proxy/backend.
 ---
 
@@ -34,26 +34,39 @@ Copy this checklist and track progress:
 
 ```
 Digit app progress:
-- [ ] 1. Pick an examples/ template
+- [ ] 1. Scaffold apps/<name> (npm run new-app -- <name>)
 - [ ] 2. Confirm the user created the app in Digit (get appId)
 - [ ] 3. Implement frontend (React + MUI + DigitThemeProvider → #root)
 - [ ] 4. Write root manifest.json (staged at the zip root by pack)
 - [ ] 5. Add src/backend/ only if env/secrets or server logic needed
 - [ ] 6. Write/update SPEC.md (iteration context for the next agent)
-- [ ] 7. `npm run pack` → app.zip (frontend/ + backend/ + project/)
+- [ ] 7. `npm run pack -w apps/<name>` → app.zip (frontend/ + backend/ + project/)
 - [ ] 8. Publish via MCP (upload zip out-of-band)
-- [ ] 9. Commit app source in this starter repo (when working here) — not build outputs
+- [ ] 9. Keep app source in the local workspace under apps/ — not build outputs; no upstream PRs
 ```
 
-### 1. Pick a template
+### 1. Scaffold the app
 
-Start from [`examples/full-featured`](../../../examples/full-featured) and trim what you
-don’t need — do not invent a new project shape.
+This repo is a single **npm workspace**. Apps live in `apps/<name>` — that depth is
+required, because apps depend on the libraries via `file:../../packages/*`.
 
-It covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API + secrets + D1 via
-the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Depend on
-`@digit/lib-build` and use `"pack": "digit-app pack"` — do **not** copy Vite configs or
-a local pack script.
+```bash
+npm install                     # once per clone, from the repo root
+npm run new-app -- my-app       # copies examples/full-featured → apps/my-app
+```
+
+`new-app` copies the template, renames the package, writes a `SPEC.md` stub, and re-runs
+`npm install` so the workspace links the new app. Trim what you don't need from the copy —
+do not invent a new project shape.
+
+The template covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API + secrets
++ D1 via the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Keep the
+`@digit/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
+configs, a local pack script, or a per-app `npm install`.
+
+**Always install from the repo root.** `@digit/lib-build` is a `file:` link, so npm puts
+its build toolchain (Vite) in the root `node_modules`, not the app's. Running `npm install`
+only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
 All apps share React + MUI + `@digit/lib-frontend` and the same folder conventions.
 Local Digit preview is **not** supported yet (Worker / env / D1 are platform-injected);
@@ -71,7 +84,15 @@ MCP tools for create/update/delete are not available yet — do not pretend they
 Source project builds into a publishable folder:
 
 ```
-my-app/
+digit-apps-starter/         # workspace root — run npm install here
+├── package.json            # workspaces: packages/*, examples/*, apps/*
+├── packages/               # @digit/lib-* (do not copy into the app)
+└── apps/
+    └── my-app/             # your app — exactly this depth
+```
+
+```
+apps/my-app/
 ├── package.json            # @digit/lib-frontend (+ lib-backend/lib-common when Worker);
 │                           #   devDependency @digit/lib-build; script "pack": "digit-app pack"
 ├── manifest.json           # app config — staged at the zip root by digit-app pack
@@ -98,23 +119,29 @@ Harness types (`DigitHost`, `DigitHostSettings`) come from `@digit/lib-frontend`
 add a local `digit.d.ts`. Prefer the data hooks over calling `window.DigitProxyClient`
 yourself.
 
-**Source vs publish:** edit under `src/frontend` and `src/backend`. `npm run pack`
-(`digit-app pack` from `@digit/lib-build`) builds sibling `frontend/` / `backend/` and
-writes `app.zip` — **do not commit** those build folders. Also ignore `node_modules/`,
-`.vite/`, and `*.zip`. Do not add per-app Vite configs or `scripts/pack.sh`.
+**Source vs publish:** edit under `src/frontend` and `src/backend`. `digit-app pack` (from
+`@digit/lib-build`) builds sibling `frontend/` / `backend/` and writes `app.zip` — **do not
+commit** those build folders. Run it either way:
+
+```bash
+npm run pack -w apps/my-app     # from the repo root
+cd apps/my-app && npm run pack  # from the app
+```
+
+`node_modules/`, `.vite/`, `*.zip`, and `apps/*/frontend/` + `apps/*/backend/` are already
+gitignored. Do not add per-app Vite configs or `scripts/pack.sh`.
 
 `app.zip` contains:
 
 - **Zip root `manifest.json`** — Digit publish config, sibling of the trees below
 - **Zip root `frontend/`** (+ `backend/` when present) — what Digit deploys
 - **Zip root `project/`** — source, `SPEC.md`, tooling, and vendored `@digit/lib-*`
-  (including `lib-build`) under `project/packages/` so a later agent can extract, iterate,
-  and pack again without Git
+  (including `lib-build`) under `project/packages/` — required in the zip; Digit does
+  **not** deploy it (deploy uses `frontend/` / `backend/` only)
 
 Digit requires root `manifest.json`, `frontend/index.js`, and, iff the manifest declares a
-backend, `backend/index.js`. The same zip **must** include `project/` for rehydrate. Digit
-deploys from `frontend/` / `backend/` only. The local script is `pack` (not `publish` —
-MCP `publishApp` is what goes live).
+backend, `backend/index.js`. Digit deploys from `frontend/` / `backend/` only. The local
+script is `pack` (not `publish` — MCP `publishApp` is what goes live).
 
 ### 4. Frontend rules
 
@@ -234,10 +261,10 @@ Do not strip folders or re-zip by hand.
 
 Full steps: [reference/publish.md](reference/publish.md)
 
-### 9. Write SPEC.md (and commit when in this repo)
+### 9. Write SPEC.md (and keep source in the workspace)
 
-Published apps often have **no Git**. `SPEC.md` plus `project/` in the pack zip are how the
-next agent gets context without chat history. Update SPEC before `npm run pack`.
+`SPEC.md` is how the next agent (or a later turn without full chat history) understands the
+app. Update SPEC before `npm run pack`.
 
 SPEC is iteration context — not a second README or route list:
 
@@ -250,8 +277,11 @@ SPEC is iteration context — not a second README or route list:
 Prefer intent / provenance / gotchas; do **not** mirror `manifest.json` or list every
 backend path. Model: [`examples/full-featured/SPEC.md`](../../../examples/full-featured/SPEC.md).
 
-In this starter repo, also commit `src/`, root config, and `SPEC.md`. Do not commit built
-`frontend/` / `backend/`, `node_modules/`, `.vite/`, or `*.zip`.
+Keep `apps/<name>/src/`, root config, `manifest.json`, and `SPEC.md` on disk in this
+workspace so later sessions can iterate. Do not commit built `frontend/` / `backend/`,
+`node_modules/`, `.vite/`, or `*.zip`. Do **not** push or open pull requests against this
+upstream starter — it is a public template, not a contribution target. Local git commits
+in the clone are optional if that helps the user’s own workflow.
 
 Details: [reference/spec.md](reference/spec.md)
 

@@ -68,7 +68,7 @@ app.zip
 ├── backend/                  # Digit deploy — when manifest.backend is set
 │   ├── index.js              # single-file Worker ESM
 │   └── migrations/           # optional D1 *.sql
-└── project/                  # required — next-agent rehydrate (source, SPEC, tooling)
+└── project/                  # required in the zip — source, SPEC, tooling (not deployed)
     ├── src/
     ├── SPEC.md
     ├── package.json          # @digit/lib-* → file:./packages/...
@@ -77,9 +77,7 @@ app.zip
 
 **Do not modify the zip after pack.** Do not `zip -d` / re-zip to drop `project/`, and do
 not hand-build a frontend/backend-only archive. Digit deploys from `frontend/` /
-`backend/`; `project/` is still part of the published artifact so a later agent can
-iterate without Git. If a validator rejects `project/`, stop and report it — that is a
-platform/docs mismatch to fix, not something to work around by stripping the tree.
+`backend/`; `project/` must still be present in the published zip.
 
 ### 4. Publish
 

@@ -34,12 +34,10 @@ Local Digit preview is not supported yet (no local Worker / env / D1 harness).
 manifest.json             # Digit publish config (zip root)
 frontend/                 # Digit deploy
 backend/                  # Digit deploy
-project/                  # Next-agent rehydrate
+project/                  # Required in the zip — source, SPEC, tooling (not deployed)
   src/, SPEC.md, configs
   packages/lib-*          # vendored (incl. lib-build) until registry publish
 ```
-
-After extract: `cd project && npm install`, edit, then `npm run pack` again.
 
 ## Setup in Digit
 

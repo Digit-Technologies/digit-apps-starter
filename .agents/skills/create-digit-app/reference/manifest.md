@@ -75,7 +75,7 @@ backend/                 # Digit deploy — when manifest.backend is set
   index.js               # single-file Worker ESM, by convention
   migrations/
     0001_init.sql
-project/                 # required — source, SPEC, tooling for later agents
+project/                 # required in the zip — source, SPEC, tooling (not deployed)
   src/
   SPEC.md
   package.json

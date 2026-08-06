@@ -1,6 +1,22 @@
 # digit-apps-starter
 
-Skills and example apps for building on the Digit Apps platform.
+Skills, shared libraries, and example apps for building on the Digit Apps platform.
+
+Agents clone this into a **local workspace**, scaffold under `apps/`, pack, and publish to
+Digit. Keep app source under `apps/` in that workspace so later sessions can iterate.
+This upstream repo does not accept contributions — do not open PRs or push here.
+
+## Quick start
+
+```bash
+npm install                     # once per clone, from the repo root (Node 22+)
+npm run new-app -- my-app       # scaffold apps/my-app from examples/full-featured
+npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
+```
+
+This repo is one npm workspace (`packages/*`, `examples/*`, `apps/*`). Always install from
+the repo root — `@digit/lib-build` is linked with `file:`, so npm installs its Vite build
+toolchain into the root `node_modules` rather than the app's.
 
 ## Agent skill
 
@@ -37,15 +53,18 @@ Apps depend on them via `file:…` — not on private `digit-web`. With a Worker
 ## Example
 
 [`examples/full-featured`](examples/full-featured) is the reference app: theme, errors, Digit
-API, public API, secrets, D1 CRUD, and env config. Copy it and trim what you don’t need.
+API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it into
+[`apps/`](apps) — trim what you don’t need from there.
 
 ## Publish reminder
 
 1. Create the app in the Digit UI first (MCP cannot create apps yet)
-2. Write/update `SPEC.md`, then `npm run pack` in the example / your app
-3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, and
-   `project/` (source, SPEC, tooling, vendored libs) so a later agent can iterate without Git
+2. Write/update `SPEC.md`, then `npm run pack -w apps/<name>`
+3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
+   required `project/` (source, SPEC, tooling, vendored libs — not deployed)
 4. Use the MCP publish flow documented in the skill
+5. Keep `apps/<name>` source in the local workspace (not build outputs); do not push or
+   open PRs against this upstream repo
 
 ## License
 

@@ -7,5 +7,7 @@ dist/
 
 # Digit app build outputs (pack into app.zip only — not committed)
 # Sibling to package.json; do not match src/frontend or src/backend.
+apps/*/frontend/
+apps/*/backend/
 examples/*/frontend/
 examples/*/backend/
