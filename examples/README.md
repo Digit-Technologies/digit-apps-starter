@@ -21,7 +21,7 @@ Shared conventions (also enforced by the skill):
   `lib-backend`; `AppErrorCode` / parsers from `lib-common`
 - Root `manifest.json`; `digit-app pack` stages it at the zip root
 - `npm run pack` → `app.zip` with root `manifest.json` + `frontend/` (+ `backend/`) for
-  Digit deploy and
-  `project/` (source, `SPEC.md`, tooling, vendored `@digit/lib-*` incl. `lib-build`)
+  Digit deploy and required `project/` (source, `SPEC.md`, tooling, vendored
+  `@digit/lib-*` incl. `lib-build` — not deployed)
 - Do not copy Vite configs or pack scripts into each example — use `@digit/lib-build`
 - Ignore `node_modules/`, `.vite/`, `*.zip`, and build folders

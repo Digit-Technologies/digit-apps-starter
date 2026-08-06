@@ -136,8 +136,8 @@ gitignored. Do not add per-app Vite configs or `scripts/pack.sh`.
 - **Zip root `manifest.json`** — Digit publish config, sibling of the trees below
 - **Zip root `frontend/`** (+ `backend/` when present) — what Digit deploys
 - **Zip root `project/`** — source, `SPEC.md`, tooling, and vendored `@digit/lib-*`
-  (including `lib-build`) under `project/packages/` — part of the pack artifact Digit
-  expects; keep it in the zip
+  (including `lib-build`) under `project/packages/` — required in the zip; Digit does
+  **not** deploy it (deploy uses `frontend/` / `backend/` only)
 
 Digit requires root `manifest.json`, `frontend/index.js`, and, iff the manifest declares a
 backend, `backend/index.js`. Digit deploys from `frontend/` / `backend/` only. The local
@@ -381,16 +381,6 @@ See `examples/full-featured/src/backend/index.js` for the reference layout.
 - Do **not** invent cream/teal palettes, alternate fonts, or card-heavy custom CSS
 - Do **not** put React/MUI in the harness HTML — the bundle owns UI; the harness only
   provides `#root`, fonts, and `DigitHost` / `DigitProxyClient`
-
-## Troubleshooting
-
-| Symptom | Cause and fix |
-| --- | --- |
-| `Cannot find package 'vite'` / `Cannot find the build toolchain` during pack | `npm install` was run inside the app instead of the workspace root. Run `npm install` from the repo root. |
-| `Cannot find the @digit/lib-* packages` | The app is not at `apps/<name>`, so `file:../../packages/*` misses. Move it, then re-run `npm install` at the root. |
-| `ENOENT … src/frontend/main.tsx` | The app is missing the entry file, or you deleted `src/frontend` while trimming the template. |
-| `SPEC.md is required before pack` | Write `SPEC.md` first — it is the next agent's only context. |
-| `failed to run zip` | The `zip` CLI is missing on the machine. |
 
 ## Additional resources
 

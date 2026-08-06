@@ -1,8 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { build } from 'vite';
+
 import { backendViteConfig } from './vite/backend.js';
-import { loadViteToolchain } from './vite/load.js';
 
 export async function backendEntryExists({ root }) {
   try {
@@ -15,8 +16,6 @@ export async function backendEntryExists({ root }) {
 
 export async function buildBackend({ root }) {
   if (!(await backendEntryExists({ root }))) return false;
-
-  const { build } = await loadViteToolchain({ root });
 
   await build({
     configFile: false,

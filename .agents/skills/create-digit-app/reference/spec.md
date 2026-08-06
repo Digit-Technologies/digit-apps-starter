@@ -54,7 +54,7 @@ realistic builder-perspective SPEC.
 | Where | How the app is preserved |
 | --- | --- |
 | This starter repo | Commit **source** + tooling to git (not build outputs) — this is how agents iterate today |
-| Published Digit app | `npm run pack` → `app.zip` (includes `project/` as a pack artifact Digit expects) |
+| Published Digit app | `npm run pack` → `app.zip` (includes required `project/` source tree) |
 
 ### Commit (starter repo)
 

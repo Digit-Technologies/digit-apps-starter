@@ -60,7 +60,7 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 1. Create the app in the Digit UI first (MCP cannot create apps yet)
 2. Write/update `SPEC.md`, then `npm run pack -w apps/<name>`
 3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
-   `project/` (source, SPEC, tooling, vendored libs) as part of the pack artifact
+   required `project/` (source, SPEC, tooling, vendored libs — not deployed)
 4. Use the MCP publish flow documented in the skill
 5. Commit `apps/<name>` source in this repo (not build outputs)
 
