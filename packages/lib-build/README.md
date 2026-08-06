@@ -20,9 +20,8 @@ the platform). Pack builds deploy assets and writes `app.zip` for MCP publish.
 
 This package brings its own Vite toolchain. Because it is linked with `file:`, npm installs
 that toolchain into the **workspace root** `node_modules`, not the app's — so run
-`npm install` from the repo root (or, for an extracted `app.zip`, from `project/`).
-Installing only inside the app leaves Vite missing and `pack` fails with a message saying
-where to install.
+`npm install` from the repo root. Installing only inside the app leaves Vite missing and
+`pack` fails with a message saying where to install.
 
 ## Conventions
 
@@ -33,8 +32,8 @@ where to install.
 | Root `manifest.json` | `manifest.json` at the zip root |
 | `SPEC.md` + source/tooling | `project/` inside `app.zip` (vendored `@digit/lib-*`) |
 
-Zip root: `manifest.json` + `frontend/` (+ `backend/`) for Digit deploy, `project/` for
-later agents.
+Zip root: `manifest.json` + `frontend/` (+ `backend/`) for Digit deploy, plus `project/`
+as part of the pack artifact.
 
 ## Commands
 

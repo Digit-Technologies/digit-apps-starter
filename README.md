@@ -1,24 +1,21 @@
 # digit-apps-starter
 
-Skills, shared libraries, and an example app for building on the Digit Apps platform.
+Skills, shared libraries, and example apps for building on the Digit Apps platform.
 
-This repo is a **starter**, not a place to keep production apps. Agents clone it, adapt the
-example, pack, and publish to Digit. Source of truth after publish is Digit (`project/` inside
-the upload zip) — later agents download from the platform and iterate there.
+Agents clone this repo, scaffold under `apps/`, pack, publish to Digit, and **commit the
+app source here** so later sessions can keep iterating in this workspace.
 
 ## Quick start
 
 ```bash
-npm install                                              # once per clone, from the repo root
-cp -R examples/full-featured examples/my-app             # working copy (keep full-featured intact)
-# edit examples/my-app, then:
-npm install                                              # link the new workspace member
-npm run pack -w examples/my-app                          # → examples/my-app/app.zip
+npm install                     # once per clone, from the repo root
+npm run new-app -- my-app       # scaffold apps/my-app from examples/full-featured
+npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
 ```
 
-This repo is one npm workspace (`packages/*`, `examples/*`). Always install from the repo
-root — `@digit/lib-build` is linked with `file:`, so npm installs its Vite build toolchain
-into the root `node_modules` rather than the app's.
+This repo is one npm workspace (`packages/*`, `examples/*`, `apps/*`). Always install from
+the repo root — `@digit/lib-build` is linked with `file:`, so npm installs its Vite build
+toolchain into the root `node_modules` rather than the app's.
 
 ## Agent skill
 
@@ -29,7 +26,7 @@ Agents should follow:
 That skill covers:
 
 - **React + MUI + `@digit/lib-frontend`** (required default stack)
-- `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only)
+- `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
 - Mounting to `#root` with `DigitThemeProvider`
 - Root `manifest.json` (staged at the zip root by pack)
 - Digit API access via `useDigitApiQuery` / `/proxy/digit`
@@ -55,16 +52,17 @@ Apps depend on them via `file:…` — not on private `digit-web`. With a Worker
 ## Example
 
 [`examples/full-featured`](examples/full-featured) is the reference app: theme, errors, Digit
-API, public API, secrets, D1 CRUD, and env config. Copy it under `examples/` and trim what
-you don’t need — do not invent a new project shape.
+API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it into
+[`apps/`](apps) — trim what you don’t need from there.
 
 ## Publish reminder
 
 1. Create the app in the Digit UI first (MCP cannot create apps yet)
-2. Write/update `SPEC.md`, then `npm run pack -w examples/<name>`
-3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, and
-   `project/` (source, SPEC, tooling, vendored libs) so a later agent can iterate without Git
+2. Write/update `SPEC.md`, then `npm run pack -w apps/<name>`
+3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
+   `project/` (source, SPEC, tooling, vendored libs) as part of the pack artifact
 4. Use the MCP publish flow documented in the skill
+5. Commit `apps/<name>` source in this repo (not build outputs)
 
 ## License
 

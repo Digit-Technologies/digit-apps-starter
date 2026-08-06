@@ -5,8 +5,12 @@
   "type": "module",
   "workspaces": [
     "packages/*",
-    "examples/*"
+    "examples/*",
+    "apps/*"
   ],
+  "scripts": {
+    "new-app": "node scripts/new-app.mjs"
+  },
   "engines": {
     "node": ">=20"
   }
