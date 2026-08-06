@@ -18,6 +18,12 @@ the platform). Pack builds deploy assets and writes `app.zip` for MCP publish.
 }
 ```
 
+This package brings its own Vite toolchain. Because it is linked with `file:`, npm installs
+that toolchain into the **workspace root** `node_modules`, not the app's — so run
+`npm install` from the repo root (or, for an extracted `app.zip`, from `project/`).
+Installing only inside the app leaves Vite missing and `pack` fails with a message saying
+where to install.
+
 ## Conventions
 
 | Input | Output |
