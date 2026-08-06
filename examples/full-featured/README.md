@@ -10,6 +10,7 @@ Reference Digit app that exercises the main platform surfaces in one place:
 | Public API | Worker → Open-Meteo (no key) via `/proxy/backend/weather` |
 | Secrets | Worker → httpbin bearer using `API_BASE_URL` + `THIRD_PARTY_API_KEY` |
 | Notes | D1 CRUD (`FULL_FEATURED_DB`) |
+| Jobs | Submit `note-stats` via `DIGIT_JOBS`, watch runs; hourly `prune-notes` schedule |
 | Config | Env `WELCOME_MESSAGE` via `/proxy/backend/greeting` |
 
 Uses `@digit/lib-frontend`, `@digit/lib-backend`, `@digit/lib-common`, and
@@ -18,7 +19,7 @@ Uses `@digit/lib-frontend`, `@digit/lib-backend`, `@digit/lib-common`, and
 Layout:
 
 - `src/frontend/` — React UI
-- `src/backend/` — Worker (`index.js`, `notes.js`, migrations)
+- `src/backend/` — Worker (`index.js`, `notes.js`, `jobs.js`, migrations)
 - `frontend/` / `backend/` — build outputs (gitignored; produced by pack)
 - Root `manifest.json`, `package.json`, `SPEC.md`
 

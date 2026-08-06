@@ -5,7 +5,8 @@
 Kitchen-sink reference Digit app used as the default template for new apps. It is a
 tabbed demo of platform surfaces — theme/MUI via `DigitThemeProvider`, shared error UI,
 Digit GraphQL (`READ_ITEM` / items), Worker-backed public weather, secrets-backed third-party
-HTTP, D1 notes CRUD, and an env-driven greeting — not a production business app. Agents
+HTTP, D1 notes CRUD, an env-driven greeting, and platform jobs & schedules (an hourly
+`prune-notes` schedule plus an on-demand `note-stats` job) — not a production business app. Agents
 should copy this example and delete tabs/routes they do not need rather than inventing a
 new layout.
 
@@ -21,6 +22,9 @@ wired to a real host).
 - Env `WELCOME_MESSAGE` — greeting text for the Config tab (`GET /greeting`)
 - Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets tab hits an external HTTP API
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
+- Schedule `prune-notes` (hourly, manifest `backend.schedules`) deletes notes older than
+  `payload.maxAgeDays`; job `note-stats` is submitted via `DIGIT_JOBS` from
+  `POST /jobs/note-stats` — handlers in `src/backend/jobs.js`, UI in the Jobs tab
 
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code.
 `@digit/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@digit/lib-build`)

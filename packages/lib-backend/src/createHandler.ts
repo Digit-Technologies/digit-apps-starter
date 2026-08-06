@@ -1,5 +1,7 @@
 import { AppErrorCode, type AppErrorCode as AppErrorCodeType } from '@digit/lib-common';
+import { WorkerEntrypoint } from 'cloudflare:workers';
 
+import { runJobHandler, type JobHandlers, type JobInvocation } from './jobs';
 import { err } from './respond';
 
 /**
@@ -38,6 +40,8 @@ export type FetchHandler = (args: HandlerFetchArgs) => Response | Promise<Respon
 
 export type CreateHandlerArgs = {
   fetch: FetchHandler;
+  /** Job/schedule handlers by name — invoked by the platform over RPC, never through `fetch`. */
+  jobs?: JobHandlers;
 };
 
 /**
@@ -138,13 +142,12 @@ export type CreateHandlerArgs = {
  *   },
  * });
  */
-export function createHandler({ fetch: handleFetch }: CreateHandlerArgs): {
-  fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response>;
-} {
-  return {
-    async fetch(request, env, ctx) {
+export function createHandler({ fetch: handleFetch, jobs }: CreateHandlerArgs) {
+  // A class, not a plain { fetch } object — only class exports expose RPC methods for job delivery.
+  return class extends WorkerEntrypoint {
+    async fetch(request: Request): Promise<Response> {
       try {
-        return await handleFetch({ request, env, ctx });
+        return await handleFetch({ request, env: this.env, ctx: this.ctx });
       } catch (error) {
         if (error instanceof HandlerError) {
           return err({
@@ -160,6 +163,10 @@ export function createHandler({ fetch: handleFetch }: CreateHandlerArgs): {
           status: 500,
         });
       }
-    },
+    }
+
+    async triggerJob(invocation: JobInvocation): Promise<unknown> {
+      return runJobHandler({ invocation, env: this.env, ctx: this.ctx, jobs: jobs ?? {} });
+    }
   };
 }

@@ -4,6 +4,13 @@
     "kind": "cloudflare-worker",
     "bindings": {
       "FULL_FEATURED_DB": "database"
-    }
+    },
+    "schedules": [
+      {
+        "name": "prune-notes",
+        "everySeconds": 3600,
+        "payload": { "maxAgeDays": 30 }
+      }
+    ]
   }
 }

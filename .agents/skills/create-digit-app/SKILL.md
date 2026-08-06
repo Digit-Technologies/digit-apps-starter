@@ -197,6 +197,11 @@ With Digit API access + optional backend:
 database per app for now). Names are `UPPER_SNAKE_CASE` and must not start with the
 reserved `DIGIT_` prefix.
 
+Backends can also declare `backend.schedules` (recurring background runs, 5-min to 1-day
+intervals) and submit on-demand jobs at runtime — handled via `createHandler({ jobs })`
+and the platform-injected `DIGIT_JOBS` binding (`digitJobs({ env })`). See
+[reference/jobs-and-schedules.md](reference/jobs-and-schedules.md).
+
 Details: [reference/manifest.md](reference/manifest.md)
 
 ### 6. Permissions
@@ -336,6 +341,10 @@ export default createHandler({
 - **`requireEnv({ env, key })`** — missing env/secret/binding throws `HandlerError`
   (mapped by `createHandler`). Prefer this over reading `env.KEY` directly. Apps should
   almost never construct `HandlerError` themselves
+- **Jobs & schedules** — background work goes through the platform scheduler:
+  `createHandler({ jobs })` maps names to handlers (delivered over RPC to the entrypoint
+  `createHandler` emits), `digitJobs({ env })` submits and inspects runs. See
+  [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md)
 - **Upstream HTTP** — plain `fetch`; map failures with
   `AppErrorCode.UPSTREAM_ERROR`. Never put secrets or raw upstream bodies into
   `error.message` / `data`
@@ -362,6 +371,7 @@ See `examples/full-featured/src/backend/index.js` for the reference layout.
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — DigitProxyClient + backend proxy
 - [reference/permissions.md](reference/permissions.md) — permission model and common values
 - [reference/backend-env-secrets.md](reference/backend-env-secrets.md) — env/secrets in Workers
+- [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md) — background jobs, manifest schedules, DIGIT_JOBS
 - [reference/publish.md](reference/publish.md) — MCP publish workflow and zip rules
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context, provenance, zip vs git
 - [`packages/lib-build`](../../../packages/lib-build) — `digit-app pack` shared tooling
