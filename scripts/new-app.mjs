@@ -141,7 +141,8 @@ async function main() {
       `  1. Edit apps/${options.name}/src/frontend (and src/backend if you need a Worker)`,
       `  2. Update apps/${options.name}/manifest.json and SPEC.md`,
       `  3. npm run pack -w apps/${options.name}`,
-      `  4. Commit apps/${options.name} source (not frontend/, backend/, or *.zip)`,
+      `  4. Keep apps/${options.name} source in this workspace (not frontend/, backend/, or *.zip)`,
+      '  5. Do not push or open PRs against the upstream starter',
     ].join('\n'),
   );
 }

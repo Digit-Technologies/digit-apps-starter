@@ -2,13 +2,14 @@
 
 Skills, shared libraries, and example apps for building on the Digit Apps platform.
 
-Agents clone this repo, scaffold under `apps/`, pack, publish to Digit, and **commit the
-app source here** so later sessions can keep iterating in this workspace.
+Agents clone this into a **local workspace**, scaffold under `apps/`, pack, and publish to
+Digit. Keep app source under `apps/` in that workspace so later sessions can iterate.
+This upstream repo does not accept contributions — do not open PRs or push here.
 
 ## Quick start
 
 ```bash
-npm install                     # once per clone, from the repo root
+npm install                     # once per clone, from the repo root (Node 22+)
 npm run new-app -- my-app       # scaffold apps/my-app from examples/full-featured
 npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
 ```
@@ -62,7 +63,8 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
    required `project/` (source, SPEC, tooling, vendored libs — not deployed)
 4. Use the MCP publish flow documented in the skill
-5. Commit `apps/<name>` source in this repo (not build outputs)
+5. Keep `apps/<name>` source in the local workspace (not build outputs); do not push or
+   open PRs against this upstream repo
 
 ## License
 

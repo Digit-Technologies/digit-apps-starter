@@ -4,8 +4,8 @@ description: >-
   Build and publish Digit custom apps (React + MUI + Digit theme via
   @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Use when creating
-  a Digit app, editing an app in this repo, publishing via MCP, or when the user
-  mentions Digit apps, manifest.json, DigitProxyClient, DigitThemeProvider,
+  a Digit app, editing an app in a local clone of this starter, publishing via MCP, or when
+  the user mentions Digit apps, manifest.json, DigitProxyClient, DigitThemeProvider,
   /proxy/digit, or /proxy/backend.
 ---
 
@@ -42,7 +42,7 @@ Digit app progress:
 - [ ] 6. Write/update SPEC.md (iteration context for the next agent)
 - [ ] 7. `npm run pack -w apps/<name>` → app.zip (frontend/ + backend/ + project/)
 - [ ] 8. Publish via MCP (upload zip out-of-band)
-- [ ] 9. Commit app source in this starter repo — not build outputs
+- [ ] 9. Keep app source in the local workspace under apps/ — not build outputs; no upstream PRs
 ```
 
 ### 1. Scaffold the app
@@ -261,7 +261,7 @@ Do not strip folders or re-zip by hand.
 
 Full steps: [reference/publish.md](reference/publish.md)
 
-### 9. Write SPEC.md (and commit in this repo)
+### 9. Write SPEC.md (and keep source in the workspace)
 
 `SPEC.md` is how the next agent (or a later turn without full chat history) understands the
 app. Update SPEC before `npm run pack`.
@@ -277,8 +277,11 @@ SPEC is iteration context — not a second README or route list:
 Prefer intent / provenance / gotchas; do **not** mirror `manifest.json` or list every
 backend path. Model: [`examples/full-featured/SPEC.md`](../../../examples/full-featured/SPEC.md).
 
-Commit `apps/<name>/src/`, root config, `manifest.json`, and `SPEC.md` in this starter
-repo. Do not commit built `frontend/` / `backend/`, `node_modules/`, `.vite/`, or `*.zip`.
+Keep `apps/<name>/src/`, root config, `manifest.json`, and `SPEC.md` on disk in this
+workspace so later sessions can iterate. Do not commit built `frontend/` / `backend/`,
+`node_modules/`, `.vite/`, or `*.zip`. Do **not** push or open pull requests against this
+upstream starter — it is a public template, not a contribution target. Local git commits
+in the clone are optional if that helps the user’s own workflow.
 
 Details: [reference/spec.md](reference/spec.md)
 

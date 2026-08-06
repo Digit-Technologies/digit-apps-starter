@@ -9,7 +9,7 @@ from the source.
 
 Write or update it as part of the workflow (before `npm run pack`), not as an afterthought.
 
-In the publish zip, SPEC lives at `project/SPEC.md`. In this starter repo it lives at the
+In the publish zip, SPEC lives at `project/SPEC.md`. In a local clone it lives at the
 app root next to `package.json`.
 
 ## What belongs in SPEC
@@ -49,14 +49,14 @@ decisions the user made mid-build.
 See [`examples/full-featured/SPEC.md`](../../../../examples/full-featured/SPEC.md) for a
 realistic builder-perspective SPEC.
 
-## Starter repo vs Digit zip
+## Local workspace vs Digit zip
 
 | Where | How the app is preserved |
 | --- | --- |
-| This starter repo | Commit **source** + tooling to git (not build outputs) — this is how agents iterate today |
+| Local clone / agent workspace | Keep **source** under `apps/<name>` on disk (not build outputs) so later sessions can iterate. Local git commits are optional. Do not push or open PRs against this upstream starter. |
 | Published Digit app | `npm run pack` → `app.zip` (includes required `project/` source tree) |
 
-### Commit (starter repo)
+### Keep in the workspace
 
 - `src/frontend/` — UI source
 - `src/backend/` — Worker source (when the app has a backend)
@@ -64,7 +64,7 @@ realistic builder-perspective SPEC.
   `index.html` (if any), `README.md`, `SPEC.md`
 - `package.json` must use `@digit/lib-build` (`"pack": "digit-app pack"`)
 
-### Do not commit
+### Do not keep / do not commit
 
 - Built `frontend/` and `backend/` (gitignored; only packed into `app.zip`)
 - Per-app Vite configs or `scripts/pack.sh` — owned by `@digit/lib-build`
@@ -76,8 +76,6 @@ realistic builder-perspective SPEC.
 
 ```bash
 # …verify… update SPEC.md if purpose/constraints changed…
-git add src manifest.json package.json package-lock.json \
-  tsconfig.json index.html README.md SPEC.md
-git commit
 npm run pack           # digit-app pack → build + app.zip
+# Optional: local git commit in the clone for the user's own history — never push upstream
 ```
