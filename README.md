@@ -13,7 +13,7 @@ That skill covers:
 - **React + MUI + `@digit/lib-frontend`** (required default stack)
 - `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
 - Mounting to `#root` with `DigitThemeProvider`
-- Root `manifest.json` (copied into `frontend/` on build)
+- Root `manifest.json` (staged at the zip root by pack)
 - Digit API access via `useDigitApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
 - Publishing with Digit MCP (`apps` → upload zip → `publishApp` → poll)

@@ -18,7 +18,7 @@ Uses `@digit/lib-frontend`, `@digit/lib-backend`, `@digit/lib-common`, and
 Layout:
 
 - `src/frontend/` — React UI
-- `src/backend/` — Worker (`worker.js`, `notes.js`, migrations)
+- `src/backend/` — Worker (`index.js`, `notes.js`, migrations)
 - `frontend/` / `backend/` — build outputs (gitignored; produced by pack)
 - Root `manifest.json`, `package.json`, `SPEC.md`
 
@@ -31,6 +31,7 @@ Local Digit preview is not supported yet (no local Worker / env / D1 harness).
 ### What `pack` puts in `app.zip`
 
 ```
+manifest.json             # Digit publish config (zip root)
 frontend/                 # Digit deploy
 backend/                  # Digit deploy
 project/                  # Next-agent rehydrate

@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-/** Internal Vite config: bundle Worker + @digit/lib-backend into backend/worker.js (ESM). */
+/** Internal Vite config: bundle Worker + @digit/lib-backend into backend/index.js (ESM). */
 export function backendViteConfig({ root }) {
   return {
     root,
@@ -8,9 +8,9 @@ export function backendViteConfig({ root }) {
     resolve: { preserveSymlinks: true },
     build: {
       lib: {
-        entry: path.join(root, 'src/backend/worker.js'),
+        entry: path.join(root, 'src/backend/index.js'),
         formats: ['es'],
-        fileName: () => 'worker.js',
+        fileName: () => 'index.js',
       },
       outDir: path.join(root, 'backend'),
       emptyOutDir: true,

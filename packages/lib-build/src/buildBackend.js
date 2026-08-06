@@ -7,7 +7,7 @@ import { backendViteConfig } from './vite/backend.js';
 
 export async function backendEntryExists({ root }) {
   try {
-    await fs.access(path.join(root, 'src/backend/worker.js'));
+    await fs.access(path.join(root, 'src/backend/index.js'));
     return true;
   } catch {
     return false;

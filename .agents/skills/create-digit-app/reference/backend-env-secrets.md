@@ -92,4 +92,4 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 1. Create the app in Digit
 2. Set env vars / secrets on the app in Digit
 3. Publish a bundle whose manifest declares `backend.kind: "cloudflare-worker"`
-4. Ship `backend/worker.js` that reads those keys via `requireEnv` inside `createHandler`
+4. Ship `backend/index.js` that reads those keys via `requireEnv` inside `createHandler`
