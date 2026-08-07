@@ -5,7 +5,24 @@ Digit data and app backends are reached through Digit-hosted proxies.
 
 Prefer the React hooks from `@digit/lib-frontend` — they wrap the harness client and
 normalize errors for `AppErrorAlert`. The package’s public data API is **hooks only**
-(imperative fetch helpers stay private):
+(imperative fetch helpers stay private).
+
+## Look up the GraphQL schema (required)
+
+Digit MCP is required. When writing or changing Digit GraphQL operations, use these MCP
+**resources** — do **not** invent field or type names, and do **not** load the full schema
+into context:
+
+1. `graphql-schema://index` — compact list of queries, mutations, and type names
+2. `graphql-schema://type/{TypeName}` — that type’s SDL (e.g. `graphql-schema://type/Item`)
+3. `graphql-schema://search/{query}` — search (optional `?limit=1-50`, default 25), then
+   fetch matching type URIs
+
+This is the public API schema (same surface API tokens can introspect). Pair schema lookup
+with MCP **`apiPermissions`** so `manifest.permissions` covers the operations you call —
+see [permissions.md](permissions.md).
+
+## Hooks
 
 ```ts
 import {
@@ -35,17 +52,14 @@ const [mutateNote] = useBackendMutation();
 await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
-Types for `window.DigitHost` are exported from the same package (`DigitHost`,
-`DigitHostSettings`). Importing `@digit/lib-frontend` augments `Window` — do not
-maintain a local `digit.d.ts`. Prefer the hooks over calling `window.DigitProxyClient`
-yourself.
+Confirm root fields and selection sets against `graphql-schema://…` before shipping.
+Types for `window.DigitHost` are exported from `@digit/lib-frontend` (`DigitHost`,
+`DigitHostSettings`). Prefer the hooks over calling `window.DigitProxyClient` yourself.
 
 ## Digit GraphQL API
 
-`useDigitApiQuery` / `useDigitApiMutation` use the harness proxy client, which POSTs
-`/proxy/digit` with `credentials: 'include'` and `X-Digit-Proxy-Client: 1`.
-
-Notes:
+`useDigitApiQuery` / `useDigitApiMutation` POST `/proxy/digit` with
+`credentials: 'include'` and `X-Digit-Proxy-Client: 1`.
 
 - Credentials stay server-side (HttpOnly session cookie + scoped token in Redis)
 - Your query must be covered by `manifest.permissions` ∩ the user's live permissions
@@ -57,12 +71,10 @@ Notes:
 When `manifest.backend` is set, `useBackendQuery` / `useBackendMutation` hit
 `/proxy/backend/...`. Rules:
 
-- Always go through these helpers (or the harness client) so `X-Digit-Proxy-Client` is set
+- Always go through these helpers so `X-Digit-Proxy-Client` is set
 - Paths starting with `/__` are reserved and refused
 - The platform sets `X-Digit-App-Id` from the Host header — the browser cannot spoof another app's worker
 - Pair with `@digit/lib-backend` on the Worker (`createHandler`, `backendPath`, `ok` / `err`)
-
-Worker routing — strip `/proxy/backend`, then match with normal `method` + `path` checks:
 
 ```js
 import { AppErrorCode } from '@digit/lib-common';

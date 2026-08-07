@@ -1,16 +1,19 @@
 # Publish a Digit app (MCP)
 
-Requires the org `CUSTOM_APPS` feature flag and `publish:app` permission.
+Requires the org `CUSTOM_APPS` feature flag and `publish:app` permission. Digit MCP is
+required for this workflow.
 
 ## Prerequisites
 
-1. User has **created the app in Digit** (UI). Publishing never creates apps.
+1. User has **created the app in Digit** (UI). Publishing never creates apps — there are
+   no MCP tools to create, update, or delete apps.
 2. You know the app `id` — resolve with MCP `apps`, or ask the user.
-3. `app.zip` ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`). Local
+3. GraphQL operations checked against `graphql-schema://…` and `manifest.permissions`
+   filled with **`key`** values from MCP **`apiPermissions`**.
+4. `app.zip` ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`). Local
    `pack` only prepares the zip; MCP `publishApp` is what goes live.
 
-Local Digit preview is not supported yet — there is no faithful local Worker / env / D1
-harness. Pack + publish is the workflow.
+There is no local Digit preview — pack + publish is the workflow.
 
 ## Workflow
 
@@ -46,8 +49,6 @@ MCP cannot carry binary bodies. POST multipart form-data:
 Max **10MB**. If you cannot perform this HTTP request, stop and tell the user — do not call
 `publishApp` against an empty upload.
 
-Example with curl-shaped fields:
-
 ```bash
 # Pseudocode — expand uploadFields into -F key=value pairs, then -F file=@app.zip
 curl -X POST "$UPLOAD_URL" \
@@ -57,27 +58,21 @@ curl -X POST "$UPLOAD_URL" \
   -F "file=@app.zip"
 ```
 
-Build the zip with `npm run pack` (`digit-app pack`) and upload **`app.zip` as produced**
-(paths at the archive root — not `my-app/frontend/...`):
+Build the zip with `npm run pack` and upload **`app.zip` as produced**:
 
 ```
 app.zip
-├── manifest.json             # Digit publish config — required at the zip root
-├── frontend/                 # Digit deploy — required
-│   └── index.js              # the entry, by convention
-├── backend/                  # Digit deploy — when manifest.backend is set
-│   ├── index.js              # single-file Worker ESM
-│   └── migrations/           # optional D1 *.sql
-└── project/                  # required in the zip — source, SPEC, tooling (not deployed)
-    ├── src/
-    ├── SPEC.md
-    ├── package.json          # @digit/lib-* → file:./packages/...
-    └── packages/             # vendored libs + lib-build (until registry publish)
+├── manifest.json
+├── frontend/
+│   └── index.js
+├── backend/                  # when manifest.backend is set
+│   ├── index.js
+│   └── migrations/
+└── project/                  # required — source, SPEC, vendored @digit/lib-*
 ```
 
-**Do not modify the zip after pack.** Do not `zip -d` / re-zip to drop `project/`, and do
-not hand-build a frontend/backend-only archive. Digit deploys from `frontend/` /
-`backend/`; `project/` must still be present in the published zip.
+**Do not modify the zip after pack.** Digit deploys from `frontend/` / `backend/`;
+`project/` must still be present in the published zip.
 
 ### 4. Publish
 
@@ -102,15 +97,8 @@ bundle, and restart at step 2.
 
 ## Zip validation reminders
 
-**Required in the upload zip**
-
-- `manifest.json` at the **zip root** (sibling of `frontend/` / `backend/`) and
-  `frontend/index.js` (the entry, by convention)
-- When `manifest.backend` is set: `backend/index.js` (plus migrations if used — these
-  require a `database` binding in `manifest.backend.bindings`)
+- `manifest.json` at the zip root and `frontend/index.js`
+- When `manifest.backend` is set: `backend/index.js` (migrations require a `database`
+  binding)
 - `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` (including `lib-build`)
-- `manifest.permissions` use SCREAMING_SNAKE_CASE `apiPermissions.key` values (e.g.
-  `READ_ITEM`) — not colon-delimited legacy strings
-
-Digit deploy consumes `frontend/` / `backend/`; `project/` must still be present in the
-same zip.
+- `manifest.permissions` are **`key`** values from **`apiPermissions`**
