@@ -1,8 +1,8 @@
 # Backend env vars and secrets
 
-Env vars and secrets are configured on the **app record in Digit** (UI today; MCP manage
-tools not live yet). They are **injected into the app's Cloudflare Worker**, not into the
-frontend bundle.
+Env vars and secrets are configured on the **app record in Digit** (UI only — there are no
+MCP tools to manage them). They are **injected into the app's Cloudflare Worker**, not
+into the frontend bundle.
 
 ## Key rules
 

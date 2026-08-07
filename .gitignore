@@ -11,3 +11,4 @@ apps/*/frontend/
 apps/*/backend/
 examples/*/frontend/
 examples/*/backend/
+.claude/*

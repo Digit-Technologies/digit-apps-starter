@@ -12,10 +12,10 @@ and derives `active.json` / bundle assets from it.
 
 ```ts
 type AppManifest = {
-  permissions: DigitPermission[]; // SCREAMING_SNAKE_CASE, e.g. "READ_ITEM"
+  permissions: string[]; // each entry = apiPermissions.key
   backend?: {
-    kind: 'cloudflare-worker';    // the runtime; only cloudflare-worker today
-    bindings?: Record<string, 'database'>; // BINDING_NAME → type, e.g. { MY_APP_DB: "database" }
+    kind: 'cloudflare-worker';
+    bindings?: Record<string, 'database'>; // BINDING_NAME → type
     schedules?: {
       name: string;        // lowercase [a-z0-9-], max 32, unique
       everySeconds: number; // 300–86400
@@ -27,8 +27,8 @@ type AppManifest = {
 
 ## Rules
 
-- `permissions` must be an array of known Digit permission **`key`** strings
-  (SCREAMING_SNAKE_CASE, e.g. `READ_ITEM`) — not colon-delimited legacy values
+- `permissions` must be an array of known Digit permission **`key`** strings from MCP
+  **`apiPermissions`** — never invent strings (see [permissions.md](permissions.md))
 - If `backend` is present, the zip **must** include `backend/index.js`
 - If the zip includes `backend/` files but the manifest has no `backend` block → reject
 - `bindings` maps `BINDING_NAME` (`^[A-Z][A-Z0-9_]{0,63}$`) to a type; `"database"` (a
@@ -52,7 +52,8 @@ Frontend-only:
 }
 ```
 
-Digit API + Worker + D1 + an hourly schedule:
+Digit API + Worker + D1 + an hourly schedule (permission keys come from `apiPermissions` —
+`READ_ITEM` / `READ_INVENTORY` here match the full-featured example):
 
 ```json
 {
@@ -84,5 +85,4 @@ project/                 # required in the zip — source, SPEC, tooling (not de
   packages/              # vendored @digit/lib-* (+ lib-build)
 ```
 
-Max zip size: **10MB**. Do not strip `project/` to shrink the archive or to match an
-older “frontend/backend only” mental model.
+Max zip size: **10MB**. Do not strip `project/` or rebuild the archive by hand.
