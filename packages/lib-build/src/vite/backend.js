@@ -17,6 +17,8 @@ export function backendViteConfig({ root }) {
       sourcemap: false,
       minify: false,
       rollupOptions: {
+        // Workers runtime module — resolved by workerd at deploy, never bundled.
+        external: ['cloudflare:workers'],
         output: {
           inlineDynamicImports: true,
         },

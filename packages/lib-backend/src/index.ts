@@ -16,3 +16,17 @@ export { backendPath } from './backendPath';
 
 // Env / bindings
 export { requireEnv, optionalEnv } from './env';
+
+// Jobs & schedules (platform scheduler)
+export { digitJobs } from './jobs';
+export type {
+  DigitJobs,
+  DigitJobRun,
+  DigitJobRunStatus,
+  DigitJobKind,
+  DigitSchedule,
+  JobArgs,
+  JobHandler,
+  JobHandlers,
+  JobInvocation,
+} from './jobs';

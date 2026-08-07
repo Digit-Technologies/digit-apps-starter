@@ -16,16 +16,14 @@ type AppManifest = {
   backend?: {
     kind: 'cloudflare-worker';    // the runtime; only cloudflare-worker today
     bindings?: Record<string, 'database'>; // BINDING_NAME → type, e.g. { MY_APP_DB: "database" }
+    schedules?: {
+      name: string;        // lowercase [a-z0-9-], max 32, unique
+      everySeconds: number; // 300–86400
+      payload?: unknown;   // ≤4KB JSON, passed to every tick
+    }[];                   // max 5; see reference/jobs-and-schedules.md
   };
 };
 ```
-
-Things you may expect but do **not** declare:
-
-- **No `name`** — the display name lives on the app itself in Digit
-- **No `entryFile`** — entries are conventions: `frontend/index.js` and `backend/index.js`
-- **No `compatibilityFlags`** — platform-set on every Worker
-- **No `d1` block** — replaced by `bindings`; a D1 database is `{ "MY_APP_DB": "database" }`
 
 ## Rules
 
@@ -38,6 +36,9 @@ Things you may expect but do **not** declare:
 - Binding names must not start with `DIGIT_` — reserved for platform bindings
 - At most **one** `database` binding per app for now
 - Optional `backend/migrations/*.sql` (flat — no nested dirs) requires a `database` binding
+- Optional `backend.schedules` (recurring background runs): name `[a-z0-9-]{1,32}` unique,
+  `everySeconds` 300–86400, payload ≤4KB, max 5 — handled via `createHandler({ jobs })`;
+  publishing replaces the set wholesale (no `schedules` = clears them)
 - `frontend/index.js` must exist; `frontend/index.html` and `frontend/loader.js` are
   harness-reserved names your bundle may not contain
 
@@ -51,14 +52,15 @@ Frontend-only:
 }
 ```
 
-Digit API + Worker + D1:
+Digit API + Worker + D1 + an hourly schedule:
 
 ```json
 {
   "permissions": ["READ_ITEM", "READ_INVENTORY"],
   "backend": {
     "kind": "cloudflare-worker",
-    "bindings": { "STOCK_HELPER_DB": "database" }
+    "bindings": { "STOCK_HELPER_DB": "database" },
+    "schedules": [{ "name": "refresh-stock", "everySeconds": 3600 }]
   }
 }
 ```

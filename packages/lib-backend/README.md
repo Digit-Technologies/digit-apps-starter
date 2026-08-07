@@ -16,6 +16,7 @@ Import from the package root only. Helpers take named arguments.
 | `backendPath` | Strip `/proxy/backend` from the request path |
 | `ok` / `err` | Success / error `Response` helpers |
 | `requireEnv` / `optionalEnv` | Read env vars, secrets, and bindings |
+| `digitJobs` | The platform `DIGIT_JOBS` binding, typed — submit/inspect background jobs |
 | `HandlerError` | Thrown by `requireEnv`; mapped by `createHandler` (apps rarely throw it) |
 
 Wrap the Worker with `createHandler`. Use `backendPath(request)`, then match with normal
@@ -87,6 +88,29 @@ return ok({ data: { note: parsed.value } });
 
 Use plain `fetch` for third-party HTTP. Map failures with `err({ code: AppErrorCode.UPSTREAM_ERROR, … })`
 and never put secret values or raw upstream bodies into `error.message` / `data`.
+
+## Jobs & schedules
+
+Pass `jobs` to `createHandler` to handle background runs (manifest `backend.schedules`
+ticks and jobs submitted via `digitJobs({ env }).submit(...)`); the platform invokes them
+over RPC via the `triggerJob` method on the WorkerEntrypoint class `createHandler` returns:
+
+```js
+import { createHandler, digitJobs, ok } from '@digit/lib-backend';
+
+export default createHandler({
+  jobs: {
+    'note-stats': async ({ payload, env }) => ({ count: await countNotes(env) }),
+  },
+  fetch: async ({ request, env }) => {
+    const { runId } = await digitJobs({ env }).submit({ name: 'note-stats' });
+    return ok({ data: { runId }, status: 202 });
+  },
+});
+```
+
+Return value → the run's `result`; a throw fails the attempt (retried). Full contract
+(schedule rules, limits, run lifecycle): the skill's `reference/jobs-and-schedules.md`.
 
 ## Bundle
 

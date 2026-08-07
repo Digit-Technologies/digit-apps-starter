@@ -13,14 +13,20 @@ import { AppErrorCode, parseJsonResponse } from '@digit/lib-common';
 import {
   backendPath,
   createHandler,
+  digitJobs,
   err,
   ok,
   requireEnv,
 } from '@digit/lib-backend';
 
+import { noteStats, pruneNotes } from './jobs.js';
 import { handleNotes } from './notes.js';
 
 export default createHandler({
+  jobs: {
+    'prune-notes': pruneNotes,
+    'note-stats': noteStats,
+  },
   fetch: async ({ request, env }) => {
     const path = backendPath(request);
     const { method } = request;
@@ -84,6 +90,21 @@ export default createHandler({
           tokenPrefix: apiKey.length > 0 ? `${apiKey.slice(0, 2)}…` : null,
         },
       });
+    }
+
+    if (method === 'POST' && path === '/jobs/note-stats') {
+      const { runId } = await digitJobs({ env }).submit({ name: 'note-stats' });
+      return ok({ data: { runId }, status: 202 });
+    }
+
+    if (method === 'GET' && path === '/jobs/runs') {
+      const runs = await digitJobs({ env }).list({ limit: 20 });
+      return ok({ data: { runs } });
+    }
+
+    if (method === 'GET' && path === '/jobs/schedules') {
+      const schedules = await digitJobs({ env }).schedules();
+      return ok({ data: { schedules } });
     }
 
     const notesResponse = await handleNotes({ request, env, path, method });

@@ -8,6 +8,7 @@ import Typography from '@mui/material/Typography';
 import ConfigPanel from './panels/ConfigPanel';
 import DigitApiPanel from './panels/DigitApiPanel';
 import ErrorLabPanel from './panels/ErrorLabPanel';
+import JobsPanel from './panels/JobsPanel';
 import NotesPanel from './panels/NotesPanel';
 import PublicApiPanel from './panels/PublicApiPanel';
 import SecretsPanel from './panels/SecretsPanel';
@@ -20,6 +21,7 @@ const TABS = [
   { id: 'public', label: 'Public API', element: <PublicApiPanel /> },
   { id: 'secrets', label: 'Secrets', element: <SecretsPanel /> },
   { id: 'notes', label: 'Notes', element: <NotesPanel /> },
+  { id: 'jobs', label: 'Jobs', element: <JobsPanel /> },
   { id: 'config', label: 'Config', element: <ConfigPanel /> },
 ] as const;
 
