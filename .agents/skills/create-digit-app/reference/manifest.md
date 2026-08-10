@@ -35,10 +35,8 @@ type AppManifest = {
   platform-provisioned D1) is the only supported type today
 - Binding names must not start with `DIGIT_` — reserved for platform bindings
 - At most **one** `database` binding per app for now
-- Optional `backend/migrations/*.sql` (flat — no nested dirs) requires a `database` binding.
-  Digit applies pending files **during publish** (not at runtime). See
-  [d1-migrations.md](d1-migrations.md). Use zero-padded filenames (`0001_init.sql`,
-  `0002_…`). **Never edit** a published migration — only append new files.
+- Optional `backend/migrations/*.sql` requires a `database` binding — see
+  [d1-migrations.md](d1-migrations.md)
 - Optional `backend.schedules` (recurring background runs): name `[a-z0-9-]{1,32}` unique,
   `everySeconds` 300–86400, payload ≤4KB, max 5 — handled via `createHandler({ jobs })`;
   publishing replaces the set wholesale (no `schedules` = clears them)

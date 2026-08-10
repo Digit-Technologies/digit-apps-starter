@@ -17,18 +17,27 @@ export type AppErrorAlertProps = {
   children?: ReactNode;
 };
 
-function supportInfo(error: AppError): string | null {
-  const hasInfo =
-    error.code != null || error.requestId != null || error.status != null;
-  if (!hasInfo) return null;
+function supportInfo(error: AppError, presentedMessage: string): string | null {
+  const raw = error.message?.trim() || null;
+  const detail =
+    raw && raw !== presentedMessage.trim() ? raw : null;
 
-  const parts = [
+  const hasDebugFields =
+    error.code != null ||
+    error.requestId != null ||
+    error.status !== null ||
+    detail != null;
+  if (!hasDebugFields) return null;
+
+  return [
     error.code ? `code=${error.code}` : null,
     error.requestId ? `requestId=${error.requestId}` : null,
     error.status !== null ? `status=${error.status}` : null,
     `kind=${error.kind}`,
-  ].filter(Boolean);
-  return parts.join(' ');
+    detail ? `detail=${detail}` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**
@@ -99,7 +108,7 @@ function supportInfo(error: AppError): string | null {
 export const AppErrorAlert = ({ error, onRetry, title, children }: AppErrorAlertProps) => {
   const presentation = presentError(error);
   const showRetry = Boolean(onRetry) && presentation.retryable;
-  const info = supportInfo(error);
+  const info = supportInfo(error, presentation.message);
 
   return (
     <Alert
