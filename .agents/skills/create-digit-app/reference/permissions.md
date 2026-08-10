@@ -13,7 +13,7 @@ fields — fine for UI-only apps.
 
 Digit MCP is required. Do **not** invent permission strings.
 
-1. Call MCP tool **`apiPermissions`**
+1. Call MCP tool **`appPermissions`**
 2. Choose the permissions your GraphQL operations need (use descriptions to pick)
 3. Put each permission’s **`key`** into `manifest.permissions` exactly as returned
 

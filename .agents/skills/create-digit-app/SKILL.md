@@ -37,7 +37,7 @@ continuing.
 | Need | Use |
 | --- | --- |
 | Public GraphQL schema | MCP resources `graphql-schema://index`, `graphql-schema://type/{TypeName}`, `graphql-schema://search/{query}` |
-| Manifest permissions | MCP tool **`apiPermissions`** — put each permission’s **`key`** in `manifest.json` |
+| Manifest permissions | MCP tool **`appPermissions`** — put each permission’s **`key`** in `manifest.json` |
 | Find an existing app’s id | MCP tool **`apps`** |
 | Publish | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** → poll **`appPublish`** |
 
@@ -59,8 +59,8 @@ Digit app progress:
 - [ ] 2. Confirm the user created the app in Digit (get appId via apps)
 - [ ] 3. Implement frontend (React + MUI + DigitThemeProvider → #root)
 - [ ] 4. Add src/backend/ only if env/secrets or server logic needed
-- [ ] 5. Look up GraphQL via graphql-schema://… and permissions via apiPermissions
-- [ ] 6. Write root manifest.json (permissions[].key from apiPermissions)
+- [ ] 5. Look up GraphQL via graphql-schema://… and permissions via appPermissions
+- [ ] 6. Write root manifest.json (permissions[].key from appPermissions)
 - [ ] 7. Write/update SPEC.md
 - [ ] 8. npm run pack -w apps/<name> → app.zip
 - [ ] 9. Publish via MCP (upload zip out-of-band)
@@ -171,7 +171,7 @@ Full schema: [reference/manifest.md](reference/manifest.md).
 `permissions` is the **ceiling** for `/proxy/digit`. Digit intersects it with the viewing
 user’s live permissions at runtime.
 
-1. Call MCP **`apiPermissions`**
+1. Call MCP **`appPermissions`**
 2. Put each needed permission’s **`key`** into `manifest.permissions`
 3. Never invent strings — unknown keys fail publish
 
@@ -210,7 +210,7 @@ upstream starter.
 | Need | Path |
 | --- | --- |
 | Any new app | Copy `full-featured`, delete unused tabs/routes |
-| Digit GraphQL | Schema resources → hooks + `apiPermissions` → `key` in manifest |
+| Digit GraphQL | Schema resources → hooks + `appPermissions` → `key` in manifest |
 | Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend` |
 | Codes / JSON validation | `@digit/lib-common` |
 
@@ -242,7 +242,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, DigitHost
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
-- [reference/permissions.md](reference/permissions.md) — apiPermissions → key
+- [reference/permissions.md](reference/permissions.md) — appPermissions → key
 - [reference/backend-env-secrets.md](reference/backend-env-secrets.md) — env/secrets in Workers
 - [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md) — jobs, schedules, DIGIT_JOBS
 - [reference/d1-migrations.md](reference/d1-migrations.md) — database SQL applied on publish

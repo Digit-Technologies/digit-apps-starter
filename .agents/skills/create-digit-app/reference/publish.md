@@ -9,7 +9,7 @@ required for this workflow.
    no MCP tools to create, update, or delete apps.
 2. You know the app `id` — resolve with MCP `apps`, or ask the user.
 3. GraphQL operations checked against `graphql-schema://…` and `manifest.permissions`
-   filled with **`key`** values from MCP **`apiPermissions`**.
+   filled with **`key`** values from MCP **`appPermissions`**.
 4. `app.zip` ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`). Local
    `pack` only prepares the zip; MCP `publishApp` is what goes live.
 
@@ -101,4 +101,4 @@ applies pending migrations — see [d1-migrations.md](d1-migrations.md). On fail
 - `manifest.json` at the zip root and `frontend/index.js`
 - When `manifest.backend` is set: `backend/index.js`
 - `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` (including `lib-build`)
-- `manifest.permissions` are **`key`** values from **`apiPermissions`**
+- `manifest.permissions` are **`key`** values from **`appPermissions`**

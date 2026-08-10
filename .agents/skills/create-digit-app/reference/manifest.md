@@ -12,7 +12,7 @@ and derives `active.json` / bundle assets from it.
 
 ```ts
 type AppManifest = {
-  permissions: string[]; // each entry = apiPermissions.key
+  permissions: string[]; // each entry = appPermissions.key
   backend?: {
     kind: 'cloudflare-worker';
     bindings?: Record<string, 'database'>; // BINDING_NAME → type
@@ -28,7 +28,7 @@ type AppManifest = {
 ## Rules
 
 - `permissions` must be an array of known Digit permission **`key`** strings from MCP
-  **`apiPermissions`** — never invent strings (see [permissions.md](permissions.md))
+  **`appPermissions`** — never invent strings (see [permissions.md](permissions.md))
 - If `backend` is present, the zip **must** include `backend/index.js`
 - If the zip includes `backend/` files but the manifest has no `backend` block → reject
 - `bindings` maps `BINDING_NAME` (`^[A-Z][A-Z0-9_]{0,63}$`) to a type; `"database"` (a
@@ -53,7 +53,7 @@ Frontend-only:
 }
 ```
 
-Digit API + Worker + D1 + an hourly schedule (permission keys come from `apiPermissions` —
+Digit API + Worker + D1 + an hourly schedule (permission keys come from `appPermissions` —
 `READ_ITEM` / `READ_INVENTORY` here match the full-featured example):
 
 ```json
