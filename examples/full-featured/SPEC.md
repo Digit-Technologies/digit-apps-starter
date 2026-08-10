@@ -33,26 +33,17 @@ Local Digit preview is not supported yet.
 
 ## Prompts
 
-1. Original request:
-
 ```
 Build a full-featured reference Digit app we can use as the default example for the
-starter repo. It should exercise theme/MUI, error handling UI, Digit GraphQL, a Worker
-calling a public API, secrets-backed third-party HTTP, D1 CRUD, and env-driven config —
-as separate tabs so someone can copy the example and delete what they don't need.
-```
+starter repo. It should exercise theme/MUI via DigitThemeProvider, shared error handling
+UI, Digit GraphQL, a Worker calling a public API, secrets-backed third-party HTTP, D1
+CRUD, and env-driven config — as separate tabs so someone can copy the example and delete
+what they don't need.
 
-2. Follow-up:
-
-```
 Use the shared @digit/lib-frontend / lib-backend / lib-common helpers instead of
 hand-rolling proxy fetches and Worker response shapes. Keep the stack React + MUI +
 DigitThemeProvider.
-```
 
-3. Follow-up:
-
-```
 Make sure pack produces a zip we can publish and later rehydrate: Digit deploy assets
 plus source, SPEC, and tooling, since end users won't have Git.
 ```

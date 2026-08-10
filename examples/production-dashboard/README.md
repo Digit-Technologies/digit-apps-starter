@@ -18,7 +18,7 @@ link, so it can't be built standalone — it needs to live inside the starter mo
 
 See `SPEC.md` for what the app does, why each manifest permission exists, gotchas found
 while building it (notably how `inventoryQuantityProduced` is returned), and the
-verbatim prompts that produced it.
+starter prompt.
 
 ## Contents
 
@@ -34,4 +34,4 @@ verbatim prompts that produced it.
     layout, toggled at runtime (default off) rather than a code-level flag.
   - `dateWindow.ts` — local-timezone day-boundary + timezone-abbreviation helpers.
   - `components/` — the four KPI tiles and two charts.
-- `SPEC.md` — purpose, permissions rationale, gotchas, and prompt history.
+- `SPEC.md` — purpose, permissions rationale, gotchas, and starter prompt.

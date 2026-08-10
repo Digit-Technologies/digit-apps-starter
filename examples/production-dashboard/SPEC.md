@@ -70,16 +70,13 @@ as an explicit "No data" state, never faked as zero.
 
 ## Prompts
 
-1. Original request:
-
 ```
 Can you clone this repo and use the skill within it and the Digit MCP connector to build me an application and publish it to the Digit Staging - Digit org platform?
 
 https://github.com/Digit-Technologies/digit-apps-starter
 
 App to publish to:
-- name: Unfulfilled
-- id: 019feca6-d7fe-774b-8ee6-da1783ec21ea
+- name: Production dashboard
 
 What to build:
 A single-page production dashboard for a manufacturing team to check at any time.
@@ -100,65 +97,15 @@ Layout:
 2) Bottom row — two charts side by side (stack on narrow screens), using @mui/x-charts (fits the starter's React + MUI stack; no chart library is bundled):
    - 7-day line/area chart of units produced.
    - 7-day grouped bar chart of MOs completed vs MOs open late.
+3) Header: title on the left; timezone text and a "Preview data" switch on the right, vertically centered with each other and with the title.
+
+Charts & polish:
+- Soft, translucent area fill under the units-produced line (not a solid black fill); rounded bar tops and a rounded gauge arc.
+- High-contrast "Preview data" badge when preview mode is on so fake numbers are never mistaken for live data.
 
 Behavior:
 - Show a clear "No data" state per tile/chart when that metric is missing.
-```
-
-2. Follow-up (correcting the target app):
-
-```
-Sorry the app name to publish to is "Production dashboard 2" I sent the wrong one in the original prompt
-```
-
-3. Follow-up (bug report, after the first publish):
-
-```
-Okay, the app works and looks great. I'm just noticing that I don't see any values from the response for this.
-
-{
-  "metricType": "inventoryQuantityProduced",
-  "valuesByDate": [
-    {
-      "date": "2026-08-10T05:00:00.000Z",
-      "value": {
-        "__typename": "MetricMeasurements"
-      }
-    }
-  ]
-}
-
-Is the query asking for the right information? I just closed some manufacturing orders that produced inventory, but I'm not seeing the charts update. They are updating for the fact that the manufacturing orders were completed, though.
-```
-
-4. Follow-up (requesting a screenshot-preview build, after being warned that the linked
-   PR's `previewStubData.ts` is fake data meant to be removed before real use):
-
-```
-I'd like to wire in the stub data so I can take a screenshot of how it's going to look for someone to preview it.
-```
-
-5. Follow-up (after seeing the screenshot — requesting a runtime toggle instead of a
-   code-level flag, plus a chart styling pass):
-
-```
-Is it possible to just add in a toggle to show the preview versus the real data?
-
-And can we make the UI for this graph a little bit prettier? The black fill is kind of dramatic. I'm not sure if we need to fill, or if we do, because it's valuable for some reason. Maybe adding transparency to make it less drastic. Curious what's more readable for the graph: fast fill versus align, and why you would choose one or the other.
-```
-
-6. Follow-up (contrast on the preview-data badge):
-
-```
-This is beautiful. Can you just change the color of this preview data badge to add more contrast? It's easier to read.
-```
-
-7. Follow-up (alignment + rounded corners):
-
-```
-Can you vertically center the switch with the time zone text, and then also vertically center the production data title with that top right section that has the time zone and preview data switch?
-
-And is it also possible to add some border radius on the graph bars and the gauge?
+- Runtime toggle for Preview data (default off): when on, skip the live query and use stub metrics so the layout can be demoed without real manufacturing activity.
 ```
 
 ## Context supplied
@@ -170,10 +117,6 @@ And is it also possible to add some border radius on the graph bars and the gaug
   `graphql-schema://type/DailyMetric`, `graphql-schema://type/MetricType`,
   `graphql-schema://type/MetricValue`, `graphql-schema://type/MetricNumber`,
   `graphql-schema://type/MetricPercentage`) and the `apiPermissions` tool.
-- Target app id resolved via the MCP `apps` tool by matching on name, not trusted from the
-  user-supplied id (the id given in the original prompt matched no existing app; the
-  corrected name "Production dashboard 2" matched app id
-  `019fecab-6ed5-730e-8f54-b6d69e8edca2`, created shortly before this session).
 - `@mui/x-charts@^9.11.1` added as a new dependency (`Gauge`, `LineChart`, `BarChart`) —
   confirmed compatible with the starter's pinned `@mui/material@^7.3.9` + React 18 via its
   published peerDependencies; no chart library ships in the starter template.
