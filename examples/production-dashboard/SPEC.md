@@ -16,52 +16,34 @@ as an explicit "No data" state, never faked as zero.
 
 ## Data & permissions
 
-- `READ_ORGANIZATION_DETAIL_AND_METRICS` — required by `Query.dailyMetrics` (confirmed via
-  the `graphql-schema://type/Query` docstring: "Permissions: requires
-  `READ_ORGANIZATION_DETAIL_AND_METRICS`"). Note: this key did **not** appear in the MCP
-  `apiPermissions` list (which seems scoped to API-token-grantable permissions) — it was
-  taken directly from the field's schema documentation instead, per the user's explicit
-  instruction, since that is the authoritative source for what the resolver enforces.
+- `READ_ORGANIZATION_DETAIL_AND_METRICS` — required by `Query.dailyMetrics` (see
+  `graphql-schema://type/Query` docstring). This key may not appear in the MCP
+  `apiPermissions` list (scoped to API-token-grantable permissions); use the field's schema
+  documentation as the authoritative source for what the resolver enforces.
 - `dailyMetrics(startDate: DateTimeISO!, endDate: DateTimeISO!): [DailyMetric!]!` has no
   metric-type filter — it always returns every `MetricType`; the app filters client-side to
   the four it cares about (`inventoryQuantityProduced`, `numMOsCompleted`,
   `percentMOsCompletedOnTime`, `numMOsOpenLate`).
 - `DailyMetric.valuesByDate[].value` is a `MetricValue` union (`MetricNumber { quantity }` /
-  `MetricPercentage { percent }` used here); the query selects both via inline fragments
-  plus `__typename`.
-- Gotcha: a day with no data simply has no entry in `valuesByDate` for that date — it is
-  not returned as an explicit null. The frontend pre-seeds all 8 expected day buckets as
-  `null` and only fills in a bucket when a matching `date` (converted to a local calendar
-  day) is found in the response.
-- Gotcha (found after first publish): `inventoryQuantityProduced` resolves to
-  `MetricMeasurements`, not `MetricNumber` — the initial query only selected fields on
-  `MetricNumber`/`MetricPercentage`, so this metric silently came back empty
-  (`{ __typename: "MetricMeasurements" }` with nothing else) even though the other three
-  metrics worked fine. `MetricMeasurements.measurements` is `[{ value, uom { symbol } }]`
-  because quantity-produced can span multiple units of measure. Fix: query
-  `... on MetricMeasurements { measurements { value uom { symbol } } }`, then in
-  `buildMeasurementSeries` (`useDailyMetrics.ts`) pick the UoM with the largest total
-  across the window as "primary" and sum only that UoM per day — a day present in the
-  response with no measurement in that UoM is a real `0`, not faked; a day absent from the
-  response entirely stays `null`. The resolved UoM symbol is surfaced as
-  `inventoryQuantityProducedUnit` and shown next to the number in both the tile and the
-  chart title.
+  `MetricPercentage { percent }` for most metrics here); the query selects both via inline
+  fragments plus `__typename`.
+- A day with no data simply has no entry in `valuesByDate` for that date — it is not
+  returned as an explicit null. The frontend pre-seeds all 8 expected day buckets as `null`
+  and only fills in a bucket when a matching `date` (converted to a local calendar day) is
+  found in the response.
+- `inventoryQuantityProduced` resolves to `MetricMeasurements`, not `MetricNumber` — query
+  `... on MetricMeasurements { measurements { value uom { symbol } } }`. Each day can
+  report quantities in multiple units of measure; `buildMeasurementSeries`
+  (`useDailyMetrics.ts`) picks the UoM with the largest total across the window as
+  "primary" and sums only that UoM per day. A day present in the response with no
+  measurement in that UoM is a real `0`; a day absent from the response entirely stays
+  `null`. The resolved UoM symbol is surfaced as `inventoryQuantityProducedUnit` and shown
+  next to the number in both the tile and the chart title.
 
 ## Prompts
 
-1. Original request:
-
 ```
-Can you clone this repo and use the skill within it and the Digit MCP connector to build me an application and publish it to the Digit Staging - Digit org platform?
-
-https://github.com/Digit-Technologies/digit-apps-starter
-
-App to publish to:
-- name: Unfulfilled
-- id: 019feca6-d7fe-774b-8ee6-da1783ec21ea
-
-What to build:
-A single-page production dashboard for a manufacturing team to check at any time.
+Build a single-page production dashboard for a manufacturing team to check at any time.
 
 Data:
 - Query Digit's dailyMetrics(startDate: DateTimeISO!, endDate: DateTimeISO!) for today plus the prior 7 days.
@@ -76,53 +58,20 @@ Layout:
    - MOs completed today.
    - Percent of MOs completed on time as a ring/gauge, color-coded from good to needs attention.
    - MOs open and late as an alert tile (red/tinted background; lower is better).
-2) Bottom row — two charts side by side (stack on narrow screens), using @mui/x-charts (fits the starter's React + MUI stack; no chart library is bundled):
-   - 7-day line/area chart of units produced.
-   - 7-day grouped bar chart of MOs completed vs MOs open late.
+2) Bottom row — two charts side by side (stack on narrow screens), using @mui/x-charts:
+   - 8-day line/area chart of units produced.
+   - 8-day grouped bar chart of MOs completed vs MOs open late.
 
 Behavior:
 - Show a clear "No data" state per tile/chart when that metric is missing.
-```
-
-2. Follow-up (correcting the target app):
-
-```
-Sorry the app name to publish to is "Production dashboard 2" I sent the wrong one in the original prompt
-```
-
-3. Follow-up (bug report, after the first publish):
-
-```
-Okay, the app works and looks great. I'm just noticing that I don't see any values from the response for this.
-
-{
-  "metricType": "inventoryQuantityProduced",
-  "valuesByDate": [
-    {
-      "date": "2026-08-10T05:00:00.000Z",
-      "value": {
-        "__typename": "MetricMeasurements"
-      }
-    }
-  ]
-}
-
-Is the query asking for the right information? I just closed some manufacturing orders that produced inventory, but I'm not seeing the charts update. They are updating for the fact that the manufacturing orders were completed, though.
 ```
 
 ## Context supplied
 
 - Started from `examples/full-featured` per the `create-digit-app` skill, then removed
   `src/backend` and the example tabs/panels since this app is Digit-API-only.
-- Schema/permission lookups done live via the Digit Staging MCP resources
-  (`graphql-schema://search/dailyMetrics`, `graphql-schema://type/Query`,
-  `graphql-schema://type/DailyMetric`, `graphql-schema://type/MetricType`,
-  `graphql-schema://type/MetricValue`, `graphql-schema://type/MetricNumber`,
-  `graphql-schema://type/MetricPercentage`) and the `apiPermissions` tool.
-- Target app id resolved via the MCP `apps` tool by matching on name, not trusted from the
-  user-supplied id (the id given in the original prompt matched no existing app; the
-  corrected name "Production dashboard 2" matched app id
-  `019fecab-6ed5-730e-8f54-b6d69e8edca2`, created shortly before this session).
-- `@mui/x-charts@^9.11.1` added as a new dependency (`Gauge`, `LineChart`, `BarChart`) —
-  confirmed compatible with the starter's pinned `@mui/material@^7.3.9` + React 18 via its
-  published peerDependencies; no chart library ships in the starter template.
+- Schema and permission lookups via Digit MCP resources (`graphql-schema://search/dailyMetrics`,
+  `graphql-schema://type/Query`, `graphql-schema://type/DailyMetric`,
+  `graphql-schema://type/MetricType`, `graphql-schema://type/MetricValue`, etc.).
+- `@mui/x-charts@^9.11.1` added for `Gauge`, `LineChart`, and `BarChart` — compatible with
+  the starter's pinned `@mui/material@^7.3.9` + React 18 peer dependencies.
