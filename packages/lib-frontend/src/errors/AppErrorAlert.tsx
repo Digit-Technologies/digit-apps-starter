@@ -1,10 +1,9 @@
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
 import { presentError } from './messages';
@@ -18,21 +17,34 @@ export type AppErrorAlertProps = {
   children?: ReactNode;
 };
 
-function supportInfo(error: AppError): string {
-  const parts = [
+function supportInfo(error: AppError, presentedMessage: string): string | null {
+  const raw = error.message?.trim() || null;
+  const detail =
+    raw && raw !== presentedMessage.trim() ? raw : null;
+
+  const hasDebugFields =
+    error.code != null ||
+    error.requestId != null ||
+    error.status !== null ||
+    detail != null;
+  if (!hasDebugFields) return null;
+
+  return [
     error.code ? `code=${error.code}` : null,
     error.requestId ? `requestId=${error.requestId}` : null,
     error.status !== null ? `status=${error.status}` : null,
     `kind=${error.kind}`,
-  ].filter(Boolean);
-  return parts.join(' ');
+    detail ? `detail=${detail}` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 }
 
 /**
  * Shared error surface for Digit apps. Maps known platform / backend codes to a
- * title, safe message, optional next-step guidance, Copy support info, and Retry
- * when the error looks transient. Apps should render this instead of branching on
- * `AppErrorCode` in UI.
+ * title, safe message, optional next-step guidance, visible support info for
+ * debugging, and Retry when the error looks transient. Apps should render this
+ * instead of branching on `AppErrorCode` in UI.
  *
  * @example Query failure with refetch
  * import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
@@ -94,37 +106,19 @@ function supportInfo(error: AppError): string {
  * </AppErrorAlert>
  */
 export const AppErrorAlert = ({ error, onRetry, title, children }: AppErrorAlertProps) => {
-  const [copied, setCopied] = useState(false);
   const presentation = presentError(error);
   const showRetry = Boolean(onRetry) && presentation.retryable;
-  const info = supportInfo(error);
-
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(info);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      setCopied(false);
-    }
-  };
+  const info = supportInfo(error, presentation.message);
 
   return (
     <Alert
       severity="error"
       action={
-        <Stack direction="row" spacing={1} alignItems="center">
-          {info ? (
-            <Button color="inherit" size="small" onClick={() => void handleCopy()}>
-              {copied ? 'Copied' : 'Copy support info'}
-            </Button>
-          ) : null}
-          {showRetry && onRetry ? (
-            <Button color="inherit" size="small" onClick={onRetry}>
-              Retry
-            </Button>
-          ) : null}
-        </Stack>
+        showRetry && onRetry ? (
+          <Button color="inherit" size="small" onClick={onRetry}>
+            Retry
+          </Button>
+        ) : undefined
       }
     >
       <AlertTitle>{title ?? presentation.title}</AlertTitle>
@@ -134,15 +128,25 @@ export const AppErrorAlert = ({ error, onRetry, title, children }: AppErrorAlert
           {presentation.guidance}
         </Typography>
       ) : null}
-      {(error.code || error.requestId) && (
+      {info ? (
         <Box sx={{ mt: 1 }}>
-          <Typography variant="caption" component="p" sx={{ color: 'text.secondary' }}>
-            {error.code ? `Code: ${error.code}` : null}
-            {error.code && error.requestId ? ' · ' : null}
-            {error.requestId ? `Request: ${error.requestId}` : null}
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 0.5 }}>
+            Support info
+          </Typography>
+          <Typography
+            variant="caption"
+            component="code"
+            sx={{
+              display: 'block',
+              fontFamily: 'monospace',
+              userSelect: 'all',
+              color: 'text.secondary',
+            }}
+          >
+            {info}
           </Typography>
         </Box>
-      )}
+      ) : null}
       {children}
     </Alert>
   );

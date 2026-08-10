@@ -17,8 +17,8 @@ wired to a real host).
 ## Data & permissions
 
 - `READ_ITEM` — Digit API tab runs an `items` query; needed so the proxy allows that field
-- D1 binding `FULL_FEATURED_DB` — notes table from `src/backend/migrations/0001_init.sql`
-  must be applied in Digit before the Notes tab works
+- D1 binding `FULL_FEATURED_DB` — schema from `src/backend/migrations/`; Digit applies
+  pending files during publish (not at runtime; publish is required — upload alone is not enough)
 - Env `WELCOME_MESSAGE` — greeting text for the Config tab (`GET /greeting`)
 - Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets tab hits an external HTTP API
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
@@ -33,26 +33,17 @@ Local Digit preview is not supported yet.
 
 ## Prompts
 
-1. Original request:
-
 ```
 Build a full-featured reference Digit app we can use as the default example for the
-starter repo. It should exercise theme/MUI, error handling UI, Digit GraphQL, a Worker
-calling a public API, secrets-backed third-party HTTP, D1 CRUD, and env-driven config —
-as separate tabs so someone can copy the example and delete what they don't need.
-```
+starter repo. It should exercise theme/MUI via DigitThemeProvider, shared error handling
+UI, Digit GraphQL, a Worker calling a public API, secrets-backed third-party HTTP, D1
+CRUD, and env-driven config — as separate tabs so someone can copy the example and delete
+what they don't need.
 
-2. Follow-up:
-
-```
 Use the shared @digit/lib-frontend / lib-backend / lib-common helpers instead of
 hand-rolling proxy fetches and Worker response shapes. Keep the stack React + MUI +
 DigitThemeProvider.
-```
 
-3. Follow-up:
-
-```
 Make sure pack produces a zip we can publish and later rehydrate: Digit deploy assets
 plus source, SPEC, and tooling, since end users won't have Git.
 ```

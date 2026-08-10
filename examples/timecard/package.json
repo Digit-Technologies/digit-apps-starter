@@ -1,0 +1,26 @@
+{
+  "name": "@digit-apps/timecard",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "pack": "digit-app pack"
+  },
+  "dependencies": {
+    "@digit/lib-backend": "file:../../packages/lib-backend",
+    "@digit/lib-common": "file:../../packages/lib-common",
+    "@digit/lib-frontend": "file:../../packages/lib-frontend",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/icons-material": "^7.3.9",
+    "@mui/material": "^7.3.9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@digit/lib-build": "file:../../packages/lib-build",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "typescript": "^5.8.3"
+  }
+}

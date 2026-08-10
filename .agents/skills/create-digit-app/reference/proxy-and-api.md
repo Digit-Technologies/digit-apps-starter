@@ -19,7 +19,7 @@ into context:
    fetch matching type URIs
 
 This is the public API schema (same surface API tokens can introspect). Pair schema lookup
-with MCP **`apiPermissions`** so `manifest.permissions` covers the operations you call —
+with MCP **`appPermissions`** so `manifest.permissions` covers the operations you call —
 see [permissions.md](permissions.md).
 
 ## Hooks

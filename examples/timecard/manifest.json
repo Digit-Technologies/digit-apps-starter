@@ -1,0 +1,9 @@
+{
+  "permissions": [],
+  "backend": {
+    "kind": "cloudflare-worker",
+    "bindings": {
+      "TIMECARD_DB": "database"
+    }
+  }
+}
