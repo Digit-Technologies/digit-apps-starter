@@ -95,9 +95,9 @@ Platform codes stay distinct from app codes (`AppErrorCode` on `@digit/lib-commo
 Pair with `@digit/lib-backend` on the Worker so result shapes match.
 
 `AppErrorAlert` maps known platform / backend codes to a title, safe message, optional
-next-step guidance (e.g. `MISSING_CONFIG` → set env/secrets in Digit), Copy support
-info, and Retry when the error looks transient. Prefer rendering `AppErrorAlert` over
-branching on codes in app UI.
+next-step guidance (e.g. `MISSING_CONFIG` → set env/secrets in Digit), visible support
+info for debugging, and Retry when the error looks transient. Prefer rendering
+`AppErrorAlert` over branching on codes in app UI.
 
 ## Depend from an app
 

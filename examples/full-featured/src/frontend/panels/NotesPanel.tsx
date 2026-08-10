@@ -67,8 +67,9 @@ export default function NotesPanel() {
         Notes (D1)
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-        App-owned CRUD via <code>FULL_FEATURED_DB</code>. Run migration{' '}
-        <code>0001_init.sql</code> in Digit before first use.
+        App-owned CRUD via <code>FULL_FEATURED_DB</code>. SQL in{' '}
+        <code>src/backend/migrations/</code> runs during publish — republish after adding new
+        migration files.
       </Typography>
 
       {listError && <AppErrorAlert error={listError} onRetry={() => void refetch()} />}

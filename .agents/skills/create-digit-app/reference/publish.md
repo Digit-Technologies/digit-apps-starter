@@ -92,13 +92,15 @@ Call MCP `appPublish` with:
 - `appPublishId` — same id as `appUploadLinkId`
 
 Poll until `state` is `succeeded` or `failed`. Intermediate states include `queued`,
-`validating`, `deployingBackend`, `publishingBundle`. On failure, report `error`, fix the
+`validating`, `deployingBackend`, `publishingBundle`. During `deployingBackend`, Digit
+provisions D1 (when declared), applies pending `backend/migrations/*.sql`, then deploys
+the Worker — see [d1-migrations.md](d1-migrations.md). On failure, report `error`, fix the
 bundle, and restart at step 2.
 
 ## Zip validation reminders
 
 - `manifest.json` at the zip root and `frontend/index.js`
 - When `manifest.backend` is set: `backend/index.js` (migrations require a `database`
-  binding)
+  binding; applied during publish — [d1-migrations.md](d1-migrations.md))
 - `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` (including `lib-build`)
 - `manifest.permissions` are **`key`** values from **`apiPermissions`**

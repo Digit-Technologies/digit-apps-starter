@@ -1,7 +1,12 @@
+import { useState } from 'react';
+
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Grid from '@mui/material/Grid';
 import Stack from '@mui/material/Stack';
+import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 
 import { AppErrorAlert } from '@digit/lib-frontend';
@@ -17,7 +22,10 @@ import { localTimezoneAbbreviation } from './dateWindow';
 import { useDailyMetrics } from './useDailyMetrics';
 
 export default function App() {
-  const { days, series, inventoryQuantityProducedUnit, loading, error, refetch } = useDailyMetrics();
+  // Real data by default; flip on to demo/screenshot the layout with realistic fake numbers.
+  const [previewMode, setPreviewMode] = useState(false);
+  const { days, series, inventoryQuantityProducedUnit, loading, error, refetch } =
+    useDailyMetrics(previewMode);
   const tzAbbreviation = localTimezoneAbbreviation();
 
   return (
@@ -25,21 +33,53 @@ export default function App() {
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
         justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', sm: 'baseline' }}
+        alignItems={{ xs: 'flex-start', sm: 'center' }}
         spacing={0.5}
         sx={{ mb: 3 }}
       >
         <Box>
-          <Typography variant="overline" component="p" sx={{ color: 'primary.main', mb: 0.5 }}>
-            Digit App
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+            <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
+              Digit App
+            </Typography>
+            {previewMode && (
+              <Chip
+                label="Preview data"
+                size="small"
+                color="warning"
+                variant="filled"
+                sx={{ height: 20, fontSize: '0.6875rem', fontWeight: 600 }}
+              />
+            )}
+          </Stack>
           <Typography variant="h1" component="h1">
             Production Dashboard
           </Typography>
         </Box>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Today &amp; day boundaries shown in your local time ({tzAbbreviation})
-        </Typography>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          spacing={{ xs: 0.5, sm: 2 }}
+          alignItems={{ xs: 'flex-start', sm: 'center' }}
+        >
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Today &amp; day boundaries shown in your local time ({tzAbbreviation})
+          </Typography>
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={previewMode}
+                onChange={(_, checked) => setPreviewMode(checked)}
+              />
+            }
+            label={
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Preview data
+              </Typography>
+            }
+            sx={{ ml: 0 }}
+          />
+        </Stack>
       </Stack>
 
       {error && (

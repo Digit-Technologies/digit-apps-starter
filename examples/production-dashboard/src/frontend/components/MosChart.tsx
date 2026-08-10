@@ -19,6 +19,7 @@ export default function MosChart({ days, completedValues, openLateValues }: MosC
     <ChartCard title="MOs completed vs. open late (last 8 days)" noData={!hasAnyData}>
       <BarChart
         height={280}
+        borderRadius={6}
         xAxis={[
           {
             data: days.map((day) => day.label),

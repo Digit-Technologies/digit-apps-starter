@@ -231,7 +231,8 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 Always wrap with `createHandler`. Strip `/proxy/backend` via `backendPath`, match
 `method` + `path`, return `ok` / `err`. Prefer `requireEnv` over reading `env.KEY`.
 Jobs/schedules: `createHandler({ jobs })` + `digitJobs({ env })` —
-[reference/jobs-and-schedules.md](reference/jobs-and-schedules.md).
+[reference/jobs-and-schedules.md](reference/jobs-and-schedules.md). SQL migrations:
+[reference/d1-migrations.md](reference/d1-migrations.md).
 
 See `examples/full-featured/src/backend/index.js` for the reference layout.
 Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
@@ -244,6 +245,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/permissions.md](reference/permissions.md) — apiPermissions → key
 - [reference/backend-env-secrets.md](reference/backend-env-secrets.md) — env/secrets in Workers
 - [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md) — jobs, schedules, DIGIT_JOBS
+- [reference/d1-migrations.md](reference/d1-migrations.md) — database SQL applied on publish
 - [reference/publish.md](reference/publish.md) — MCP publish workflow and zip rules
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context
 - [`packages/lib-build`](../../../packages/lib-build) — `digit-app pack` shared tooling

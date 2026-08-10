@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { useDigitApiQuery, type AppError } from '@digit/lib-frontend';
 
 import { buildDayWindow, localDayKey, type DayBucket } from './dateWindow';
-import { buildPreviewStubMetrics, USE_PREVIEW_STUB_DATA } from './previewStubData';
+import { getPreviewStubData } from './previewStubData';
 
 export const TRACKED_METRICS = [
   'inventoryQuantityProduced',
@@ -143,30 +143,17 @@ export type DailyMetricsResult = {
 
 const DAYS_BACK = 7; // + today = 8 days total
 
-export function useDailyMetrics(): DailyMetricsResult {
+export function useDailyMetrics(previewMode: boolean = false): DailyMetricsResult {
   const { days, startDate, endDate } = useMemo(() => buildDayWindow(DAYS_BACK), []);
 
-  const {
-    data,
-    error,
-    loading: apiLoading,
-    refetch,
-  } = useDigitApiQuery<DailyMetricsData>({
+  const { data, error, loading, refetch } = useDigitApiQuery<DailyMetricsData>({
     query: DAILY_METRICS_QUERY,
     variables: { startDate, endDate },
-    skip: USE_PREVIEW_STUB_DATA,
+    // Preview mode never needs the real dailyMetrics call.
+    skip: previewMode,
   });
 
-  const previewStub = useMemo(
-    () => (USE_PREVIEW_STUB_DATA ? buildPreviewStubMetrics(days) : null),
-    [days],
-  );
-
   const { series, inventoryQuantityProducedUnit } = useMemo(() => {
-    if (previewStub) {
-      return previewStub;
-    }
-
     const dayIndexByKey = new Map(days.map((day, index) => [day.key, index]));
     const nodes = data?.dailyMetrics ?? [];
     const nodeByType = new Map(nodes.map((node) => [node.metricType, node]));
@@ -198,9 +185,19 @@ export function useDailyMetrics(): DailyMetricsResult {
     }
 
     return { series: result, inventoryQuantityProducedUnit: unitSymbol };
-  }, [data, days, previewStub]);
+  }, [data, days]);
 
-  const loading = USE_PREVIEW_STUB_DATA ? false : apiLoading;
+  if (previewMode) {
+    const stub = getPreviewStubData();
+    return {
+      days: stub.days,
+      series: stub.series,
+      inventoryQuantityProducedUnit: stub.inventoryQuantityProducedUnit,
+      loading: false,
+      error: null,
+      refetch,
+    };
+  }
 
-  return { days, series, inventoryQuantityProducedUnit, loading, error: USE_PREVIEW_STUB_DATA ? null : error, refetch };
+  return { days, series, inventoryQuantityProducedUnit, loading, error, refetch };
 }

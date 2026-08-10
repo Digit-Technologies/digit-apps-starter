@@ -26,9 +26,12 @@ verbatim prompts that produced it.
   `dailyMetrics`); no `backend` block.
 - `src/frontend/` — React + MUI + `@digit/lib-frontend` UI:
   - `main.tsx` — mounts `<App />` inside `DigitThemeProvider`.
-  - `App.tsx` — page layout (KPI row + charts row).
+  - `App.tsx` — page layout (KPI row + charts row) and the "Preview data" toggle.
   - `useDailyMetrics.ts` — fetches `dailyMetrics`, normalizes the response (including the
-    unit-aware handling for `inventoryQuantityProduced`) into per-day series.
+    unit-aware handling for `inventoryQuantityProduced`) into per-day series. Accepts a
+    `previewMode` flag; when on, skips the real query and returns stub data instead.
+  - `previewStubData.ts` — realistic-but-fake 8-day numbers for demoing/screenshotting the
+    layout, toggled at runtime (default off) rather than a code-level flag.
   - `dateWindow.ts` — local-timezone day-boundary + timezone-abbreviation helpers.
   - `components/` — the four KPI tiles and two charts.
 - `SPEC.md` — purpose, permissions rationale, gotchas, and prompt history.

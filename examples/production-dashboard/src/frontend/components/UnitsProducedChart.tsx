@@ -1,5 +1,5 @@
 import { useTheme } from '@mui/material/styles';
-import { LineChart } from '@mui/x-charts/LineChart';
+import { LineChart, lineClasses } from '@mui/x-charts/LineChart';
 
 import ChartCard from './ChartCard';
 import type { DayBucket } from '../dateWindow';
@@ -17,6 +17,14 @@ export default function UnitsProducedChart({ days, values, unitSymbol }: UnitsPr
     ? `Units produced (last 8 days, ${unitSymbol})`
     : 'Units produced (last 8 days)';
 
+  // A dedicated chart accent (theme.palette.info, a blue) instead of `primary.main` —
+  // in this theme primary is near-black (it's the button/text accent, not a chart color),
+  // which is what made the filled area look like a solid black wedge. The line stays a
+  // solid, fully-opaque stroke for precise reading; only the area fill underneath it is
+  // toned way down via `fillOpacity`, so the shape/volume still reads at a glance without
+  // dominating the tile.
+  const lineColor = theme.palette.info.main;
+
   return (
     <ChartCard title={title} noData={!hasAnyData}>
       <LineChart
@@ -33,10 +41,15 @@ export default function UnitsProducedChart({ days, values, unitSymbol }: UnitsPr
             area: true,
             showMark: true,
             label: unitSymbol ? `Units produced (${unitSymbol})` : 'Units produced',
-            color: theme.palette.primary.main,
+            color: lineColor,
             connectNulls: false,
           },
         ]}
+        sx={{
+          [`& .${lineClasses.area}`]: {
+            fillOpacity: 0.18,
+          },
+        }}
         grid={{ horizontal: true }}
         hideLegend
       />

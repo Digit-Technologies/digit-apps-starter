@@ -36,6 +36,7 @@ export default function OnTimeGaugeTile({ todayValue }: OnTimeGaugeTileProps) {
           valueMax={100}
           startAngle={-110}
           endAngle={110}
+          cornerRadius="50%"
           text={({ value }) => `${Math.round(value ?? 0)}%`}
           sx={{
             [`& .${gaugeClasses.valueArc}`]: { fill: color },

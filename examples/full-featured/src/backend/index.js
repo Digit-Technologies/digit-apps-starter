@@ -6,7 +6,7 @@
  *   API_BASE_URL          — Secrets tab (e.g. https://httpbin.org)
  *   THIRD_PARTY_API_KEY   — Secrets tab (secret; never returned to the UI)
  *
- * D1 binding: FULL_FEATURED_DB (see manifest.json + migrations/)
+ * D1 binding: FULL_FEATURED_DB (manifest.json). Migrations in migrations/ run on publish.
  */
 
 import { AppErrorCode, parseJsonResponse } from '@digit/lib-common';
