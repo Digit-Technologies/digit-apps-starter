@@ -56,6 +56,17 @@ Confirm root fields and selection sets against `graphql-schema://…` before shi
 Types for `window.DigitHost` are exported from `@digit/lib-frontend` (`DigitHost`,
 `DigitHostSettings`). Prefer the hooks over calling `window.DigitProxyClient` yourself.
 
+## Sort, filter, and pagination
+
+Prefer API (GraphQL or backend) inputs for sorting, filtering, and paging when the schema
+or route supports them. Do not load an entire collection into the browser to sort/filter
+locally if the field accepts those args — look them up on `graphql-schema://type/…`.
+
+When the UI is a table (or any multi-row list that can grow), paginate it: pass
+`connection` / page args (e.g. `first` + `after`, or page size + cursor) and wire
+next/previous (or equivalent) controls. Unbounded `nodes` dumps are not acceptable for
+tables.
+
 ## Digit GraphQL API
 
 `useDigitApiQuery` / `useDigitApiMutation` POST `/proxy/digit` with
