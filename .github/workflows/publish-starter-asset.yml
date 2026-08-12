@@ -1,0 +1,111 @@
+name: Publish starter asset
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build curated archive
+        id: build
+        run: |
+          set -euo pipefail
+
+          STAGE="$(mktemp -d)/digit-apps-starter"
+          mkdir -p "$STAGE/.agents/skills" "$STAGE/apps"
+
+          rsync -a \
+            --exclude node_modules \
+            --exclude .DS_Store \
+            --exclude .vite \
+            .agents/skills/create-digit-app/ \
+            "$STAGE/.agents/skills/create-digit-app/"
+
+          rsync -a \
+            --exclude node_modules \
+            --exclude .DS_Store \
+            --exclude .vite \
+            --exclude frontend \
+            --exclude backend \
+            examples/ \
+            "$STAGE/examples/"
+
+          rsync -a \
+            --exclude node_modules \
+            --exclude .DS_Store \
+            packages/ \
+            "$STAGE/packages/"
+
+          rsync -a scripts/ "$STAGE/scripts/"
+
+          cp apps/README.md "$STAGE/apps/README.md"
+          cp package.json package-lock.json README.md LICENSE .gitignore "$STAGE/"
+
+          DATE_TAG="starter-$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
+          {
+            echo "tag=${DATE_TAG}"
+            echo "sha=${GITHUB_SHA}"
+          } >> "$GITHUB_OUTPUT"
+
+          (
+            cd "$(dirname "$STAGE")"
+            zip -rq "$GITHUB_WORKSPACE/digit-apps-starter.zip" digit-apps-starter
+          )
+
+          echo "Archive size:"
+          ls -lh digit-apps-starter.zip
+          echo "Top-level entries:"
+          unzip -Z1 digit-apps-starter.zip | awk -F/ 'NF<=2 {print}' | sort -u
+
+      - name: Create dated release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.build.outputs.tag }}"
+          gh release create "$TAG" digit-apps-starter.zip \
+            --title "$TAG" \
+            --notes "Curated digit-apps-starter snapshot from \`${GITHUB_SHA}\` on \`main\`." \
+            --latest=false
+
+      - name: Update starter-latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          NOTES="$(cat <<EOF
+          Curated digit-apps-starter snapshot for agent sessions.
+
+          - Source commit: \`${GITHUB_SHA}\`
+          - Dated release: \`${{ steps.build.outputs.tag }}\`
+
+          ### Contents
+          - \`.agents/skills/create-digit-app\`
+          - \`examples/\`, \`packages/\`, \`scripts/\`, \`apps/\`
+          - Root \`package.json\`, \`package-lock.json\`, \`README.md\`, \`LICENSE\`, \`.gitignore\`
+
+          ### Download
+          \`\`\`bash
+          curl -fsSL -o digit-apps-starter.zip \\
+            https://github.com/${{ github.repository }}/releases/latest/download/digit-apps-starter.zip
+          unzip digit-apps-starter.zip
+          \`\`\`
+          EOF
+          )"
+
+          gh release delete starter-latest --cleanup-tag --yes 2>/dev/null || true
+
+          gh release create starter-latest digit-apps-starter.zip \
+            --title "starter-latest" \
+            --notes "$NOTES" \
+            --latest

@@ -66,6 +66,23 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 5. Keep `apps/<name>` source in the local workspace (not build outputs); do not push or
    open PRs against this upstream repo
 
+## Starter asset
+
+On every merge to `main`, CI publishes a curated zip for other repos / agent sessions:
+
+- Floating release: [`starter-latest`](https://github.com/Digit-Technologies/digit-apps-starter/releases/tag/starter-latest)
+- Dated releases: `starter-YYYY.MM.DD-<sha>` (same asset, immutable)
+
+```bash
+curl -fsSL -o digit-apps-starter.zip \
+  https://github.com/Digit-Technologies/digit-apps-starter/releases/latest/download/digit-apps-starter.zip
+unzip digit-apps-starter.zip
+```
+
+The archive includes the create-digit-app skill, `examples/`, `packages/`, `scripts/`,
+`apps/`, and root install metadata — not `node_modules` or build outputs.
+
 ## License
 
 See [LICENSE](LICENSE).
+
