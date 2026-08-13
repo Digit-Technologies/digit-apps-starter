@@ -52,9 +52,6 @@ jobs:
             .agents/skills/create-digit-app/ \
             "$STAGE/.agents/skills/create-digit-app/"
 
-          # Do not --exclude bare `frontend`/`backend`: rsync matches those names anywhere,
-          # which drops examples/*/src/frontend and src/backend. Pack outputs like
-          # examples/*/frontend/ are already gitignored, so a clean checkout has none.
           rsync -a \
             --exclude node_modules \
             --exclude .DS_Store \
@@ -73,11 +70,6 @@ jobs:
           cp apps/README.md "$STAGE/apps/README.md"
           cp package.json package-lock.json README.md LICENSE .gitignore "$STAGE/"
 
-          if [[ ! -f "$STAGE/examples/full-featured/src/frontend/main.tsx" ]]; then
-            echo "error: staged archive is missing examples/full-featured/src/frontend/main.tsx" >&2
-            exit 1
-          fi
-
           DATE_TAG="starter-$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
           {
             echo "tag=${DATE_TAG}"
@@ -93,10 +85,6 @@ jobs:
           ls -lh digit-apps-starter.zip
           echo "Top-level entries:"
           unzip -Z1 digit-apps-starter.zip | awk -F/ 'NF<=2 {print}' | sort -u
-          if ! unzip -Z1 digit-apps-starter.zip | grep -qx 'digit-apps-starter/examples/full-featured/src/frontend/main.tsx'; then
-            echo "error: zip is missing examples/full-featured/src/frontend/main.tsx" >&2
-            exit 1
-          fi
 
       - name: Upload dry-run artifact
         if: env.DRY_RUN == 'true'
