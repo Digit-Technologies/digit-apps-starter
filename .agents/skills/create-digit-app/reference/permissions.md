@@ -28,5 +28,7 @@ manifest.json "permissions" contains unknown permissions: …
 - Look up fields with `graphql-schema://…` first, then declare only the permissions those
   operations need
 - After adding a new Digit API call, update `permissions` in the same change
+- Before pack/publish, check `manifest.permissions` against MCP **`appPermissions`** and
+  confirm every Digit API operation the app calls is covered
 - Do not copy admin-only permissions into an app unless the product explicitly needs them
   and the users who open the app hold them

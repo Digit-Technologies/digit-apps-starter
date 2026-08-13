@@ -61,15 +61,17 @@ Digit app progress:
 - [ ] 4. Add src/backend/ only if env/secrets or server logic needed
 - [ ] 5. Look up GraphQL via graphql-schema://… and permissions via appPermissions
 - [ ] 6. Write root manifest.json (permissions[].key from appPermissions)
-- [ ] 7. Write/update SPEC.md
-- [ ] 8. npm run pack -w apps/<name> → app.zip
-- [ ] 9. Publish via MCP (upload zip out-of-band)
-- [ ] 10. Keep app source under apps/ — not build outputs; no upstream PRs
+- [ ] 7. Check manifest.permissions against appPermissions — confirm it covers every Digit API call the app makes
+- [ ] 8. Write/update SPEC.md
+- [ ] 9. npm run pack -w apps/<name> → app.zip
+- [ ] 10. Publish via MCP (upload zip out-of-band)
+- [ ] 11. Keep app source under apps/ — not build outputs; no upstream PRs
 ```
 
-Schema and permission lookup (steps 5–6) must happen **before publish**. Do them as soon
+Schema and permission lookup (steps 5–7) must happen **before publish**. Do them as soon
 as you know which Digit API calls the app makes — inventing fields or permission strings
-fails at runtime or publish validation.
+fails at runtime or publish validation. Re-check step 7 whenever you add or change a Digit
+API call.
 
 ### 1. Scaffold the app
 
@@ -137,6 +139,13 @@ only; still upload the zip **unchanged**. Details:
 - **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
 - **Digit API:** `useDigitApiQuery` / `useDigitApiMutation`. Look up operations via
   `graphql-schema://…` first. Never call Digit GraphQL with a bearer token from the browser.
+- **Sort / filter / page via the API:** When the GraphQL field (or backend route) accepts
+  sort, filter, or connection/page inputs, use those — do not fetch a full list and
+  sort/filter client-side when the API can do it. Confirm arg names via
+  `graphql-schema://…`.
+- **Tables need pagination:** Any MUI `Table` (or equivalent list of many rows) must be
+  paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
+  unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
 - **Public surface:** hooks + theme + `AppErrorAlert` only. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
@@ -174,6 +183,9 @@ user’s live permissions at runtime.
 1. Call MCP **`appPermissions`**
 2. Put each needed permission’s **`key`** into `manifest.permissions`
 3. Never invent strings — unknown keys fail publish
+4. Before pack/publish (checklist step 7), re-read `manifest.permissions` against
+   **`appPermissions`** and the app’s Digit API calls — add any missing keys; drop unused
+   ones only when you are sure nothing still needs them
 
 Look up GraphQL fields with `graphql-schema://…`, then declare only the permissions those
 operations need. Details: [reference/permissions.md](reference/permissions.md).
