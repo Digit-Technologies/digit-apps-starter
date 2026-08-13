@@ -78,4 +78,7 @@ not a parallel CSS-variable theme.
 - Do not reintroduce cream/teal “starter” palettes or IBM Plex / decorative
   gradients from older vanilla examples
 - Do not invent a CSS custom-property theme — use MUI + `DigitThemeProvider`
+- Stay inside the host iframe: no downloads, new tabs/popups, or
+  `alert`/`confirm`/`prompt`. MUI Dialog/Drawer are fine. See
+  [iframe-constraints.md](iframe-constraints.md).
 - Do not assume the harness injects React or MUI — only fonts and host APIs

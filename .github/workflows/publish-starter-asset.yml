@@ -1,0 +1,143 @@
+name: Publish starter asset
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - '.agents/**'
+      - 'examples/**'
+      - 'packages/**'
+      - 'scripts/**'
+      - 'apps/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'README.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/workflows/publish-starter-asset.yml'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build the zip and upload it as an artifact without creating releases
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      # PRs and non-main refs always dry-run. Real releases only from main
+      # (push or workflow_dispatch with dry_run=false).
+      DRY_RUN: ${{ github.ref != 'refs/heads/main' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build curated archive
+        id: build
+        run: |
+          set -euo pipefail
+
+          STAGE="$(mktemp -d)/digit-apps-starter"
+          mkdir -p "$STAGE/.agents/skills" "$STAGE/apps"
+
+          rsync -a \
+            --exclude node_modules \
+            --exclude .DS_Store \
+            --exclude .vite \
+            .agents/skills/create-digit-app/ \
+            "$STAGE/.agents/skills/create-digit-app/"
+
+          rsync -a \
+            --exclude node_modules \
+            --exclude .DS_Store \
+            --exclude .vite \
+            --exclude frontend \
+            --exclude backend \
+            examples/ \
+            "$STAGE/examples/"
+
+          rsync -a \
+            --exclude node_modules \
+            --exclude .DS_Store \
+            packages/ \
+            "$STAGE/packages/"
+
+          rsync -a scripts/ "$STAGE/scripts/"
+
+          cp apps/README.md "$STAGE/apps/README.md"
+          cp package.json package-lock.json README.md LICENSE .gitignore "$STAGE/"
+
+          DATE_TAG="starter-$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
+          {
+            echo "tag=${DATE_TAG}"
+            echo "sha=${GITHUB_SHA}"
+          } >> "$GITHUB_OUTPUT"
+
+          (
+            cd "$(dirname "$STAGE")"
+            zip -rq "$GITHUB_WORKSPACE/digit-apps-starter.zip" digit-apps-starter
+          )
+
+          echo "Archive size:"
+          ls -lh digit-apps-starter.zip
+          echo "Top-level entries:"
+          unzip -Z1 digit-apps-starter.zip | awk -F/ 'NF<=2 {print}' | sort -u
+
+      - name: Upload dry-run artifact
+        if: env.DRY_RUN == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: digit-apps-starter
+          path: digit-apps-starter.zip
+          if-no-files-found: error
+
+      - name: Create dated release
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.build.outputs.tag }}"
+          gh release create "$TAG" digit-apps-starter.zip \
+            --title "$TAG" \
+            --notes "Curated digit-apps-starter snapshot from \`${GITHUB_SHA}\` on \`main\`." \
+            --latest=false
+
+      - name: Update starter-latest release
+        if: env.DRY_RUN != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          NOTES="$(cat <<EOF
+          Curated digit-apps-starter snapshot for agent sessions.
+
+          - Source commit: \`${GITHUB_SHA}\`
+          - Dated release: \`${{ steps.build.outputs.tag }}\`
+
+          ### Contents
+          - \`.agents/skills/create-digit-app\`
+          - \`examples/\`, \`packages/\`, \`scripts/\`, \`apps/\`
+          - Root \`package.json\`, \`package-lock.json\`, \`README.md\`, \`LICENSE\`, \`.gitignore\`
+
+          ### Download
+          \`\`\`bash
+          curl -fsSL -o digit-apps-starter.zip \\
+            https://github.com/${{ github.repository }}/releases/latest/download/digit-apps-starter.zip
+          unzip digit-apps-starter.zip
+          \`\`\`
+          EOF
+          )"
+
+          gh release delete starter-latest --cleanup-tag --yes 2>/dev/null || true
+
+          gh release create starter-latest digit-apps-starter.zip \
+            --title "starter-latest" \
+            --notes "$NOTES" \
+            --latest
