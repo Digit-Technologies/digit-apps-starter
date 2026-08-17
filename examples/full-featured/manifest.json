@@ -1,5 +1,7 @@
 {
-  "permissions": ["READ_ITEM"],
+  "permissions": [
+    "READ_ITEM"
+  ],
   "backend": {
     "kind": "cloudflare-worker",
     "bindings": {
@@ -9,7 +11,14 @@
       {
         "name": "prune-notes",
         "everySeconds": 3600,
-        "payload": { "maxAgeDays": 30 }
+        "payload": {
+          "maxAgeDays": 30
+        }
+      }
+    ],
+    "webhooks": [
+      {
+        "path": "note-created"
       }
     ]
   }

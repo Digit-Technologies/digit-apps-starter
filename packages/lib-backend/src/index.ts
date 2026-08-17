@@ -30,3 +30,13 @@ export type {
   JobHandlers,
   JobInvocation,
 } from './jobs';
+
+// Inbound webhooks (platform-delivered, app-verified)
+export { verifyWebhookSignature } from './webhooks';
+export type {
+  WebhookArgs,
+  WebhookHandler,
+  WebhookHandlers,
+  WebhookInvocation,
+  WebhookResponse,
+} from './webhooks';

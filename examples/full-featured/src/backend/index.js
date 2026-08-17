@@ -20,12 +20,16 @@ import {
 } from '@digit/lib-backend';
 
 import { noteStats, pruneNotes } from './jobs.js';
+import { noteCreated } from './webhooks.js';
 import { handleNotes } from './notes.js';
 
 export default createHandler({
   jobs: {
     'prune-notes': pruneNotes,
     'note-stats': noteStats,
+  },
+  webhooks: {
+    'note-created': noteCreated,
   },
   fetch: async ({ request, env }) => {
     const path = backendPath(request);

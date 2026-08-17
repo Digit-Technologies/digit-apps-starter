@@ -17,6 +17,7 @@ Import from the package root only. Helpers take named arguments.
 | `ok` / `err` | Success / error `Response` helpers |
 | `requireEnv` / `optionalEnv` | Read env vars, secrets, and bindings |
 | `digitJobs` | The platform `DIGIT_JOBS` binding, typed — submit/inspect background jobs |
+| `verifyWebhookSignature` | Timing-safe HMAC check for inbound webhook payloads |
 | `HandlerError` | Thrown by `requireEnv`; mapped by `createHandler` (apps rarely throw it) |
 
 Wrap the Worker with `createHandler`. Use `backendPath(request)`, then match with normal
@@ -111,6 +112,37 @@ export default createHandler({
 
 Return value → the run's `result`; a throw fails the attempt (retried). Full contract
 (schedule rules, limits, run lifecycle): the skill's `reference/jobs-and-schedules.md`.
+
+## Inbound webhooks
+
+Pass `webhooks` to `createHandler` to receive third-party webhooks on manifest-declared
+paths (`backend.webhooks`, served at `/webhooks/{path}`); the platform delivers them over
+RPC via the `triggerWebhook` method. The endpoint is public — ALWAYS verify the provider's
+signature over the raw `body` bytes before acting:
+
+```js
+import { createHandler, requireEnv, verifyWebhookSignature } from '@digit/lib-backend';
+
+export default createHandler({
+  webhooks: {
+    'order-created': async ({ headers, body, env }) => {
+      const valid = await verifyWebhookSignature({
+        secret: requireEnv({ env, key: 'WEBHOOK_SECRET' }),
+        body,
+        signature: headers['x-webhook-signature'] ?? '',
+      });
+      if (!valid) return { status: 401 };
+      // …verify passed: act, or digitJobs({ env }).submit(...) for heavy work…
+      return { status: 200 };
+    },
+  },
+  fetch: async () => ok({ data: {} }),
+});
+```
+
+Handler args: `{ path, method, query, headers, body, env, ctx }`; return
+`{ status, headers?, body? }` (sent to the provider verbatim). Full contract: the skill's
+`reference/webhooks.md`.
 
 ## Bundle
 
