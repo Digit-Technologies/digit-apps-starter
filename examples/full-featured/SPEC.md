@@ -23,7 +23,7 @@ wired to a real host).
 - Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets tab hits an external HTTP API
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
 - Schedule `prune-notes` (hourly, manifest `backend.schedules`) deletes notes older than
-  `payload.maxAgeDays`; job `note-stats` is submitted via `DIGIT_JOBS` from
+  `payload.maxAgeDays`; job `note-stats` is submitted via `digitJobs` from
   `POST /jobs/note-stats` — handlers in `src/backend/jobs.js`, UI in the Jobs tab
 
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code.
