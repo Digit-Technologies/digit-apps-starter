@@ -241,11 +241,12 @@ export default function App() {
       <Stack spacing={3}>
         <Stack
           direction="row"
-          justifyContent="space-between"
-          alignItems="flex-start"
-          flexWrap="wrap"
-          rowGap={1}
-        >
+          sx={{
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            rowGap: 1
+          }}>
           <Box>
             <Typography variant="overline" component="p" sx={{ color: 'primary.main', mb: 0.5 }}>
               Digit App
@@ -276,7 +277,14 @@ export default function App() {
         )}
 
         {initialLoading ? (
-          <Stack direction="row" spacing={1.5} alignItems="center" justifyContent="center" sx={{ py: 6 }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{
+              alignItems: "center",
+              justifyContent: "center",
+              py: 6
+            }}>
             <CircularProgress size={22} />
             <Typography variant="body1" sx={{ color: 'text.secondary' }}>
               Loading…
@@ -288,13 +296,17 @@ export default function App() {
               variant="outlined"
               sx={{ px: 3, py: 3.5, borderRadius: 1, textAlign: 'center' }}
             >
-              <Stack spacing={1.5} alignItems="center">
+              <Stack spacing={1.5} sx={{
+                alignItems: "center"
+              }}>
                 {identityLine && (
                   <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
                     {identityLine}
                   </Typography>
                 )}
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1} sx={{
+                  alignItems: "center"
+                }}>
                   <Chip
                     label={isClockedIn ? 'Clocked in' : 'Clocked out'}
                     sx={{
@@ -369,7 +381,13 @@ export default function App() {
               )}
 
               {!previewMode && shiftsLoading && !shiftsData ? (
-                <Stack direction="row" spacing={1.5} alignItems="center" sx={{ py: 2 }}>
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{
+                    alignItems: "center",
+                    py: 2
+                  }}>
                   <CircularProgress size={18} />
                   <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                     Loading shifts…
@@ -383,7 +401,12 @@ export default function App() {
                 <Stack spacing={0} divider={<Divider flexItem />}>
                   {shifts.map((shift) => (
                     <Stack key={shift.id} spacing={0.25} sx={{ py: 1.25 }}>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Stack
+                        direction="row"
+                        sx={{
+                          alignItems: "center",
+                          justifyContent: "space-between"
+                        }}>
                         <Typography variant="body2" sx={{ fontWeight: 600 }}>
                           {formatDate(shift.clockInTime)}
                         </Typography>
@@ -422,7 +445,13 @@ export default function App() {
               )}
 
               {shifts.length > 0 && (
-                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ pt: 0.5 }}>
+                <Stack
+                  direction="row"
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    pt: 0.5
+                  }}>
                   <Button
                     size="small"
                     disabled={page <= 1}

@@ -5,8 +5,10 @@ import { outer } from "./shadows"
 export const muiMenu = (): Components<Omit<Theme, "components">>["MuiMenu"] => {
   return {
     defaultProps: {
-      BackdropProps: {
-        invisible: true,
+      slotProps: {
+        backdrop: {
+          invisible: true,
+        },
       },
     },
     styleOverrides: {
