@@ -15,7 +15,7 @@ type AppManifest = {
   permissions: string[]; // each entry = appPermissions.key
   backend?: {
     kind: 'cloudflare-worker';
-    bindings?: Record<string, 'database'>; // BINDING_NAME → type
+    bindings?: Record<string, 'database' | 'bucket'>; // BINDING_NAME → type
     schedules?: {
       name: string;        // lowercase [a-z0-9-], max 32, unique
       everySeconds: number; // 300–86400
@@ -34,10 +34,14 @@ type AppManifest = {
   **`appPermissions`** — never invent strings (see [permissions.md](permissions.md))
 - If `backend` is present, the zip **must** include `backend/index.js`
 - If the zip includes `backend/` files but the manifest has no `backend` block → reject
-- `bindings` maps `BINDING_NAME` (`^[A-Z][A-Z0-9_]{0,63}$`) to a type; `"database"` (a
-  platform-provisioned D1) is the only supported type today
+- `bindings` maps `BINDING_NAME` (`^[A-Z][A-Z0-9_]{0,63}$`) to a type: `"database"` (a
+  platform-provisioned D1) or `"bucket"` (a platform-provisioned R2 bucket, read with
+  `requireEnv` and used via the standard R2 API — `put`/`get`/`list`/`delete`)
 - Binding names must not start with `DIGIT_` — reserved for platform bindings
-- At most **one** `database` binding per app for now
+- At most **one** `database` binding per app for now; at most **10** `bucket` bindings.
+  Storage names are platform-derived from the app id + binding name, so keep binding names
+  short — very long ones fail the publish — and treat them as permanent: renaming a
+  binding points the app at a fresh, empty resource
 - Optional `backend/migrations/*.sql` requires a `database` binding — see
   [d1-migrations.md](d1-migrations.md)
 - Optional `backend.schedules` (recurring background runs): name `[a-z0-9-]{1,32}` unique,

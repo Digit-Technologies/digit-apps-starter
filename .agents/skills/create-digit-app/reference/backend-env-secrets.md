@@ -53,12 +53,16 @@ export default createHandler({
 });
 ```
 
-D1 (when declared in the manifest) appears under the binding name you chose — also via
-`requireEnv`:
+D1 databases and R2 buckets (when declared in the manifest) appear under the binding
+names you chose — also via `requireEnv`:
 
 ```js
 const db = requireEnv({ env, key: 'MY_APP_DB' });
 await db.prepare('SELECT 1').first();
+
+const assets = requireEnv({ env, key: 'MY_APP_ASSETS' });
+await assets.put('reports/latest.csv', csvText);
+const object = await assets.get('reports/latest.csv');
 ```
 
 Never put secret values or raw upstream bodies into `error.message` / success `data`.
@@ -86,6 +90,7 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 | Read non-secret config from Digit app settings | Yes |
 | Call third-party APIs with secrets | Yes |
 | App-own persistence (D1) | Yes (`backend.d1`) |
+| App-own file/blob storage (R2) | Yes (a `"bucket"` binding) |
 
 ## Setup for users
 
