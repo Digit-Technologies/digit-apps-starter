@@ -21,6 +21,9 @@ type AppManifest = {
       everySeconds: number; // 300–86400
       payload?: unknown;   // ≤4KB JSON, passed to every tick
     }[];                   // max 5; see reference/jobs-and-schedules.md
+    webhooks?: {
+      path: string;        // lowercase [a-z0-9-], max 32, unique — served at /webhooks/{path}
+    }[];                   // max 10; see reference/webhooks.md
   };
 };
 ```
@@ -40,6 +43,9 @@ type AppManifest = {
 - Optional `backend.schedules` (recurring background runs): name `[a-z0-9-]{1,32}` unique,
   `everySeconds` 300–86400, payload ≤4KB, max 5 — handled via `createHandler({ jobs })`;
   publishing replaces the set wholesale (no `schedules` = clears them)
+- Optional `backend.webhooks` (public inbound POST endpoints): `path` `[a-z0-9-]{1,32}`
+  unique, max 10 — handled via `createHandler({ webhooks })`; undeclared paths 404 at the
+  platform edge, and the handler must verify the provider's signature itself
 - `frontend/index.js` must exist; `frontend/index.html` and `frontend/loader.js` are
   harness-reserved names your bundle may not contain
 

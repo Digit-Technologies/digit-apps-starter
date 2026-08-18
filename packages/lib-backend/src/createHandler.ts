@@ -3,6 +3,12 @@ import { WorkerEntrypoint } from 'cloudflare:workers';
 
 import { runJobHandler, type JobHandlers, type JobInvocation } from './jobs';
 import { err } from './respond';
+import {
+  runWebhookHandler,
+  type WebhookHandlers,
+  type WebhookInvocation,
+  type WebhookResponse,
+} from './webhooks';
 
 /**
  * Thrown by `requireEnv` (and similar) for expected config failures.
@@ -42,6 +48,8 @@ export type CreateHandlerArgs = {
   fetch: FetchHandler;
   /** Job/schedule handlers by name — invoked by the platform over RPC, never through `fetch`. */
   jobs?: JobHandlers;
+  /** Webhook handlers by manifest-declared path — delivered by the platform over RPC. */
+  webhooks?: WebhookHandlers;
 };
 
 /**
@@ -142,7 +150,7 @@ export type CreateHandlerArgs = {
  *   },
  * });
  */
-export function createHandler({ fetch: handleFetch, jobs }: CreateHandlerArgs) {
+export function createHandler({ fetch: handleFetch, jobs, webhooks }: CreateHandlerArgs) {
   // A class, not a plain { fetch } object — only class exports expose RPC methods for job delivery.
   return class extends WorkerEntrypoint {
     async fetch(request: Request): Promise<Response> {
@@ -167,6 +175,34 @@ export function createHandler({ fetch: handleFetch, jobs }: CreateHandlerArgs) {
 
     async triggerJob(invocation: JobInvocation): Promise<unknown> {
       return runJobHandler({ invocation, env: this.env, ctx: this.ctx, jobs: jobs ?? {} });
+    }
+
+    async triggerWebhook(invocation: WebhookInvocation): Promise<WebhookResponse> {
+      try {
+        return await runWebhookHandler({
+          invocation,
+          env: this.env,
+          ctx: this.ctx,
+          webhooks: webhooks ?? {},
+        });
+      } catch (error) {
+        // Same posture as fetch: expected config throws get a structured status, anything
+        // else is a 500 with no detail leaked — a throw here would surface to the provider
+        // as an opaque platform 502 and mask the app's own error shape.
+        if (error instanceof HandlerError) {
+          return {
+            status: error.status,
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ error: { code: error.code, message: error.message } }),
+          };
+        }
+        console.error('Unhandled webhook error', error);
+        return {
+          status: 500,
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ error: { code: AppErrorCode.SERVER_ERROR } }),
+        };
+      }
     }
   };
 }

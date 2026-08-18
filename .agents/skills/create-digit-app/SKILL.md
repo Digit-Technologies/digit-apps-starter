@@ -185,6 +185,9 @@ not start with `DIGIT_`.
 
 Optional `backend.schedules` and on-demand jobs:
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md).
+Optional `backend.webhooks` — public inbound POST endpoints at `/webhooks/{path}`; the
+handler MUST verify the provider's signature over the raw bytes:
+[reference/webhooks.md](reference/webhooks.md).
 Full schema: [reference/manifest.md](reference/manifest.md).
 
 ### 6. Permissions
@@ -255,7 +258,9 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 Always wrap with `createHandler`. Strip `/proxy/backend` via `backendPath`, match
 `method` + `path`, return `ok` / `err`. Prefer `requireEnv` over reading `env.KEY`.
 Jobs/schedules: `createHandler({ jobs })` + `digitJobs({ env })` —
-[reference/jobs-and-schedules.md](reference/jobs-and-schedules.md). SQL migrations:
+[reference/jobs-and-schedules.md](reference/jobs-and-schedules.md). Webhooks:
+`createHandler({ webhooks })`, verify with `verifyWebhookSignature` before acting —
+[reference/webhooks.md](reference/webhooks.md). SQL migrations:
 [reference/d1-migrations.md](reference/d1-migrations.md).
 
 See `examples/full-featured/src/backend/index.js` for the reference layout.
@@ -270,6 +275,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key
 - [reference/backend-env-secrets.md](reference/backend-env-secrets.md) — env/secrets in Workers
 - [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md) — jobs, schedules, DIGIT_JOBS
+- [reference/webhooks.md](reference/webhooks.md) — inbound webhooks, signature verification
 - [reference/d1-migrations.md](reference/d1-migrations.md) — database SQL applied on publish
 - [reference/publish.md](reference/publish.md) — MCP publish workflow and zip rules
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context
