@@ -2,9 +2,15 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 /**
- * Vite `build.license` writes `.vite/license.md`. Append that text to the JS entry as a
- * block comment so Digit's iframe-loaded `index.js` carries third-party notices without a
- * separate licenses API.
+ * After build, append Vite's third-party license report into `index.js` as a block comment.
+ *
+ * Why this exists:
+ * - Oxc minify drops legal comments by default, and even when kept it only preserves
+ *   `/*!` / `@license` banners already in source — not package LICENSE files.
+ * - `build.license: true` writes notices to `.vite/license.md` only; Digit never serves
+ *   that file. The platform loads `frontend/index.js` / `backend/index.js` in an iframe.
+ * - Inlining into the entry keeps MIT-style attribution with the code users actually get,
+ *   without a separate licenses API or UI link.
  */
 export function inlineBundleLicenses() {
   let outDir = '';
