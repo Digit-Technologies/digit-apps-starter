@@ -10,13 +10,18 @@ This upstream repo does not accept contributions — do not open PRs or push her
 
 ```bash
 npm install                     # once per clone, from the repo root (Node 22+)
-npm run new-app -- my-app       # scaffold apps/my-app from examples/full-featured
+npm run new-app -- my-app       # source checkout: scaffold an app
 npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
 ```
 
 This repo is one npm workspace (`packages/*`, `examples/*`, `apps/*`). Always install from
 the repo root — `@digit/lib-build` is linked with `file:`, so npm installs its Vite build
 toolchain into the root `node_modules` rather than the app's.
+
+The curated starter archive includes `apps/app/`, pre-scaffolded from
+`examples/full-featured` with source, manifest, package metadata, and `SPEC.md`. It does
+not include compiled `frontend/` or `backend/` directories. In that downloaded archive,
+work in `apps/app` instead of running `new-app`; use `new-app` only for another workspace.
 
 ## Agent skill
 
@@ -80,7 +85,9 @@ unzip digit-apps-starter.zip
 ```
 
 The archive includes the create-digit-app skill, `examples/`, `packages/`, `scripts/`,
-`apps/`, and root install metadata — not `node_modules` or build outputs.
+the packable source tree at `apps/app/`, and root install metadata — not `node_modules`
+or build outputs. A consumer restoring a retained publish can replace `apps/app/`
+entirely with that publish archive's `project/` tree while keeping the starter shell.
 
 ## License
 

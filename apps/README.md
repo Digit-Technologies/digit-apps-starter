@@ -3,7 +3,12 @@
 Digit apps live here, one folder per app. They are npm workspaces of this clone, which is
 what lets `digit-app pack` find its build toolchain.
 
+The curated starter archive includes `apps/app/`, a packable source scaffold generated
+from `examples/full-featured`. Start there when no retained publish exists. When restoring
+a retained publish, its `project/` tree replaces `apps/app/` entirely.
+
 ```
+npm run pack -w apps/app      # pack the starter archive's default app
 npm run new-app -- my-app     # scaffold apps/my-app from examples/full-featured
 npm run pack -w apps/my-app   # build frontend/ (+ backend/) and write app.zip
 ```
