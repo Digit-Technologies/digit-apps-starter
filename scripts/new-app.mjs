@@ -60,7 +60,7 @@ async function copyTemplate(src, dest, { atRoot = true } = {}) {
   }
 }
 
-function specTemplate(name) {
+function specTemplate(name, example) {
   return `# ${name}
 
 Iteration context for the next agent. Keep this current — chat history is not always
@@ -81,7 +81,7 @@ TODO: the verbatim original request, then each refinement.
 
 ## Context supplied
 
-Scaffolded from \`examples/full-featured\`. TODO: docs, tickets, screenshots, and user
+Scaffolded from \`examples/${example}\`. TODO: docs, tickets, screenshots, and user
 decisions that shaped the app.
 `;
 }
@@ -120,7 +120,7 @@ async function main() {
   pkg.name = `@digit-apps/${options.name}`;
   await fs.writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
-  await fs.writeFile(path.join(dest, 'SPEC.md'), specTemplate(options.name));
+  await fs.writeFile(path.join(dest, 'SPEC.md'), specTemplate(options.name, options.from));
   await fs.rm(path.join(dest, 'README.md'), { force: true });
 
   console.log(`Created apps/${options.name} from examples/${options.from}`);

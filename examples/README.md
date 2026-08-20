@@ -1,5 +1,8 @@
 # Examples
 
+[`hello-world/`](hello-world) is the minimal frontend-only example used to pre-scaffold
+`apps/app` in the curated starter archive.
+
 [`full-featured/`](full-featured) is the reference Digit app. Copy it and remove tabs /
 routes you don’t need rather than inventing a new project shape.
 
