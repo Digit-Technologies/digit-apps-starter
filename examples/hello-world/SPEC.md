@@ -2,13 +2,15 @@
 
 ## What it does
 
-A minimal frontend-only Digit app. It verifies the required React, MUI, Digit theme,
-mount-point, manifest, and pack conventions without including API calls or a backend.
+A minimal frontend-only Digit app. It greets the signed-in user when Digit returns a
+username or email, otherwise “Hello, world!”. It still has no backend Worker.
 
 ## Data & permissions
 
-The app uses no external data, Digit API operations, permissions, environment variables,
-secrets, or backend Worker.
+- `manifest.permissions`: `[]`. The only Digit GraphQL field used is
+  `currentUser { username email }` (type `CurrentUser`), which is not gated behind an
+  `apiPermissions` entry — same pattern as `examples/timecard`.
+- No environment variables, secrets, or backend Worker.
 
 ## Prompts
 
