@@ -83,8 +83,9 @@ API call.
 This repo is a single **npm workspace**. Apps live in `apps/<name>` — that depth is
 required, because apps depend on the libraries via `file:../../packages/*`.
 
-The curated starter archive already contains `apps/app`, pre-scaffolded from
-`examples/full-featured` without build outputs. Use it when there is no retained publish.
+The curated starter archive already contains `apps/app`, pre-scaffolded from the
+frontend-only `examples/hello-world` without build outputs. Use it when there is no
+retained publish. Add `src/backend/` only when the app needs server-side functionality.
 If a retained publish is supplied, its `project/` tree replaces `apps/app` entirely.
 Run `new-app` only when adding another app workspace:
 

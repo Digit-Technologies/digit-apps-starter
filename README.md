@@ -18,10 +18,10 @@ This repo is one npm workspace (`packages/*`, `examples/*`, `apps/*`). Always in
 the repo root — `@digit/lib-build` is linked with `file:`, so npm installs its Vite build
 toolchain into the root `node_modules` rather than the app's.
 
-The curated starter archive includes `apps/app/`, pre-scaffolded from
-`examples/full-featured` with source, manifest, package metadata, and `SPEC.md`. It does
-not include compiled `frontend/` or `backend/` directories. In that downloaded archive,
-work in `apps/app` instead of running `new-app`; use `new-app` only for another workspace.
+The curated starter archive includes `apps/app/`, pre-scaffolded from the frontend-only
+`examples/hello-world` with source, manifest, package metadata, and `SPEC.md`. It does not
+include a backend or compiled build directories. In that downloaded archive, work in
+`apps/app` instead of running `new-app`; use `new-app` only for another workspace.
 
 ## Agent skill
 
@@ -56,6 +56,9 @@ Apps depend on them via `file:…` — not on private `digit-web`. With a Worker
 `lib-frontend` + `lib-backend` + `lib-common`, plus `lib-build` as a devDependency.
 
 ## Example
+
+[`examples/hello-world`](examples/hello-world) is the minimal frontend-only app used for
+`apps/app` in the curated starter archive.
 
 [`examples/full-featured`](examples/full-featured) is the reference app: theme, errors, Digit
 API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it into

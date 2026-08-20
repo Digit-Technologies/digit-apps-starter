@@ -72,14 +72,16 @@ jobs:
 
           (
             cd "$STAGE"
-            node scripts/new-app.mjs app --no-install
+            node scripts/new-app.mjs app --from hello-world --no-install
           )
 
           test -f "$STAGE/apps/app/package.json"
           test -f "$STAGE/apps/app/manifest.json"
           test -f "$STAGE/apps/app/SPEC.md"
           test -f "$STAGE/apps/app/src/frontend/main.tsx"
-          test -f "$STAGE/apps/app/src/backend/index.js"
+          test ! -d "$STAGE/apps/app/src/backend"
+          jq -e '.permissions == [] and has("backend") == false' \
+            "$STAGE/apps/app/manifest.json" >/dev/null
           test ! -d "$STAGE/apps/app/frontend"
           test ! -d "$STAGE/apps/app/backend"
           test ! -f "$STAGE/apps/app/app.zip"
@@ -135,7 +137,7 @@ jobs:
 
           ### Contents
           - \`.agents/skills/create-digit-app\`
-          - Pre-scaffolded, packable \`apps/app/\`
+          - Pre-scaffolded, frontend-only, packable \`apps/app/\`
           - \`examples/\`, \`packages/\`, \`scripts/\`
           - Root \`package.json\`, \`package-lock.json\`, \`README.md\`, \`LICENSE\`, \`.gitignore\`
 
