@@ -70,6 +70,20 @@ jobs:
           cp apps/README.md "$STAGE/apps/README.md"
           cp package.json package-lock.json README.md LICENSE .gitignore "$STAGE/"
 
+          (
+            cd "$STAGE"
+            node scripts/new-app.mjs app --no-install
+          )
+
+          test -f "$STAGE/apps/app/package.json"
+          test -f "$STAGE/apps/app/manifest.json"
+          test -f "$STAGE/apps/app/SPEC.md"
+          test -f "$STAGE/apps/app/src/frontend/main.tsx"
+          test -f "$STAGE/apps/app/src/backend/index.js"
+          test ! -d "$STAGE/apps/app/frontend"
+          test ! -d "$STAGE/apps/app/backend"
+          test ! -f "$STAGE/apps/app/app.zip"
+
           DATE_TAG="starter-$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
           {
             echo "tag=${DATE_TAG}"
@@ -121,7 +135,8 @@ jobs:
 
           ### Contents
           - \`.agents/skills/create-digit-app\`
-          - \`examples/\`, \`packages/\`, \`scripts/\`, \`apps/\`
+          - Pre-scaffolded, packable \`apps/app/\`
+          - \`examples/\`, \`packages/\`, \`scripts/\`
           - Root \`package.json\`, \`package-lock.json\`, \`README.md\`, \`LICENSE\`, \`.gitignore\`
 
           ### Download

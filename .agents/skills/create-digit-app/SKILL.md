@@ -60,7 +60,7 @@ Copy this checklist and track progress:
 
 ```
 Digit app progress:
-- [ ] 1. Scaffold apps/<name> (npm run new-app -- <name>)
+- [ ] 1. Use the starter's apps/app, or scaffold apps/<name> for an additional app
 - [ ] 2. Confirm the user created the app in Digit (get appId via apps)
 - [ ] 3. Implement frontend (React + MUI + DigitThemeProvider → #root)
 - [ ] 4. Add src/backend/ only if env/secrets or server logic needed
@@ -82,6 +82,11 @@ API call.
 
 This repo is a single **npm workspace**. Apps live in `apps/<name>` — that depth is
 required, because apps depend on the libraries via `file:../../packages/*`.
+
+The curated starter archive already contains `apps/app`, pre-scaffolded from
+`examples/full-featured` without build outputs. Use it when there is no retained publish.
+If a retained publish is supplied, its `project/` tree replaces `apps/app` entirely.
+Run `new-app` only when adding another app workspace:
 
 ```bash
 npm install                     # once per clone, from the repo root
