@@ -186,8 +186,9 @@ Digit; entries are conventions (`frontend/index.js`, `backend/index.js`).
 ```
 
 Omit `backend` when the app is UI-only / Digit API only. `bindings` maps
-`BINDING_NAME` → `"database"` (one D1 per app). Names are `UPPER_SNAKE_CASE` and must
-not start with `DIGIT_`.
+`BINDING_NAME` → `"database"` (one D1 per app) or `"bucket"` (an R2 bucket for
+file/blob storage, max 10). Names are `UPPER_SNAKE_CASE` and must not start with
+`DIGIT_`.
 
 Optional `backend.schedules` and on-demand jobs:
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md).
