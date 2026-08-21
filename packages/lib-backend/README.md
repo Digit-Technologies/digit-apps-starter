@@ -16,7 +16,7 @@ Import from the package root only. Helpers take named arguments.
 | `backendPath` | Strip `/proxy/backend` from the request path |
 | `ok` / `err` | Success / error `Response` helpers |
 | `requireEnv` / `optionalEnv` | Read env vars, secrets, and bindings |
-| `digitJobs` | The platform `DIGIT_JOBS` binding, typed — submit/inspect background jobs |
+| `digitJobs` | The platform `__JOBS` binding, typed — submit/inspect background jobs |
 | `verifyWebhookSignature` | Timing-safe HMAC check for inbound webhook payloads |
 | `HandlerError` | Thrown by `requireEnv`; mapped by `createHandler` (apps rarely throw it) |
 

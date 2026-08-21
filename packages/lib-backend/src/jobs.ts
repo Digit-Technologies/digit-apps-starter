@@ -37,7 +37,7 @@ export type DigitSchedule = {
   lastRun: { startedAt: number; endedAt: number; ok: boolean; error?: string } | null;
 };
 
-/** The DIGIT_JOBS RPC surface. All calls are scoped to this app; there is no cross-app access. */
+/** The platform jobs RPC surface. All calls are scoped to this app; there is no cross-app access. */
 export type DigitJobs = {
   submit(options: {
     name: string;
@@ -50,14 +50,14 @@ export type DigitJobs = {
   schedules(): Promise<DigitSchedule[]>;
 };
 
-/** The platform's DIGIT_JOBS binding, typed; throws MISSING_CONFIG when absent (frontend-only app, or local dev). */
+/** The platform's __JOBS binding, typed; throws MISSING_CONFIG when absent (frontend-only app, or local dev). */
 export function digitJobs({ env }: { env: unknown }): DigitJobs {
-  const binding = (env as Record<string, unknown>).DIGIT_JOBS;
+  const binding = (env as Record<string, unknown>).__JOBS;
   if (!binding) {
     throw new HandlerError({
       code: AppErrorCode.MISSING_CONFIG,
       message:
-        'DIGIT_JOBS is unavailable — it is injected into published backend apps; local dev has no scheduler.',
+        '__JOBS is unavailable — it is injected into published backend apps; local dev has no scheduler.',
     });
   }
   return binding as DigitJobs;
