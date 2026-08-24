@@ -15,6 +15,11 @@ required for this workflow.
 
 There is no local Digit preview — pack + publish is the workflow.
 
+To **change an already-published app from a fresh MCP workspace**, restore source
+first with **update-digit-app** (MCP user skill; not shipped in the in-app starter
+zip), then continue here. Digit’s in-app agent skips that restore (sandbox
+already has the tree).
+
 ## Workflow
 
 ```

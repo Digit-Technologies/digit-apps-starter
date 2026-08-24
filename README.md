@@ -2,8 +2,7 @@
 
 Skills, shared libraries, and example apps for building on the Digit Apps platform.
 
-Agents clone this into a **local workspace**, scaffold under `apps/`, pack, and publish to
-Digit. Keep app source under `apps/` in that workspace so later sessions can iterate.
+Agents clone this into a **local workspace**, pack, and publish to Digit.
 This upstream repo does not accept contributions — do not open PRs or push here.
 
 ## Quick start
@@ -23,13 +22,18 @@ The curated starter archive includes `apps/app/`, pre-scaffolded from the fronte
 include a backend or compiled build directories. In that downloaded archive, work in
 `apps/app` instead of running `new-app`; use `new-app` only for another workspace.
 
-## Agent skill
+## Agent skills
 
-Agents should follow:
+| Skill | Who | When |
+| --- | --- | --- |
+| [create-digit-app](.agents/skills/create-digit-app/SKILL.md) | In-app agent **and** MCP | New apps, or edits when source is already on disk |
+| [update-digit-app](.agents/skills/update-digit-app/SKILL.md) | **MCP only** | Change a **published** app from a **fresh** workspace (download live source first) |
 
-[`.agents/skills/create-digit-app/SKILL.md`](.agents/skills/create-digit-app/SKILL.md)
+The curated **starter zip** (in-app harness) ships **create-digit-app only**.
+Claude users working through Digit MCP install the **Digit Apps** plugin, which
+bundles both skills.
 
-That skill covers:
+The create skill covers:
 
 - **React + MUI + `@digit/lib-frontend`** (required default stack)
 - `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
@@ -38,6 +42,52 @@ That skill covers:
 - Digit API access via `useDigitApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
 - Publishing with Digit MCP (`apps` → upload zip → `publishApp` → poll)
+
+## Claude plugin (Digit MCP users)
+
+The native, non-technical install path is the **Digit Apps** Claude plugin:
+
+1. In Claude, open **Customize → Plugins**.
+2. Click **+ → Add marketplace → Add from a repository**.
+3. Enter `Digit-Technologies/digit-apps-starter`.
+4. Install **Digit Apps**.
+
+The plugin bundles create-digit-app and update-digit-app. Users add the
+marketplace once; Claude checks that marketplace for plugin updates, and users
+can also select **Update** on the marketplace. No skill ZIP or shell script is
+required.
+
+### Publish to the Claude plugin directory
+
+Listing the plugin in Anthropic's directory removes the "add a marketplace" step
+entirely — users find **Digit Apps** under **Browse plugins** and click Install.
+
+1. Bump `version` in [`.claude-plugin/plugin.json`](.claude-plugin/plugin.json).
+2. Validate locally: `claude plugin validate .` (add `--strict` for CI parity).
+3. Submit this **public** repo URL through one of Anthropic's in-app forms:
+   - [claude.ai directory submission](https://claude.ai/admin-settings/directory/submissions/plugins/new)
+     (Team/Enterprise org with directory-management access)
+   - [Console submission](https://platform.claude.com/plugins/submit)
+     (Developer/Admin/Owner on a Console org)
+   - Short link: [clau.de/plugin-directory-submission](https://clau.de/plugin-directory-submission)
+4. Track review status at
+   [claude.ai/admin-settings/directory/submissions](https://claude.ai/admin-settings/directory/submissions).
+
+Approved plugins are pinned by commit SHA in
+[`anthropics/claude-plugins-community`](https://github.com/anthropics/claude-plugins-community)
+and the catalog syncs nightly. After approval, pushes to `main` are mirrored
+automatically — no re-submission per release, but still bump `version` so
+installed users receive the update.
+
+Reference: [Submitting your plugin](https://claude.com/docs/plugins/submit) and
+[plugin marketplaces](https://code.claude.com/docs/en/plugin-marketplaces).
+
+**Team / Enterprise note:** organization-synced marketplaces
+([admin guide](https://support.claude.com/en/articles/13837433-manage-plugins-for-your-organization))
+require a **private or internal** GitHub repo, so this public repo can't be
+connected that way. Customer orgs that want **Installed by default** or
+**Required** distribution should mirror the plugin into a private marketplace
+repo of their own.
 
 ## Packages
 
@@ -67,12 +117,14 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 ## Publish reminder
 
 1. Create the app in the Digit UI first (MCP cannot create apps yet)
-2. Write/update `SPEC.md`, then `npm run pack -w apps/<name>`
-3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
+2. Fresh MCP workspace + existing publish: follow **update-digit-app** (download
+   `currentPublish.downloadUrl`) before editing. In-app agent: skip — source is
+   already on disk
+3. Write/update `SPEC.md`, then `npm run pack -w apps/<name>`
+4. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
    required `project/` (source, SPEC, tooling, vendored libs — not deployed)
-4. Use the MCP publish flow documented in the skill
-5. Keep `apps/<name>` source in the local workspace (not build outputs); do not push or
-   open PRs against this upstream repo
+5. Use the MCP publish flow in create-digit-app
+6. Do not push or open PRs against this upstream repo
 
 ## Starter asset
 
@@ -87,10 +139,10 @@ curl -fsSL -o digit-apps-starter.zip \
 unzip digit-apps-starter.zip
 ```
 
-The archive includes the create-digit-app skill, `examples/`, `packages/`, `scripts/`,
-the packable source tree at `apps/app/`, and root install metadata — not `node_modules`
-or build outputs. A consumer restoring a retained publish can replace `apps/app/`
-entirely with that publish archive's `project/` tree while keeping the starter shell.
+The archive includes **create-digit-app only** (not update-digit-app), `examples/`,
+`packages/`, `scripts/`, the packable source tree at `apps/app/`, and root
+install metadata — not `node_modules` or build outputs. Claude + Digit MCP users
+get both skills through the [Digit Apps plugin](#claude-plugin-digit-mcp-users).
 
 ## License
 

@@ -5,10 +5,12 @@ description: >-
   @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no downloads, popups, browser dialogs, clipboard,
-  or device APIs). Use when creating a Digit app, editing an app in a local clone
-  of this starter, publishing via MCP, or when the user mentions Digit apps,
-  manifest.json, DigitProxyClient, DigitThemeProvider, /proxy/digit, or
-  /proxy/backend.
+  or device APIs). Use when creating a new Digit app, editing an app whose
+  source is already on disk (in-app agent or after update-digit-app), packing,
+  or publishing via MCP. Do not use as the first step to change a published
+  app from a fresh MCP workspace (use update-digit-app). Also when the user
+  mentions Digit apps, manifest.json, DigitProxyClient, DigitThemeProvider,
+  /proxy/digit, or /proxy/backend.
 ---
 
 # Create Digit App
@@ -31,11 +33,18 @@ continuing.
 ## When to use
 
 - Creating a new Digit app from scratch
+- Editing an app whose source is **already** on disk (in-app agent sandbox, or
+  after update-digit-app restored the publish)
 - Adapting one of the `examples/` templates
 - Declaring `manifest.json` permissions / backend
 - Calling the Digit GraphQL API from an app
 - Using app env vars or secrets (backend only)
 - Publishing via Digit MCP tools
+
+Changing a **published** app from a **fresh MCP workspace** (no live `project/`
+on disk): follow **update-digit-app** first (MCP user skill; not in the in-app
+starter zip), then return here. Digit’s in-app agent already has that tree —
+skip update-digit-app.
 
 ## Digit MCP (apps)
 
@@ -84,10 +93,9 @@ This repo is a single **npm workspace**. Apps live in `apps/<name>` — that dep
 required, because apps depend on the libraries via `file:../../packages/*`.
 
 The curated starter archive already contains `apps/app`, pre-scaffolded from the
-frontend-only `examples/hello-world` without build outputs. Use it when there is no
-retained publish. Add `src/backend/` only when the app needs server-side functionality.
-If a retained publish is supplied, its `project/` tree replaces `apps/app` entirely.
-Run `new-app` only when adding another app workspace:
+frontend-only `examples/hello-world` without build outputs. Use it for a **new**
+app (no successful publish yet). Add `src/backend/` only when the app needs
+server-side functionality. Run `new-app` only when adding another app workspace:
 
 ```bash
 npm install                     # once per clone, from the repo root
@@ -244,6 +252,8 @@ upstream starter.
 | Need | Path |
 | --- | --- |
 | Any new app | Copy `full-featured`, delete unused tabs/routes |
+| Change a published app (fresh MCP workspace) | **update-digit-app** (MCP skill, not in the starter zip), then this skill |
+| Change a published app (in-app agent) | This skill on the sandbox tree — do not download |
 | Digit GraphQL | Schema resources → hooks + `appPermissions` → `key` in manifest |
 | Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend` |
 | Codes / JSON validation | `@digit/lib-common` |
