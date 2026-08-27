@@ -27,6 +27,9 @@ works after a consumer publishes to Digit.
   source. Docs may name the secret; they must not contain a real key.
 - Optional env `PUBLIC_WEBHOOK_URL` — this app’s public `/webhooks/shipstation` URL. When set,
   connect registers ShipStation `label_created_v2` and `track` webhooks; disconnect DELETEs them.
+- First load `GET /setup` (no `requireEnv`) reports which of those keys plus `SHIPSTATION_DB`
+  are present/valid. Missing required config is a dedicated setup screen, not a connect-time
+  `MISSING_CONFIG` alert. Optional `PUBLIC_WEBHOOK_URL` is listed but does not block.
 - **Gotcha:** Org-admin is UI-only. The Worker does not receive the viewing user; anyone who
   can open a published copy can hit `/proxy/backend`.
 - **Gotcha:** `api_key_encrypted` is never selected into JSON. Invalid keys fail the wizard
@@ -75,6 +78,10 @@ others in the example folder and push up to github. Does that affect the plan at
 
 ```
 Implement the plan as specified
+```
+
+```
+Add error handling to shipstation template on first load. Show a screen indicating the secrets and env variables that need to be added for the app to work
 ```
 
 ## Context supplied

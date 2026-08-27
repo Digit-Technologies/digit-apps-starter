@@ -29,6 +29,9 @@ import {
   useDigitApiQuery,
 } from '@digit/lib-frontend';
 
+import SetupNeeded from './SetupNeeded';
+import type { SetupData } from './setupTypes';
+
 type Permission = { key: string };
 
 type BootstrapData = {
@@ -132,6 +135,11 @@ function draftFromConnection(
 }
 
 export default function App() {
+  const setupQuery = useBackendQuery<SetupData>({ path: '/setup' });
+  const setupReady = Boolean(setupQuery.data?.ready);
+  const setupBlocked =
+    !setupQuery.loading && !setupQuery.error && setupQuery.data != null && !setupQuery.data.ready;
+
   const bootstrap = useDigitApiQuery<BootstrapData>({ query: BOOTSTRAP_QUERY });
   const organizationId = bootstrap.data?.organization?.id ?? null;
   const isAdmin = (bootstrap.data?.currentPermissions ?? []).some((permission) => {
@@ -141,16 +149,16 @@ export default function App() {
 
   const connectionQuery = useBackendQuery<ConnectionData>({
     path: `/connection?organizationId=${encodeURIComponent(organizationId ?? '')}`,
-    skip: !organizationId,
+    skip: !organizationId || !setupReady,
   });
   const orgSettingsQuery = useBackendQuery<OrgSettingsData>({
     path: `/org-settings?organizationId=${encodeURIComponent(organizationId ?? '')}`,
-    skip: !organizationId,
+    skip: !organizationId || !setupReady,
   });
   const connected = Boolean(connectionQuery.data?.connected);
   const carriersQuery = useBackendQuery<CarriersData>({
     path: `/carriers?organizationId=${encodeURIComponent(organizationId ?? '')}`,
-    skip: !organizationId || !connected,
+    skip: !organizationId || !setupReady || !connected,
   });
 
   const [mutate, { error: mutationError, loading: mutating, reset: resetMutation }] =
@@ -255,8 +263,10 @@ export default function App() {
   };
 
   const loading =
-    bootstrap.loading ||
-    (!!organizationId && (connectionQuery.loading || orgSettingsQuery.loading));
+    setupQuery.loading ||
+    (!setupBlocked &&
+      (bootstrap.loading ||
+        (!!organizationId && setupReady && (connectionQuery.loading || orgSettingsQuery.loading))));
 
   return (
     <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3 }}>
@@ -270,35 +280,49 @@ export default function App() {
               ShipStation
             </Typography>
             <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-              Connect one ShipStation account for this organization. API keys are encrypted on
-              the server and never returned to the browser.
+              {setupBlocked
+                ? 'Required configuration is missing. Add the secret and env vars below on the Digit app before connecting.'
+                : 'Connect one ShipStation account for this organization. API keys are encrypted on the server and never returned to the browser.'}
             </Typography>
           </Stack>
 
-          {bootstrap.error && (
+          {setupQuery.error && (
+            <AppErrorAlert error={setupQuery.error} onRetry={() => void setupQuery.refetch()} />
+          )}
+          {setupBlocked && setupQuery.data ? (
+            <SetupNeeded
+              items={setupQuery.data.items}
+              onRecheck={() => void setupQuery.refetch()}
+              rechecking={setupQuery.loading}
+            />
+          ) : null}
+
+          {!setupBlocked && !setupQuery.error && bootstrap.error && (
             <AppErrorAlert error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />
           )}
-          {connectionQuery.error && (
+          {!setupBlocked && !setupQuery.error && connectionQuery.error && (
             <AppErrorAlert
               error={connectionQuery.error}
               onRetry={() => void connectionQuery.refetch()}
             />
           )}
-          {orgSettingsQuery.error && (
+          {!setupBlocked && !setupQuery.error && orgSettingsQuery.error && (
             <AppErrorAlert
               error={orgSettingsQuery.error}
               onRetry={() => void orgSettingsQuery.refetch()}
             />
           )}
-          {carriersQuery.error && connected && (
+          {!setupBlocked && !setupQuery.error && carriersQuery.error && connected && (
             <AppErrorAlert
               error={carriersQuery.error}
               onRetry={() => void carriersQuery.refetch()}
             />
           )}
-          {mutationError && <AppErrorAlert error={mutationError} />}
+          {!setupBlocked && !setupQuery.error && mutationError && (
+            <AppErrorAlert error={mutationError} />
+          )}
 
-          {loading ? (
+          {setupBlocked || setupQuery.error ? null : loading ? (
             <Stack direction="row" spacing={1.5} alignItems="center">
               <CircularProgress size={18} />
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>

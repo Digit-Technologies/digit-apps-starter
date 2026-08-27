@@ -10,6 +10,7 @@ import { AppErrorCode } from '@digit/lib-common';
 import { backendPath, createHandler, err } from '@digit/lib-backend';
 
 import { handleConnection } from './connection.js';
+import { handleSetup } from './setup.js';
 import { shipstationWebhook } from './webhooks.js';
 
 export default createHandler({
@@ -19,6 +20,9 @@ export default createHandler({
   fetch: async ({ request, env }) => {
     const path = backendPath(request);
     const { method } = request;
+
+    const setupResponse = await handleSetup({ env, path, method });
+    if (setupResponse) return setupResponse;
 
     const connectionResponse = await handleConnection({ request, env, path, method });
     if (connectionResponse) return connectionResponse;
