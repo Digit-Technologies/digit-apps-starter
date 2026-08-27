@@ -64,6 +64,9 @@ Apps depend on them via `file:…` — not on private `digit-web`. With a Worker
 API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it into
 [`apps/`](apps) — trim what you don’t need from there.
 
+[`examples/shipstation-template`](examples/shipstation-template) is a Worker + D1 template
+for connecting one ShipStation V2 account (`npm run new-app -- my-app --from shipstation-template`).
+
 ## Publish reminder
 
 1. Create the app in the Digit UI first (MCP cannot create apps yet)

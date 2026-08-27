@@ -6,6 +6,10 @@
 [`full-featured/`](full-featured) is the reference Digit app. Copy it and remove tabs /
 routes you don’t need rather than inventing a new project shape.
 
+[`shipstation-template/`](shipstation-template) is a Worker + D1 template for connecting
+one ShipStation V2 account (encrypted API key, settings, disconnect). Scaffold with
+`npm run new-app -- my-app --from shipstation-template`.
+
 **Stack:** React + MUI + [`@digit/lib-frontend`](../packages/lib-frontend). Workers use
 [`@digit/lib-backend`](../packages/lib-backend) + [`@digit/lib-common`](../packages/lib-common)
 (codes / validation — depend directly; packages do not re-export each other). Tooling:
