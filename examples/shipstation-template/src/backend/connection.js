@@ -66,7 +66,7 @@ function publicConnection(row, extra = {}) {
     defaults: parseDefaults(row.defaults),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    ...extra,
+    ...(extra.carrierCount !== undefined ? { carrierCount: extra.carrierCount } : {}),
   };
 }
 
@@ -87,7 +87,7 @@ async function liveConnection({ db, organizationId }) {
 async function liveConnectionWithSecret({ db, organizationId }) {
   return db
     .prepare(
-      `SELECT * FROM shipstation_connection
+      `SELECT id, api_key_encrypted FROM shipstation_connection
        WHERE organization_id = ? AND deleted = 0
        LIMIT 1`,
     )

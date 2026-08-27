@@ -23,6 +23,8 @@ works after a consumer publishes to Digit.
 - D1 `SHIPSTATION_DB` — schema in `src/backend/migrations/`. Applied on consumer publish.
 - Secret `APP_SECRET_ENCRYPTION_KEY` — base64 32-byte AES key. Consumer sets this on the Digit
   app. Never returned to the UI. Missing key → `MISSING_CONFIG` on connect/disconnect.
+  **Never commit this value, a ShipStation API key, or `.env` files** — this example is public
+  source. Docs may name the secret; they must not contain a real key.
 - Optional env `PUBLIC_WEBHOOK_URL` — this app’s public `/webhooks/shipstation` URL. When set,
   connect registers ShipStation `label_created_v2` and `track` webhooks; disconnect DELETEs them.
 - **Gotcha:** Org-admin is UI-only. The Worker does not receive the viewing user; anyone who

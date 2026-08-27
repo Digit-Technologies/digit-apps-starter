@@ -4,6 +4,9 @@ dist/
 *.log
 .vite/
 *.zip
+.env
+.env.*
+.cursor/
 
 # Digit app build outputs (pack into app.zip only — not committed)
 # Sibling to package.json; do not match src/frontend or src/backend.
