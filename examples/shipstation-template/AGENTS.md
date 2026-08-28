@@ -1,12 +1,16 @@
 # Agent notes (ShipStation template)
 
-Read these skills before changing this app:
+This template’s ShipStation skill lives **here**, not in the starter’s shared
+`.agents/skills/` (that path is create-digit-app only).
 
-- [`.agents/skills/create-digit-app/SKILL.md`](../../.agents/skills/create-digit-app/SKILL.md)
-- [`.agents/skills/extend-shipstation-app/SKILL.md`](../../.agents/skills/extend-shipstation-app/SKILL.md)
+Read before changing this app:
 
-After `npm run new-app -- <name> --from shipstation-template`, those paths are still at
-the **repo root** (`.agents/skills/…`). This file is copied into `apps/<name>/`.
+- [create-digit-app](../../.agents/skills/create-digit-app/SKILL.md) — Digit stack, iframe, pack, publish
+- [extend-shipstation-app](.agents/skills/extend-shipstation-app/SKILL.md) — this template
+
+`npm run new-app -- <name> --from shipstation-template` copies this file and
+`.agents/skills/extend-shipstation-app/` into `apps/<name>/`. create-digit-app stays
+at the **repo root**.
 
 ## Required MCPs
 

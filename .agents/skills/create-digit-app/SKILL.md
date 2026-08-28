@@ -38,10 +38,6 @@ continuing.
 - Using app env vars or secrets (backend only)
 - Publishing via Digit MCP tools
 
-ShipStation (`examples/shipstation-template` or `new-app --from shipstation-template`):
-also follow [extend-shipstation-app](../extend-shipstation-app/SKILL.md) (Digit MCP +
-ShipStation docs MCP; Worker `ssFetch`; D1; inbound `/webhooks/shipstation`).
-
 ## Digit MCP (apps)
 
 | Need | Use |
@@ -294,4 +290,3 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/publish.md](reference/publish.md) — MCP publish workflow and zip rules
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context
 - [`packages/lib-build`](../../../packages/lib-build) — `digit-app pack` shared tooling
-- [extend-shipstation-app](../extend-shipstation-app/SKILL.md) — ShipStation template (V2 Worker, D1, webhooks)

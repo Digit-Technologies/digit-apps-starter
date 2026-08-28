@@ -8,9 +8,8 @@ routes you don’t need rather than inventing a new project shape.
 
 [`shipstation-template/`](shipstation-template) is a Worker + D1 template for connecting
 one ShipStation V2 account (encrypted API key, settings, disconnect). Scaffold with
-`npm run new-app -- my-app --from shipstation-template`. Agent skill:
-[`extend-shipstation-app`](../.agents/skills/extend-shipstation-app/SKILL.md) (Digit MCP +
-[ShipStation docs MCP](https://docs.shipstation.com/mcp)).
+`npm run new-app -- my-app --from shipstation-template`. Its skill is only in that
+example: [`extend-shipstation-app`](shipstation-template/.agents/skills/extend-shipstation-app/SKILL.md).
 
 **Stack:** React + MUI + [`@digit/lib-frontend`](../packages/lib-frontend). Workers use
 [`@digit/lib-backend`](../packages/lib-backend) + [`@digit/lib-common`](../packages/lib-common)

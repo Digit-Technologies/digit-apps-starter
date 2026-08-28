@@ -1,12 +1,11 @@
 ---
 name: extend-shipstation-app
 description: >-
-  Extend the Digit ShipStation template (encrypted V2 connection, D1, inbound
-  /webhooks/shipstation, Worker ssFetch). Use when working in
-  examples/shipstation-template, apps scaffolded with
-  npm run new-app -- <name> --from shipstation-template, or when the user
-  mentions ShipStation, shipping labels, rates, tracking, carriers, or
-  ShipStation webhooks in a Digit app.
+  Extend this Digit ShipStation template (encrypted V2 connection, D1, inbound
+  /webhooks/shipstation, Worker ssFetch). Use when editing this template
+  directory or an app copied from it with new-app --from shipstation-template,
+  or when the user mentions ShipStation, labels, rates, tracking, or carriers
+  while working on this app.
 ---
 
 # Extend ShipStation app
@@ -43,8 +42,8 @@ Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
   another slug in `manifest.json`, max 10). Verify over **raw** body bytes before acting;
   return 2xx within ~10s; enqueue heavier work with `digitJobs`. Do not log webhook
   bodies (addresses / tracking). Details: [reference/webhooks.md](reference/webhooks.md)
-  and create-digit-app [webhooks](../create-digit-app/reference/webhooks.md) /
-  [jobs](../create-digit-app/reference/jobs-and-schedules.md).
+  and create-digit-app [webhooks](../../../../../.agents/skills/create-digit-app/reference/webhooks.md) /
+  [jobs](../../../../../.agents/skills/create-digit-app/reference/jobs-and-schedules.md).
 - Outbound registration: connect already POSTs `label_created_v2` and `track` when
   `PUBLIC_WEBHOOK_URL` is set. New events: MCP lookup → `createWebhook` → D1
   `shipstation_webhook` → disconnect must `deleteWebhook`.

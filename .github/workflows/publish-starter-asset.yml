@@ -56,13 +56,6 @@ jobs:
             --exclude node_modules \
             --exclude .DS_Store \
             --exclude .vite \
-            .agents/skills/extend-shipstation-app/ \
-            "$STAGE/.agents/skills/extend-shipstation-app/"
-
-          rsync -a \
-            --exclude node_modules \
-            --exclude .DS_Store \
-            --exclude .vite \
             examples/ \
             "$STAGE/examples/"
 
@@ -92,7 +85,8 @@ jobs:
           test ! -d "$STAGE/apps/app/frontend"
           test ! -d "$STAGE/apps/app/backend"
           test ! -f "$STAGE/apps/app/app.zip"
-          test -f "$STAGE/.agents/skills/extend-shipstation-app/SKILL.md"
+          test ! -e "$STAGE/.agents/skills/extend-shipstation-app"
+          test -f "$STAGE/examples/shipstation-template/.agents/skills/extend-shipstation-app/SKILL.md"
           test -f "$STAGE/examples/shipstation-template/AGENTS.md"
 
           DATE_TAG="starter-$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
@@ -140,7 +134,6 @@ jobs:
 
           ### Contents
           - \`.agents/skills/create-digit-app\`
-          - \`.agents/skills/extend-shipstation-app\`
           - Pre-scaffolded, frontend-only, packable \`apps/app/\`
           - \`examples/\`, \`packages/\`, \`scripts/\`
           - Root \`package.json\`, \`package-lock.json\`, \`README.md\`, \`LICENSE\`, \`.gitignore\`
