@@ -23,7 +23,7 @@ The curated starter archive includes `apps/app/`, pre-scaffolded from the fronte
 include a backend or compiled build directories. In that downloaded archive, work in
 `apps/app` instead of running `new-app`; use `new-app` only for another workspace.
 
-## Agent skill
+## Agent skills
 
 Agents should follow:
 
@@ -38,6 +38,14 @@ That skill covers:
 - Digit API access via `useDigitApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
 - Publishing with Digit MCP (`apps` → upload zip → `publishApp` → poll)
+
+**Digit MCP is required** for schema lookup, permissions, and publish.
+
+ShipStation work (`examples/shipstation-template` or
+`npm run new-app -- my-app --from shipstation-template`) also uses
+[`.agents/skills/extend-shipstation-app/SKILL.md`](.agents/skills/extend-shipstation-app/SKILL.md).
+Connect ShipStation’s **docs** MCP (`https://docs.shipstation.com/mcp`) — it does not
+call ShipStation; runtime API calls stay in the Worker. Do not put API keys in MCP config.
 
 ## Packages
 
@@ -64,6 +72,10 @@ Apps depend on them via `file:…` — not on private `digit-web`. With a Worker
 API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it into
 [`apps/`](apps) — trim what you don’t need from there.
 
+[`examples/shipstation-template`](examples/shipstation-template) is a Worker + D1 template
+for connecting one ShipStation V2 account (`npm run new-app -- my-app --from shipstation-template`).
+Agents: [extend-shipstation-app](.agents/skills/extend-shipstation-app/SKILL.md).
+
 ## Publish reminder
 
 1. Create the app in the Digit UI first (MCP cannot create apps yet)
@@ -87,7 +99,7 @@ curl -fsSL -o digit-apps-starter.zip \
 unzip digit-apps-starter.zip
 ```
 
-The archive includes the create-digit-app skill, `examples/`, `packages/`, `scripts/`,
+The archive includes the create-digit-app and extend-shipstation-app skills, `examples/`, `packages/`, `scripts/`,
 the packable source tree at `apps/app/`, and root install metadata — not `node_modules`
 or build outputs. A consumer restoring a retained publish can replace `apps/app/`
 entirely with that publish archive's `project/` tree while keeping the starter shell.

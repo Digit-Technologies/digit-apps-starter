@@ -1,0 +1,14 @@
+{
+  "permissions": [],
+  "backend": {
+    "kind": "cloudflare-worker",
+    "bindings": {
+      "SHIPSTATION_DB": "database"
+    },
+    "webhooks": [
+      {
+        "path": "shipstation"
+      }
+    ]
+  }
+}
