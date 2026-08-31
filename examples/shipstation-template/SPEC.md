@@ -16,25 +16,31 @@ works after a consumer publishes to Digit.
 
 ## Data & permissions
 
-- `manifest.permissions`: `[]`. Digit GraphQL used: `currentPermissions { key }` (org-admin
-  gate: `UPDATE_ORGANIZATION`) and `organization { id }`. Confirmed via Digit MCP schema
-  resources; neither field is in `appPermissions` as a required manifest key (same ungated
-  class as `currentUser`).
+- `manifest.permissions`: `["UPDATE_ORGANIZATION"]`. Digit GraphQL used:
+`currentPermissions { key }` (org-admin gate: `UPDATE_ORGANIZATION`) and
+`organization { id }`. Neither field requires a permission to *call*, but
+`currentPermissions` returns the app token's permissions — the intersection of this
+manifest with the viewing user's live set. With `[]` it returned an empty list, so the
+admin gate failed for org admins too. Declaring the key does not grant it: non-admins
+still intersect to `[]` and keep the read-only screen. The app never calls
+`updateOrganization`; the key exists only so the gate can read it back.
 - D1 `SHIPSTATION_DB` — schema in `src/backend/migrations/`. Applied on consumer publish.
 - Secret `APP_SECRET_ENCRYPTION_KEY` — base64 32-byte AES key. Consumer sets this on the Digit
-  app. Never returned to the UI. Missing key → `MISSING_CONFIG` on connect/disconnect.
-  **Never commit this value, a ShipStation API key, or `.env` files** — this example is public
-  source. Docs may name the secret; they must not contain a real key.
+app. Never returned to the UI. Missing key → `MISSING_CONFIG` on connect/disconnect.
+**Never commit this value, a ShipStation API key, or** `.env` **files** — this example is public
+source. Docs may name the secret; they must not contain a real key.
 - Optional env `PUBLIC_WEBHOOK_URL` — this app’s public `/webhooks/shipstation` URL. When set,
-  connect registers ShipStation `label_created_v2` and `track` webhooks; disconnect DELETEs them.
+connect registers ShipStation `label_created_v2` and `track` webhooks; disconnect DELETEs them.
 - First load `GET /setup` (no `requireEnv`) reports which of those keys plus `SHIPSTATION_DB`
-  are present/valid. Missing required config is a dedicated setup screen, not a connect-time
-  `MISSING_CONFIG` alert. Optional `PUBLIC_WEBHOOK_URL` is listed but does not block.
+are present/valid. Missing required config is a dedicated setup screen, not a connect-time
+`MISSING_CONFIG` alert. Optional `PUBLIC_WEBHOOK_URL` is listed but does not block.
 - **Gotcha:** Org-admin is UI-only. The Worker does not receive the viewing user; anyone who
-  can open a published copy can hit `/proxy/backend`.
+can open a published copy can hit `/proxy/backend`.
 - **Gotcha:** `api_key_encrypted` is never selected into JSON. Invalid keys fail the wizard
-  with a ShipStation-specific message, not a generic 502.
+with a ShipStation-specific message, not a generic 502.
 - MVP one-connection guard: partial unique index on `organization_id` where `deleted = 0`.
+
+
 
 ## Prompts
 
@@ -68,31 +74,30 @@ triggers a full carrier re-sync.
 ```
 
 ```
-now I've set up the digit mcp. Write the plan with this in mind
-```
-
-```
-I am not going to push the app through the mcp. I am going to create a template like the
-others in the example folder and push up to github. Does that affect the plan at all?
-```
-
-```
-Implement the plan as specified
-```
-
-```
 Add error handling to shipstation template on first load. Show a screen indicating the secrets and env variables that need to be added for the app to work
+```
+
+```
+For the shipstation template: add tooltips explaining what each setting does in the attached modal.
 ```
 
 ## Context supplied
 
 - Example lives in `examples/shipstation-template` (started as hello-world skeleton, then
-  Worker + D1 like timecard).
+Worker + D1 like timecard).
 - Digit MCP confirmed no `shipstation*` GraphQL types; `OrganizationShippingSettings` is only
-  `preventOverPicking`. Default fulfillment method is therefore D1 `org_settings`, not
-  `updateOrganization`.
+`preventOverPicking`. Default fulfillment method is therefore D1 `org_settings`, not
+`updateOrganization`.
 - Delivery is git source, not MCP `publishApp`. Consumers: create an app in Digit, set
-  `APP_SECRET_ENCRYPTION_KEY`, pack, publish in the Digit UI.
+`APP_SECRET_ENCRYPTION_KEY`, pack, publish in the Digit UI.
 - Out of scope this pass: buying labels, rate shopping, writing SO `shipping_fees`, sending
-  return-label email, enforcing address validation beyond storing the flag, inbound webhook
-  business logic beyond HTTP 200.
+return-label email, enforcing address validation beyond storing the flag, inbound webhook
+business logic beyond HTTP 200.
+- Settings-modal screenshot (dark theme) was used as the field map for AC-23 tooltips:
+default fulfillment method, rate-shop timing, rate mode, best-rate strategy, default
+carrier/service, fallback weight/dims, add label cost, auto-send return-label email.
+Block-on-invalid-address is in the same modal and got the same info-icon treatment.
+- Digit `MuiTooltip` is overline/uppercase with a short max-width. Settings hints override
+that via `slotProps` so explanations stay sentence case and wrap. Hover-on-control
+tooltips were not discoverable next to Selects; hints sit on an info icon instead.
+
