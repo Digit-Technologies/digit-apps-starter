@@ -16,8 +16,8 @@ description: >-
 Build Digit custom apps that run inside Digit as **sandboxed iframes** with a locked-down
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
-support (new tabs/popups, browser dialogs, clipboard read, camera, etc. — file
-downloads only via `DigitHost.download`).
+support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
+Use `DigitHost.download` for files and `DigitHost.print` for printable HTML.
 See [reference/iframe-constraints.md](reference/iframe-constraints.md).
 
 **Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
@@ -40,12 +40,12 @@ continuing.
 
 ## Digit MCP (apps)
 
-| Need | Use |
-| --- | --- |
-| Public GraphQL schema | MCP resources `graphql-schema://index`, `graphql-schema://type/{TypeName}`, `graphql-schema://search/{query}` |
-| Manifest permissions | MCP tool **`appPermissions`** — put each permission’s **`key`** in `manifest.json` |
-| Find an existing app’s id | MCP tool **`apps`** |
-| Publish | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** → poll **`appPublish`** |
+| Need                      | Use                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Public GraphQL schema     | MCP resources `graphql-schema://index`, `graphql-schema://type/{TypeName}`, `graphql-schema://search/{query}` |
+| Manifest permissions      | MCP tool **`appPermissions`** — put each permission’s **`key`** in `manifest.json`                            |
+| Find an existing app’s id | MCP tool **`apps`**                                                                                           |
+| Publish                   | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** → poll **`appPublish`**                        |
 
 There are **no** MCP tools to create, update, or delete apps, or to manage env/secrets —
 those stay in the Digit UI. Do not invent them.
@@ -99,8 +99,8 @@ npm run new-app -- my-app       # copies examples/full-featured → apps/my-app
 `npm install` so the workspace links the new app. Trim what you don't need from the copy —
 do not invent a new project shape.
 
-The template covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API + secrets
-+ D1 via the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Keep the
+The template covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API, secrets,
+D1 via the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Keep the
 `@digit/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
 configs, a local pack script, or a per-app `npm install`.
 
@@ -150,8 +150,9 @@ only; still upload the zip **unchanged**. Details:
   features to `'none'`. **Never** implement direct downloads, `window.open` /
   `target="_blank"`, browser `alert`/`confirm`/`prompt`, or device/clipboard-read/
   fullscreen APIs — they will not work. Copy buttons (`navigator.clipboard.writeText`
-  in a click handler), form `onSubmit` + `preventDefault`, and file exports via
-  `DigitHost.download` DO work. In-page MUI Dialog/Drawer/Snackbar are fine. Full
+  in a click handler), form `onSubmit` + `preventDefault`, file exports via
+  `DigitHost.download`, and HTML printing via `DigitHost.print` DO work. In-page MUI
+  Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
 - **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
   hard-coded colors or custom CSS. See [reference/theming.md](reference/theming.md).
@@ -170,6 +171,40 @@ only; still upload the zip **unchanged**. Details:
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
 - **Public surface:** hooks + theme + `AppErrorAlert` only. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
+
+#### Printing
+
+When the user wants invoices, labels, packing slips, or reports, call
+`window.DigitHost.print({ title, html })`. Do not use `window.open`, `target="_blank"`,
+blob navigation, or a new print window. Never request `allow-modals`, `allow-popups`, or
+`allow-downloads` on the app iframe.
+
+Print HTML is a snapshot, not a live app. The host sanitizes it and no JavaScript runs in
+the print document. Build a dedicated receipt/print view or hidden print root and serialize
+that element with `outerHTML`; do not dump the full SPA chrome with
+`document.documentElement.outerHTML`.
+
+Before sending HTML:
+
+- Inline CSS in `<style>` or `style` attributes. The host strips `<link
+rel="stylesheet">`, and the print CSP blocks network CSS.
+- Fetch images as blobs and convert them with `FileReader` or canvas to `data:image/...`.
+  The host strips HTTP(S) image URLs. This is the first thing to check when a print is
+  missing images.
+- Replace canvas and chart output with `<img src="${canvas.toDataURL('image/png')}">`.
+- Use system fonts, or `@font-face` with a `data:` font URL. Remote fonts such as Google
+  Fonts do not load.
+- Copy printable values into normal elements such as `p`, `table`, `span`, and `div`.
+  The host strips `input`, `select`, `textarea`, `button`, and `form`, so their live values
+  do not survive serialization.
+- Keep the UTF-8 payload under 1 MiB after inlining. Compress images and print only the
+  receipt or report content.
+- Use a 1-119 character title made from ASCII letters or digits plus spaces, `.`, `_`, `-`,
+  `(`, and `)`. It must start with a letter or digit. Accents and emoji are not allowed.
+
+Do not send PDF bytes to `DigitHost.print`. Download a PDF with
+`DigitHost.download({ filename, contentType: 'application/pdf', data })`. Printing only
+accepts HTML and opens the browser print dialog.
 
 ### 5. `manifest.json`
 
@@ -244,24 +279,24 @@ upstream starter.
 
 ## Decision guide
 
-| Need | Path |
-| --- | --- |
-| Any new app | Copy `full-featured`, delete unused tabs/routes |
-| Digit GraphQL | Schema resources → hooks + `appPermissions` → `key` in manifest |
-| Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend` |
-| Codes / JSON validation | `@digit/lib-common` |
+| Need                                  | Path                                                            |
+| ------------------------------------- | --------------------------------------------------------------- |
+| Any new app                           | Copy `full-featured`, delete unused tabs/routes                 |
+| Digit GraphQL                         | Schema resources → hooks + `appPermissions` → `key` in manifest |
+| Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
+| Codes / JSON validation               | `@digit/lib-common`                                             |
 
 ## Packages (`lib-*`)
 
 Import from each package **root only**. Helpers use **named arguments**. Runtime packages
 do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
-| Package | When | Role |
-| --- | --- | --- |
-| `@digit/lib-frontend` | Always | Theme, harness types, data hooks, `AppErrorAlert` |
-| `@digit/lib-backend` | Worker | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
-| `@digit/lib-common` | With Worker (or code branching) | `AppErrorCode`, result types, validation |
-| `@digit/lib-build` | Always (devDependency) | `digit-app pack` |
+| Package               | When                            | Role                                                           |
+| --------------------- | ------------------------------- | -------------------------------------------------------------- |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`              |
+| `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
+| `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
+| `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
 
 ### Backend Worker
 
@@ -278,7 +313,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 
 ## Additional resources
 
-- [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits (popups/device APIs; downloads via `DigitHost.download`)
+- [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, DigitHost
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies

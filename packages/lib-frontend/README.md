@@ -24,11 +24,11 @@ from the private repo) — do not reintroduce imports from private packages.
 Every app template wraps its UI in `DigitThemeProvider`:
 
 ```tsx
-import { createRoot } from 'react-dom/client';
-import { DigitThemeProvider } from '@digit/lib-frontend';
-import App from './App';
+import { createRoot } from "react-dom/client";
+import { DigitThemeProvider } from "@digit/lib-frontend";
+import App from "./App";
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <DigitThemeProvider>
     <App />
   </DigitThemeProvider>,
@@ -41,10 +41,31 @@ The provider:
 - Syncs light/dark from `window.DigitHost` (falls back to `data-theme` / `prefers-color-scheme`)
 - Applies Digit `CssBaseline`
 
-Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`) are exported
-from this package — importing `@digit/lib-frontend` also augments `Window`. Prefer the
-data hooks over calling `window.DigitProxyClient` yourself. Do not add a local
-`digit.d.ts` for the harness.
+Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`,
+`DigitHostDownloadOptions`, and `DigitHostPrintOptions`) are exported from this package.
+Importing `@digit/lib-frontend` also augments `Window`. Prefer the data hooks over calling
+`window.DigitProxyClient` yourself. Do not add a local `digit.d.ts` for the harness.
+
+Host-mediated printing takes a self-contained HTML snapshot:
+
+```ts
+const html = `
+  <style>
+    body { font: 14px system-ui; color: #111; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 6px; border-bottom: 1px solid #ddd; text-align: left; }
+  </style>
+  <main>
+    <h1>Packing slip 1042</h1>
+    <table><tr><th>Item</th><th>Qty</th></tr><tr><td>Widget</td><td>2</td></tr></table>
+  </main>`;
+
+window.DigitHost?.print({ title: "Packing Slip 1042", html });
+```
+
+The print document runs no JavaScript. Inline CSS and convert images or canvases to
+`data:image/...` before calling `print`; network assets are removed. Keep the result
+under 1 MiB. Use `DigitHost.download` for PDF bytes.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
@@ -61,7 +82,7 @@ import {
   useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
-} from '@digit/lib-frontend';
+} from "@digit/lib-frontend";
 
 // Digit GraphQL API
 const { data, error, loading, refetch } = useDigitApiQuery({
@@ -71,25 +92,26 @@ const { data, error, loading, refetch } = useDigitApiQuery({
 const [createItem] = useDigitApiMutation({ mutation: CREATE_ITEM });
 
 // App Worker (/proxy/backend)
-const notes = useBackendQuery<{ notes: Note[] }>({ path: '/notes' });
-const [mutateNote, { error: saveError, loading: saving }] = useBackendMutation();
-await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
+const notes = useBackendQuery<{ notes: Note[] }>({ path: "/notes" });
+const [mutateNote, { error: saveError, loading: saving }] =
+  useBackendMutation();
+await mutateNote({ path: "/notes", method: "POST", body: { title: "Hi" } });
 ```
 
-| Hook | Hits |
-| --- | --- |
+| Hook                                       | Hits                             |
+| ------------------------------------------ | -------------------------------- |
 | `useDigitApiQuery` / `useDigitApiMutation` | Digit GraphQL via `/proxy/digit` |
-| `useBackendQuery` / `useBackendMutation` | App Worker via `/proxy/backend` |
+| `useBackendQuery` / `useBackendMutation`   | App Worker via `/proxy/backend`  |
 
 Error kinds:
 
-| Kind | Source |
-| --- | --- |
-| `platform` | digit-apps proxy/session (`{ error: { code, message, requestId? } }`) |
-| `graphql` | HTTP 200 + `errors[]` from Digit GraphQL |
-| `backend` | App Worker result `{ ok: false, error: { code, message } }` |
-| `unavailable` | Missing `DigitProxyClient` (local Vite without harness) |
-| `unknown` | Thrown / non-JSON / unexpected shapes |
+| Kind          | Source                                                                |
+| ------------- | --------------------------------------------------------------------- |
+| `platform`    | digit-apps proxy/session (`{ error: { code, message, requestId? } }`) |
+| `graphql`     | HTTP 200 + `errors[]` from Digit GraphQL                              |
+| `backend`     | App Worker result `{ ok: false, error: { code, message } }`           |
+| `unavailable` | Missing `DigitProxyClient` (local Vite without harness)               |
+| `unknown`     | Thrown / non-JSON / unexpected shapes                                 |
 
 Platform codes stay distinct from app codes (`AppErrorCode` on `@digit/lib-common`).
 Pair with `@digit/lib-backend` on the Worker so result shapes match.

@@ -4,15 +4,20 @@
  */
 
 // Theme
-export { DigitThemeProvider } from "./theme"
+export { DigitThemeProvider } from "./theme";
 
 // Host / proxy types (importing this package augments Window)
-export type { DigitHost, DigitHostDownloadOptions, DigitHostSettings } from "./globals"
-import "./globals"
+export type {
+  DigitHost,
+  DigitHostDownloadOptions,
+  DigitHostPrintOptions,
+  DigitHostSettings,
+} from "./globals";
+import "./globals";
 
 // Errors
-export { AppErrorAlert } from "./errors"
-export type { AppError } from "./errors"
+export { AppErrorAlert } from "./errors";
+export type { AppError } from "./errors";
 
 // Digit API + app backend (hooks only — imperative fetch helpers are internal)
 export {
@@ -20,5 +25,5 @@ export {
   useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
-} from "./api"
-export type { DigitResult } from "./api"
+} from "./api";
+export type { DigitResult } from "./api";
