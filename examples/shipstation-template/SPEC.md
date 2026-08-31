@@ -16,10 +16,14 @@ works after a consumer publishes to Digit.
 
 ## Data & permissions
 
-- `manifest.permissions`: `[]`. Digit GraphQL used: `currentPermissions { key }` (org-admin
-  gate: `UPDATE_ORGANIZATION`) and `organization { id }`. Confirmed via Digit MCP schema
-  resources; neither field is in `appPermissions` as a required manifest key (same ungated
-  class as `currentUser`).
+- `manifest.permissions`: `["UPDATE_ORGANIZATION"]`. Digit GraphQL used:
+  `currentPermissions { key }` (org-admin gate: `UPDATE_ORGANIZATION`) and
+  `organization { id }`. Neither field requires a permission to *call*, but
+  `currentPermissions` returns the app token's permissions — the intersection of this
+  manifest with the viewing user's live set. With `[]` it returned an empty list, so the
+  admin gate failed for org admins too. Declaring the key does not grant it: non-admins
+  still intersect to `[]` and keep the read-only screen. The app never calls
+  `updateOrganization`; the key exists only so the gate can read it back.
 - D1 `SHIPSTATION_DB` — schema in `src/backend/migrations/`. Applied on consumer publish.
 - Secret `APP_SECRET_ENCRYPTION_KEY` — base64 32-byte AES key. Consumer sets this on the Digit
   app. Never returned to the UI. Missing key → `MISSING_CONFIG` on connect/disconnect.
@@ -35,7 +39,6 @@ works after a consumer publishes to Digit.
 - **Gotcha:** `api_key_encrypted` is never selected into JSON. Invalid keys fail the wizard
   with a ShipStation-specific message, not a generic 502.
 - MVP one-connection guard: partial unique index on `organization_id` where `deleted = 0`.
-
 ## Prompts
 
 ```
@@ -84,6 +87,10 @@ Implement the plan as specified
 Add error handling to shipstation template on first load. Show a screen indicating the secrets and env variables that need to be added for the app to work
 ```
 
+```
+For the shipstation template: add tooltips explaining what each setting does in the attached modal.
+```
+
 ## Context supplied
 
 - Example lives in `examples/shipstation-template` (started as hello-world skeleton, then
@@ -96,3 +103,10 @@ Add error handling to shipstation template on first load. Show a screen indicati
 - Out of scope this pass: buying labels, rate shopping, writing SO `shipping_fees`, sending
   return-label email, enforcing address validation beyond storing the flag, inbound webhook
   business logic beyond HTTP 200.
+- Settings-modal screenshot (dark theme) was used as the field map for AC-23 tooltips:
+  default fulfillment method, rate-shop timing, rate mode, best-rate strategy, default
+  carrier/service, fallback weight/dims, add label cost, auto-send return-label email.
+  Block-on-invalid-address is in the same modal and got the same info-icon treatment.
+- Digit `MuiTooltip` is overline/uppercase with a short max-width. Settings hints override
+  that via `slotProps` so explanations stay sentence case and wrap. Hover-on-control
+  tooltips were not discoverable next to Selects; hints sit on an info icon instead.

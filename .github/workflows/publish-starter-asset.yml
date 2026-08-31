@@ -85,6 +85,9 @@ jobs:
           test ! -d "$STAGE/apps/app/frontend"
           test ! -d "$STAGE/apps/app/backend"
           test ! -f "$STAGE/apps/app/app.zip"
+          test ! -e "$STAGE/.agents/skills/extend-shipstation-app"
+          test -f "$STAGE/examples/shipstation-template/.agents/skills/extend-shipstation-app/SKILL.md"
+          test -f "$STAGE/examples/shipstation-template/AGENTS.md"
 
           DATE_TAG="starter-$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
           {

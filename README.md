@@ -66,6 +66,8 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 
 [`examples/shipstation-template`](examples/shipstation-template) is a Worker + D1 template
 for connecting one ShipStation V2 account (`npm run new-app -- my-app --from shipstation-template`).
+Its agent skill lives **in that template** (not in this repo’s shared `.agents/skills/`):
+[`examples/shipstation-template/.agents/skills/extend-shipstation-app/SKILL.md`](examples/shipstation-template/.agents/skills/extend-shipstation-app/SKILL.md).
 
 ## Publish reminder
 

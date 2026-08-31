@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -10,6 +10,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import FormControl from '@mui/material/FormControl';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
@@ -17,8 +18,10 @@ import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
@@ -47,6 +50,94 @@ const BOOTSTRAP_QUERY = `
 `;
 
 const ADMIN_PERMISSION = 'UPDATE_ORGANIZATION';
+
+const SETTING_HINTS = {
+  defaultFulfillmentMethod:
+    'Org default for how sales orders are fulfilled. ShipStation uses this connected account; Manual skips it; Unspecified leaves fulfillment unset until a later step chooses it.',
+  rateTiming:
+    'When rates are requested from ShipStation. Order creation shops when the sales order is created; Shipping shops when you start fulfilling.',
+  rateMode:
+    'How a carrier and service are chosen. Rate shop presents quotes to pick from; Best rate auto-selects using the strategy below; Strict default always uses the default carrier and service.',
+  bestRateStrategy:
+    'Used only in Best rate mode. Cheapest picks the lowest-cost quote; Fastest picks the shortest transit time.',
+  defaultCarrier:
+    'Preferred ShipStation carrier. Strict default always uses this carrier; other modes use it as the starting point.',
+  defaultService:
+    'Preferred service for the selected default carrier. Choose a carrier first; None means no service is preselected.',
+  fallbackWeight:
+    'Package weight sent to ShipStation when the sales order or items have no weight.',
+  fallbackLength:
+    'Package length used when the sales order or items have no dimensions.',
+  fallbackWidth:
+    'Package width used when the sales order or items have no dimensions.',
+  fallbackHeight:
+    'Package height used when the sales order or items have no dimensions.',
+  addCostToShippingFees:
+    'When on, purchased label cost is added to the sales order shipping fees. Individual sales orders can override this later.',
+  autoSendReturnEmail:
+    'When on, a return-label email is sent automatically after a qualifying shipment. Off by default.',
+  blockOnInvalidAddress:
+    'When on, an invalid ship-to address blocks shipping. When off, the app warns but you can override and continue.',
+} as const;
+
+const settingTooltipSlotProps = {
+  tooltip: {
+    sx: {
+      maxWidth: 320,
+      whiteSpace: 'normal',
+      display: 'block',
+      textTransform: 'none',
+      letterSpacing: 'normal',
+      fontWeight: 400,
+      lineHeight: 1.45,
+      fontSize: 14,
+      py: 1,
+      px: 1.25,
+    },
+  },
+};
+
+function FieldHelp({ title, label }: { title: string; label: string }) {
+  return (
+    <Tooltip title={title} placement="left" enterTouchDelay={0} slotProps={settingTooltipSlotProps}>
+      <IconButton type="button" size="small" aria-label={`About ${label}`} sx={{ color: 'text.secondary' }}>
+        <InfoOutlinedIcon fontSize="small" />
+      </IconButton>
+    </Tooltip>
+  );
+}
+
+function SettingField({
+  title,
+  label,
+  children,
+}: {
+  title: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center">
+      <Box sx={{ flex: 1, minWidth: 0 }}>{children}</Box>
+      <FieldHelp title={title} label={label} />
+    </Stack>
+  );
+}
+
+function SettingSwitchLabel({
+  title,
+  label,
+}: {
+  title: string;
+  label: string;
+}) {
+  return (
+    <Stack direction="row" spacing={0.5} alignItems="center">
+      <span>{label}</span>
+      <FieldHelp title={title} label={label} />
+    </Stack>
+  );
+}
 
 type Measurement = { value: number; unit: string };
 
@@ -405,131 +496,154 @@ export default function App() {
         <DialogContent>
           {draft && (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              <FormControl fullWidth>
-                <InputLabel id="fulfillment-label">Default fulfillment method</InputLabel>
-                <Select
-                  labelId="fulfillment-label"
-                  label="Default fulfillment method"
-                  value={draft.defaultFulfillmentMethod}
-                  onChange={(event) =>
-                    setDraft({ ...draft, defaultFulfillmentMethod: event.target.value })
-                  }
-                >
-                  <MenuItem value="unspecified">Unspecified</MenuItem>
-                  <MenuItem value="shipstation">ShipStation</MenuItem>
-                  <MenuItem value="manual">Manual</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel id="timing-label">Rate-shop timing</InputLabel>
-                <Select
-                  labelId="timing-label"
-                  label="Rate-shop timing"
-                  value={draft.rateTiming}
-                  onChange={(event) => setDraft({ ...draft, rateTiming: event.target.value })}
-                >
-                  <MenuItem value="order_creation">Order creation</MenuItem>
-                  <MenuItem value="shipping">Shipping</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel id="mode-label">Rate mode</InputLabel>
-                <Select
-                  labelId="mode-label"
-                  label="Rate mode"
-                  value={draft.rateMode}
-                  onChange={(event) => setDraft({ ...draft, rateMode: event.target.value })}
-                >
-                  <MenuItem value="rate_shop">Rate shop</MenuItem>
-                  <MenuItem value="best_rate">Best rate</MenuItem>
-                  <MenuItem value="strict_default">Strict default</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel id="strategy-label">Best-rate strategy</InputLabel>
-                <Select
-                  labelId="strategy-label"
-                  label="Best-rate strategy"
-                  value={draft.bestRateStrategy}
-                  onChange={(event) =>
-                    setDraft({ ...draft, bestRateStrategy: event.target.value })
-                  }
-                >
-                  <MenuItem value="cheapest">Cheapest</MenuItem>
-                  <MenuItem value="fastest">Fastest</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel id="carrier-label">Default carrier</InputLabel>
-                <Select
-                  labelId="carrier-label"
-                  label="Default carrier"
-                  value={draft.defaultCarrierId === '' ? '' : String(draft.defaultCarrierId)}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      defaultCarrierId: event.target.value === '' ? '' : Number(event.target.value),
-                      defaultServiceId: '',
-                    })
-                  }
-                >
-                  <MenuItem value="">None</MenuItem>
-                  {carriers.map((carrier) => (
-                    <MenuItem key={carrier.id} value={String(carrier.id)}>
-                      {carrier.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl fullWidth>
-                <InputLabel id="service-label">Default service</InputLabel>
-                <Select
-                  labelId="service-label"
-                  label="Default service"
-                  value={draft.defaultServiceId === '' ? '' : String(draft.defaultServiceId)}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      defaultServiceId:
-                        event.target.value === '' ? '' : Number(event.target.value),
-                    })
-                  }
-                >
-                  <MenuItem value="">None</MenuItem>
-                  {(selectedCarrier?.services ?? []).map((service) => (
-                    <MenuItem key={service.id} value={String(service.id)}>
-                      {service.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <SettingField
+                title={SETTING_HINTS.defaultFulfillmentMethod}
+                label="Default fulfillment method"
+              >
+                <FormControl fullWidth>
+                  <InputLabel id="fulfillment-label">Default fulfillment method</InputLabel>
+                  <Select
+                    labelId="fulfillment-label"
+                    label="Default fulfillment method"
+                    value={draft.defaultFulfillmentMethod}
+                    onChange={(event) =>
+                      setDraft({ ...draft, defaultFulfillmentMethod: event.target.value })
+                    }
+                  >
+                    <MenuItem value="unspecified">Unspecified</MenuItem>
+                    <MenuItem value="shipstation">ShipStation</MenuItem>
+                    <MenuItem value="manual">Manual</MenuItem>
+                  </Select>
+                </FormControl>
+              </SettingField>
+              <SettingField title={SETTING_HINTS.rateTiming} label="Rate-shop timing">
+                <FormControl fullWidth>
+                  <InputLabel id="timing-label">Rate-shop timing</InputLabel>
+                  <Select
+                    labelId="timing-label"
+                    label="Rate-shop timing"
+                    value={draft.rateTiming}
+                    onChange={(event) => setDraft({ ...draft, rateTiming: event.target.value })}
+                  >
+                    <MenuItem value="order_creation">Order creation</MenuItem>
+                    <MenuItem value="shipping">Shipping</MenuItem>
+                  </Select>
+                </FormControl>
+              </SettingField>
+              <SettingField title={SETTING_HINTS.rateMode} label="Rate mode">
+                <FormControl fullWidth>
+                  <InputLabel id="mode-label">Rate mode</InputLabel>
+                  <Select
+                    labelId="mode-label"
+                    label="Rate mode"
+                    value={draft.rateMode}
+                    onChange={(event) => setDraft({ ...draft, rateMode: event.target.value })}
+                  >
+                    <MenuItem value="rate_shop">Rate shop</MenuItem>
+                    <MenuItem value="best_rate">Best rate</MenuItem>
+                    <MenuItem value="strict_default">Strict default</MenuItem>
+                  </Select>
+                </FormControl>
+              </SettingField>
+              <SettingField title={SETTING_HINTS.bestRateStrategy} label="Best-rate strategy">
+                <FormControl fullWidth>
+                  <InputLabel id="strategy-label">Best-rate strategy</InputLabel>
+                  <Select
+                    labelId="strategy-label"
+                    label="Best-rate strategy"
+                    value={draft.bestRateStrategy}
+                    onChange={(event) =>
+                      setDraft({ ...draft, bestRateStrategy: event.target.value })
+                    }
+                  >
+                    <MenuItem value="cheapest">Cheapest</MenuItem>
+                    <MenuItem value="fastest">Fastest</MenuItem>
+                  </Select>
+                </FormControl>
+              </SettingField>
+              <SettingField title={SETTING_HINTS.defaultCarrier} label="Default carrier">
+                <FormControl fullWidth>
+                  <InputLabel id="carrier-label">Default carrier</InputLabel>
+                  <Select
+                    labelId="carrier-label"
+                    label="Default carrier"
+                    value={draft.defaultCarrierId === '' ? '' : String(draft.defaultCarrierId)}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        defaultCarrierId: event.target.value === '' ? '' : Number(event.target.value),
+                        defaultServiceId: '',
+                      })
+                    }
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {carriers.map((carrier) => (
+                      <MenuItem key={carrier.id} value={String(carrier.id)}>
+                        {carrier.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </SettingField>
+              <SettingField title={SETTING_HINTS.defaultService} label="Default service">
+                <FormControl fullWidth>
+                  <InputLabel id="service-label">Default service</InputLabel>
+                  <Select
+                    labelId="service-label"
+                    label="Default service"
+                    value={draft.defaultServiceId === '' ? '' : String(draft.defaultServiceId)}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        defaultServiceId:
+                          event.target.value === '' ? '' : Number(event.target.value),
+                      })
+                    }
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {(selectedCarrier?.services ?? []).map((service) => (
+                      <MenuItem key={service.id} value={String(service.id)}>
+                        {service.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </SettingField>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                <TextField
-                  label="Fallback weight (oz)"
-                  value={draft.fallbackWeight}
-                  onChange={(event) => setDraft({ ...draft, fallbackWeight: event.target.value })}
-                  fullWidth
-                />
-                <TextField
-                  label="Length (in)"
-                  value={draft.fallbackLength}
-                  onChange={(event) => setDraft({ ...draft, fallbackLength: event.target.value })}
-                  fullWidth
-                />
+                <SettingField title={SETTING_HINTS.fallbackWeight} label="Fallback weight">
+                  <TextField
+                    label="Fallback weight (oz)"
+                    value={draft.fallbackWeight}
+                    onChange={(event) => setDraft({ ...draft, fallbackWeight: event.target.value })}
+                    fullWidth
+                  />
+                </SettingField>
+                <SettingField title={SETTING_HINTS.fallbackLength} label="Length">
+                  <TextField
+                    label="Length (in)"
+                    value={draft.fallbackLength}
+                    onChange={(event) => setDraft({ ...draft, fallbackLength: event.target.value })}
+                    fullWidth
+                  />
+                </SettingField>
               </Stack>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                <TextField
-                  label="Width (in)"
-                  value={draft.fallbackWidth}
-                  onChange={(event) => setDraft({ ...draft, fallbackWidth: event.target.value })}
-                  fullWidth
-                />
-                <TextField
-                  label="Height (in)"
-                  value={draft.fallbackHeight}
-                  onChange={(event) => setDraft({ ...draft, fallbackHeight: event.target.value })}
-                  fullWidth
-                />
+                <SettingField title={SETTING_HINTS.fallbackWidth} label="Width">
+                  <TextField
+                    label="Width (in)"
+                    value={draft.fallbackWidth}
+                    onChange={(event) => setDraft({ ...draft, fallbackWidth: event.target.value })}
+                    fullWidth
+                  />
+                </SettingField>
+                <SettingField title={SETTING_HINTS.fallbackHeight} label="Height">
+                  <TextField
+                    label="Height (in)"
+                    value={draft.fallbackHeight}
+                    onChange={(event) => setDraft({ ...draft, fallbackHeight: event.target.value })}
+                    fullWidth
+                  />
+                </SettingField>
               </Stack>
               <FormControlLabel
                 control={
@@ -540,7 +654,12 @@ export default function App() {
                     }
                   />
                 }
-                label="Add label cost to SO shipping fees"
+                label={
+                  <SettingSwitchLabel
+                    title={SETTING_HINTS.addCostToShippingFees}
+                    label="Add label cost to SO shipping fees"
+                  />
+                }
               />
               <FormControlLabel
                 control={
@@ -551,7 +670,12 @@ export default function App() {
                     }
                   />
                 }
-                label="Auto-send return-label email"
+                label={
+                  <SettingSwitchLabel
+                    title={SETTING_HINTS.autoSendReturnEmail}
+                    label="Auto-send return-label email"
+                  />
+                }
               />
               <FormControlLabel
                 control={
@@ -562,7 +686,12 @@ export default function App() {
                     }
                   />
                 }
-                label="Block on invalid address (off = warn, override allowed)"
+                label={
+                  <SettingSwitchLabel
+                    title={SETTING_HINTS.blockOnInvalidAddress}
+                    label="Block on invalid address (off = warn, override allowed)"
+                  />
+                }
               />
               {mutationError && <AppErrorAlert error={mutationError} />}
             </Stack>
