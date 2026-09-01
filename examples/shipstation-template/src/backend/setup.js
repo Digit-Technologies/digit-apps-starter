@@ -16,6 +16,7 @@ import {
   readShipStationApiKey,
   shipstationDb,
 } from './runtimeConfig.js';
+import { channelSetupEntries } from './channels/registry.js';
 
 async function setupItems({ env, db }) {
   const token = await readApiTokenDigit({ env, db });
@@ -62,17 +63,20 @@ async function setupItems({ env, db }) {
   ];
 }
 
-function setupPayload({ db, items }) {
+function setupPayload({ db, items, channels }) {
   const present = (key) => Boolean(items.find((item) => item.key === key)?.present);
   const ready =
     Boolean(db) && items.filter((item) => item.required).every((item) => item.present && item.valid);
+  const anyChannelConfigured = channels.some((channel) => channel.configured);
   return {
     ready,
     usable: Boolean(db),
     apiTokenPresent: present('API_TOKEN_DIGIT'),
     webhookUrlPresent: present('PUBLIC_WEBHOOK_URL'),
     shipStationKeyPresent: present('SHIPSTATION_API_KEY'),
+    anyChannelConfigured,
     items,
+    channels,
   };
 }
 
@@ -85,7 +89,8 @@ export async function handleSetup({ env, path, method }) {
   const db = shipstationDb({ env });
 
   if (method === 'GET') {
-    return ok({ data: setupPayload({ db, items: await setupItems({ env, db }) }) });
+    const channels = await channelSetupEntries({ env, db });
+    return ok({ data: setupPayload({ db, items: await setupItems({ env, db }), channels }) });
   }
 
   if (method === 'POST') {

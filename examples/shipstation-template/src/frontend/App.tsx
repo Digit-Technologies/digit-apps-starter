@@ -391,6 +391,7 @@ export default function App() {
               apiTokenPresent={apiTokenPresent}
               webhookUrlPresent={webhookUrlPresent}
               shipStationKeyPresent={shipStationKeyPresent}
+              channels={setupData?.channels ?? []}
             />
           </Paper>
         ) : null}

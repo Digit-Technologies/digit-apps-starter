@@ -24,7 +24,13 @@ Override `skuForLine` in `src/backend/mappers/digitToShipStation.js`. Add a D1 m
 
 ## Faire tracking (CS-01)
 
-Set secret `FAIRE_API_KEY`. Implement `notifyFaire` in `src/backend/channels/faire.js` against the current Faire order-shipment API. `afterDigitShipped` already calls it.
+Set secret `FAIRE_API_KEY`. Implement fulfillment POST in `src/backend/channels/faire.js`
+(`faireAdapter.afterDigitShipped`). Registry runs it after Digit writeback.
+
+## Add commerce channel (Shopify, WooCommerce, …)
+
+See [channel-recipes.md](channel-recipes.md) and [channels.md](channels.md). Copy
+`_scaffold.js`, register in `registry.js`, add secrets to `CHANNEL_SECRETS`.
 
 ## Inbound / ShipStation-first (drop-ship)
 

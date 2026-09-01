@@ -13,6 +13,20 @@ export type SetupItem = {
   description: string;
 };
 
+export type ChannelSecretStatus = {
+  key: string;
+  present: boolean;
+  source: SetupSource;
+};
+
+export type ChannelSetupEntry = {
+  id: string;
+  label: string;
+  webhookPath: string | null;
+  configured: boolean;
+  secrets: ChannelSecretStatus[];
+};
+
 export type SetupData = {
   /** Every required value is live in the Worker. */
   ready: boolean;
@@ -21,5 +35,7 @@ export type SetupData = {
   apiTokenPresent: boolean;
   webhookUrlPresent: boolean;
   shipStationKeyPresent: boolean;
+  anyChannelConfigured: boolean;
   items: SetupItem[];
+  channels: ChannelSetupEntry[];
 };

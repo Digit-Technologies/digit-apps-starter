@@ -1,10 +1,16 @@
 /**
- * Post-writeback channel adapters. Default is a no-op: Digit Rutter
- * pushFulfillments covers Shopify/etc. Enable Faire with FAIRE_API_KEY.
+ * Post-writeback channel adapters. Default is a no-op for Shopify/WooCommerce when
+ * Digit Rutter pushFulfillments covers the store. Enable direct adapters via app secrets.
  */
 
-import { notifyFaire } from './faire.js';
-
-export async function afterDigitShipped({ env, order, shipment }) {
-  await notifyFaire({ env, order, shipment });
-}
+export {
+  afterDigitShipped,
+  runAfterDigitShipped,
+  listAdapters,
+  getAdapter,
+  channelWebhookHandlers,
+  channelJobHandlers,
+  processChannelWebhook,
+  channelSetupEntries,
+  channelStatusForOrg,
+} from './registry.js';

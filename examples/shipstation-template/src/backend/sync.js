@@ -663,6 +663,7 @@ async function applyDigitShipmentWriteback({
 
   await afterDigitShipped({
     env,
+    organizationId,
     order,
     shipment: {
       trackingNumber,

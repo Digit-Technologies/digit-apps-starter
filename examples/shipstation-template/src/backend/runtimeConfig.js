@@ -17,6 +17,13 @@ export const CONFIG = {
   faireApiKey: 'FAIRE_API_KEY',
 };
 
+/** App secret keys per channel adapter id. Never expose values in API responses. */
+export const CHANNEL_SECRETS = {
+  faire: ['FAIRE_API_KEY'],
+  shopify: ['SHOPIFY_ACCESS_TOKEN', 'SHOPIFY_WEBHOOK_SECRET'],
+  woocommerce: ['WOOCOMMERCE_WEBHOOK_SECRET', 'WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'],
+};
+
 export function shipstationDb({ env }) {
   return optionalEnv({ env, key: 'SHIPSTATION_DB' }) || null;
 }
@@ -136,6 +143,54 @@ export async function loadFaireApiKey({ env, db }) {
     db,
     key: CONFIG.faireApiKey,
     envKeys: [CONFIG.faireApiKey],
+    encrypted: true,
+  });
+}
+
+/**
+ * @param {object} args
+ * @param {Record<string, unknown>} args.env
+ * @param {import('@cloudflare/workers-types').D1Database | null} args.db
+ * @param {string} args.channelId
+ * @returns {Promise<Array<{ key: string, present: boolean, source: 'appSecret' | 'appDatabase' | null }>>}
+ */
+export async function readChannelSecrets({ env, db, channelId }) {
+  const keys = CHANNEL_SECRETS[channelId] || [];
+  const entries = [];
+  for (const key of keys) {
+    const stored = await readStored({
+      env,
+      db,
+      key,
+      envKeys: [key],
+      encrypted: true,
+    });
+    entries.push({
+      key,
+      present: Boolean(stored.value),
+      source: stored.source,
+    });
+  }
+  return entries;
+}
+
+/**
+ * @param {object} args
+ * @param {Record<string, unknown>} args.env
+ * @param {import('@cloudflare/workers-types').D1Database | null} args.db
+ * @param {string} args.channelId
+ * @param {string} args.secretKey
+ */
+export async function readChannelSecret({ env, db, channelId, secretKey }) {
+  const allowed = CHANNEL_SECRETS[channelId] || [];
+  if (!allowed.includes(secretKey)) {
+    return { value: null, source: null };
+  }
+  return readStored({
+    env,
+    db,
+    key: secretKey,
+    envKeys: [secretKey],
     encrypted: true,
   });
 }

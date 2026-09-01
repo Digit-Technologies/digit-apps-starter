@@ -66,9 +66,11 @@ Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
 [reference/architecture.md](reference/architecture.md) ·
 [reference/backend-routes.md](reference/backend-routes.md) ·
 [reference/d1.md](reference/d1.md) ·
-[reference/error-handling.md](reference/error-handling.md)
+[reference/error-handling.md](reference/error-handling.md) ·
+[reference/channels.md](reference/channels.md)
 
-Recipes: [reference/extension-recipes.md](reference/extension-recipes.md).
+Recipes: [reference/extension-recipes.md](reference/extension-recipes.md) ·
+Channels: [reference/channels.md](reference/channels.md)
 
 Do **not** treat `requirements.md` (if present) as the skill. Extend the code that
 exists; look up APIs via MCP.
@@ -87,4 +89,13 @@ ShipStation extend:
 - [ ] New sync/webhook/poll paths: `appendActivity` (no secrets/PII); UI Alert + activity refetch
 - [ ] `ssFetch` / `digitGraphql` errors include upstream messages (not HTTP-only)
 - [ ] SPEC.md prompts updated
+
+Channel extend (Shopify, WooCommerce, Faire, …):
+- [ ] Read reference/channels.md — Rutter vs direct; inbound vs outbound
+- [ ] Adapter in channels/{platform}.js registered in registry.js
+- [ ] Secret key names in runtimeConfig.CHANNEL_SECRETS (Digit App Secrets UI only)
+- [ ] Inbound: manifest webhook path + verifyWebhook (raw bytes) + process-{channelId}-webhook job
+- [ ] Outbound: afterDigitShipped via platformFetch; channel_order_map when ids differ
+- [ ] appendActivity channelId + externalOrderId; FeatureStatus / GET /setup if new secrets
+- [ ] Vendor API paths from channel-api-map.md + official docs — never invent
 ```

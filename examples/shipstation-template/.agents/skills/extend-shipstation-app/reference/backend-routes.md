@@ -1,7 +1,7 @@
 # Backend routes
 
 Handlers live in `src/backend/connection.js`, `handleSync.js`, and `setup.js`.
-`src/backend/index.js` dispatches: setup → sync → connection, else `NOT_FOUND`.
+`src/backend/index.js` dispatches: setup → channels → sync → connection, else `NOT_FOUND`.
 
 All JSON responses use `ok` / `err` from `@digit/lib-backend`. The Worker does not
 authenticate the viewing user.
@@ -10,7 +10,7 @@ authenticate the viewing user.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/setup` | Read-only status for `API_TOKEN_DIGIT` / `PUBLIC_WEBHOOK_URL`: `present`, `source`, `enables`, plus `ready` / `usable`. Never lists `SHIPSTATION_DB` or any value. |
+| `GET` | `/setup` | Read-only status for secrets and `channels[]` adapter configuration (presence only). |
 | `POST` | `/setup` | Rejected. App owners manage these values in Digit's built-in App Secrets UI. |
 | `GET` | `/connection?organizationId=` | Live connection (no API key, no Phase 2 rate fields). `{ connected: false }` if none. |
 | `POST` | `/connection` | Body: `organizationId` only. Reads `SHIPSTATION_API_KEY`, validates it with `GET /v2/carriers`, syncs carriers, registers webhooks. 503 if the secret is missing, 409 if a live connection exists. |
@@ -22,6 +22,7 @@ authenticate the viewing user.
 | `GET` | `/sync/activity?organizationId=` | Latest ~100 activity events (pushes, settings, webhooks, poll). |
 | `POST` | `/sync/push` | Body: `organizationId`, `orderIds[]` (max 25). Always HTTP 200 with `{ results, summary: { pushed, skipped, failed } }`. UI must read per-order `skipped` / `meaning`. |
 | `POST` | `/sync/poll` | Run outbound + inbound poll once (same work as the schedule). |
+| `GET` | `/channels/status?organizationId=` | Channel adapter configuration and D1 `channel_connection` rows (read-only). |
 
 There is **no** `PATCH /connection/settings`. Rate-shop / label-cost / return-email / address-block fields stay in `0001` SQL defaults only.
 

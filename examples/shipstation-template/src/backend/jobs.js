@@ -1,10 +1,15 @@
 import { AppErrorCode } from '@digit/lib-common';
 import { HandlerError, requireEnv } from '@digit/lib-backend';
 
+import { processChannelWebhook } from './channels/registry.js';
 import { pollInbound, pollOutboundPush, processWebhookJob } from './sync.js';
 
 export async function processSsWebhook({ payload, env }) {
   return processWebhookJob({ env, payload });
+}
+
+export async function processChannelWebhookJob({ payload, env, channelId }) {
+  return processChannelWebhook({ payload, env, channelId });
 }
 
 export async function pollSync({ env }) {

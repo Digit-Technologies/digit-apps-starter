@@ -13,6 +13,8 @@ Published app:
                            --HTTPS--> https://api.shipstation.com (ssFetch)
                            --HTTPS--> Digit GraphQL (API_TOKEN_DIGIT)
   Public POST /webhooks/shipstation  -->  verify RSA-SHA256 → job process-ss-webhook
+  Public POST /webhooks/{channel}    -->  adapter verify → job process-{channel}-webhook (when declared)
+  After SS writeback               -->  runAfterDigitShipped (Rutter or direct channel adapters)
   Schedule poll-outbound-push (300s) -->  push eligible Digit SOs / inbound import
 ```
 
@@ -24,7 +26,8 @@ Published app:
 | `SHIPSTATION_API_KEY` | Digit app secret | ShipStation V2 key for this organization. Validated on connect. |
 | `API_TOKEN_DIGIT` | Digit app secret | Digit API token for Worker GraphQL (webhooks + poll). |
 | `PUBLIC_WEBHOOK_URL` | Digit app secret | Public `/webhooks/shipstation` URL. Connect registers SS webhooks. |
-| `FAIRE_API_KEY` | optional secret | Turns on the Faire channel stub after Digit ship writeback. |
+| `FAIRE_API_KEY` | optional secret | Faire adapter after Digit ship writeback. |
+| `SHOPIFY_*`, `WOOCOMMERCE_*` | optional secrets | Channel adapters — see `CHANNEL_SECRETS` in `runtimeConfig.js`. |
 
 App secrets are **organization-level**, so a published template serves many organizations
 without sharing any credential. All of them are managed in Digit's App Secrets UI and reach
@@ -49,11 +52,14 @@ Partial config never blocks the app — the UI degrades feature by feature inste
 | `src/backend/eligibility.js` | Inventory / pack / lane / sync-mode gates. |
 | `src/backend/mappers/digitToShipStation.js` | SO → SS shipment (`skuForLine`, bill-to notes). |
 | `src/backend/mappers/shipStationToDigit.js` | SS shipment → Digit company/order. |
-| `src/backend/channels/` | `afterDigitShipped`; Faire recipe. |
+| `src/backend/channels/` | Adapter registry, D1 store helpers, platform stubs. |
+| `src/backend/http/platformFetch.js` | Generic commerce HTTP client. |
+| `src/backend/webhooks/` | Shared pipeline + ShipStation RSA handler. |
+| `src/backend/handleChannels.js` | `GET /channels/status`. |
 | `src/backend/connection.js` | Connect/disconnect, org Phase 1 settings, webhooks, carriers. |
 | `src/backend/handleSync.js` | `/sync/orders`, `/sync/push`, `/sync/activity`. |
-| `src/backend/webhooks.js` | Verify + enqueue. |
-| `src/backend/jobs.js` | `process-ss-webhook`, `poll-outbound-push`. |
+| `src/backend/webhooks.js` | Re-exports ShipStation webhook handler. |
+| `src/backend/jobs.js` | `process-ss-webhook`, `process-{channel}-webhook`, `poll-outbound-push`. |
 | `src/backend/runtimeConfig.js` | Injected app secrets first, legacy D1 `app_config` as fallback. |
 | `src/backend/setup.js` | `GET /setup` status only (no writes). |
 | `src/backend/migrations/*.sql` | New files only after `0001_init.sql` has been published. |

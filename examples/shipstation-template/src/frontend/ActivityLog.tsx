@@ -18,6 +18,8 @@ export type ActivityEvent = {
   message: string;
   digitOrderId?: string | null;
   ssShipmentId?: string | null;
+  channelId?: string | null;
+  externalOrderId?: string | null;
   detail?: unknown;
 };
 
@@ -43,6 +45,8 @@ function copyText(event: ActivityEvent) {
     event.message,
     event.digitOrderId ? `Digit order: ${event.digitOrderId}` : null,
     event.ssShipmentId ? `ShipStation shipment: ${event.ssShipmentId}` : null,
+    event.channelId ? `Channel: ${event.channelId}` : null,
+    event.externalOrderId ? `External order: ${event.externalOrderId}` : null,
   ].filter(Boolean);
   return lines.join('\n');
 }
@@ -91,11 +95,13 @@ export default function ActivityLog({
                   </Typography>
                 </Stack>
                 <Typography variant="body2">{event.message}</Typography>
-                {event.digitOrderId || event.ssShipmentId ? (
+                {event.digitOrderId || event.ssShipmentId || event.channelId || event.externalOrderId ? (
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {[
                       event.digitOrderId ? `Order ${event.digitOrderId}` : null,
                       event.ssShipmentId ? `SS ${event.ssShipmentId}` : null,
+                      event.channelId ? `${event.channelId}` : null,
+                      event.externalOrderId ? `Ext ${event.externalOrderId}` : null,
                     ]
                       .filter(Boolean)
                       .join(' · ')}

@@ -28,14 +28,16 @@ export async function appendActivity({
   message,
   digitOrderId = null,
   ssShipmentId = null,
+  channelId = null,
+  externalOrderId = null,
   detail = null,
 }) {
   if (!organizationId) return;
   await db
     .prepare(
       `INSERT INTO activity_log
-         (organization_id, actor, action, digit_order_id, ss_shipment_id, status, message, detail)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+         (organization_id, actor, action, digit_order_id, ss_shipment_id, channel_id, external_order_id, status, message, detail)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       organizationId,
@@ -43,6 +45,8 @@ export async function appendActivity({
       action,
       digitOrderId,
       ssShipmentId,
+      channelId,
+      externalOrderId,
       status,
       truncateMessage(message) || 'No message.',
       stringifyDetail(detail),
@@ -67,6 +71,8 @@ export function publicActivityRow(row) {
     action: row.action,
     digitOrderId: row.digit_order_id,
     ssShipmentId: row.ss_shipment_id,
+    channelId: row.channel_id ?? null,
+    externalOrderId: row.external_order_id ?? null,
     status: row.status,
     message: row.message,
     detail,
@@ -77,7 +83,7 @@ export async function listActivity({ db, organizationId, limit = LIST_LIMIT }) {
   const { results } = await db
     .prepare(
       `SELECT id, organization_id, created_at, actor, action, digit_order_id, ss_shipment_id,
-              status, message, detail
+              channel_id, external_order_id, status, message, detail
        FROM activity_log
        WHERE organization_id = ?
        ORDER BY id DESC

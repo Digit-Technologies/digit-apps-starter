@@ -10,6 +10,8 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 
+import type { ChannelSetupEntry } from './setupTypes';
+
 type FeatureState = 'working' | 'partial' | 'off';
 
 type Feature = {
@@ -25,6 +27,7 @@ export type FeatureStatusProps = {
   apiTokenPresent: boolean;
   webhookUrlPresent: boolean;
   shipStationKeyPresent: boolean;
+  channels?: ChannelSetupEntry[];
 };
 
 const CONNECTION = 'a connected ShipStation account';
@@ -41,11 +44,20 @@ function gate({ title, detail, requires }: {
   return { title, detail, state: needs.length === 0 ? 'working' : 'off', needs };
 }
 
+function anyInboundChannel(channels: ChannelSetupEntry[]) {
+  return channels.some((channel) => channel.webhookPath && channel.configured);
+}
+
+function anyOutboundChannel(channels: ChannelSetupEntry[]) {
+  return channels.some((channel) => channel.configured);
+}
+
 function features({
   connected,
   apiTokenPresent,
   webhookUrlPresent,
   shipStationKeyPresent,
+  channels = [],
 }: FeatureStatusProps): Feature[] {
   const inbound = gate({
     title: 'Inbound ShipStation orders',
@@ -57,6 +69,9 @@ function features({
       [apiTokenPresent, TOKEN],
     ],
   });
+
+  const storeImportConfigured = anyInboundChannel(channels);
+  const storeFulfillmentConfigured = anyOutboundChannel(channels);
 
   return [
     {
@@ -104,6 +119,39 @@ function features({
           detail: `${inbound.detail} Without the webhook URL, imports only run on the five-minute schedule instead of arriving in real time.`,
         }
       : inbound,
+    storeImportConfigured
+      ? {
+          title: 'Store order import (direct channel)',
+          detail:
+            'A configured commerce channel adapter can import store orders into Digit when you declare its webhook path in manifest.json.',
+          state: 'partial',
+          needs: ['manifest webhook path and adapter implementation in your clone'],
+        }
+      : {
+          title: 'Store order import',
+          detail:
+            'Connect a store via Digit Rutter, or add channel secrets and a webhook adapter (Shopify, WooCommerce) in a clone of this template.',
+          state: 'off',
+          needs: ['Digit Rutter store connection or channel adapter secrets'],
+        },
+    storeFulfillmentConfigured || (connected && apiTokenPresent && webhookUrlPresent)
+      ? {
+          title: 'Tracking to sales channel',
+          detail: storeFulfillmentConfigured
+            ? 'A direct channel adapter can push tracking after Digit writeback. Digit Rutter also propagates tracking when the store is connected in Digit.'
+            : 'When tracking is on the Digit shipment, Digit Rutter can notify connected Shopify/WooCommerce stores. Add a channel adapter for stores Rutter does not cover.',
+          state: storeFulfillmentConfigured ? 'partial' : 'working',
+          needs: storeFulfillmentConfigured
+            ? ['channel adapter implementation in your clone']
+            : [],
+        }
+      : {
+          title: 'Tracking to sales channel',
+          detail:
+            'Finish ShipStation writeback first, then use Digit Rutter or a direct channel adapter to notify the store.',
+          state: 'off',
+          needs: [CONNECTION, TOKEN, WEBHOOK],
+        },
     gate({
       title: 'Hold orders that should not ship yet',
       detail:
