@@ -72,7 +72,9 @@ in the activity panel and Alerts.
 sentence. Frontend copy lives in `src/frontend/eligibility.ts` — keep them in sync
 (Worker cannot import TS). `skipNextStep` says what to change.
 
-Show Ready / Blocked in the queue **before** push so skips are not a surprise.
+Show Ready / Blocked in the queue **Status** column **before** push so skips are not a
+surprise. Do not duplicate that in a second status column — sync state (`pushed`,
+`shipped`, errors) replaces Ready/Blocked when a map row exists.
 
 ## Webhooks and jobs
 

@@ -4,6 +4,12 @@ export type DigitHostSettings = {
   language?: string;
 };
 
+/** Options for `DigitHost.navigate` — open a Digit web route in the host page. */
+export type DigitHostNavigateOptions = {
+  /** SPA path such as `/sales/orders/{orderId}`. Must start with `/`. */
+  path: string;
+};
+
 /** Options for `DigitHost.download` — the only way an app can save a file to disk. */
 export type DigitHostDownloadOptions = {
   /** Letters, digits, spaces, dots, hyphens, underscores or parentheses; extension optional. */
@@ -24,6 +30,8 @@ export type DigitHost = {
   onSettingsChange: (cb: (settings: DigitHostSettings | null) => void) => () => void;
   /** Saves a file via the host page. Throws on invalid options (message says why). */
   download: (options: DigitHostDownloadOptions) => void;
+  /** Navigates the Digit host to an in-app route when the harness supports it. */
+  navigate?: (options: DigitHostNavigateOptions) => void;
 };
 
 /** Harness credential proxy (`window.DigitProxyClient`) — used by data hooks; not a public app API. */

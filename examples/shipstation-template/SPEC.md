@@ -142,6 +142,34 @@ Implement the plan as specified, it is attached for your reference. Do NOT edit 
 file itself.
 ```
 
+```
+Make SOs in fulfillment queue links
+```
+
+```
+Ready and status columns appear to be duplicates
+```
+
+```
+make the selection column frozen
+```
+
+```
+rename shipstation column to shipstation id
+```
+
+```
+publish
+```
+
+```
+rename push column to status
+```
+
+```
+republish
+```
+
 ## Context supplied
 
 - Work stays on git branch `shipstation-template` tracking `fork/shipstation-template`

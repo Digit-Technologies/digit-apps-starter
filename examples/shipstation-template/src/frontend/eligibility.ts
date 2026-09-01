@@ -139,3 +139,61 @@ export function pushStatusLabel(value: string | null | undefined) {
       return value ? value.replace(/_/g, ' ') : 'Not pushed yet';
   }
 }
+
+export type QueuePushDisplay = {
+  primary: string;
+  chipColor: 'success' | 'warning' | 'error' | 'default';
+  tooltip: string;
+  showPrimaryAsChip: boolean;
+  lastError?: string | null;
+};
+
+/** Single queue column: eligibility (ready/blocked) or ShipStation sync state — not both. */
+export function queuePushDisplay({
+  blocked,
+  mapRow,
+}: {
+  blocked: string | null;
+  mapRow?: { pushStatus?: string | null; lastError?: string | null } | null;
+}): QueuePushDisplay {
+  const pushStatus = mapRow?.pushStatus;
+  const lastError = mapRow?.lastError ?? null;
+
+  if (lastError || pushStatus === 'error') {
+    return {
+      primary: pushStatusLabel('error'),
+      chipColor: 'error',
+      tooltip: lastError ?? 'Push failed.',
+      showPrimaryAsChip: false,
+      lastError,
+    };
+  }
+
+  if (pushStatus && ['pushed', 'shipped', 'imported'].includes(pushStatus)) {
+    return {
+      primary: pushStatusLabel(pushStatus),
+      chipColor: pushStatus === 'shipped' ? 'success' : 'default',
+      tooltip:
+        pushStatus === 'pushed'
+          ? `${pushStatusLabel(pushStatus)} This Digit order stays in the queue until it is fulfilled.`
+          : pushStatusLabel(pushStatus),
+      showPrimaryAsChip: false,
+    };
+  }
+
+  if (blocked) {
+    return {
+      primary: 'Blocked',
+      chipColor: 'warning',
+      tooltip: `${blocked} ${skipNextStep(blocked)}`,
+      showPrimaryAsChip: true,
+    };
+  }
+
+  return {
+    primary: 'Ready',
+    chipColor: 'success',
+    tooltip: 'Eligible to push.',
+    showPrimaryAsChip: true,
+  };
+}

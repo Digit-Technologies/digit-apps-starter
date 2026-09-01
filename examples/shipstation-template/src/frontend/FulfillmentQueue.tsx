@@ -6,6 +6,7 @@ import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
 import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
+import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -29,8 +30,7 @@ import {
 import ActivityLog, { useActivityQuery } from './ActivityLog';
 import {
   ineligibilityReason,
-  pushStatusLabel,
-  skipNextStep,
+  queuePushDisplay,
   type OrgSettingsForEligibility,
 } from './eligibility';
 
@@ -136,6 +136,43 @@ function statusChip(value: string | null | undefined) {
 function orderLabel(order: OrderNode) {
   return order.documentNumber || order.orderNumber || order.id.slice(0, 8);
 }
+
+function salesOrderPath(orderId: string) {
+  return `/sales/orders/${orderId}`;
+}
+
+function OrderLink({ orderId, label }: { orderId: string; label: string }) {
+  const navigate = window.DigitHost?.navigate;
+  if (!navigate) return label;
+  return (
+    <Link
+      component="button"
+      type="button"
+      underline="hover"
+      onClick={() => navigate({ path: salesOrderPath(orderId) })}
+      sx={{ typography: 'body1Link', color: 'inherit', verticalAlign: 'inherit' }}
+    >
+      {label}
+    </Link>
+  );
+}
+
+const selectionHeadCellSx = {
+  position: 'sticky',
+  left: 0,
+  zIndex: 3,
+  bgcolor: 'background.paper',
+  borderRight: 1,
+  borderColor: 'divider',
+} as const;
+
+const selectionBodyCellSx = {
+  ...selectionHeadCellSx,
+  zIndex: 1,
+  '.MuiTableRow-hover:hover &': {
+    bgcolor: 'action.hover',
+  },
+} as const;
 
 export default function FulfillmentQueue({
   organizationId,
@@ -312,18 +349,17 @@ export default function FulfillmentQueue({
         </Alert>
       ) : null}
 
-      <TableContainer>
-        <Table size="small">
+      <TableContainer sx={{ overflowX: 'auto', maxWidth: '100%' }}>
+        <Table size="small" sx={{ minWidth: 960 }}>
           <TableHead>
             <TableRow>
-              {canPush ? <TableCell padding="checkbox" /> : null}
+              {canPush ? <TableCell padding="checkbox" sx={selectionHeadCellSx} /> : null}
               <TableCell>Order</TableCell>
               <TableCell>Customer</TableCell>
               <TableCell>Pick</TableCell>
               <TableCell>Pack</TableCell>
               <TableCell>Inventory</TableCell>
-              <TableCell>Ready</TableCell>
-              <TableCell>ShipStation</TableCell>
+              <TableCell>ShipStation ID</TableCell>
               <TableCell>Tracking</TableCell>
               <TableCell>Status</TableCell>
               <TableCell align="right">Slip</TableCell>
@@ -338,11 +374,11 @@ export default function FulfillmentQueue({
                 orgSettings,
                 mapRow: map ?? null,
               });
-              const readyTitle = blocked ? `${blocked} ${skipNextStep(blocked)}` : 'Eligible to push.';
+              const pushDisplay = queuePushDisplay({ blocked, mapRow: map ?? null });
               return (
                 <TableRow key={order.id} hover>
                   {canPush ? (
-                    <TableCell padding="checkbox">
+                    <TableCell padding="checkbox" sx={selectionBodyCellSx}>
                       <Checkbox
                         checked={Boolean(selected[order.id])}
                         onChange={(event) =>
@@ -351,20 +387,13 @@ export default function FulfillmentQueue({
                       />
                     </TableCell>
                   ) : null}
-                  <TableCell>{label}</TableCell>
+                  <TableCell>
+                    <OrderLink orderId={order.id} label={label} />
+                  </TableCell>
                   <TableCell>{order.customer?.name ?? '—'}</TableCell>
                   <TableCell>{statusChip(order.pickingStatus)}</TableCell>
                   <TableCell>{statusChip(order.packingStatus)}</TableCell>
                   <TableCell>{inventoryLabel(order)}</TableCell>
-                  <TableCell>
-                    <Tooltip title={readyTitle}>
-                      <Chip
-                        size="small"
-                        color={blocked ? 'warning' : 'success'}
-                        label={blocked ? 'Blocked' : 'Ready'}
-                      />
-                    </Tooltip>
-                  </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5} alignItems="center">
                       <span>{map?.ssShipmentId ?? '—'}</span>
@@ -387,13 +416,23 @@ export default function FulfillmentQueue({
                   <TableCell>{map?.trackingNumber ?? '—'}</TableCell>
                   <TableCell>
                     <Stack spacing={0.5}>
-                      <Typography variant="body2">{pushStatusLabel(map?.pushStatus)}</Typography>
-                      {map?.lastError ? (
-                        <Tooltip title={map.lastError}>
+                      <Tooltip title={pushDisplay.tooltip}>
+                        {pushDisplay.showPrimaryAsChip ? (
+                          <Chip
+                            size="small"
+                            color={pushDisplay.chipColor}
+                            label={pushDisplay.primary}
+                          />
+                        ) : (
+                          <Typography variant="body2">{pushDisplay.primary}</Typography>
+                        )}
+                      </Tooltip>
+                      {pushDisplay.lastError ? (
+                        <Tooltip title={pushDisplay.lastError}>
                           <Chip
                             size="small"
                             color="warning"
-                            label={map.lastError}
+                            label={pushDisplay.lastError}
                             sx={{
                               maxWidth: 280,
                               '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
@@ -420,7 +459,7 @@ export default function FulfillmentQueue({
             })}
             {nodes.length === 0 && !queue.loading ? (
               <TableRow>
-                <TableCell colSpan={canPush ? 11 : 10}>
+                <TableCell colSpan={canPush ? 10 : 9}>
                   <Typography variant="body2" sx={{ color: 'text.secondary', py: 2 }}>
                     No open sales orders.
                   </Typography>
