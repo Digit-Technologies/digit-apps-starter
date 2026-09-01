@@ -1,10 +1,32 @@
 {
-  "permissions": ["UPDATE_ORGANIZATION"],
+  "permissions": [
+    "UPDATE_ORGANIZATION",
+    "READ_ORDER",
+    "UPDATE_ORDER",
+    "CREATE_ORDER",
+    "READ_SHIPMENT",
+    "CREATE_SHIPMENT",
+    "UPDATE_SHIPMENT",
+    "CREATE_PACK_CONTAINER",
+    "READ_ITEM",
+    "READ_INVENTORY",
+    "READ_COMPANY",
+    "READ_COMPANY_DETAILS",
+    "CREATE_COMPANY",
+    "READ_CONTACT",
+    "READ_ORGANIZATION_LOCATION"
+  ],
   "backend": {
     "kind": "cloudflare-worker",
     "bindings": {
       "SHIPSTATION_DB": "database"
     },
+    "schedules": [
+      {
+        "name": "poll-outbound-push",
+        "everySeconds": 300
+      }
+    ],
     "webhooks": [
       {
         "path": "shipstation"

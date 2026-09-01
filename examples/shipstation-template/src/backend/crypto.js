@@ -24,6 +24,10 @@ function b64ToBytes(value) {
   return bytes;
 }
 
+export function generateEncryptionKeyB64() {
+  return bytesToB64(crypto.getRandomValues(new Uint8Array(KEY_BYTES)));
+}
+
 export function parseEncryptionKey({ raw }) {
   let key;
   try {
@@ -31,14 +35,14 @@ export function parseEncryptionKey({ raw }) {
   } catch {
     throw new HandlerError({
       code: AppErrorCode.MISSING_CONFIG,
-      message: 'APP_SECRET_ENCRYPTION_KEY must be a base64-encoded 32-byte key.',
+      message: 'The app encryption key is invalid. Save configuration again.',
       status: 500,
     });
   }
   if (key.length !== KEY_BYTES) {
     throw new HandlerError({
       code: AppErrorCode.MISSING_CONFIG,
-      message: 'APP_SECRET_ENCRYPTION_KEY must be a base64-encoded 32-byte key.',
+      message: 'The app encryption key is invalid. Save configuration again.',
       status: 500,
     });
   }

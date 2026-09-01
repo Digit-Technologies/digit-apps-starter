@@ -5,77 +5,39 @@
  * api_key_encrypted is never selected into JSON responses.
  */
 
-import {
-  AppErrorCode,
-  optionalString,
-  parseJsonResponse,
-  requiredString,
-} from '@digit/lib-common';
-import { err, ok, optionalEnv, requireEnv } from '@digit/lib-backend';
+import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-common';
+import { err, ok, requireEnv } from '@digit/lib-backend';
 
-import { decryptSecret, encryptSecret, parseEncryptionKey } from './crypto.js';
+import { decryptSecret, encryptSecret } from './crypto.js';
+import { FULFILLMENT_METHODS, PUSH_WHENS, SYNC_MODES } from './eligibility.js';
+import {
+  ensureEncryptionKeyBytes,
+  loadPublicWebhookUrl,
+} from './runtimeConfig.js';
 import {
   createWebhook,
   deleteWebhook,
   listCarrierServices,
   listCarriers,
 } from './shipstation.js';
+import { loadOrgSettings, publicConnection } from './sync.js';
 
-const RATE_TIMINGS = new Set(['order_creation', 'shipping']);
-const RATE_MODES = new Set(['rate_shop', 'best_rate', 'strict_default']);
-const BEST_RATE_STRATEGIES = new Set(['cheapest', 'fastest']);
-const FULFILLMENT_METHODS = new Set(['unspecified', 'shipstation', 'manual']);
-const WEBHOOK_EVENTS = ['label_created_v2', 'track'];
+const WEBHOOK_EVENTS = [
+  'label_created_v2',
+  'track',
+  'fulfillment_shipped_v2',
+  'shipment_created_v2',
+  'sales_orders_imported',
+];
 
-const DEFAULT_DEFAULTS = {
-  defaultCarrierId: null,
-  defaultServiceId: null,
-  fallbackWeight: { value: 1, unit: 'ounce' },
-  fallbackLength: { value: 6, unit: 'inch' },
-  fallbackWidth: { value: 4, unit: 'inch' },
-  fallbackHeight: { value: 2, unit: 'inch' },
-};
-
-function encryptionKeyBytes({ env }) {
-  const raw = requireEnv({ env, key: 'APP_SECRET_ENCRYPTION_KEY' });
-  return parseEncryptionKey({ raw });
-}
-
-function parseDefaults(raw) {
-  if (raw == null || raw === '') return { ...DEFAULT_DEFAULTS };
-  if (typeof raw === 'object') return { ...DEFAULT_DEFAULTS, ...raw };
-  try {
-    const parsed = JSON.parse(raw);
-    return { ...DEFAULT_DEFAULTS, ...(parsed && typeof parsed === 'object' ? parsed : {}) };
-  } catch {
-    return { ...DEFAULT_DEFAULTS };
-  }
-}
-
-function publicConnection(row, extra = {}) {
-  return {
-    id: row.id,
-    organizationId: row.organization_id,
-    connected: true,
-    rateTiming: row.rate_timing,
-    rateMode: row.rate_mode,
-    bestRateStrategy: row.best_rate_strategy,
-    addCostToShippingFees: Boolean(row.add_cost_to_shipping_fees),
-    autoSendReturnEmail: Boolean(row.auto_send_return_email),
-    blockOnInvalidAddress: Boolean(row.block_on_invalid_address),
-    defaults: parseDefaults(row.defaults),
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    ...(extra.carrierCount !== undefined ? { carrierCount: extra.carrierCount } : {}),
-  };
+async function encryptionKeyBytes({ env, db }) {
+  return ensureEncryptionKeyBytes({ env, db });
 }
 
 async function liveConnection({ db, organizationId }) {
   return db
     .prepare(
-      `SELECT id, organization_id, rate_timing, rate_mode, best_rate_strategy,
-              add_cost_to_shipping_fees, auto_send_return_email, block_on_invalid_address,
-              defaults, created_at, updated_at
+      `SELECT id, organization_id, created_at, updated_at
        FROM shipstation_connection
        WHERE organization_id = ? AND deleted = 0
        LIMIT 1`,
@@ -107,20 +69,6 @@ function requireOrganizationId(url) {
     };
   }
   return { organizationId };
-}
-
-function asBoolInt(value, fallback) {
-  if (value === undefined || value === null) return fallback;
-  if (typeof value === 'boolean') return value ? 1 : 0;
-  if (value === 0 || value === 1) return value;
-  if (value === '0' || value === '1') return Number(value);
-  return null;
-}
-
-function enumOrUndefined(value, allowed) {
-  if (value === undefined || value === null || value === '') return undefined;
-  if (typeof value !== 'string' || !allowed.has(value)) return null;
-  return value;
 }
 
 function normalizeCarrierList(data) {
@@ -178,7 +126,7 @@ async function syncCarriers({ db, connectionId, apiKey, carriers }) {
 }
 
 async function registerWebhooks({ db, env, connectionId, apiKey }) {
-  const url = optionalEnv({ env, key: 'PUBLIC_WEBHOOK_URL' });
+  const url = await loadPublicWebhookUrl({ env, db });
   if (!url) return;
 
   for (const event of WEBHOOK_EVENTS) {
@@ -310,19 +258,7 @@ export async function handleConnection({ request, env, path, method }) {
   if (method === 'GET' && path === '/org-settings') {
     const org = requireOrganizationId(url);
     if (org.error) return org.error;
-    const row = await db
-      .prepare(
-        `SELECT organization_id, default_fulfillment_method
-         FROM org_settings WHERE organization_id = ?`,
-      )
-      .bind(org.organizationId)
-      .first();
-    return ok({
-      data: {
-        organizationId: org.organizationId,
-        defaultFulfillmentMethod: row?.default_fulfillment_method ?? 'unspecified',
-      },
-    });
+    return ok({ data: await loadOrgSettings({ db, organizationId: org.organizationId }) });
   }
 
   if (method === 'POST' && path === '/connection') {
@@ -356,24 +292,18 @@ export async function handleConnection({ request, env, path, method }) {
       });
     }
 
-    const keyBytes = encryptionKeyBytes({ env });
+    const keyBytes = await encryptionKeyBytes({ env, db });
     const apiKeyEncrypted = await encryptSecret({ plaintext: apiKey, keyBytes });
-    const defaultsJson = JSON.stringify(DEFAULT_DEFAULTS);
 
     let inserted;
     try {
       inserted = await db
         .prepare(
-          `INSERT INTO shipstation_connection (
-             organization_id, api_key_encrypted, rate_timing, rate_mode, best_rate_strategy,
-             add_cost_to_shipping_fees, auto_send_return_email, block_on_invalid_address,
-             defaults, deleted
-           ) VALUES (?, ?, 'shipping', 'rate_shop', 'cheapest', 0, 0, 0, ?, 0)
-           RETURNING id, organization_id, rate_timing, rate_mode, best_rate_strategy,
-                     add_cost_to_shipping_fees, auto_send_return_email, block_on_invalid_address,
-                     defaults, created_at, updated_at`,
+          `INSERT INTO shipstation_connection (organization_id, api_key_encrypted, deleted)
+           VALUES (?, ?, 0)
+           RETURNING id, organization_id, created_at, updated_at`,
         )
-        .bind(organizationId, apiKeyEncrypted, defaultsJson)
+        .bind(organizationId, apiKeyEncrypted)
         .first();
     } catch {
       return err({
@@ -395,7 +325,7 @@ export async function handleConnection({ request, env, path, method }) {
     return ok({ data: publicConnection(inserted, { carrierCount: count }), status: 201 });
   }
 
-  if (method === 'PATCH' && path === '/connection/settings') {
+  if (method === 'PATCH' && path === '/org-settings') {
     const parsed = await parseJsonResponse({ value: request.json() });
     if (!parsed.ok) {
       return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
@@ -410,164 +340,21 @@ export async function handleConnection({ request, env, path, method }) {
       });
     }
     const organizationId = organizationIdResult.value;
-    const row = await liveConnection({ db, organizationId });
-    if (!row) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'Connect a ShipStation account first.',
-        status: 400,
-      });
-    }
+    const current = await loadOrgSettings({ db, organizationId });
 
-    const rateTiming = enumOrUndefined(body.rateTiming, RATE_TIMINGS);
-    if (rateTiming === null) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'rateTiming must be order_creation or shipping.',
-        status: 400,
-      });
+    let defaultFulfillmentMethod = current.defaultFulfillmentMethod;
+    if (body.defaultFulfillmentMethod !== undefined && body.defaultFulfillmentMethod !== null) {
+      defaultFulfillmentMethod = String(body.defaultFulfillmentMethod);
     }
-    const rateMode = enumOrUndefined(body.rateMode, RATE_MODES);
-    if (rateMode === null) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'rateMode must be rate_shop, best_rate, or strict_default.',
-        status: 400,
-      });
-    }
-    const bestRateStrategy = enumOrUndefined(body.bestRateStrategy, BEST_RATE_STRATEGIES);
-    if (bestRateStrategy === null) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'bestRateStrategy must be cheapest or fastest.',
-        status: 400,
-      });
-    }
+    const syncMode = body.syncMode === undefined ? current.syncMode : body.syncMode;
+    const pushWhen = body.pushWhen === undefined ? current.pushWhen : body.pushWhen;
+    const laneTagId =
+      body.laneTagId === undefined
+        ? current.laneTagId
+        : body.laneTagId === null || body.laneTagId === ''
+          ? null
+          : String(body.laneTagId).trim();
 
-    const addCost = asBoolInt(body.addCostToShippingFees, undefined);
-    if (addCost === null) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'addCostToShippingFees must be a boolean.',
-        status: 400,
-      });
-    }
-    const autoEmail = asBoolInt(body.autoSendReturnEmail, undefined);
-    if (autoEmail === null) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'autoSendReturnEmail must be a boolean.',
-        status: 400,
-      });
-    }
-    const blockAddress = asBoolInt(body.blockOnInvalidAddress, undefined);
-    if (blockAddress === null) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'blockOnInvalidAddress must be a boolean.',
-        status: 400,
-      });
-    }
-
-    let defaultsJson = row.defaults;
-    if (body.defaults !== undefined) {
-      if (body.defaults === null || typeof body.defaults !== 'object' || Array.isArray(body.defaults)) {
-        return err({
-          code: AppErrorCode.VALIDATION_ERROR,
-          message: 'defaults must be an object.',
-          status: 400,
-        });
-      }
-      const merged = { ...parseDefaults(row.defaults), ...body.defaults };
-      if (merged.defaultCarrierId != null) {
-        merged.defaultCarrierId = Number(merged.defaultCarrierId);
-      }
-      if (merged.defaultServiceId != null) {
-        merged.defaultServiceId = Number(merged.defaultServiceId);
-      }
-      if (merged.defaultCarrierId != null || merged.defaultServiceId != null) {
-        const carriers = await loadCarriers({ db, connectionId: row.id });
-        if (merged.defaultCarrierId != null) {
-          const match = carriers.find((c) => c.id === merged.defaultCarrierId);
-          if (!match) {
-            return err({
-              code: AppErrorCode.VALIDATION_ERROR,
-              message: 'defaultCarrierId must belong to this connection.',
-              status: 400,
-            });
-          }
-        }
-        if (merged.defaultServiceId != null) {
-          const service = carriers
-            .flatMap((c) => c.services)
-            .find((s) => s.id === merged.defaultServiceId);
-          if (!service) {
-            return err({
-              code: AppErrorCode.VALIDATION_ERROR,
-              message: 'defaultServiceId must belong to this connection.',
-              status: 400,
-            });
-          }
-          if (
-            merged.defaultCarrierId != null &&
-            service.carrierId !== merged.defaultCarrierId
-          ) {
-            return err({
-              code: AppErrorCode.VALIDATION_ERROR,
-              message: 'defaultServiceId must belong to the selected default carrier.',
-              status: 400,
-            });
-          }
-        }
-      }
-      defaultsJson = JSON.stringify(merged);
-    }
-
-    const updated = await db
-      .prepare(
-        `UPDATE shipstation_connection SET
-           rate_timing = ?,
-           rate_mode = ?,
-           best_rate_strategy = ?,
-           add_cost_to_shipping_fees = ?,
-           auto_send_return_email = ?,
-           block_on_invalid_address = ?,
-           defaults = ?,
-           updated_at = datetime('now')
-         WHERE id = ? AND deleted = 0
-         RETURNING id, organization_id, rate_timing, rate_mode, best_rate_strategy,
-                   add_cost_to_shipping_fees, auto_send_return_email, block_on_invalid_address,
-                   defaults, created_at, updated_at`,
-      )
-      .bind(
-        rateTiming ?? row.rate_timing,
-        rateMode ?? row.rate_mode,
-        bestRateStrategy ?? row.best_rate_strategy,
-        addCost === undefined ? row.add_cost_to_shipping_fees : addCost,
-        autoEmail === undefined ? row.auto_send_return_email : autoEmail,
-        blockAddress === undefined ? row.block_on_invalid_address : blockAddress,
-        defaultsJson,
-        row.id,
-      )
-      .first();
-
-    const count = await carrierCount({ db, connectionId: row.id });
-    return ok({ data: publicConnection(updated, { carrierCount: count }) });
-  }
-
-  if (method === 'PATCH' && path === '/org-settings') {
-    const parsed = await parseJsonResponse({
-      value: request.json(),
-      fields: {
-        organizationId: (obj) => requiredString({ obj, key: 'organizationId' }),
-        defaultFulfillmentMethod: (obj) =>
-          optionalString({ obj, key: 'defaultFulfillmentMethod', default: 'unspecified' }),
-      },
-    });
-    if (!parsed.ok) {
-      return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
-    }
-    const { organizationId, defaultFulfillmentMethod } = parsed.value;
     if (!FULFILLMENT_METHODS.has(defaultFulfillmentMethod)) {
       return err({
         code: AppErrorCode.VALIDATION_ERROR,
@@ -575,18 +362,36 @@ export async function handleConnection({ request, env, path, method }) {
         status: 400,
       });
     }
+    if (!SYNC_MODES.has(syncMode)) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'syncMode must be digit_to_ss or ss_to_digit.',
+        status: 400,
+      });
+    }
+    if (!PUSH_WHENS.has(pushWhen)) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'pushWhen must be fully_packed or inventory_available.',
+        status: 400,
+      });
+    }
+
     await db
       .prepare(
-        `INSERT INTO org_settings (organization_id, default_fulfillment_method)
-         VALUES (?, ?)
+        `INSERT INTO org_settings (organization_id, default_fulfillment_method, sync_mode, push_when, lane_tag_id)
+         VALUES (?, ?, ?, ?, ?)
          ON CONFLICT(organization_id) DO UPDATE SET
            default_fulfillment_method = excluded.default_fulfillment_method,
+           sync_mode = excluded.sync_mode,
+           push_when = excluded.push_when,
+           lane_tag_id = excluded.lane_tag_id,
            updated_at = datetime('now')`,
       )
-      .bind(organizationId, defaultFulfillmentMethod)
+      .bind(organizationId, defaultFulfillmentMethod, syncMode, pushWhen, laneTagId)
       .run();
     return ok({
-      data: { organizationId, defaultFulfillmentMethod },
+      data: await loadOrgSettings({ db, organizationId }),
     });
   }
 
@@ -614,7 +419,7 @@ export async function handleConnection({ request, env, path, method }) {
     try {
       apiKey = await decryptSecret({
         stored: row.api_key_encrypted,
-        keyBytes: encryptionKeyBytes({ env }),
+        keyBytes: await encryptionKeyBytes({ env, db }),
       });
     } catch {
       apiKey = null;

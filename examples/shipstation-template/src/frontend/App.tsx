@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -8,19 +8,23 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
+import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
-import FormControlLabel from '@mui/material/FormControlLabel';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
@@ -32,6 +36,7 @@ import {
   useDigitApiQuery,
 } from '@digit/lib-frontend';
 
+import FulfillmentQueue from './FulfillmentQueue';
 import SetupNeeded from './SetupNeeded';
 import type { SetupData } from './setupTypes';
 
@@ -51,33 +56,75 @@ const BOOTSTRAP_QUERY = `
 
 const ADMIN_PERMISSION = 'UPDATE_ORGANIZATION';
 
+const OUT_OF_THE_BOX = [
+  {
+    title: 'Pick and pack in Digit',
+    detail: 'Operators pick and pack in Digit, and can download sales-order, pick-list, and packing-slip PDFs.',
+  },
+  {
+    title: 'Push orders to ShipStation',
+    detail:
+      'Eligible sales orders become ShipStation shipments. Push when fully packed, or as soon as inventory can fill the order.',
+  },
+  {
+    title: 'Print labels in ShipStation',
+    detail: 'Buy and print labels in ShipStation. This app does not rate-shop or purchase labels inside Digit.',
+  },
+  {
+    title: 'Write tracking back to Digit',
+    detail:
+      'When ShipStation creates a label, tracking and carrier land on the Digit shipment so sales channels can be notified.',
+  },
+  {
+    title: 'Hold orders that should not ship yet',
+    detail:
+      'Orders without available inventory are skipped. Optional tag filter and Manual fulfillment keep LTL or other 3PL orders in Digit.',
+  },
+  {
+    title: 'Inbound ShipStation orders',
+    detail:
+      'Switch sync mode to import ShipStation shipments as Digit sales orders for drop-ship or ShipStation-first workflows.',
+  },
+  {
+    title: 'Fulfillment queue',
+    detail: 'See sync status per order, push or retry a batch, and download the Digit sales-order PDF.',
+  },
+] as const;
+
+function OutOfTheBox() {
+  return (
+    <Stack spacing={1}>
+      <Typography variant="subtitle1" component="h2">
+        Out of the box
+      </Typography>
+      <List disablePadding>
+        {OUT_OF_THE_BOX.map((item) => (
+          <ListItem key={item.title} alignItems="flex-start" disableGutters sx={{ py: 0.75 }}>
+            <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+              <CheckCircleOutlineIcon color="primary" fontSize="small" />
+            </ListItemIcon>
+            <ListItemText
+              primary={item.title}
+              secondary={item.detail}
+              primaryTypographyProps={{ variant: 'body1', component: 'p' }}
+              secondaryTypographyProps={{ variant: 'body2' }}
+            />
+          </ListItem>
+        ))}
+      </List>
+    </Stack>
+  );
+}
+
 const SETTING_HINTS = {
   defaultFulfillmentMethod:
-    'Org default for how sales orders are fulfilled. ShipStation uses this connected account; Manual skips it; Unspecified leaves fulfillment unset until a later step chooses it.',
-  rateTiming:
-    'When rates are requested from ShipStation. Order creation shops when the sales order is created; Shipping shops when you start fulfilling.',
-  rateMode:
-    'How a carrier and service are chosen. Rate shop presents quotes to pick from; Best rate auto-selects using the strategy below; Strict default always uses the default carrier and service.',
-  bestRateStrategy:
-    'Used only in Best rate mode. Cheapest picks the lowest-cost quote; Fastest picks the shortest transit time.',
-  defaultCarrier:
-    'Preferred ShipStation carrier. Strict default always uses this carrier; other modes use it as the starting point.',
-  defaultService:
-    'Preferred service for the selected default carrier. Choose a carrier first; None means no service is preselected.',
-  fallbackWeight:
-    'Package weight sent to ShipStation when the sales order or items have no weight.',
-  fallbackLength:
-    'Package length used when the sales order or items have no dimensions.',
-  fallbackWidth:
-    'Package width used when the sales order or items have no dimensions.',
-  fallbackHeight:
-    'Package height used when the sales order or items have no dimensions.',
-  addCostToShippingFees:
-    'When on, purchased label cost is added to the sales order shipping fees. Individual sales orders can override this later.',
-  autoSendReturnEmail:
-    'When on, a return-label email is sent automatically after a qualifying shipment. Off by default.',
-  blockOnInvalidAddress:
-    'When on, an invalid ship-to address blocks shipping. When off, the app warns but you can override and continue.',
+    'ShipStation pushes parcel orders to the connected account. Manual skips the push so those orders stay in Digit (for example LTL or another 3PL).',
+  syncMode:
+    'Digit to ShipStation creates ShipStation orders from Digit sales orders. ShipStation to Digit imports ShipStation shipments as Digit sales orders (for inbound or drop-ship workflows).',
+  pushWhen:
+    'Fully packed waits until Digit packing is complete (then operators print labels in ShipStation). Inventory available pushes as soon as stock can fill the order.',
+  laneTagId:
+    'Optional Digit sales-order tag option UUID. When set, only tagged orders are pushed. Leave blank to include every eligible order.',
 } as const;
 
 const settingTooltipSlotProps = {
@@ -124,104 +171,34 @@ function SettingField({
   );
 }
 
-function SettingSwitchLabel({
-  title,
-  label,
-}: {
-  title: string;
-  label: string;
-}) {
-  return (
-    <Stack direction="row" spacing={0.5} alignItems="center">
-      <span>{label}</span>
-      <FieldHelp title={title} label={label} />
-    </Stack>
-  );
-}
-
-type Measurement = { value: number; unit: string };
-
-type ConnectionDefaults = {
-  defaultCarrierId: number | null;
-  defaultServiceId: number | null;
-  fallbackWeight: Measurement;
-  fallbackLength: Measurement;
-  fallbackWidth: Measurement;
-  fallbackHeight: Measurement;
-};
-
 type ConnectionData = {
   connected: boolean;
   organizationId?: string;
   id?: number;
-  rateTiming?: string;
-  rateMode?: string;
-  bestRateStrategy?: string;
-  addCostToShippingFees?: boolean;
-  autoSendReturnEmail?: boolean;
-  blockOnInvalidAddress?: boolean;
-  defaults?: ConnectionDefaults;
   carrierCount?: number;
-  createdAt?: string;
 };
-
-type Service = {
-  id: number;
-  carrierId: number;
-  serviceCode: string;
-  name: string;
-};
-
-type Carrier = {
-  id: number;
-  shipstationCarrierId: string;
-  carrierCode: string | null;
-  name: string;
-  services: Service[];
-};
-
-type CarriersData = { carriers: Carrier[] };
 
 type OrgSettingsData = {
   organizationId: string;
   defaultFulfillmentMethod: string;
+  syncMode: string;
+  pushWhen: string;
+  laneTagId: string | null;
 };
 
 type SettingsDraft = {
-  rateTiming: string;
-  rateMode: string;
-  bestRateStrategy: string;
-  addCostToShippingFees: boolean;
-  autoSendReturnEmail: boolean;
-  blockOnInvalidAddress: boolean;
-  defaultCarrierId: number | '';
-  defaultServiceId: number | '';
-  fallbackWeight: string;
-  fallbackLength: string;
-  fallbackWidth: string;
-  fallbackHeight: string;
   defaultFulfillmentMethod: string;
+  syncMode: string;
+  pushWhen: string;
+  laneTagId: string;
 };
 
-function draftFromConnection(
-  connection: ConnectionData,
-  orgSettings: OrgSettingsData | undefined,
-): SettingsDraft {
-  const defaults = connection.defaults;
+function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
   return {
-    rateTiming: connection.rateTiming ?? 'shipping',
-    rateMode: connection.rateMode ?? 'rate_shop',
-    bestRateStrategy: connection.bestRateStrategy ?? 'cheapest',
-    addCostToShippingFees: Boolean(connection.addCostToShippingFees),
-    autoSendReturnEmail: Boolean(connection.autoSendReturnEmail),
-    blockOnInvalidAddress: Boolean(connection.blockOnInvalidAddress),
-    defaultCarrierId: defaults?.defaultCarrierId ?? '',
-    defaultServiceId: defaults?.defaultServiceId ?? '',
-    fallbackWeight: String(defaults?.fallbackWeight?.value ?? 1),
-    fallbackLength: String(defaults?.fallbackLength?.value ?? 6),
-    fallbackWidth: String(defaults?.fallbackWidth?.value ?? 4),
-    fallbackHeight: String(defaults?.fallbackHeight?.value ?? 2),
     defaultFulfillmentMethod: orgSettings?.defaultFulfillmentMethod ?? 'unspecified',
+    syncMode: orgSettings?.syncMode ?? 'digit_to_ss',
+    pushWhen: orgSettings?.pushWhen ?? 'fully_packed',
+    laneTagId: orgSettings?.laneTagId ?? '',
   };
 }
 
@@ -247,10 +224,6 @@ export default function App() {
     skip: !organizationId || !setupReady,
   });
   const connected = Boolean(connectionQuery.data?.connected);
-  const carriersQuery = useBackendQuery<CarriersData>({
-    path: `/carriers?organizationId=${encodeURIComponent(organizationId ?? '')}`,
-    skip: !organizationId || !setupReady || !connected,
-  });
 
   const [mutate, { error: mutationError, loading: mutating, reset: resetMutation }] =
     useBackendMutation();
@@ -259,20 +232,6 @@ export default function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
-
-  const carriers = carriersQuery.data?.carriers ?? [];
-  const selectedCarrier = useMemo(
-    () => carriers.find((carrier) => carrier.id === draft?.defaultCarrierId) ?? null,
-    [carriers, draft?.defaultCarrierId],
-  );
-
-  const refreshAll = async () => {
-    await Promise.all([
-      connectionQuery.refetch(),
-      orgSettingsQuery.refetch(),
-      connected ? carriersQuery.refetch() : Promise.resolve(),
-    ]);
-  };
 
   const connect = async () => {
     if (!organizationId) return;
@@ -286,56 +245,32 @@ export default function App() {
     setApiKey('');
     await connectionQuery.refetch();
     await orgSettingsQuery.refetch();
-    await carriersQuery.refetch();
   };
 
   const openSettings = () => {
     if (!connectionQuery.data?.connected) return;
     resetMutation();
-    setDraft(draftFromConnection(connectionQuery.data, orgSettingsQuery.data));
+    setDraft(draftFromOrg(orgSettingsQuery.data));
     setSettingsOpen(true);
   };
 
   const saveSettings = async () => {
     if (!organizationId || !draft) return;
     resetMutation();
-    const weight = Number(draft.fallbackWeight);
-    const length = Number(draft.fallbackLength);
-    const width = Number(draft.fallbackWidth);
-    const height = Number(draft.fallbackHeight);
-    const settingsResult = await mutate({
-      path: '/connection/settings',
-      method: 'PATCH',
-      body: {
-        organizationId,
-        rateTiming: draft.rateTiming,
-        rateMode: draft.rateMode,
-        bestRateStrategy: draft.bestRateStrategy,
-        addCostToShippingFees: draft.addCostToShippingFees,
-        autoSendReturnEmail: draft.autoSendReturnEmail,
-        blockOnInvalidAddress: draft.blockOnInvalidAddress,
-        defaults: {
-          defaultCarrierId: draft.defaultCarrierId === '' ? null : draft.defaultCarrierId,
-          defaultServiceId: draft.defaultServiceId === '' ? null : draft.defaultServiceId,
-          fallbackWeight: { value: Number.isFinite(weight) ? weight : 1, unit: 'ounce' },
-          fallbackLength: { value: Number.isFinite(length) ? length : 6, unit: 'inch' },
-          fallbackWidth: { value: Number.isFinite(width) ? width : 4, unit: 'inch' },
-          fallbackHeight: { value: Number.isFinite(height) ? height : 2, unit: 'inch' },
-        },
-      },
-    });
-    if (!settingsResult.ok) return;
     const orgResult = await mutate({
       path: '/org-settings',
       method: 'PATCH',
       body: {
         organizationId,
         defaultFulfillmentMethod: draft.defaultFulfillmentMethod,
+        syncMode: draft.syncMode,
+        pushWhen: draft.pushWhen,
+        laneTagId: draft.laneTagId.trim() === '' ? null : draft.laneTagId.trim(),
       },
     });
     if (!orgResult.ok) return;
     setSettingsOpen(false);
-    await refreshAll();
+    await orgSettingsQuery.refetch();
   };
 
   const disconnect = async () => {
@@ -360,136 +295,152 @@ export default function App() {
         (!!organizationId && setupReady && (connectionQuery.loading || orgSettingsQuery.loading))));
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3 }}>
-      <Paper sx={{ width: '100%', maxWidth: 640, p: { xs: 3, sm: 5 } }}>
-        <Stack spacing={2.5}>
-          <Stack spacing={0.5}>
-            <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
-              Digit App
-            </Typography>
-            <Typography variant="h1" component="h1">
-              ShipStation
-            </Typography>
-            <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-              {setupBlocked
-                ? 'Required configuration is missing. Add the secret and env vars below on the Digit app before connecting.'
-                : 'Connect one ShipStation account for this organization. API keys are encrypted on the server and never returned to the browser.'}
-            </Typography>
-          </Stack>
-
-          {setupQuery.error && (
-            <AppErrorAlert error={setupQuery.error} onRetry={() => void setupQuery.refetch()} />
-          )}
-          {setupBlocked && setupQuery.data ? (
-            <SetupNeeded
-              items={setupQuery.data.items}
-              onRecheck={() => void setupQuery.refetch()}
-              rechecking={setupQuery.loading}
-            />
-          ) : null}
-
-          {!setupBlocked && !setupQuery.error && bootstrap.error && (
-            <AppErrorAlert error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />
-          )}
-          {!setupBlocked && !setupQuery.error && connectionQuery.error && (
-            <AppErrorAlert
-              error={connectionQuery.error}
-              onRetry={() => void connectionQuery.refetch()}
-            />
-          )}
-          {!setupBlocked && !setupQuery.error && orgSettingsQuery.error && (
-            <AppErrorAlert
-              error={orgSettingsQuery.error}
-              onRetry={() => void orgSettingsQuery.refetch()}
-            />
-          )}
-          {!setupBlocked && !setupQuery.error && carriersQuery.error && connected && (
-            <AppErrorAlert
-              error={carriersQuery.error}
-              onRetry={() => void carriersQuery.refetch()}
-            />
-          )}
-          {!setupBlocked && !setupQuery.error && mutationError && (
-            <AppErrorAlert error={mutationError} />
-          )}
-
-          {setupBlocked || setupQuery.error ? null : loading ? (
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <CircularProgress size={18} />
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Loading…
+    <Box sx={{ minHeight: '100vh', p: 3 }}>
+      <Stack spacing={3} sx={{ width: '100%', maxWidth: 1100, mx: 'auto' }}>
+        <Paper sx={{ p: { xs: 3, sm: 4 } }}>
+          <Stack spacing={2.5}>
+            <Stack spacing={0.5}>
+              <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
+                Digit App
+              </Typography>
+              <Typography variant="h1" component="h1">
+                ShipStation
+              </Typography>
+              <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                {setupBlocked
+                  ? 'Paste the Digit API token and webhook URL below, then connect one ShipStation account.'
+                  : connected
+                    ? 'Pick and pack in Digit, then push orders so operators can print labels in ShipStation.'
+                    : 'Connect one ShipStation account to start. Pick and pack stay in Digit; labels stay in ShipStation.'}
               </Typography>
             </Stack>
-          ) : !organizationId ? (
-            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Open this app inside Digit to load the organization and connect ShipStation.
-            </Typography>
-          ) : !isAdmin ? (
-            <Stack spacing={1.5}>
-              <Chip
-                label={connected ? 'Connected' : 'Not connected'}
-                color={connected ? 'success' : 'default'}
-                sx={{ alignSelf: 'flex-start' }}
+
+            {!connected ? (
+              <>
+                <Divider />
+                <OutOfTheBox />
+                <Divider />
+              </>
+            ) : null}
+
+            {setupQuery.error && (
+              <AppErrorAlert error={setupQuery.error} onRetry={() => void setupQuery.refetch()} />
+            )}
+            {setupBlocked && setupQuery.data ? (
+              <SetupNeeded
+                items={setupQuery.data.items}
+                onSaved={() => setupQuery.refetch()}
               />
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Only org admins can connect or change ShipStation settings.
-              </Typography>
-            </Stack>
-          ) : connected ? (
-            <Stack spacing={2}>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                <Chip label="Connected" color="success" />
+            ) : null}
+
+            {!setupBlocked && !setupQuery.error && bootstrap.error && (
+              <AppErrorAlert error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />
+            )}
+            {!setupBlocked && !setupQuery.error && connectionQuery.error && (
+              <AppErrorAlert
+                error={connectionQuery.error}
+                onRetry={() => void connectionQuery.refetch()}
+              />
+            )}
+            {!setupBlocked && !setupQuery.error && orgSettingsQuery.error && (
+              <AppErrorAlert
+                error={orgSettingsQuery.error}
+                onRetry={() => void orgSettingsQuery.refetch()}
+              />
+            )}
+            {!setupBlocked && !setupQuery.error && mutationError && (
+              <AppErrorAlert error={mutationError} />
+            )}
+
+            {setupBlocked || setupQuery.error ? null : loading ? (
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <CircularProgress size={18} />
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  {connectionQuery.data?.carrierCount ?? 0} carriers synced
+                  Loading…
                 </Typography>
               </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            ) : !organizationId ? (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                Open this app inside Digit to load the organization and connect ShipStation.
+              </Typography>
+            ) : !isAdmin ? (
+              <Stack spacing={1.5}>
+                <Chip
+                  label={connected ? 'Connected' : 'Not connected'}
+                  color={connected ? 'success' : 'default'}
+                  sx={{ alignSelf: 'flex-start' }}
+                />
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  Only org admins can connect or change ShipStation settings. You can still work
+                  the fulfillment queue when an account is connected.
+                </Typography>
+              </Stack>
+            ) : connected ? (
+              <Stack spacing={2}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Chip label="Connected" color="success" />
+                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                    {connectionQuery.data?.carrierCount ?? 0} carriers synced
+                  </Typography>
+                </Stack>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  <Button
+                    variant="contained"
+                    startIcon={<SettingsOutlinedIcon />}
+                    onClick={openSettings}
+                  >
+                    Settings
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    startIcon={<LinkOffIcon />}
+                    onClick={() => {
+                      resetMutation();
+                      setDisconnectOpen(true);
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                </Stack>
+              </Stack>
+            ) : (
+              <Stack
+                spacing={2}
+                component="form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void connect();
+                }}
+              >
+                <TextField
+                  label="ShipStation V2 API key"
+                  type="password"
+                  autoComplete="off"
+                  value={apiKey}
+                  onChange={(event) => setApiKey(event.target.value)}
+                  fullWidth
+                  helperText="Paste a V2 key from ShipStation → Settings → API. It is validated live before it is saved."
+                />
                 <Button
+                  type="submit"
                   variant="contained"
-                  startIcon={<SettingsOutlinedIcon />}
-                  onClick={openSettings}
+                  disabled={!apiKey.trim() || mutating}
+                  sx={{ alignSelf: 'flex-start' }}
                 >
-                  Settings
-                </Button>
-                <Button
-                  variant="outlined"
-                  color="error"
-                  startIcon={<LinkOffIcon />}
-                  onClick={() => {
-                    resetMutation();
-                    setDisconnectOpen(true);
-                  }}
-                >
-                  Disconnect
+                  {mutating ? 'Connecting…' : 'Connect'}
                 </Button>
               </Stack>
-            </Stack>
-          ) : (
-            <Stack spacing={2} component="form" onSubmit={(event) => {
-              event.preventDefault();
-              void connect();
-            }}>
-              <TextField
-                label="ShipStation V2 API key"
-                type="password"
-                autoComplete="off"
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
-                fullWidth
-                helperText="Paste a V2 key from ShipStation → Settings → API. It is validated live before it is saved."
-              />
-              <Button
-                type="submit"
-                variant="contained"
-                disabled={!apiKey.trim() || mutating}
-                sx={{ alignSelf: 'flex-start' }}
-              >
-                {mutating ? 'Connecting…' : 'Connect'}
-              </Button>
-            </Stack>
-          )}
-        </Stack>
-      </Paper>
+            )}
+          </Stack>
+        </Paper>
+
+        {!setupBlocked && connected && organizationId ? (
+          <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+            <FulfillmentQueue organizationId={organizationId} canPush />
+          </Paper>
+        ) : null}
+      </Stack>
 
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>ShipStation settings</DialogTitle>
@@ -516,183 +467,43 @@ export default function App() {
                   </Select>
                 </FormControl>
               </SettingField>
-              <SettingField title={SETTING_HINTS.rateTiming} label="Rate-shop timing">
+              <SettingField title={SETTING_HINTS.syncMode} label="Sync mode">
                 <FormControl fullWidth>
-                  <InputLabel id="timing-label">Rate-shop timing</InputLabel>
+                  <InputLabel id="sync-label">Sync mode</InputLabel>
                   <Select
-                    labelId="timing-label"
-                    label="Rate-shop timing"
-                    value={draft.rateTiming}
-                    onChange={(event) => setDraft({ ...draft, rateTiming: event.target.value })}
+                    labelId="sync-label"
+                    label="Sync mode"
+                    value={draft.syncMode}
+                    onChange={(event) => setDraft({ ...draft, syncMode: event.target.value })}
                   >
-                    <MenuItem value="order_creation">Order creation</MenuItem>
-                    <MenuItem value="shipping">Shipping</MenuItem>
+                    <MenuItem value="digit_to_ss">Digit to ShipStation</MenuItem>
+                    <MenuItem value="ss_to_digit">ShipStation to Digit</MenuItem>
                   </Select>
                 </FormControl>
               </SettingField>
-              <SettingField title={SETTING_HINTS.rateMode} label="Rate mode">
+              <SettingField title={SETTING_HINTS.pushWhen} label="Push when">
                 <FormControl fullWidth>
-                  <InputLabel id="mode-label">Rate mode</InputLabel>
+                  <InputLabel id="push-when-label">Push when</InputLabel>
                   <Select
-                    labelId="mode-label"
-                    label="Rate mode"
-                    value={draft.rateMode}
-                    onChange={(event) => setDraft({ ...draft, rateMode: event.target.value })}
+                    labelId="push-when-label"
+                    label="Push when"
+                    value={draft.pushWhen}
+                    onChange={(event) => setDraft({ ...draft, pushWhen: event.target.value })}
                   >
-                    <MenuItem value="rate_shop">Rate shop</MenuItem>
-                    <MenuItem value="best_rate">Best rate</MenuItem>
-                    <MenuItem value="strict_default">Strict default</MenuItem>
+                    <MenuItem value="fully_packed">Fully packed</MenuItem>
+                    <MenuItem value="inventory_available">Inventory available</MenuItem>
                   </Select>
                 </FormControl>
               </SettingField>
-              <SettingField title={SETTING_HINTS.bestRateStrategy} label="Best-rate strategy">
-                <FormControl fullWidth>
-                  <InputLabel id="strategy-label">Best-rate strategy</InputLabel>
-                  <Select
-                    labelId="strategy-label"
-                    label="Best-rate strategy"
-                    value={draft.bestRateStrategy}
-                    onChange={(event) =>
-                      setDraft({ ...draft, bestRateStrategy: event.target.value })
-                    }
-                  >
-                    <MenuItem value="cheapest">Cheapest</MenuItem>
-                    <MenuItem value="fastest">Fastest</MenuItem>
-                  </Select>
-                </FormControl>
+              <SettingField title={SETTING_HINTS.laneTagId} label="Lane tag">
+                <TextField
+                  label="Lane tag ID (optional)"
+                  value={draft.laneTagId}
+                  onChange={(event) => setDraft({ ...draft, laneTagId: event.target.value })}
+                  fullWidth
+                  helperText="Digit tag option UUID. Blank = all eligible orders."
+                />
               </SettingField>
-              <SettingField title={SETTING_HINTS.defaultCarrier} label="Default carrier">
-                <FormControl fullWidth>
-                  <InputLabel id="carrier-label">Default carrier</InputLabel>
-                  <Select
-                    labelId="carrier-label"
-                    label="Default carrier"
-                    value={draft.defaultCarrierId === '' ? '' : String(draft.defaultCarrierId)}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        defaultCarrierId: event.target.value === '' ? '' : Number(event.target.value),
-                        defaultServiceId: '',
-                      })
-                    }
-                  >
-                    <MenuItem value="">None</MenuItem>
-                    {carriers.map((carrier) => (
-                      <MenuItem key={carrier.id} value={String(carrier.id)}>
-                        {carrier.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </SettingField>
-              <SettingField title={SETTING_HINTS.defaultService} label="Default service">
-                <FormControl fullWidth>
-                  <InputLabel id="service-label">Default service</InputLabel>
-                  <Select
-                    labelId="service-label"
-                    label="Default service"
-                    value={draft.defaultServiceId === '' ? '' : String(draft.defaultServiceId)}
-                    onChange={(event) =>
-                      setDraft({
-                        ...draft,
-                        defaultServiceId:
-                          event.target.value === '' ? '' : Number(event.target.value),
-                      })
-                    }
-                  >
-                    <MenuItem value="">None</MenuItem>
-                    {(selectedCarrier?.services ?? []).map((service) => (
-                      <MenuItem key={service.id} value={String(service.id)}>
-                        {service.name}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </SettingField>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                <SettingField title={SETTING_HINTS.fallbackWeight} label="Fallback weight">
-                  <TextField
-                    label="Fallback weight (oz)"
-                    value={draft.fallbackWeight}
-                    onChange={(event) => setDraft({ ...draft, fallbackWeight: event.target.value })}
-                    fullWidth
-                  />
-                </SettingField>
-                <SettingField title={SETTING_HINTS.fallbackLength} label="Length">
-                  <TextField
-                    label="Length (in)"
-                    value={draft.fallbackLength}
-                    onChange={(event) => setDraft({ ...draft, fallbackLength: event.target.value })}
-                    fullWidth
-                  />
-                </SettingField>
-              </Stack>
-              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-                <SettingField title={SETTING_HINTS.fallbackWidth} label="Width">
-                  <TextField
-                    label="Width (in)"
-                    value={draft.fallbackWidth}
-                    onChange={(event) => setDraft({ ...draft, fallbackWidth: event.target.value })}
-                    fullWidth
-                  />
-                </SettingField>
-                <SettingField title={SETTING_HINTS.fallbackHeight} label="Height">
-                  <TextField
-                    label="Height (in)"
-                    value={draft.fallbackHeight}
-                    onChange={(event) => setDraft({ ...draft, fallbackHeight: event.target.value })}
-                    fullWidth
-                  />
-                </SettingField>
-              </Stack>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={draft.addCostToShippingFees}
-                    onChange={(event) =>
-                      setDraft({ ...draft, addCostToShippingFees: event.target.checked })
-                    }
-                  />
-                }
-                label={
-                  <SettingSwitchLabel
-                    title={SETTING_HINTS.addCostToShippingFees}
-                    label="Add label cost to SO shipping fees"
-                  />
-                }
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={draft.autoSendReturnEmail}
-                    onChange={(event) =>
-                      setDraft({ ...draft, autoSendReturnEmail: event.target.checked })
-                    }
-                  />
-                }
-                label={
-                  <SettingSwitchLabel
-                    title={SETTING_HINTS.autoSendReturnEmail}
-                    label="Auto-send return-label email"
-                  />
-                }
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={draft.blockOnInvalidAddress}
-                    onChange={(event) =>
-                      setDraft({ ...draft, blockOnInvalidAddress: event.target.checked })
-                    }
-                  />
-                }
-                label={
-                  <SettingSwitchLabel
-                    title={SETTING_HINTS.blockOnInvalidAddress}
-                    label="Block on invalid address (off = warn, override allowed)"
-                  />
-                }
-              />
               {mutationError && <AppErrorAlert error={mutationError} />}
             </Stack>
           )}
@@ -710,8 +521,8 @@ export default function App() {
         <DialogContent>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             This disables ShipStation actions, deregisters webhooks, and soft-deletes the
-            connection and carrier catalog. Existing label records stay for audit. Reconnect
-            creates a new connection and re-syncs carriers.
+            connection and carrier catalog. Existing label and order-map records stay for audit.
+            Reconnect creates a new connection and re-syncs carriers.
           </Typography>
           {mutationError && (
             <Box sx={{ mt: 2 }}>

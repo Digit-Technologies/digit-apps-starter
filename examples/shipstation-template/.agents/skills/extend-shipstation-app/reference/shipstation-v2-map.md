@@ -1,31 +1,30 @@
 # ShipStation API v2 — thin map
 
-Base URL: `https://api.shipstation.com`. Auth: header `api-key` (see `headers()` in
-`src/backend/shipstation.js`). **V2 only.**
+Base URL: `https://api.shipstation.com`. Auth: header `api-key`. **V2 only.**
 
-This is an index, not OpenAPI. Confirm request/response bodies on ShipStation docs MCP
-before implementing. Do not copy V1 (`ssapi.shipstation.com`) or ShipEngine hosts.
+Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 
-## Already wrapped in `shipstation.js`
+## Wrapped in `shipstation.js`
 
-| Method | Path | Used for | Extend |
-| --- | --- | --- | --- |
-| `GET` | `/v2/carriers` | Validate API key on connect; seed carrier sync | `listCarriers` |
-| `GET` | `/v2/carriers/{carrierId}/services` | Fill services when the carrier list has none | `listCarrierServices` |
-| `POST` | `/v2/environment/webhooks` | Register inbound URL | `createWebhook` |
-| `DELETE` | `/v2/environment/webhooks/{webhookId}` | Disconnect | `deleteWebhook` |
+| Method | Path | Used for |
+| --- | --- | --- |
+| `GET` | `/v2/carriers` | Validate API key; carrier sync |
+| `GET` | `/v2/carriers/{id}/services` | Services when the carrier list has none |
+| `POST` | `/v2/environment/webhooks` | Register inbound URL |
+| `DELETE` | `/v2/environment/webhooks/{id}` | Disconnect |
+| `POST` | `/v2/shipments` | Push Digit SO (`create_sales_order: true`) |
+| `GET` | `/v2/shipments/{id}` | Writeback / inbound |
+| `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Digit order id |
+| `GET` | `/v2/shipments` | Inbound poll |
+| `GET` | `/v2/labels/{id}` | Label created webhook |
+| `GET` | resource_url | Thin webhook payloads (SSRF: `api.shipstation.com` / `api.shipengine.com` only) |
 
-## Likely extensions (lookup before coding)
+## Webhook events registered on connect
 
-Confirm exact paths and bodies via MCP. Add a named helper that calls `ssFetch` — do not
-`fetch` ShipStation from `connection.js` or the frontend.
+`label_created_v2`, `track`, `fulfillment_shipped_v2`, `shipment_created_v2`, `sales_orders_imported`.
 
-| Area | Why it shows up in this template |
-| --- | --- |
-| Rates | Settings already store `rate_timing`, `rate_mode`, `best_rate_strategy` |
-| Labels (purchase / void / PDF) | `shipment_label` table is an audit stub |
-| Tracking | Connect registers the `track` webhook event |
-| Address validation | Settings store `block_on_invalid_address` |
-| Webhook event list | New events besides `label_created_v2` and `track` |
+Inbound verify: RSA-SHA256 headers `x-shipengine-rsa-sha256-*` + `x-shipengine-timestamp` against JWKS (`/jwks` on those hosts). Not HMAC `verifyWebhookSignature`.
 
-If docs MCP is unavailable, see [mcp.md](mcp.md) (live OpenAPI URL, do not commit it).
+## Phase 2 (not wrapped)
+
+Rates, `POST /v2/labels`, address validation, return labels. Do not add UI for them in Phase 1.

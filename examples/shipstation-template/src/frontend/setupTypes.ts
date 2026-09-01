@@ -1,11 +1,10 @@
 export type SetupItem = {
   key: string;
-  kind: 'secret' | 'env' | 'database';
+  kind: 'secret' | 'env';
   required: boolean;
   present: boolean;
   valid: boolean;
   issue: string | null;
-  where: string;
   description: string;
 };
 

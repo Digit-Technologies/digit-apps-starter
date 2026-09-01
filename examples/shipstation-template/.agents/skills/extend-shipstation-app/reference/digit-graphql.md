@@ -22,14 +22,7 @@ Typical starting queries (confirm on MCP; add whatever keys those fields require
 | Invoices | invoice types if you attach shipping cost |
 | Permissions | `appPermissions` for `READ_SHIPMENT` and any write keys you actually call |
 
-The template today only uses:
-
-```
-query ShipStationBootstrap {
-  currentPermissions { key }
-  organization { id }
-}
-```
-
-Those fields are ungated in `appPermissions` (same class as `currentUser`) — that is why
-`manifest.permissions` is `[]`. New Digit writes will not be.
+- Digit GraphQL used: `currentPermissions`, `organization`, `orders`, `items`,
+  `companies`, `generateSalesOrderPdf`, and Worker mutations for orders/shipments.
+  Look up fields on `graphql-schema://…` before adding more.
+- `manifest.permissions` must cover every Digit field the iframe **and** `API_TOKEN_DIGIT` call.

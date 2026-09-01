@@ -2,8 +2,9 @@
  * ShipStation template Worker.
  *
  * D1 binding: SHIPSTATION_DB
- * Secret: APP_SECRET_ENCRYPTION_KEY (base64 32-byte AES key)
- * Optional env: PUBLIC_WEBHOOK_URL (this app's /webhooks/shipstation URL)
+ * Secrets/config: pasted in the app (D1 app_config). Optional env overrides:
+ * API_TOKEN_DIGIT, PUBLIC_WEBHOOK_URL, APP_SECRET_ENCRYPTION_KEY, FAIRE_API_KEY
+ * Digit GraphQL URL is always https://api.digit-software.com/graphql.
  */
 
 import { AppErrorCode } from '@digit/lib-common';
@@ -11,9 +12,15 @@ import { backendPath, createHandler, err } from '@digit/lib-backend';
 
 import { handleConnection } from './connection.js';
 import { handleSetup } from './setup.js';
+import { handleSync } from './handleSync.js';
+import { pollSync, processSsWebhook } from './jobs.js';
 import { shipstationWebhook } from './webhooks.js';
 
 export default createHandler({
+  jobs: {
+    'process-ss-webhook': processSsWebhook,
+    'poll-outbound-push': pollSync,
+  },
   webhooks: {
     shipstation: shipstationWebhook,
   },
@@ -21,8 +28,11 @@ export default createHandler({
     const path = backendPath(request);
     const { method } = request;
 
-    const setupResponse = await handleSetup({ env, path, method });
+    const setupResponse = await handleSetup({ env, path, method, request });
     if (setupResponse) return setupResponse;
+
+    const syncResponse = await handleSync({ request, env, path, method });
+    if (syncResponse) return syncResponse;
 
     const connectionResponse = await handleConnection({ request, env, path, method });
     if (connectionResponse) return connectionResponse;

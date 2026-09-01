@@ -1,48 +1,59 @@
 # Architecture
 
-Digit iframe → Worker → D1 and ShipStation V2. Cursor MCPs are design-time only.
+Digit iframe → Worker → D1, Digit GraphQL (token), and ShipStation V2. Cursor MCPs are design-time only.
 
 ```
 Cursor: Digit MCP (schema, permissions, publish)
         ShipStation docs MCP (endpoint docs — not live API calls)
 
 Published app:
-  Frontend (src/frontend)  --/proxy/digit-->  Digit GraphQL
+  Frontend (src/frontend)  --/proxy/digit-->  Digit GraphQL (viewing user)
                            --/proxy/backend--> Worker
   Worker (src/backend)     --D1-->  SHIPSTATION_DB
                            --HTTPS--> https://api.shipstation.com (ssFetch)
-  Public POST /webhooks/shipstation  -->  shipstationWebhook
+                           --HTTPS--> Digit GraphQL (API_TOKEN_DIGIT)
+  Public POST /webhooks/shipstation  -->  verify RSA-SHA256 → job process-ss-webhook
+  Schedule poll-outbound-push (300s) -->  push eligible Digit SOs / inbound import
 ```
 
 ## Secrets and bindings (names only)
 
 | Name | Kind | Role |
 | --- | --- | --- |
-| `SHIPSTATION_DB` | D1 binding | Connection, carriers, services, webhook ids, org settings, label audit stub |
-| `APP_SECRET_ENCRYPTION_KEY` | secret | Base64 32-byte AES key. Encrypts the ShipStation API key in D1. Never returned to the UI. |
-| `PUBLIC_WEBHOOK_URL` | optional env | This app’s public `/webhooks/shipstation` URL. When set, connect registers ShipStation webhooks; disconnect deletes them. |
+| `SHIPSTATION_DB` | D1 binding | Publish-time only. Not shown in the setup UI. |
+| `API_TOKEN_DIGIT` | pasted secret | Digit API token for Worker GraphQL (webhooks + poll). Stored in D1. |
+| `PUBLIC_WEBHOOK_URL` | pasted config | Public `/webhooks/shipstation` URL. Connect registers SS webhooks. |
+| `FAIRE_API_KEY` | optional secret | Turns on the Faire channel stub after Digit ship writeback. |
 
-Configure these on the Digit app (Secrets / env). Missing required config is reported by `GET /setup` (setup screen), not as a generic 502.
+Digit GraphQL is always `https://api.digit-software.com/graphql`. An encryption key is
+generated on first save and stored in D1 — operators never paste it. Do not name secrets
+with a `DIGIT_` prefix.
+
+`GET /setup` reports pasteable keys only. `POST /setup` saves them. Required items block connect.
 
 ## Files to edit
 
-Paths relative to `examples/shipstation-template` or `apps/<name>` after
-`npm run new-app -- <name> --from shipstation-template`.
-
 | File | Role |
 | --- | --- |
-| `src/backend/shipstation.js` | Only place that talks to ShipStation. Extend `ssFetch` helpers here. |
-| `src/backend/connection.js` | `/connection`, `/carriers`, `/org-settings`; encrypt/decrypt; register/deregister webhooks; carrier sync |
-| `src/backend/webhooks.js` | Inbound `shipstation` handler (stub today: HTTP 200) |
-| `src/backend/setup.js` | `GET /setup` — which env/bindings exist |
-| `src/backend/crypto.js` | AES-256-GCM; digit-api `appConfigVars` wire format |
-| `src/backend/index.js` | `createHandler({ webhooks, fetch })` — add jobs here if you enqueue work |
-| `src/backend/migrations/*.sql` | New files only after `0001_init.sql` has been published |
-| `src/frontend/App.tsx` | Connect / settings UI |
-| `src/frontend/SetupNeeded.tsx` | First-load missing-config screen |
-| `manifest.json` | Permissions, D1 binding, `backend.webhooks` |
+| `src/backend/shipstation.js` | Only place that talks to ShipStation (`ssFetch`). |
+| `src/backend/digitGraphql.js` | Worker Digit GraphQL client. |
+| `src/backend/sync.js` | Push, writeback, inbound import, D1 map. |
+| `src/backend/eligibility.js` | Inventory / pack / lane / sync-mode gates. |
+| `src/backend/mappers/digitToShipStation.js` | SO → SS shipment (`skuForLine`, bill-to notes). |
+| `src/backend/mappers/shipStationToDigit.js` | SS shipment → Digit company/order. |
+| `src/backend/channels/` | `afterDigitShipped`; Faire recipe. |
+| `src/backend/connection.js` | Connect/disconnect, org Phase 1 settings, webhooks, carriers. |
+| `src/backend/handleSync.js` | `/sync/orders`, `/sync/push`. |
+| `src/backend/webhooks.js` | Verify + enqueue. |
+| `src/backend/jobs.js` | `process-ss-webhook`, `poll-outbound-push`. |
+| `src/backend/runtimeConfig.js` | D1 `app_config` + optional env overrides. |
+| `src/backend/setup.js` | `GET`/`POST /setup` (pasteable keys only). |
+| `src/backend/migrations/*.sql` | New files only after `0001_init.sql` has been published. |
+| `src/frontend/App.tsx` | Connect + Phase 1 settings. |
+| `src/frontend/FulfillmentQueue.tsx` | Paginated SO queue. |
+| `manifest.json` | Permissions, D1, webhooks, schedule. |
 
 ## Constraints the UI does not enforce
 
 - The Worker does not receive the viewing user. Treat `/proxy/backend` as callable by anyone who can open the app.
-- `manifest.permissions` is `[]` today: Digit calls are ungated fields (`currentPermissions`, `organization`). Any new Digit write needs `appPermissions` keys in the manifest.
+- `API_TOKEN_DIGIT` is the writeback identity; keep its scopes aligned with `manifest.permissions`.

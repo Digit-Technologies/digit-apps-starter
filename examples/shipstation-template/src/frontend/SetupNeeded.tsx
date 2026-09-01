@@ -1,84 +1,122 @@
+import { useState } from 'react';
+
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
+import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+
+import { AppErrorAlert, useBackendMutation } from '@digit/lib-frontend';
 
 import type { SetupItem } from './setupTypes';
 
 type SetupNeededProps = {
   items: SetupItem[];
-  onRecheck: () => void;
-  rechecking: boolean;
+  onSaved: () => Promise<void>;
 };
 
 function statusChip({ item }: { item: SetupItem }) {
   if (!item.present) {
-    return <Chip size="small" label={item.required ? 'Missing' : 'Not set'} color="warning" />;
+    return <Chip size="small" label="Missing" color="warning" />;
   }
   if (!item.valid) {
     return <Chip size="small" label="Invalid" color="error" />;
   }
-  if (!item.required) {
-    return <Chip size="small" label="Set (optional)" color="success" variant="outlined" />;
-  }
-  return <Chip size="small" label="Ready" color="success" />;
+  return <Chip size="small" label="Saved" color="success" />;
 }
 
-function kindLabel(kind: SetupItem['kind']) {
-  if (kind === 'secret') return 'Secret';
-  if (kind === 'env') return 'Env var';
-  return 'Database binding';
+function fieldLabel(item: SetupItem) {
+  if (item.key === 'API_TOKEN_DIGIT') return 'Digit API token';
+  if (item.key === 'PUBLIC_WEBHOOK_URL') return 'Webhook URL';
+  return item.key;
 }
 
-export default function SetupNeeded({ items, onRecheck, rechecking }: SetupNeededProps) {
+export default function SetupNeeded({ items, onSaved }: SetupNeededProps) {
+  const [apiTokenDigit, setApiTokenDigit] = useState('');
+  const [publicWebhookUrl, setPublicWebhookUrl] = useState('');
+  const [save, { error, loading, reset }] = useBackendMutation();
+
+  const tokenItem = items.find((item) => item.key === 'API_TOKEN_DIGIT');
+  const webhookItem = items.find((item) => item.key === 'PUBLIC_WEBHOOK_URL');
+
+  const saveConfig = async () => {
+    reset();
+    const result = await save({
+      path: '/setup',
+      method: 'POST',
+      body: {
+        apiTokenDigit,
+        publicWebhookUrl,
+      },
+    });
+    if (!result.ok) return;
+    setApiTokenDigit('');
+    setPublicWebhookUrl('');
+    await onSaved();
+  };
+
   return (
     <Stack spacing={2.5}>
-      <Alert severity="warning">
-        This app cannot connect to ShipStation until the required secret and database binding
-        are in place. Add them on the Digit app, republish if you changed the manifest, then
-        recheck.
+      <Alert severity="info">
+        Paste the Digit API token and this app’s public webhook URL below. They are stored in this
+        app and never shown again.
       </Alert>
+
+      {error ? <AppErrorAlert error={error} /> : null}
 
       <Stack spacing={2} divider={<Divider />}>
         {items.map((item) => (
-          <Stack key={item.key} spacing={0.75}>
+          <Stack key={item.key} spacing={1}>
             <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-              <Typography variant="subtitle1" component="h2" sx={{ fontFamily: 'monospace' }}>
-                {item.key}
+              <Typography variant="subtitle1" component="h2">
+                {fieldLabel(item)}
               </Typography>
-              <Chip size="small" label={kindLabel(item.kind)} variant="outlined" />
-              {item.required ? (
-                <Chip size="small" label="Required" />
-              ) : (
-                <Chip size="small" label="Optional" variant="outlined" />
-              )}
+              {item.required ? <Chip size="small" label="Required" /> : null}
               {statusChip({ item })}
             </Stack>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {item.description}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Where: {item.where}
             </Typography>
             {item.issue && (!item.present || !item.valid) ? (
               <Typography variant="body2" sx={{ color: 'error.main' }}>
                 {item.issue}
               </Typography>
             ) : null}
+            {item.key === 'API_TOKEN_DIGIT' ? (
+              <TextField
+                label={tokenItem?.present ? 'Replace token' : 'Digit API token'}
+                type="password"
+                value={apiTokenDigit}
+                onChange={(event) => setApiTokenDigit(event.target.value)}
+                autoComplete="off"
+                fullWidth
+                helperText={
+                  tokenItem?.present ? 'Leave blank to keep the token already saved.' : undefined
+                }
+              />
+            ) : null}
+            {item.key === 'PUBLIC_WEBHOOK_URL' ? (
+              <TextField
+                label={webhookItem?.present ? 'Replace webhook URL' : 'https://…/webhooks/shipstation'}
+                value={publicWebhookUrl}
+                onChange={(event) => setPublicWebhookUrl(event.target.value)}
+                autoComplete="off"
+                fullWidth
+                helperText={
+                  webhookItem?.present ? 'Leave blank to keep the URL already saved.' : undefined
+                }
+              />
+            ) : null}
           </Stack>
         ))}
       </Stack>
 
       <Box>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
-          After adding a secret or env var in Digit, reload this app. Database bindings apply
-          on publish.
-        </Typography>
-        <Button variant="contained" onClick={onRecheck} disabled={rechecking}>
-          {rechecking ? 'Checking…' : 'Recheck configuration'}
+        <Button variant="contained" onClick={() => void saveConfig()} disabled={loading}>
+          {loading ? 'Saving…' : 'Save configuration'}
         </Button>
       </Box>
     </Stack>

@@ -44,9 +44,9 @@ Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
   bodies (addresses / tracking). Details: [reference/webhooks.md](reference/webhooks.md)
   and create-digit-app [webhooks](../../../../../.agents/skills/create-digit-app/reference/webhooks.md) /
   [jobs](../../../../../.agents/skills/create-digit-app/reference/jobs-and-schedules.md).
-- Outbound registration: connect already POSTs `label_created_v2` and `track` when
-  `PUBLIC_WEBHOOK_URL` is set. New events: MCP lookup → `createWebhook` → D1
-  `shipstation_webhook` → disconnect must `deleteWebhook`.
+- Outbound registration: connect POSTs `label_created_v2`, `track`,
+  `fulfillment_shipped_v2`, `shipment_created_v2`, and `sales_orders_imported` when
+  `PUBLIC_WEBHOOK_URL` is set. Disconnect must `deleteWebhook`.
 - Org-admin in the UI (`UPDATE_ORGANIZATION`) is **not** Worker auth. Anyone who can
   open the published app can hit `/proxy/backend`.
 - Sort / filter / page Digit lists via GraphQL args. Paginate tables.
@@ -70,7 +70,7 @@ ShipStation extend:
 - [ ] create-digit-app stack / iframe / pack rules
 - [ ] Digit MCP connected; schema + appPermissions for any new Digit call
 - [ ] ShipStation docs MCP connected; lookup before new ssFetch paths
-- [ ] Secrets stay in Digit (APP_SECRET_ENCRYPTION_KEY); key never in UI or logs
+- [ ] Secrets are pasted in the app (`API_TOKEN_DIGIT`); values never returned in JSON or logs
 - [ ] New D1 shape = new migration file, not an edit of 0001_init.sql
 - [ ] Webhook: declared path, verify, 200 fast, jobs for slow work
 - [ ] SPEC.md prompts updated
