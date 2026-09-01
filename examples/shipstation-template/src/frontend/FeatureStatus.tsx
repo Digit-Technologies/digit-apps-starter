@@ -1,8 +1,8 @@
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
+import LinearProgress from '@mui/material/LinearProgress';
+import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
@@ -10,6 +10,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 
+import SectionHeader from './components/SectionHeader';
 import type { ChannelSetupEntry } from './setupTypes';
 
 type FeatureState = 'working' | 'partial' | 'off';
@@ -18,8 +19,8 @@ type Feature = {
   title: string;
   detail: string;
   state: FeatureState;
-  /** Human-readable list of what is still missing. */
   needs: string[];
+  group: 'digit' | 'shipstation' | 'channels';
 };
 
 export type FeatureStatusProps = {
@@ -35,13 +36,14 @@ const TOKEN = 'the Digit API token';
 const WEBHOOK = 'the webhook URL';
 const SS_KEY = 'the ShipStation API key';
 
-function gate({ title, detail, requires }: {
+function gate({ title, detail, requires, group }: {
   title: string;
   detail: string;
   requires: [boolean, string][];
+  group: Feature['group'];
 }): Feature {
   const needs = requires.filter(([met]) => !met).map(([, label]) => label);
-  return { title, detail, state: needs.length === 0 ? 'working' : 'off', needs };
+  return { title, detail, state: needs.length === 0 ? 'working' : 'off', needs, group };
 }
 
 function anyInboundChannel(channels: ChannelSetupEntry[]) {
@@ -68,6 +70,7 @@ function features({
       [connected, CONNECTION],
       [apiTokenPresent, TOKEN],
     ],
+    group: 'shipstation',
   });
 
   const storeImportConfigured = anyInboundChannel(channels);
@@ -80,11 +83,13 @@ function features({
         'Operators pick and pack in Digit, and can download sales-order, pick-list, and packing-slip PDFs.',
       state: 'working',
       needs: [],
+      group: 'digit',
     },
     gate({
       title: 'Fulfillment queue',
       detail: 'Sync status per order, batch push and retry, and the Digit sales-order PDF.',
       requires: [[connected, CONNECTION]],
+      group: 'digit',
     }),
     gate({
       title: 'Push orders to ShipStation',
@@ -95,11 +100,13 @@ function features({
         [connected, CONNECTION],
         [apiTokenPresent, TOKEN],
       ],
+      group: 'shipstation',
     }),
     gate({
       title: 'Print labels in ShipStation',
       detail: 'Buy and print labels in ShipStation. This app does not rate-shop inside Digit.',
       requires: [[connected, CONNECTION]],
+      group: 'shipstation',
     }),
     gate({
       title: 'Write tracking back to Digit',
@@ -111,6 +118,7 @@ function features({
         [apiTokenPresent, TOKEN],
         [webhookUrlPresent, WEBHOOK],
       ],
+      group: 'shipstation',
     }),
     inbound.state === 'working' && !webhookUrlPresent
       ? {
@@ -126,6 +134,7 @@ function features({
             'A configured commerce channel adapter can import store orders into Digit when you declare its webhook path in manifest.json.',
           state: 'partial',
           needs: ['manifest webhook path and adapter implementation in your clone'],
+          group: 'channels',
         }
       : {
           title: 'Store order import',
@@ -133,6 +142,7 @@ function features({
             'Connect a store via Digit Rutter, or add channel secrets and a webhook adapter (Shopify, WooCommerce) in a clone of this template.',
           state: 'off',
           needs: ['Digit Rutter store connection or channel adapter secrets'],
+          group: 'channels',
         },
     storeFulfillmentConfigured || (connected && apiTokenPresent && webhookUrlPresent)
       ? {
@@ -144,6 +154,7 @@ function features({
           needs: storeFulfillmentConfigured
             ? ['channel adapter implementation in your clone']
             : [],
+          group: 'channels',
         }
       : {
           title: 'Tracking to sales channel',
@@ -151,12 +162,14 @@ function features({
             'Finish ShipStation writeback first, then use Digit Rutter or a direct channel adapter to notify the store.',
           state: 'off',
           needs: [CONNECTION, TOKEN, WEBHOOK],
+          group: 'channels',
         },
     gate({
       title: 'Hold orders that should not ship yet',
       detail:
         'Orders without available inventory are skipped. The optional tag filter and Manual fulfillment keep LTL or other 3PL orders in Digit.',
       requires: [[connected, CONNECTION]],
+      group: 'shipstation',
     }),
   ];
 }
@@ -173,42 +186,89 @@ function stateIcon(state: FeatureState) {
   return <RemoveCircleOutlineIcon fontSize="small" sx={{ color: 'text.disabled' }} />;
 }
 
+const GROUP_LABELS: Record<Feature['group'], string> = {
+  digit: 'In Digit',
+  shipstation: 'ShipStation sync',
+  channels: 'Store channels',
+};
+
+function FeatureCard({ feature }: { feature: Feature }) {
+  return (
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 1.5,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 0.75,
+      }}
+    >
+      <Stack direction="row" spacing={0.75} alignItems="flex-start">
+        <Box sx={{ mt: 0.25, flexShrink: 0 }}>{stateIcon(feature.state)}</Box>
+        <Stack spacing={0.5} sx={{ minWidth: 0, flex: 1 }}>
+          <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+            <Typography variant="subtitle2" component="h3">
+              {feature.title}
+            </Typography>
+            {stateChip(feature.state)}
+          </Stack>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            {feature.detail}
+            {feature.needs.length > 0 ? ` Needs ${feature.needs.join(' and ')}.` : ''}
+          </Typography>
+        </Stack>
+      </Stack>
+    </Paper>
+  );
+}
+
 export default function FeatureStatus(props: FeatureStatusProps) {
   const list = features(props);
   const workingCount = list.filter((feature) => feature.state === 'working').length;
+  const progress = list.length > 0 ? (workingCount / list.length) * 100 : 0;
+
+  const groups: Feature['group'][] = ['digit', 'shipstation', 'channels'];
 
   return (
-    <Stack spacing={1}>
-      <Stack direction="row" spacing={1} alignItems="baseline" flexWrap="wrap">
-        <Typography variant="subtitle1" component="h2">
-          What works right now
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          {workingCount} of {list.length} features ready
-        </Typography>
-      </Stack>
-      <List disablePadding>
-        {list.map((feature) => (
-          <ListItem key={feature.title} alignItems="flex-start" disableGutters sx={{ py: 0.75 }}>
-            <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>{stateIcon(feature.state)}</ListItemIcon>
-            <ListItemText
-              primary={
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <span>{feature.title}</span>
-                  {stateChip(feature.state)}
-                </Stack>
-              }
-              secondary={
-                <>
-                  {feature.detail}
-                  {feature.needs.length > 0 ? ` Needs ${feature.needs.join(' and ')}.` : ''}
-                </>
-              }
-              secondaryTypographyProps={{ variant: 'body2' }}
-            />
-          </ListItem>
-        ))}
-      </List>
+    <Stack spacing={2}>
+      <SectionHeader
+        overline="Capabilities"
+        title="What you can do"
+        description={`${workingCount} of ${list.length} features ready`}
+      />
+      <LinearProgress
+        variant="determinate"
+        value={progress}
+        sx={{
+          height: 4,
+          borderRadius: 2,
+          bgcolor: 'action.hover',
+          '& .MuiLinearProgress-bar': { bgcolor: 'primary.main' },
+        }}
+      />
+      {groups.map((group) => {
+        const groupFeatures = list.filter((feature) => feature.group === group);
+        if (groupFeatures.length === 0) return null;
+        return (
+          <Stack key={group} spacing={1}>
+            <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.06em' }}>
+              {GROUP_LABELS[group]}
+            </Typography>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                gap: 1.5,
+              }}
+            >
+              {groupFeatures.map((feature) => (
+                <FeatureCard key={feature.title} feature={feature} />
+              ))}
+            </Box>
+          </Stack>
+        );
+      })}
     </Stack>
   );
 }

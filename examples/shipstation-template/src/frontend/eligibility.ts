@@ -161,11 +161,11 @@ export function queuePushDisplay({
 
   if (lastError || pushStatus === 'error') {
     return {
-      primary: pushStatusLabel('error'),
+      primary: lastError ?? pushStatusLabel('error'),
       chipColor: 'error',
-      tooltip: lastError ?? 'Push failed.',
-      showPrimaryAsChip: false,
-      lastError,
+      tooltip: lastError ? `Push failed. ${lastError}` : 'Push failed.',
+      showPrimaryAsChip: true,
+      lastError: null,
     };
   }
 

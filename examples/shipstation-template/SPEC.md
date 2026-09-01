@@ -170,6 +170,35 @@ rename push column to status
 republish
 ```
 
+```
+Use the /frontend-design skill to redsign the app while still following the conventions laid out in this repo
+```
+
+```
+ShipStation App UI Redesign
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+```
+
+```
+Move the Finish Setup and What You Can Do section to a separate page or modal
+```
+
+```
+make faild chip color different than missing
+```
+
+```
+The chip is way too big and the red is too bright
+```
+
+```
+app flashes and then disappears. This error is in the console
+js?id=AW-16540468916:848 Cross-Origin-Opener-Policy policy would block the window.postMessage call.
+...
+ReferenceError: motionFadeIn is not defined
+```
+
 ## Context supplied
 
 - Work stays on git branch `shipstation-template` tracking `fork/shipstation-template`

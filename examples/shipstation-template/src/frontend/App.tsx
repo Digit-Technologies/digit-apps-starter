@@ -3,8 +3,6 @@ import { useState, type ReactNode } from 'react';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -21,8 +19,6 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import LinkOffIcon from '@mui/icons-material/LinkOff';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 
 import {
   AppErrorAlert,
@@ -31,9 +27,12 @@ import {
   useDigitApiQuery,
 } from '@digit/lib-frontend';
 
-import FeatureStatus from './FeatureStatus';
+import ActivityLog, { useActivityQuery } from './ActivityLog';
+import AppShell from './components/AppShell';
+import ConnectionBar, { ConnectPanel, NonAdminNotice } from './components/ConnectionBar';
+import SectionHeader from './components/SectionHeader';
+import SetupCapabilitiesDialog from './components/SetupCapabilitiesDialog';
 import FulfillmentQueue from './FulfillmentQueue';
-import SetupNeeded from './SetupNeeded';
 import type { SetupData } from './setupTypes';
 
 type Permission = { key: string };
@@ -138,6 +137,12 @@ function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
   };
 }
 
+function setupProgressFrom(data: SetupData | undefined) {
+  if (!data?.items?.length) return null;
+  const present = data.items.filter((item) => item.present).length;
+  return { present, total: data.items.length };
+}
+
 export default function App() {
   const setupQuery = useBackendQuery<SetupData>({ path: '/setup' });
   const setupData = setupQuery.data;
@@ -164,12 +169,14 @@ export default function App() {
     skip: !organizationId || !configLoaded,
   });
   const connected = Boolean(connectionQuery.data?.connected);
+  const activityQuery = useActivityQuery(organizationId ?? '');
 
   const [mutate, { error: mutationError, loading: mutating, reset: resetMutation }] =
     useBackendMutation<ConnectionData>();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
+  const [setupCapabilitiesOpen, setSetupCapabilitiesOpen] = useState(false);
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
@@ -244,171 +251,113 @@ export default function App() {
     bootstrap.loading ||
     (!!organizationId && configLoaded && (connectionQuery.loading || orgSettingsQuery.loading));
 
+  const showContent = !notPublished && !setupQuery.error;
+  const featureStatusProps = {
+    connected,
+    apiTokenPresent,
+    webhookUrlPresent,
+    shipStationKeyPresent,
+    channels: setupData?.channels ?? [],
+  };
+
   return (
-    <Box sx={{ minHeight: '100vh', p: 3 }}>
-      <Stack spacing={3} sx={{ width: '100%', maxWidth: 1100, mx: 'auto' }}>
-        <Paper sx={{ p: { xs: 3, sm: 4 } }}>
-          <Stack spacing={2.5}>
-            <Stack spacing={0.5}>
-              <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
-                Digit App
-              </Typography>
-              <Typography variant="h1" component="h1">
-                ShipStation
-              </Typography>
-              <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-                {connected
-                  ? 'Pick and pack in Digit, then push orders so operators can print labels in ShipStation.'
-                  : 'Connect one ShipStation account to start. Pick and pack stay in Digit; labels stay in ShipStation.'}
-              </Typography>
-            </Stack>
+    <AppShell
+      commandBar={
+        <ConnectionBar
+          connected={connected}
+          carrierCount={connectionQuery.data?.carrierCount}
+          loading={loading}
+          isAdmin={isAdmin}
+          shipStationKeyPresent={shipStationKeyPresent}
+          setupProgress={setupProgressFrom(setupData)}
+          organizationId={organizationId}
+          notPublished={notPublished}
+          mutating={mutating}
+          onConnect={() => void connect()}
+          onOpenSettings={openSettings}
+          onOpenDisconnect={() => {
+            resetMutation();
+            setSuccessNotice(null);
+            setDisconnectOpen(true);
+          }}
+          onOpenSetupCapabilities={() => setSetupCapabilitiesOpen(true)}
+        />
+      }
+    >
+      {setupQuery.error && (
+        <AppErrorAlert error={setupQuery.error} onRetry={() => void setupQuery.refetch()} />
+      )}
+      {notPublished && (
+        <Alert severity="error">
+          This app is not fully published, so its backend has no database. Republish it, then reload.
+        </Alert>
+      )}
+      {bootstrap.error && (
+        <AppErrorAlert error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />
+      )}
+      {connectionQuery.error && (
+        <AppErrorAlert error={connectionQuery.error} onRetry={() => void connectionQuery.refetch()} />
+      )}
+      {orgSettingsQuery.error && (
+        <AppErrorAlert error={orgSettingsQuery.error} onRetry={() => void orgSettingsQuery.refetch()} />
+      )}
+      {mutationError && <AppErrorAlert error={mutationError} />}
+      {successNotice ? (
+        <Alert severity="success" onClose={() => setSuccessNotice(null)}>
+          {successNotice}
+        </Alert>
+      ) : null}
 
-            {setupQuery.error && (
-              <AppErrorAlert error={setupQuery.error} onRetry={() => void setupQuery.refetch()} />
-            )}
-            {notPublished && (
-              <Alert severity="error">
-                This app is not fully published, so its backend has no database. Republish it, then
-                reload.
-              </Alert>
-            )}
-            {bootstrap.error && (
-              <AppErrorAlert error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />
-            )}
-            {connectionQuery.error && (
-              <AppErrorAlert
-                error={connectionQuery.error}
-                onRetry={() => void connectionQuery.refetch()}
-              />
-            )}
-            {orgSettingsQuery.error && (
-              <AppErrorAlert
-                error={orgSettingsQuery.error}
-                onRetry={() => void orgSettingsQuery.refetch()}
-              />
-            )}
-            {mutationError && <AppErrorAlert error={mutationError} />}
-            {successNotice ? (
-              <Alert severity="success" onClose={() => setSuccessNotice(null)}>
-                {successNotice}
-              </Alert>
-            ) : null}
-
-            {notPublished || setupQuery.error ? null : loading ? (
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <CircularProgress size={18} />
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Loading…
-                </Typography>
-              </Stack>
-            ) : !organizationId ? (
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Open this app inside Digit to load the organization and connect ShipStation.
-              </Typography>
-            ) : !isAdmin ? (
-              <Stack spacing={1.5}>
-                <Chip
-                  label={connected ? 'Connected' : 'Not connected'}
-                  color={connected ? 'success' : 'default'}
-                  sx={{ alignSelf: 'flex-start' }}
-                />
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Org admins can connect and change ShipStation settings. App owners manage the
-                  app-level secrets in Digit. You can still work the fulfillment queue when an
-                  account is connected.
-                </Typography>
-              </Stack>
-            ) : connected ? (
-              <Stack spacing={2}>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Chip label="Connected" color="success" />
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    {connectionQuery.data?.carrierCount ?? 0} carriers synced
-                  </Typography>
-                </Stack>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                  <Button
-                    variant="contained"
-                    startIcon={<SettingsOutlinedIcon />}
-                    onClick={openSettings}
-                  >
-                    Settings
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    startIcon={<LinkOffIcon />}
-                    onClick={() => {
-                      resetMutation();
-                      setSuccessNotice(null);
-                      setDisconnectOpen(true);
-                    }}
-                  >
-                    Disconnect
-                  </Button>
-                </Stack>
-              </Stack>
-            ) : shipStationKeyPresent ? (
-              <Stack spacing={2}>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  A ShipStation API key is configured for this organization. Connecting validates
-                  it against ShipStation, syncs the carrier catalog, and registers webhooks.
-                </Typography>
-                <Button
-                  variant="contained"
-                  onClick={() => void connect()}
-                  disabled={mutating}
-                  sx={{ alignSelf: 'flex-start' }}
-                >
-                  {mutating ? 'Connecting…' : 'Connect ShipStation'}
-                </Button>
-              </Stack>
-            ) : (
-              <Alert severity="warning">
-                No ShipStation API key is configured for this organization. Add
-                {' '}<strong>SHIPSTATION_API_KEY</strong> to this app’s secrets in Digit, then
-                reload and connect.
-              </Alert>
-            )}
-          </Stack>
+      {showContent && connected && organizationId ? (
+        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+          <FulfillmentQueue
+            organizationId={organizationId}
+            canPush
+            orgSettings={orgSettingsQuery.data ?? null}
+            pushDisabledReason={
+              apiTokenPresent ? null : 'Add the Digit API token to push orders to ShipStation.'
+            }
+            onPushComplete={() => activityQuery.refetch()}
+          />
         </Paper>
+      ) : null}
 
-        {setupIncomplete && setupData && !notPublished && isAdmin ? (
-          <Paper sx={{ p: { xs: 3, sm: 4 } }}>
-            <Stack spacing={2}>
-              <Typography variant="h2" component="h2">
-                Finish setup
-              </Typography>
-              <SetupNeeded items={setupData.items} />
-            </Stack>
-          </Paper>
-        ) : null}
-
-        {!notPublished && !setupQuery.error ? (
-          <Paper sx={{ p: { xs: 3, sm: 4 } }}>
-            <FeatureStatus
-              connected={connected}
-              apiTokenPresent={apiTokenPresent}
-              webhookUrlPresent={webhookUrlPresent}
+      {showContent && !connected && isAdmin && organizationId && !loading ? (
+        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+          <SectionHeader
+            overline="Connection"
+            title="Connect your account"
+            description="Validate your API key and register webhooks before pushing orders."
+          />
+          <Box sx={{ mt: 2 }}>
+            <ConnectPanel
               shipStationKeyPresent={shipStationKeyPresent}
-              channels={setupData?.channels ?? []}
+              mutating={mutating}
+              onConnect={() => void connect()}
             />
-          </Paper>
-        ) : null}
+          </Box>
+        </Paper>
+      ) : null}
 
-        {connected && organizationId ? (
-          <Paper sx={{ p: { xs: 2, sm: 3 } }}>
-            <FulfillmentQueue
-              organizationId={organizationId}
-              canPush
-              orgSettings={orgSettingsQuery.data ?? null}
-              pushDisabledReason={
-                apiTokenPresent ? null : 'Add the Digit API token to push orders to ShipStation.'
-              }
-            />
-          </Paper>
-        ) : null}
-      </Stack>
+      {showContent && !connected && !isAdmin && organizationId && !loading ? (
+        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+          <NonAdminNotice connected={connected} />
+        </Paper>
+      ) : null}
+
+      {showContent && connected && organizationId ? (
+        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+          <ActivityLog query={activityQuery} />
+        </Paper>
+      ) : null}
+
+      <SetupCapabilitiesDialog
+        open={setupCapabilitiesOpen}
+        onClose={() => setSetupCapabilitiesOpen(false)}
+        showSetup={Boolean(setupIncomplete && setupData && isAdmin)}
+        setupItems={setupData?.items ?? []}
+        featureStatus={featureStatusProps}
+      />
 
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle>ShipStation settings</DialogTitle>
@@ -479,7 +428,7 @@ export default function App() {
         <DialogActions>
           <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
           <Button variant="contained" onClick={() => void saveSettings()} disabled={mutating}>
-            {mutating ? 'Saving…' : 'Save'}
+            {mutating ? 'Saving…' : 'Save changes'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -488,9 +437,9 @@ export default function App() {
         <DialogTitle>Disconnect ShipStation?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            This disables ShipStation actions, deregisters webhooks, and soft-deletes the
-            connection and carrier catalog. Existing label and order-map records stay for audit.
-            Reconnect creates a new connection and re-syncs carriers.
+            This disables ShipStation actions, deregisters webhooks, and soft-deletes the connection
+            and carrier catalog. Existing label and order-map records stay for audit. Reconnect
+            creates a new connection and re-syncs carriers.
           </Typography>
           {mutationError && (
             <Box sx={{ mt: 2 }}>
@@ -505,6 +454,6 @@ export default function App() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </AppShell>
   );
 }
