@@ -71,23 +71,23 @@ API after a failed attempt.
 Printing sends a static snapshot. No JavaScript runs in the print document. Prefer a
 dedicated receipt/print view or hidden print root and serialize it with `outerHTML`.
 Avoid `document.documentElement.outerHTML`, which includes app chrome and usually wastes
-the 1 MiB payload limit.
+the 10MB payload limit.
 
 Prepare the snapshot before calling `DigitHost.print`:
 
 1. Inline CSS in `<style>` or `style` attributes. `<link rel="stylesheet">` is stripped,
    and network CSS is blocked.
 2. Fetch images as blobs, then convert them with `FileReader` or canvas to
-   `data:image/...`. HTTP(S) image URLs are stripped. Missing inline images are the most
-   common reason prints look empty.
+   `data:image/...`. Remote `http(s)` images do not load (`img-src data:`). Missing
+   inline images are the most common reason prints look empty.
 3. Replace canvases and charts with `<img>` elements whose `src` comes from
    `canvas.toDataURL('image/png')`.
 4. Use system fonts, or embed fonts through `@font-face` with `data:` URLs. Remote fonts
    do not load.
 5. Put values in `p`, `table`, `span`, `div`, or other ordinary content elements.
-   `input`, `select`, `textarea`, `button`, and `form` are stripped. Copy each live
-   control value into text before serialization.
-6. Keep the UTF-8 HTML at or below 1 MiB after inlining. Compress images and omit the
+   `form` is removed; `input`, `select`, `textarea`, and `button` stay but are inert.
+   Copy each live control value into text before serialization.
+6. Keep the UTF-8 HTML at or below 10MB after inlining. Compress images and omit the
    rest of the SPA.
 7. Use a 1-119 character title that starts with an ASCII letter or digit and contains
    only ASCII letters, digits, spaces, `.`, `_`, `-`, `(`, or `)`. Do not use accents or
@@ -117,7 +117,7 @@ Never ask for more sandbox flags. For PDF bytes, call `DigitHost.download` with
 Before shipping UI:
 
 1. File exports only via `DigitHost.download` — never `<a download>` / blob links
-2. Printing only via `DigitHost.print` with self-contained HTML under 1 MiB
+2. Printing only via `DigitHost.print` with self-contained HTML under 10MB
 3. No new-tab / popup / `window.open` flows
 4. No `alert` / `confirm` / `prompt` — use MUI Dialog / `AppErrorAlert` instead
 5. No camera, mic, geo, clipboard-read, fullscreen, or other device APIs

@@ -64,8 +64,8 @@ window.DigitHost?.print({ title: "Packing Slip 1042", html });
 ```
 
 The print document runs no JavaScript. Inline CSS and convert images or canvases to
-`data:image/...` before calling `print`; network assets are removed. Keep the result
-under 1 MiB. Use `DigitHost.download` for PDF bytes.
+`data:image/...` before calling `print`; remote `http(s)` assets do not load (print CSP
+is `img-src data:`). Keep the result under 10MB. Use `DigitHost.download` for PDF bytes.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.

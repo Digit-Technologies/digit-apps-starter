@@ -22,7 +22,7 @@ export type DigitHostDownloadOptions = {
 export type DigitHostPrintOptions = {
   /** ASCII letters/digits, spaces, dots, hyphens, underscores or parentheses; 119 chars max. */
   title: string;
-  /** Self-contained printable HTML, 1 MiB max after inlining styles and assets. */
+  /** Self-contained printable HTML, 10MB max after inlining styles and assets. */
   html: string;
 };
 

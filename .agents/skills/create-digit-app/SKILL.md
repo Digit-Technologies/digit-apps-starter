@@ -189,15 +189,16 @@ Before sending HTML:
 - Inline CSS in `<style>` or `style` attributes. The host strips `<link
 rel="stylesheet">`, and the print CSP blocks network CSS.
 - Fetch images as blobs and convert them with `FileReader` or canvas to `data:image/...`.
-  The host strips HTTP(S) image URLs. This is the first thing to check when a print is
-  missing images.
+  Remote `http(s)` images do not load (`img-src data:`). This is the first thing to check
+  when a print is missing images.
 - Replace canvas and chart output with `<img src="${canvas.toDataURL('image/png')}">`.
 - Use system fonts, or `@font-face` with a `data:` font URL. Remote fonts such as Google
   Fonts do not load.
 - Copy printable values into normal elements such as `p`, `table`, `span`, and `div`.
-  The host strips `input`, `select`, `textarea`, `button`, and `form`, so their live values
-  do not survive serialization.
-- Keep the UTF-8 payload under 1 MiB after inlining. Compress images and print only the
+  The host removes `form` (and `script` / `iframe` / `link` / `meta`). `input`, `select`,
+  `textarea`, and `button` stay but are inert, and React live values usually are not in
+  the HTML.
+- Keep the UTF-8 payload under 10MB after inlining. Compress images and print only the
   receipt or report content.
 - Use a 1-119 character title made from ASCII letters or digits plus spaces, `.`, `_`, `-`,
   `(`, and `)`. It must start with a letter or digit. Accents and emoji are not allowed.
