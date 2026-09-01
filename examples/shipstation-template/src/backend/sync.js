@@ -8,6 +8,7 @@ import { HandlerError, requireEnv } from '@digit/lib-backend';
 import { afterDigitShipped } from './channels/index.js';
 import { decryptSecret } from './crypto.js';
 import { digitGraphql } from './digitGraphql.js';
+import { appendActivity } from './activity.js';
 import {
   COMPANIES_SEARCH_QUERY,
   CREATE_COMPANY_LOCATION_MUTATION,
@@ -20,7 +21,7 @@ import {
   ORDER_DETAIL_QUERY,
   UPDATE_SHIPMENT_MUTATION,
 } from './digitQueries.js';
-import { ineligibilityReason } from './eligibility.js';
+import { ineligibilityReason, skipNextStep } from './eligibility.js';
 import { digitOrderToShipment, orgShipFrom } from './mappers/digitToShipStation.js';
 import {
   ssBillingAddressInput,
@@ -28,7 +29,7 @@ import {
   ssLineSkus,
   ssShipToLocationInput,
 } from './mappers/shipStationToDigit.js';
-import { loadEncryptionKeyBytes } from './runtimeConfig.js';
+import { loadEncryptionKeyBytes, loadShipStationApiKey } from './runtimeConfig.js';
 import {
   createShipments,
   fetchResourceUrl,
@@ -62,6 +63,10 @@ export async function liveConnection({ db, organizationId }) {
     .first();
 }
 
+/**
+ * The ShipStation key is an org-level Digit app secret (`SHIPSTATION_API_KEY`). Rows written
+ * before that switch still carry `api_key_encrypted`, so those keep working as a fallback.
+ */
 export async function liveApiKey({ db, env, organizationId }) {
   const row = await db
     .prepare(
@@ -72,11 +77,20 @@ export async function liveApiKey({ db, env, organizationId }) {
     .bind(organizationId)
     .first();
   if (!row) return null;
-  const apiKey = await decryptSecret({
-    stored: row.api_key_encrypted,
-    keyBytes: await encryptionKeyBytes({ env, db }),
-  });
-  return { connectionId: row.id, apiKey };
+
+  const fromSecret = await loadShipStationApiKey({ env, db });
+  if (fromSecret) return { connectionId: row.id, apiKey: fromSecret };
+
+  if (!row.api_key_encrypted) return null;
+  try {
+    const apiKey = await decryptSecret({
+      stored: row.api_key_encrypted,
+      keyBytes: await encryptionKeyBytes({ env, db }),
+    });
+    return { connectionId: row.id, apiKey };
+  } catch {
+    return null;
+  }
 }
 
 export function publicConnection(row, extra = {}) {
@@ -255,13 +269,75 @@ export async function fetchDigitOrder({ env, orderId }) {
   return { ok: true, data: { order, organization } };
 }
 
-export async function pushOrder({ env, db, organizationId, orderId }) {
+function pushMeaning({ skipped, reason, ssShipmentId, orderLabel }) {
+  if (skipped) {
+    return `${reason} ${skipNextStep(reason)}`.trim();
+  }
+  return `Created ShipStation shipment ${ssShipmentId} for ${orderLabel}. It stays in this queue until it is fulfilled in Digit. Print the label in ShipStation.`;
+}
+
+function orderLabel(order, orderId) {
+  return order?.documentNumber || order?.orderNumber || orderId;
+}
+
+async function recordPushActivity({
+  db,
+  organizationId,
+  actor,
+  recordActivity,
+  skipped,
+  ok,
+  orderId,
+  ssShipmentId,
+  message,
+  detail,
+}) {
+  if (!recordActivity) return;
+  if (actor === 'schedule' && skipped) return;
+  await appendActivity({
+    db,
+    organizationId,
+    actor,
+    action: skipped ? 'push_skip' : ok ? 'push' : 'push_error',
+    status: skipped ? 'skipped' : ok ? 'success' : 'error',
+    message,
+    digitOrderId: orderId,
+    ssShipmentId: ssShipmentId ?? null,
+    detail: detail ?? null,
+  });
+}
+
+/**
+ * `preloaded` lets the scheduled poll reuse the order it already listed. Without it every
+ * candidate order costs another Digit query, which is enough to hit the API rate limit.
+ */
+export async function pushOrder({
+  env,
+  db,
+  organizationId,
+  orderId,
+  actor = 'user',
+  recordActivity = true,
+  preloaded = null,
+}) {
   const secret = await liveApiKey({ db, env, organizationId });
   if (!secret) {
+    const message = 'Connect a ShipStation account first.';
+    await recordPushActivity({
+      db,
+      organizationId,
+      actor,
+      recordActivity,
+      skipped: false,
+      ok: false,
+      orderId,
+      ssShipmentId: null,
+      message,
+    });
     return {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
-      message: 'Connect a ShipStation account first.',
+      message,
       status: 400,
     };
   }
@@ -275,9 +351,27 @@ export async function pushOrder({ env, db, organizationId, orderId }) {
     .bind(secret.connectionId, orderId)
     .first();
 
-  const loaded = await fetchDigitOrder({ env, orderId });
-  if (!loaded.ok) return loaded;
+  const loaded =
+    preloaded?.order
+      ? { ok: true, data: { order: preloaded.order, organization: preloaded.organization ?? null } }
+      : await fetchDigitOrder({ env, orderId });
+  if (!loaded.ok) {
+    await recordPushActivity({
+      db,
+      organizationId,
+      actor,
+      recordActivity,
+      skipped: false,
+      ok: false,
+      orderId,
+      ssShipmentId: null,
+      message: loaded.message,
+      detail: loaded.detail ?? { code: loaded.code },
+    });
+    return loaded;
+  }
   const { order, organization } = loaded.data;
+  const label = orderLabel(order, orderId);
 
   const reason = ineligibilityReason({
     order,
@@ -292,7 +386,19 @@ export async function pushOrder({ env, db, organizationId, orderId }) {
       digitOrderId: orderId,
       fields: { pushStatus: 'skipped', lastError: reason, source: existing?.source ?? 'digit' },
     });
-    return { ok: true, data: { orderId, skipped: true, reason } };
+    const meaning = pushMeaning({ skipped: true, reason, orderLabel: label });
+    await recordPushActivity({
+      db,
+      organizationId,
+      actor,
+      recordActivity,
+      skipped: true,
+      ok: true,
+      orderId,
+      ssShipmentId: existing?.ss_shipment_id ?? null,
+      message: meaning,
+    });
+    return { ok: true, data: { orderId, skipped: true, reason, message: reason, meaning } };
   }
 
   const shipmentBody = digitOrderToShipment({
@@ -311,6 +417,18 @@ export async function pushOrder({ env, db, organizationId, orderId }) {
       digitOrderId: orderId,
       fields: { pushStatus: 'error', lastError: created.message, source: 'digit' },
     });
+    await recordPushActivity({
+      db,
+      organizationId,
+      actor,
+      recordActivity,
+      skipped: false,
+      ok: false,
+      orderId,
+      ssShipmentId: null,
+      message: created.message,
+      detail: created.detail ?? { code: created.code },
+    });
     return created;
   }
 
@@ -328,10 +446,22 @@ export async function pushOrder({ env, db, organizationId, orderId }) {
         source: 'digit',
       },
     });
+    const message = 'ShipStation did not return a shipment id.';
+    await recordPushActivity({
+      db,
+      organizationId,
+      actor,
+      recordActivity,
+      skipped: false,
+      ok: false,
+      orderId,
+      ssShipmentId: null,
+      message,
+    });
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'ShipStation did not return a shipment id.',
+      message,
       status: 502,
     };
   }
@@ -348,8 +478,34 @@ export async function pushOrder({ env, db, organizationId, orderId }) {
       source: 'digit',
     },
   });
-  return { ok: true, data: { orderId, ssShipmentId, skipped: false } };
+  const meaning = pushMeaning({ skipped: false, ssShipmentId, orderLabel: label });
+  await recordPushActivity({
+    db,
+    organizationId,
+    actor,
+    recordActivity,
+    skipped: false,
+    ok: true,
+    orderId,
+    ssShipmentId,
+    message: meaning,
+  });
+  return {
+    ok: true,
+    data: {
+      orderId,
+      ssShipmentId,
+      skipped: false,
+      message: `Created ShipStation shipment ${ssShipmentId}.`,
+      meaning,
+    },
+  };
 }
+
+const POLL_PAGE_SIZE = 25;
+const MAX_POLL_PAGES = 5;
+/** Keeps one scheduled run inside the Digit API rate limit. Remaining orders wait for the next run. */
+const MAX_PUSHES_PER_RUN = 25;
 
 export async function pollOutboundPush({ env, db }) {
   const { results } = await db
@@ -365,22 +521,32 @@ export async function pollOutboundPush({ env, db }) {
     if (orgSettings.syncMode !== 'digit_to_ss') continue;
 
     let after = null;
-    for (let page = 0; page < 5; page += 1) {
+    for (let page = 0; page < MAX_POLL_PAGES; page += 1) {
       const listed = await digitGraphql({
         env,
         query: ORDER_DETAIL_QUERY,
         variables: {
-          connection: { first: 25, ...(after ? { after } : {}) },
+          connection: { first: POLL_PAGE_SIZE, ...(after ? { after } : {}) },
         },
       });
       if (!listed.ok) break;
+      const organization = listed.data?.organization ?? null;
       const nodes = listed.data?.orders?.nodes ?? [];
       for (const order of nodes) {
-        const result = await pushOrder({ env, db, organizationId, orderId: order.id });
+        const result = await pushOrder({
+          env,
+          db,
+          organizationId,
+          orderId: order.id,
+          actor: 'schedule',
+          recordActivity: true,
+          preloaded: { order, organization },
+        });
         if (result.ok && result.data && !result.data.skipped) {
           pushed.push(result.data);
         }
       }
+      if (pushed.length >= MAX_PUSHES_PER_RUN) break;
       if (!listed.data?.orders?.pageInfo?.hasNextPage) break;
       after = listed.data.orders.pageInfo.endCursor;
     }
@@ -527,7 +693,7 @@ export async function processSsFulfillment({
   resourceUrl,
 }) {
   const secret = await liveApiKey({ db, env, organizationId });
-  if (!secret) return { ok: true, data: { skipped: true } };
+  if (!secret) return { ok: true, data: { skipped: true, reason: 'No live ShipStation connection.' } };
 
   let record = null;
   if (resourceUrl) {
@@ -785,25 +951,109 @@ export async function pollInbound({ env, db }) {
         connectionId: secret.connectionId,
         shipment,
       });
-      if (result.ok && result.data && !result.data.skipped) imported += 1;
+      if (result.ok && result.data && !result.data.skipped) {
+        imported += 1;
+        await appendActivity({
+          db,
+          organizationId,
+          actor: 'schedule',
+          action: 'poll',
+          status: 'success',
+          message: `Imported ShipStation shipment as Digit order ${result.data.digitOrderId}.`,
+          digitOrderId: result.data.digitOrderId,
+          ssShipmentId: result.data.ssShipmentId ?? null,
+        });
+      } else if (!result.ok) {
+        await appendActivity({
+          db,
+          organizationId,
+          actor: 'schedule',
+          action: 'poll',
+          status: 'error',
+          message: result.message || 'Inbound poll import failed.',
+          detail: { code: result.code ?? null },
+        });
+      }
     }
   }
   return { imported };
 }
 
+async function recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result }) {
+  const detail = { event: event || null };
+  if (!result || result.skipped) {
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'webhook',
+      action: 'webhook',
+      status: 'skipped',
+      message: 'ShipStation webhook had no organization or connection to apply.',
+      ssShipmentId: ssShipmentId || null,
+      detail,
+    });
+    return;
+  }
+  if (result.ok === false) {
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'webhook',
+      action: 'writeback',
+      status: 'error',
+      message: result.message || 'Webhook writeback failed.',
+      digitOrderId: result.data?.digitOrderId ?? null,
+      ssShipmentId: ssShipmentId || null,
+      detail: { ...detail, code: result.code ?? null },
+    });
+    return;
+  }
+  if (result.data?.skipped) {
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'webhook',
+      action: 'webhook',
+      status: 'skipped',
+      message: result.data.reason || 'Webhook skipped; no Digit order was updated.',
+      ssShipmentId: ssShipmentId || null,
+      detail,
+    });
+    return;
+  }
+  await appendActivity({
+    db,
+    organizationId,
+    actor: 'webhook',
+    action: 'writeback',
+    status: 'success',
+    message:
+      'ShipStation fulfillment event applied. Tracking was written to the Digit shipment (not stored in this log).',
+    digitOrderId: result.data?.digitOrderId ?? null,
+    ssShipmentId: ssShipmentId || result.data?.ssShipmentId || null,
+    detail,
+  });
+}
+
 export async function processWebhookJob({ env, payload }) {
   const db = requireEnv({ env, key: 'SHIPSTATION_DB' });
   const organizationId = payload?.organizationId;
-  if (!organizationId) return { skipped: true };
-
   const resourceUrl = payload?.resourceUrl;
   const ssShipmentId = payload?.ssShipmentId;
   const labelId = payload?.labelId;
   const event = payload?.event || '';
 
+  if (!organizationId) {
+    return { skipped: true };
+  }
+
   if (event.includes('shipment_created') || event.includes('sales_orders_imported')) {
     const secret = await liveApiKey({ db, env, organizationId });
-    if (!secret) return { skipped: true };
+    if (!secret) {
+      const skipped = { skipped: true };
+      await recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result: skipped });
+      return skipped;
+    }
     let shipment = payload?.shipment || null;
     if (!shipment && ssShipmentId) {
       const fetched = await getShipment({ apiKey: secret.apiKey, shipmentId: ssShipmentId });
@@ -815,17 +1065,41 @@ export async function processWebhookJob({ env, payload }) {
     }
     const orgSettings = await loadOrgSettings({ db, organizationId });
     if (orgSettings.syncMode === 'ss_to_digit' && shipment) {
-      await importSsShipment({
+      const imported = await importSsShipment({
         env,
         db,
         organizationId,
         connectionId: secret.connectionId,
         shipment,
       });
+      if (imported.ok && imported.data && !imported.data.skipped) {
+        await appendActivity({
+          db,
+          organizationId,
+          actor: 'webhook',
+          action: 'webhook',
+          status: 'success',
+          message: `Imported ShipStation shipment as Digit order ${imported.data.digitOrderId}.`,
+          digitOrderId: imported.data.digitOrderId,
+          ssShipmentId: imported.data.ssShipmentId ?? ssShipmentId ?? null,
+          detail: { event },
+        });
+      } else if (!imported.ok) {
+        await appendActivity({
+          db,
+          organizationId,
+          actor: 'webhook',
+          action: 'webhook',
+          status: 'error',
+          message: imported.message || 'Inbound import failed.',
+          ssShipmentId: ssShipmentId || null,
+          detail: { event, code: imported.code ?? null },
+        });
+      }
     }
   }
 
-  return processSsFulfillment({
+  const result = await processSsFulfillment({
     env,
     db,
     organizationId,
@@ -833,6 +1107,8 @@ export async function processWebhookJob({ env, payload }) {
     labelId,
     resourceUrl,
   });
+  await recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result });
+  return result;
 }
 
 export async function resolveShipmentByExternalId({ env, db, organizationId, externalShipmentId }) {

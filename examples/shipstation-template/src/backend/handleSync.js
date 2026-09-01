@@ -1,6 +1,7 @@
 import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-common';
 import { err, ok, requireEnv } from '@digit/lib-backend';
 
+import { listActivity } from './activity.js';
 import {
   liveConnection,
   mapsForOrders,
@@ -23,6 +24,28 @@ function requireOrganizationId(url) {
   return { organizationId };
 }
 
+function pushResultRow(orderId, result) {
+  if (result.ok) {
+    return {
+      orderId,
+      ok: true,
+      skipped: Boolean(result.data?.skipped),
+      ssShipmentId: result.data?.ssShipmentId ?? null,
+      message: result.data?.message ?? result.data?.reason ?? null,
+      meaning: result.data?.meaning ?? result.data?.reason ?? null,
+    };
+  }
+  const message = result.message || 'Push failed.';
+  return {
+    orderId,
+    ok: false,
+    skipped: false,
+    ssShipmentId: null,
+    message,
+    meaning: `${message} The order was not created in ShipStation. Fix the error and try again.`,
+  };
+}
+
 export async function handleSync({ request, env, path, method }) {
   if (!path.startsWith('/sync')) return null;
   const db = requireEnv({ env, key: 'SHIPSTATION_DB' });
@@ -42,6 +65,13 @@ export async function handleSync({ request, env, path, method }) {
       .slice(0, 100);
     const maps = await mapsForOrders({ db, connectionId: row.id, orderIds: ids });
     return ok({ data: { maps } });
+  }
+
+  if (method === 'GET' && path === '/sync/activity') {
+    const org = requireOrganizationId(url);
+    if (org.error) return org.error;
+    const events = await listActivity({ db, organizationId: org.organizationId });
+    return ok({ data: { events } });
   }
 
   if (method === 'POST' && path === '/sync/push') {
@@ -70,14 +100,22 @@ export async function handleSync({ request, env, path, method }) {
     }
     const results = [];
     for (const orderId of orderIds) {
-      const result = await pushOrder({ env, db, organizationId, orderId });
-      results.push(
-        result.ok
-          ? { orderId, ok: true, ...result.data }
-          : { orderId, ok: false, message: result.message },
-      );
+      const result = await pushOrder({
+        env,
+        db,
+        organizationId,
+        orderId,
+        actor: 'user',
+        recordActivity: true,
+      });
+      results.push(pushResultRow(orderId, result));
     }
-    return ok({ data: { results } });
+    const summary = {
+      pushed: results.filter((row) => row.ok && !row.skipped).length,
+      skipped: results.filter((row) => row.ok && row.skipped).length,
+      failed: results.filter((row) => !row.ok).length,
+    };
+    return ok({ data: { results, summary } });
   }
 
   if (method === 'POST' && path === '/sync/poll') {

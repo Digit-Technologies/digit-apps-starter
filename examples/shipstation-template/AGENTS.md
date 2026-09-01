@@ -28,6 +28,8 @@ MCP config or the frontend.
 - Declare webhook paths in `manifest.json`; verify inbound bodies before acting.
 - Add D1 changes as a new migration file.
 - Update `SPEC.md` with verbatim prompts.
+- Follow [error-handling.md](.agents/skills/extend-shipstation-app/reference/error-handling.md)
+  (activity log, outcome + meaning, no silent skips).
 
 ## Do not
 

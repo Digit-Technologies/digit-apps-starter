@@ -8,6 +8,7 @@ Checklists only. Look up shapes on Digit MCP / ShipStation docs MCP.
 2. Add a helper in `src/backend/shipstation.js` using `ssFetch`.
 3. Decrypt the key only inside the Worker (`liveApiKey` in `sync.js`).
 4. Expose a `/proxy/backend` route; call it with `useBackendQuery` / `useBackendMutation`.
+5. Parse failures through `ssFetch` (upstream `errors[]`). `appendActivity`. UI: Alert with meaning + refetch `/sync/activity`.
 
 ## New Digit write
 
@@ -15,6 +16,7 @@ Checklists only. Look up shapes on Digit MCP / ShipStation docs MCP.
 2. `appPermissions` → add `key`s to `manifest.json` (and the Digit API token used as `API_TOKEN_DIGIT`).
 3. Frontend: `useDigitApiQuery` / `useDigitApiMutation`. Worker: `digitGraphql.js`.
 4. Pair hook `error` with `AppErrorAlert`.
+5. `appendActivity` on Worker writes; show outcome + meaning in the UI ([error-handling.md](error-handling.md)).
 
 ## SKU mapping (CS-04)
 
@@ -45,13 +47,17 @@ Scan: Digit `pickItem` + item `scanCodeSerialNumber` in a clone UI — not this 
 1. Confirm event name and RSA-SHA256 headers on docs MCP.
 2. Add to `WEBHOOK_EVENTS` in `connection.js`; disconnect must `deleteWebhook`.
 3. Handle on path `shipstation`; verify raw bytes → `digitJobs.submit` → 200.
+4. `appendActivity` after the job (ids + outcome only).
 
 ## New D1 table or column
 
 1. Add `src/backend/migrations/0003_….sql` (never edit applied files).
 2. Never select `api_key_encrypted` into JSON.
+3. In scheduled or batch paths, reuse data you already listed (`pushOrder({ preloaded })`)
+   and cap work per run. A Digit query per row trips the API rate limit (429).
 
 ## New UI screen
 
-1. MUI + `DigitThemeProvider`. Downloads via `DigitHost.download` only.
+1. MUI + `DigitThemeProvider`. Downloads via `DigitHost.download` only (surface throws).
 2. Paginate tables. No Phase 2 rate/label/fee toggles unless that phase is in scope.
+3. Outcome Alerts and activity refetch after mutations.

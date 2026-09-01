@@ -2,8 +2,9 @@
  * ShipStation template Worker.
  *
  * D1 binding: SHIPSTATION_DB
- * Secrets/config: pasted in the app (D1 app_config). Optional env overrides:
- * API_TOKEN_DIGIT, PUBLIC_WEBHOOK_URL, APP_SECRET_ENCRYPTION_KEY, FAIRE_API_KEY
+ * Config: API_TOKEN_DIGIT and PUBLIC_WEBHOOK_URL are managed in Digit's built-in App
+ * Secrets UI; D1 app_config is a read-only fallback for older saves.
+ * Other optional env: APP_SECRET_ENCRYPTION_KEY, FAIRE_API_KEY
  * Digit GraphQL URL is always https://api.digit-software.com/graphql.
  */
 
@@ -28,7 +29,7 @@ export default createHandler({
     const path = backendPath(request);
     const { method } = request;
 
-    const setupResponse = await handleSetup({ env, path, method, request });
+    const setupResponse = await handleSetup({ env, path, method });
     if (setupResponse) return setupResponse;
 
     const syncResponse = await handleSync({ request, env, path, method });

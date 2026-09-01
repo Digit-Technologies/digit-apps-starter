@@ -36,8 +36,17 @@ Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
 - New ShipStation HTTP: look up the operation on ShipStation docs MCP, then add a
   function next to the existing helpers in `shipstation.js` (all go through `ssFetch`).
   Thin path map (not schemas): [reference/shipstation-v2-map.md](reference/shipstation-v2-map.md).
+- All credentials are **organization-level Digit app secrets** (`SHIPSTATION_API_KEY`,
+  `API_TOKEN_DIGIT`, `PUBLIC_WEBHOOK_URL`), read via `env`. Never add a UI field that
+  accepts a secret, and never write one to D1 — the published app is a shared template, so
+  nothing may leak between organizations.
 - Never log or return `apiKey`, `api_key`, or `api_key_encrypted`. Do not `SELECT` the
   encrypted key into JSON responses.
+- Operator mutations must show **outcome + meaning** (MUI `Alert`, not `window.alert`).
+  Inspect per-item results on HTTP 200 batch routes (`/sync/push`); never treat
+  `skipped: true` as a silent success; never clear selection or close dialogs until the
+  result is shown. Persist troubleshooting events with `appendActivity`.
+  Details: [reference/error-handling.md](reference/error-handling.md).
 - Inbound webhooks are **public**. Keep using the declared path `shipstation` (or add
   another slug in `manifest.json`, max 10). Verify over **raw** body bytes before acting;
   return 2xx within ~10s; enqueue heavier work with `digitJobs`. Do not log webhook
@@ -56,7 +65,8 @@ Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
 
 [reference/architecture.md](reference/architecture.md) ·
 [reference/backend-routes.md](reference/backend-routes.md) ·
-[reference/d1.md](reference/d1.md)
+[reference/d1.md](reference/d1.md) ·
+[reference/error-handling.md](reference/error-handling.md)
 
 Recipes: [reference/extension-recipes.md](reference/extension-recipes.md).
 
@@ -70,8 +80,11 @@ ShipStation extend:
 - [ ] create-digit-app stack / iframe / pack rules
 - [ ] Digit MCP connected; schema + appPermissions for any new Digit call
 - [ ] ShipStation docs MCP connected; lookup before new ssFetch paths
-- [ ] Secrets are pasted in the app (`API_TOKEN_DIGIT`); values never returned in JSON or logs
+- [ ] `API_TOKEN_DIGIT` / `PUBLIC_WEBHOOK_URL` are managed only in Digit's built-in
+      App Secrets UI; the app never accepts, returns, or logs their values
 - [ ] New D1 shape = new migration file, not an edit of 0001_init.sql
 - [ ] Webhook: declared path, verify, 200 fast, jobs for slow work
+- [ ] New sync/webhook/poll paths: `appendActivity` (no secrets/PII); UI Alert + activity refetch
+- [ ] `ssFetch` / `digitGraphql` errors include upstream messages (not HTTP-only)
 - [ ] SPEC.md prompts updated
 ```

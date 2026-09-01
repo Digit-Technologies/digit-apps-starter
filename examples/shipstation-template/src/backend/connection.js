@@ -2,17 +2,20 @@
  * ShipStation connection, org settings, and carrier catalog (D1).
  * Returns a Response when the request matches; otherwise null.
  *
- * api_key_encrypted is never selected into JSON responses.
+ * The ShipStation API key is an org-level Digit app secret, never pasted into this app and
+ * never selected into JSON responses. `api_key_encrypted` only holds legacy pasted keys.
  */
 
 import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-common';
 import { err, ok, requireEnv } from '@digit/lib-backend';
 
-import { decryptSecret, encryptSecret } from './crypto.js';
+import { decryptSecret } from './crypto.js';
 import { FULFILLMENT_METHODS, PUSH_WHENS, SYNC_MODES } from './eligibility.js';
+import { appendActivity } from './activity.js';
 import {
   ensureEncryptionKeyBytes,
   loadPublicWebhookUrl,
+  loadShipStationApiKey,
 } from './runtimeConfig.js';
 import {
   createWebhook,
@@ -266,13 +269,22 @@ export async function handleConnection({ request, env, path, method }) {
       value: request.json(),
       fields: {
         organizationId: (obj) => requiredString({ obj, key: 'organizationId' }),
-        apiKey: (obj) => requiredString({ obj, key: 'apiKey', trim: true }),
       },
     });
     if (!parsed.ok) {
       return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
     }
-    const { organizationId, apiKey } = parsed.value;
+    const { organizationId } = parsed.value;
+
+    const apiKey = await loadShipStationApiKey({ env, db });
+    if (!apiKey) {
+      return err({
+        code: AppErrorCode.MISSING_CONFIG,
+        message:
+          'No ShipStation API key is configured. Add SHIPSTATION_API_KEY to this app’s secrets in Digit, then try again.',
+        status: 503,
+      });
+    }
 
     const existing = await liveConnection({ db, organizationId });
     if (existing) {
@@ -292,18 +304,16 @@ export async function handleConnection({ request, env, path, method }) {
       });
     }
 
-    const keyBytes = await encryptionKeyBytes({ env, db });
-    const apiKeyEncrypted = await encryptSecret({ plaintext: apiKey, keyBytes });
-
     let inserted;
     try {
+      // The key itself lives in Digit app secrets; this column stays empty for new rows.
       inserted = await db
         .prepare(
           `INSERT INTO shipstation_connection (organization_id, api_key_encrypted, deleted)
-           VALUES (?, ?, 0)
+           VALUES (?, '', 0)
            RETURNING id, organization_id, created_at, updated_at`,
         )
-        .bind(organizationId, apiKeyEncrypted)
+        .bind(organizationId)
         .first();
     } catch {
       return err({
@@ -322,6 +332,15 @@ export async function handleConnection({ request, env, path, method }) {
     await registerWebhooks({ db, env, connectionId: inserted.id, apiKey });
 
     const count = await carrierCount({ db, connectionId: inserted.id });
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'user',
+      action: 'connect',
+      status: 'success',
+      message: `Connected ShipStation and synced ${count} carrier(s). Print labels in ShipStation after pushing orders from the queue.`,
+      detail: { carrierCount: count },
+    });
     return ok({ data: publicConnection(inserted, { carrierCount: count }), status: 201 });
   }
 
@@ -390,6 +409,14 @@ export async function handleConnection({ request, env, path, method }) {
       )
       .bind(organizationId, defaultFulfillmentMethod, syncMode, pushWhen, laneTagId)
       .run();
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'user',
+      action: 'settings',
+      status: 'success',
+      message: `Saved settings (sync ${syncMode}, push when ${pushWhen}, fulfillment ${defaultFulfillmentMethod}).`,
+    });
     return ok({
       data: await loadOrgSettings({ db, organizationId }),
     });
@@ -415,14 +442,16 @@ export async function handleConnection({ request, env, path, method }) {
       });
     }
 
-    let apiKey = null;
-    try {
-      apiKey = await decryptSecret({
-        stored: row.api_key_encrypted,
-        keyBytes: await encryptionKeyBytes({ env, db }),
-      });
-    } catch {
-      apiKey = null;
+    let apiKey = await loadShipStationApiKey({ env, db });
+    if (!apiKey && row.api_key_encrypted) {
+      try {
+        apiKey = await decryptSecret({
+          stored: row.api_key_encrypted,
+          keyBytes: await encryptionKeyBytes({ env, db }),
+        });
+      } catch {
+        apiKey = null;
+      }
     }
 
     if (apiKey) {
@@ -459,6 +488,16 @@ export async function handleConnection({ request, env, path, method }) {
       )
       .bind(row.id)
       .run();
+
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'user',
+      action: 'disconnect',
+      status: 'success',
+      message:
+        'Disconnected ShipStation. Order maps and activity history remain. Reconnect to push again.',
+    });
 
     return ok({ data: { connected: false, organizationId } });
   }

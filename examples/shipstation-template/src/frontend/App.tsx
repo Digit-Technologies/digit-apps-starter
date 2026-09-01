@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -8,14 +9,9 @@ import Dialog from '@mui/material/Dialog';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
-import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
 import InputLabel from '@mui/material/InputLabel';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemIcon from '@mui/material/ListItemIcon';
-import ListItemText from '@mui/material/ListItemText';
 import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
@@ -24,7 +20,6 @@ import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
@@ -36,6 +31,7 @@ import {
   useDigitApiQuery,
 } from '@digit/lib-frontend';
 
+import FeatureStatus from './FeatureStatus';
 import FulfillmentQueue from './FulfillmentQueue';
 import SetupNeeded from './SetupNeeded';
 import type { SetupData } from './setupTypes';
@@ -55,66 +51,6 @@ const BOOTSTRAP_QUERY = `
 `;
 
 const ADMIN_PERMISSION = 'UPDATE_ORGANIZATION';
-
-const OUT_OF_THE_BOX = [
-  {
-    title: 'Pick and pack in Digit',
-    detail: 'Operators pick and pack in Digit, and can download sales-order, pick-list, and packing-slip PDFs.',
-  },
-  {
-    title: 'Push orders to ShipStation',
-    detail:
-      'Eligible sales orders become ShipStation shipments. Push when fully packed, or as soon as inventory can fill the order.',
-  },
-  {
-    title: 'Print labels in ShipStation',
-    detail: 'Buy and print labels in ShipStation. This app does not rate-shop or purchase labels inside Digit.',
-  },
-  {
-    title: 'Write tracking back to Digit',
-    detail:
-      'When ShipStation creates a label, tracking and carrier land on the Digit shipment so sales channels can be notified.',
-  },
-  {
-    title: 'Hold orders that should not ship yet',
-    detail:
-      'Orders without available inventory are skipped. Optional tag filter and Manual fulfillment keep LTL or other 3PL orders in Digit.',
-  },
-  {
-    title: 'Inbound ShipStation orders',
-    detail:
-      'Switch sync mode to import ShipStation shipments as Digit sales orders for drop-ship or ShipStation-first workflows.',
-  },
-  {
-    title: 'Fulfillment queue',
-    detail: 'See sync status per order, push or retry a batch, and download the Digit sales-order PDF.',
-  },
-] as const;
-
-function OutOfTheBox() {
-  return (
-    <Stack spacing={1}>
-      <Typography variant="subtitle1" component="h2">
-        Out of the box
-      </Typography>
-      <List disablePadding>
-        {OUT_OF_THE_BOX.map((item) => (
-          <ListItem key={item.title} alignItems="flex-start" disableGutters sx={{ py: 0.75 }}>
-            <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-              <CheckCircleOutlineIcon color="primary" fontSize="small" />
-            </ListItemIcon>
-            <ListItemText
-              primary={item.title}
-              secondary={item.detail}
-              primaryTypographyProps={{ variant: 'body1', component: 'p' }}
-              secondaryTypographyProps={{ variant: 'body2' }}
-            />
-          </ListItem>
-        ))}
-      </List>
-    </Stack>
-  );
-}
 
 const SETTING_HINTS = {
   defaultFulfillmentMethod:
@@ -204,9 +140,12 @@ function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
 
 export default function App() {
   const setupQuery = useBackendQuery<SetupData>({ path: '/setup' });
-  const setupReady = Boolean(setupQuery.data?.ready);
-  const setupBlocked =
-    !setupQuery.loading && !setupQuery.error && setupQuery.data != null && !setupQuery.data.ready;
+  const setupData = setupQuery.data;
+  const apiTokenPresent = Boolean(setupData?.apiTokenPresent);
+  const webhookUrlPresent = Boolean(setupData?.webhookUrlPresent);
+  const shipStationKeyPresent = Boolean(setupData?.shipStationKeyPresent);
+  const setupIncomplete = setupData != null && !setupData.ready;
+  const notPublished = setupData != null && !setupData.usable;
 
   const bootstrap = useDigitApiQuery<BootstrapData>({ query: BOOTSTRAP_QUERY });
   const organizationId = bootstrap.data?.organization?.id ?? null;
@@ -215,34 +154,39 @@ export default function App() {
     return key === ADMIN_PERMISSION || key === 'update:organization';
   });
 
+  const configLoaded = setupData != null && setupData.usable;
   const connectionQuery = useBackendQuery<ConnectionData>({
     path: `/connection?organizationId=${encodeURIComponent(organizationId ?? '')}`,
-    skip: !organizationId || !setupReady,
+    skip: !organizationId || !configLoaded,
   });
   const orgSettingsQuery = useBackendQuery<OrgSettingsData>({
     path: `/org-settings?organizationId=${encodeURIComponent(organizationId ?? '')}`,
-    skip: !organizationId || !setupReady,
+    skip: !organizationId || !configLoaded,
   });
   const connected = Boolean(connectionQuery.data?.connected);
 
   const [mutate, { error: mutationError, loading: mutating, reset: resetMutation }] =
-    useBackendMutation();
+    useBackendMutation<ConnectionData>();
 
-  const [apiKey, setApiKey] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
   const connect = async () => {
     if (!organizationId) return;
     resetMutation();
+    setSuccessNotice(null);
     const result = await mutate({
       path: '/connection',
       method: 'POST',
-      body: { organizationId, apiKey },
+      body: { organizationId },
     });
     if (!result.ok) return;
-    setApiKey('');
+    const carriers = result.data?.carrierCount ?? 0;
+    setSuccessNotice(
+      `Connected to ShipStation and synced ${carriers} carrier(s). Pick and pack stay in Digit; print labels in ShipStation after you push orders from the queue.`,
+    );
     await connectionQuery.refetch();
     await orgSettingsQuery.refetch();
   };
@@ -250,6 +194,7 @@ export default function App() {
   const openSettings = () => {
     if (!connectionQuery.data?.connected) return;
     resetMutation();
+    setSuccessNotice(null);
     setDraft(draftFromOrg(orgSettingsQuery.data));
     setSettingsOpen(true);
   };
@@ -270,6 +215,9 @@ export default function App() {
     });
     if (!orgResult.ok) return;
     setSettingsOpen(false);
+    setSuccessNotice(
+      'Settings saved. New pushes use these rules; orders already in ShipStation are unchanged.',
+    );
     await orgSettingsQuery.refetch();
   };
 
@@ -284,15 +232,17 @@ export default function App() {
     if (!result.ok) return;
     setDisconnectOpen(false);
     setSettingsOpen(false);
+    setSuccessNotice(
+      'Disconnected ShipStation. The fulfillment queue cannot push until you connect again. Order maps stay for audit.',
+    );
     await connectionQuery.refetch();
     await orgSettingsQuery.refetch();
   };
 
   const loading =
     setupQuery.loading ||
-    (!setupBlocked &&
-      (bootstrap.loading ||
-        (!!organizationId && setupReady && (connectionQuery.loading || orgSettingsQuery.loading))));
+    bootstrap.loading ||
+    (!!organizationId && configLoaded && (connectionQuery.loading || orgSettingsQuery.loading));
 
   return (
     <Box sx={{ minHeight: '100vh', p: 3 }}>
@@ -307,52 +257,44 @@ export default function App() {
                 ShipStation
               </Typography>
               <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-                {setupBlocked
-                  ? 'Paste the Digit API token and webhook URL below, then connect one ShipStation account.'
-                  : connected
-                    ? 'Pick and pack in Digit, then push orders so operators can print labels in ShipStation.'
-                    : 'Connect one ShipStation account to start. Pick and pack stay in Digit; labels stay in ShipStation.'}
+                {connected
+                  ? 'Pick and pack in Digit, then push orders so operators can print labels in ShipStation.'
+                  : 'Connect one ShipStation account to start. Pick and pack stay in Digit; labels stay in ShipStation.'}
               </Typography>
             </Stack>
-
-            {!connected ? (
-              <>
-                <Divider />
-                <OutOfTheBox />
-                <Divider />
-              </>
-            ) : null}
 
             {setupQuery.error && (
               <AppErrorAlert error={setupQuery.error} onRetry={() => void setupQuery.refetch()} />
             )}
-            {setupBlocked && setupQuery.data ? (
-              <SetupNeeded
-                items={setupQuery.data.items}
-                onSaved={() => setupQuery.refetch()}
-              />
-            ) : null}
-
-            {!setupBlocked && !setupQuery.error && bootstrap.error && (
+            {notPublished && (
+              <Alert severity="error">
+                This app is not fully published, so its backend has no database. Republish it, then
+                reload.
+              </Alert>
+            )}
+            {bootstrap.error && (
               <AppErrorAlert error={bootstrap.error} onRetry={() => void bootstrap.refetch()} />
             )}
-            {!setupBlocked && !setupQuery.error && connectionQuery.error && (
+            {connectionQuery.error && (
               <AppErrorAlert
                 error={connectionQuery.error}
                 onRetry={() => void connectionQuery.refetch()}
               />
             )}
-            {!setupBlocked && !setupQuery.error && orgSettingsQuery.error && (
+            {orgSettingsQuery.error && (
               <AppErrorAlert
                 error={orgSettingsQuery.error}
                 onRetry={() => void orgSettingsQuery.refetch()}
               />
             )}
-            {!setupBlocked && !setupQuery.error && mutationError && (
-              <AppErrorAlert error={mutationError} />
-            )}
+            {mutationError && <AppErrorAlert error={mutationError} />}
+            {successNotice ? (
+              <Alert severity="success" onClose={() => setSuccessNotice(null)}>
+                {successNotice}
+              </Alert>
+            ) : null}
 
-            {setupBlocked || setupQuery.error ? null : loading ? (
+            {notPublished || setupQuery.error ? null : loading ? (
               <Stack direction="row" spacing={1.5} alignItems="center">
                 <CircularProgress size={18} />
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -371,8 +313,9 @@ export default function App() {
                   sx={{ alignSelf: 'flex-start' }}
                 />
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Only org admins can connect or change ShipStation settings. You can still work
-                  the fulfillment queue when an account is connected.
+                  Org admins can connect and change ShipStation settings. App owners manage the
+                  app-level secrets in Digit. You can still work the fulfillment queue when an
+                  account is connected.
                 </Typography>
               </Stack>
             ) : connected ? (
@@ -397,6 +340,7 @@ export default function App() {
                     startIcon={<LinkOffIcon />}
                     onClick={() => {
                       resetMutation();
+                      setSuccessNotice(null);
                       setDisconnectOpen(true);
                     }}
                   >
@@ -404,40 +348,63 @@ export default function App() {
                   </Button>
                 </Stack>
               </Stack>
-            ) : (
-              <Stack
-                spacing={2}
-                component="form"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void connect();
-                }}
-              >
-                <TextField
-                  label="ShipStation V2 API key"
-                  type="password"
-                  autoComplete="off"
-                  value={apiKey}
-                  onChange={(event) => setApiKey(event.target.value)}
-                  fullWidth
-                  helperText="Paste a V2 key from ShipStation → Settings → API. It is validated live before it is saved."
-                />
+            ) : shipStationKeyPresent ? (
+              <Stack spacing={2}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  A ShipStation API key is configured for this organization. Connecting validates
+                  it against ShipStation, syncs the carrier catalog, and registers webhooks.
+                </Typography>
                 <Button
-                  type="submit"
                   variant="contained"
-                  disabled={!apiKey.trim() || mutating}
+                  onClick={() => void connect()}
+                  disabled={mutating}
                   sx={{ alignSelf: 'flex-start' }}
                 >
-                  {mutating ? 'Connecting…' : 'Connect'}
+                  {mutating ? 'Connecting…' : 'Connect ShipStation'}
                 </Button>
               </Stack>
+            ) : (
+              <Alert severity="warning">
+                No ShipStation API key is configured for this organization. Add
+                {' '}<strong>SHIPSTATION_API_KEY</strong> to this app’s secrets in Digit, then
+                reload and connect.
+              </Alert>
             )}
           </Stack>
         </Paper>
 
-        {!setupBlocked && connected && organizationId ? (
+        {setupIncomplete && setupData && !notPublished && isAdmin ? (
+          <Paper sx={{ p: { xs: 3, sm: 4 } }}>
+            <Stack spacing={2}>
+              <Typography variant="h2" component="h2">
+                Finish setup
+              </Typography>
+              <SetupNeeded items={setupData.items} />
+            </Stack>
+          </Paper>
+        ) : null}
+
+        {!notPublished && !setupQuery.error ? (
+          <Paper sx={{ p: { xs: 3, sm: 4 } }}>
+            <FeatureStatus
+              connected={connected}
+              apiTokenPresent={apiTokenPresent}
+              webhookUrlPresent={webhookUrlPresent}
+              shipStationKeyPresent={shipStationKeyPresent}
+            />
+          </Paper>
+        ) : null}
+
+        {connected && organizationId ? (
           <Paper sx={{ p: { xs: 2, sm: 3 } }}>
-            <FulfillmentQueue organizationId={organizationId} canPush />
+            <FulfillmentQueue
+              organizationId={organizationId}
+              canPush
+              orgSettings={orgSettingsQuery.data ?? null}
+              pushDisabledReason={
+                apiTokenPresent ? null : 'Add the Digit API token to push orders to ShipStation.'
+              }
+            />
           </Paper>
         ) : null}
       </Stack>

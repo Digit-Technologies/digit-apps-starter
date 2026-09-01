@@ -29,6 +29,40 @@ async function readJson(response) {
 }
 
 /**
+ * ShipStation V2 / ShipEngine error body: `{ request_id, errors: [{ error_code, message, field_name }] }`.
+ * Confirmed from docs.shipstation.com error guide. Do not include field_value (may be PII).
+ */
+function formatShipStationError(json, httpStatus) {
+  const errors = Array.isArray(json?.errors) ? json.errors : [];
+  const parts = errors
+    .map((entry) => {
+      if (!entry || typeof entry !== 'object') return '';
+      const code = typeof entry.error_code === 'string' && entry.error_code ? `[${entry.error_code}] ` : '';
+      const message = typeof entry.message === 'string' ? entry.message : '';
+      const field =
+        typeof entry.field_name === 'string' && entry.field_name ? ` (${entry.field_name})` : '';
+      return `${code}${message}${field}`.trim();
+    })
+    .filter(Boolean);
+  const requestId = typeof json?.request_id === 'string' && json.request_id ? json.request_id : null;
+  const base = parts.length
+    ? parts.join('; ')
+    : `ShipStation request failed (HTTP ${httpStatus}).`;
+  return requestId ? `${base} Request ${requestId}.` : base;
+}
+
+function shipStationErrorDetail(json, httpStatus) {
+  const errors = Array.isArray(json?.errors) ? json.errors : [];
+  return {
+    httpStatus,
+    requestId: typeof json?.request_id === 'string' ? json.request_id : null,
+    errorCodes: errors
+      .map((entry) => (typeof entry?.error_code === 'string' ? entry.error_code : null))
+      .filter(Boolean),
+  };
+}
+
+/**
  * @returns {Promise<
  *   | { ok: true, data: unknown }
  *   | { ok: false, code: string, message: string, status: number }
@@ -72,12 +106,15 @@ async function ssFetch({ apiKey, method, path, body, url: absoluteUrl }) {
     };
   }
 
+  const json = response.status === 204 ? null : await readJson(response);
+
   if (response.status === 401 || response.status === 403) {
     return {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
       message: INVALID_KEY_MESSAGE,
       status: 400,
+      detail: shipStationErrorDetail(json, response.status),
     };
   }
 
@@ -85,8 +122,9 @@ async function ssFetch({ apiKey, method, path, body, url: absoluteUrl }) {
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: `ShipStation request failed (HTTP ${response.status}).`,
+      message: formatShipStationError(json, response.status),
       status: 502,
+      detail: shipStationErrorDetail(json, response.status),
     };
   }
 
@@ -94,7 +132,7 @@ async function ssFetch({ apiKey, method, path, body, url: absoluteUrl }) {
     return { ok: true, data: null };
   }
 
-  return { ok: true, data: await readJson(response) };
+  return { ok: true, data: json };
 }
 
 export async function listCarriers({ apiKey }) {

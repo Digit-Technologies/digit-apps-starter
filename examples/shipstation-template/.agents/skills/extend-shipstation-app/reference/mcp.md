@@ -5,8 +5,9 @@ disconnected, **stop** and ask the user to connect it. Do not invent schema, per
 keys, or ShipStation request bodies.
 
 Do **not** put a ShipStation API key (or Digit token) in MCP config, `mcp.json`, or
-committed files. Runtime keys are pasted on the setup screen (`API_TOKEN_DIGIT`,
-`PUBLIC_WEBHOOK_URL`) and stored in D1.
+committed files. Each organization manages `SHIPSTATION_API_KEY`, `API_TOKEN_DIGIT`, and
+`PUBLIC_WEBHOOK_URL` in Digit's built-in App Secrets UI. There is no MCP tool for app env
+vars or secrets.
 
 ## Digit MCP
 

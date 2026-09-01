@@ -1,35 +1,71 @@
-const SYNC_MODES = new Set(['digit_to_ss', 'ss_to_digit']);
-const PUSH_WHENS = new Set(['fully_packed', 'inventory_available']);
-const FULFILLMENT_METHODS = new Set(['unspecified', 'shipstation', 'manual']);
+/**
+ * Keep in sync with src/backend/eligibility.js — the Worker cannot import this file.
+ */
 
-export { SYNC_MODES, PUSH_WHENS, FULFILLMENT_METHODS };
+export type OrgSettingsForEligibility = {
+  defaultFulfillmentMethod?: string | null;
+  syncMode?: string | null;
+  pushWhen?: string | null;
+  laneTagId?: string | null;
+};
 
-export function remainingToShip(line) {
+export type MapRowForEligibility = {
+  source?: string | null;
+  pushStatus?: string | null;
+};
+
+export type OrderForEligibility = {
+  packingStatus?: string | null;
+  tags?: { id: string }[] | null;
+  items?: { quantity: number; itemAvailability?: string | null; totalShippedQuantity?: number }[] | null;
+};
+
+export function remainingToShip(line: {
+  quantity?: number;
+  totalShippedQuantity?: number | null;
+}) {
   const quantity = Number(line?.quantity ?? 0);
   const shipped = Number(line?.totalShippedQuantity ?? 0);
   return Math.max(0, quantity - shipped);
 }
 
-export function inventoryEligible({ items }) {
+export function inventoryEligible({ items }: { items?: OrderForEligibility['items'] }) {
   const lines = (items ?? []).filter((line) => remainingToShip(line) > 0);
   if (lines.length === 0) return false;
   return lines.every((line) => line.itemAvailability === 'fully_available');
 }
 
-export function packingEligible({ packingStatus, pushWhen }) {
+export function packingEligible({
+  packingStatus,
+  pushWhen,
+}: {
+  packingStatus?: string | null;
+  pushWhen?: string | null;
+}) {
   if (pushWhen === 'inventory_available') return true;
   return packingStatus === 'fully_packed';
 }
 
-export function laneEligible({ tags, laneTagId }) {
+export function laneEligible({
+  tags,
+  laneTagId,
+}: {
+  tags?: { id: string }[] | null;
+  laneTagId?: string | null;
+}) {
   if (!laneTagId) return true;
   return (tags ?? []).some((tag) => tag?.id === laneTagId);
 }
 
-/**
- * Why an order is not pushed. Null means eligible.
- */
-export function ineligibilityReason({ order, orgSettings, mapRow }) {
+export function ineligibilityReason({
+  order,
+  orgSettings,
+  mapRow,
+}: {
+  order: OrderForEligibility;
+  orgSettings?: OrgSettingsForEligibility | null;
+  mapRow?: MapRowForEligibility | null;
+}): string | null {
   if ((orgSettings?.syncMode ?? 'digit_to_ss') === 'ss_to_digit') {
     return 'Inbound-only mode does not push Digit orders to ShipStation.';
   }
@@ -39,7 +75,7 @@ export function ineligibilityReason({ order, orgSettings, mapRow }) {
   if (mapRow?.source === 'shipstation') {
     return 'This order was imported from ShipStation and will not be re-pushed.';
   }
-  if (mapRow && ['pushed', 'shipped'].includes(mapRow.pushStatus)) {
+  if (mapRow && ['pushed', 'shipped'].includes(mapRow.pushStatus ?? '')) {
     return mapRow.pushStatus === 'shipped'
       ? 'Already shipped in ShipStation.'
       : 'Already pushed to ShipStation.';
@@ -56,8 +92,7 @@ export function ineligibilityReason({ order, orgSettings, mapRow }) {
   return null;
 }
 
-/** Keep in sync with src/frontend/eligibility.ts */
-export function skipNextStep(reason) {
+export function skipNextStep(reason: string | null | undefined) {
   if (!reason) return 'Fix the issue, then try again.';
   if (reason.includes('Inbound-only')) {
     return 'Switch sync mode to Digit to ShipStation in Settings if you need to push.';
@@ -84,4 +119,23 @@ export function skipNextStep(reason) {
     return 'Finish packing in Digit, then try again.';
   }
   return 'Fix the issue above, then try again.';
+}
+
+export function pushStatusLabel(value: string | null | undefined) {
+  switch (value) {
+    case 'pushed':
+      return 'In ShipStation — print label there';
+    case 'skipped':
+      return 'Not pushed';
+    case 'error':
+      return 'Push failed';
+    case 'shipped':
+      return 'Shipped — tracking written back';
+    case 'imported':
+      return 'Imported from ShipStation';
+    case 'pending':
+      return 'Pending';
+    default:
+      return value ? value.replace(/_/g, ' ') : 'Not pushed yet';
+  }
 }

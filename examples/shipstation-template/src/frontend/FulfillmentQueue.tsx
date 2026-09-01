@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
@@ -24,6 +25,14 @@ import {
   useBackendQuery,
   useDigitApiQuery,
 } from '@digit/lib-frontend';
+
+import ActivityLog, { useActivityQuery } from './ActivityLog';
+import {
+  ineligibilityReason,
+  pushStatusLabel,
+  skipNextStep,
+  type OrgSettingsForEligibility,
+} from './eligibility';
 
 const PAGE_SIZE = 10;
 
@@ -87,6 +96,7 @@ type QueueData = {
 type MapRow = {
   digitOrderId: string;
   ssShipmentId?: string | null;
+  source?: string | null;
   pushStatus?: string | null;
   lastError?: string | null;
   trackingNumber?: string | null;
@@ -95,6 +105,20 @@ type MapRow = {
 type MapsData = { maps: MapRow[] };
 
 type PdfData = { generateSalesOrderPdf?: { url: string } | null };
+
+type PushResult = {
+  orderId: string;
+  ok: boolean;
+  skipped: boolean;
+  ssShipmentId?: string | null;
+  message?: string | null;
+  meaning?: string | null;
+};
+
+type PushData = {
+  results: PushResult[];
+  summary: { pushed: number; skipped: number; failed: number };
+};
 
 function inventoryLabel(order: OrderNode) {
   const lines = (order.items ?? []).filter(
@@ -109,18 +133,32 @@ function statusChip(value: string | null | undefined) {
   return value.replace(/_/g, ' ');
 }
 
+function orderLabel(order: OrderNode) {
+  return order.documentNumber || order.orderNumber || order.id.slice(0, 8);
+}
+
 export default function FulfillmentQueue({
   organizationId,
   canPush,
+  pushDisabledReason = null,
+  orgSettings = null,
 }: {
   organizationId: string;
   canPush: boolean;
+  pushDisabledReason?: string | null;
+  orgSettings?: OrgSettingsForEligibility | null;
 }) {
   const [after, setAfter] = useState<string | null>(null);
   const [before, setBefore] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [pdfOrderId, setPdfOrderId] = useState<string | null>(null);
   const [copyHint, setCopyHint] = useState<string | null>(null);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const [pushNotice, setPushNotice] = useState<{
+    severity: 'success' | 'warning' | 'error';
+    title: string;
+    details: string[];
+  } | null>(null);
 
   const queue = useDigitApiQuery<QueueData>({
     query: QUEUE_QUERY,
@@ -139,6 +177,7 @@ export default function FulfillmentQueue({
     path: `/sync/orders?organizationId=${encodeURIComponent(organizationId)}&orderIds=${encodeURIComponent(orderIds)}`,
     skip: !organizationId || nodes.length === 0,
   });
+  const activityQuery = useActivityQuery(organizationId);
 
   const mapsById = useMemo(() => {
     const map = new Map<string, MapRow>();
@@ -146,7 +185,7 @@ export default function FulfillmentQueue({
     return map;
   }, [mapsQuery.data]);
 
-  const [mutate, { error: pushError, loading: pushing, reset }] = useBackendMutation();
+  const [mutate, { error: pushError, loading: pushing, reset }] = useBackendMutation<PushData>();
 
   const pdf = useDigitApiQuery<PdfData>({
     query: PDF_QUERY,
@@ -160,14 +199,20 @@ export default function FulfillmentQueue({
     void (async () => {
       try {
         const response = await fetch(url);
+        if (!response.ok) {
+          setPdfError(`Packing slip download failed (HTTP ${response.status}).`);
+          return;
+        }
         const buffer = await response.arrayBuffer();
         window.DigitHost?.download({
           filename: `packing-slip-${pdfOrderId}.pdf`,
           contentType: 'application/pdf',
           data: buffer,
         });
-      } catch {
-        /* host download throws with a reason */
+        setPdfError(null);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Packing slip download failed.';
+        setPdfError(message);
       } finally {
         setPdfOrderId(null);
       }
@@ -180,13 +225,33 @@ export default function FulfillmentQueue({
       .map(([id]) => id);
     if (orderIdsToPush.length === 0) return;
     reset();
-    await mutate({
+    setPushNotice(null);
+    const result = await mutate({
       path: '/sync/push',
       method: 'POST',
       body: { organizationId, orderIds: orderIdsToPush },
     });
-    setSelected({});
-    await Promise.all([queue.refetch(), mapsQuery.refetch()]);
+    if (!result.ok) return;
+    const summary = result.data?.summary ?? { pushed: 0, skipped: 0, failed: 0 };
+    const rows = result.data?.results ?? [];
+    const details = rows
+      .map((row) => row.meaning || row.message)
+      .filter((text): text is string => Boolean(text));
+    const severity =
+      summary.failed > 0 ? 'error' : summary.skipped > 0 && summary.pushed === 0 ? 'warning' : 'success';
+    setPushNotice({
+      severity,
+      title: `Push finished: ${summary.pushed} created in ShipStation, ${summary.skipped} skipped, ${summary.failed} failed.`,
+      details,
+    });
+    setSelected((current) => {
+      const next = { ...current };
+      for (const row of rows) {
+        if (row.ok && !row.skipped) next[row.orderId] = false;
+      }
+      return next;
+    });
+    await Promise.all([queue.refetch(), mapsQuery.refetch(), activityQuery.refetch()]);
   };
 
   const pageInfo = queue.data?.orders?.pageInfo;
@@ -198,15 +263,42 @@ export default function FulfillmentQueue({
           Fulfillment queue
         </Typography>
         {canPush ? (
-          <Button variant="contained" onClick={() => void pushSelected()} disabled={pushing}>
-            {pushing ? 'Pushing…' : 'Push selected'}
-          </Button>
+          <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
+            {pushDisabledReason ? (
+              <Typography variant="body2" sx={{ color: 'warning.main' }}>
+                {pushDisabledReason}
+              </Typography>
+            ) : null}
+            <Button
+              variant="contained"
+              onClick={() => void pushSelected()}
+              disabled={pushing || Boolean(pushDisabledReason)}
+            >
+              {pushing ? 'Pushing…' : 'Push selected'}
+            </Button>
+          </Stack>
         ) : null}
       </Stack>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-        Pick and pack in Digit, then push packed orders to ShipStation to print labels. Tracking
-        writes back when a label is purchased.
+        Pick and pack in Digit, then push packed orders to ShipStation to print labels. A successful
+        push creates a ShipStation shipment; the Digit sales order stays in this queue until it is
+        fulfilled. Tracking writes back when a label is purchased.
       </Typography>
+
+      {pushNotice ? (
+        <Alert severity={pushNotice.severity} onClose={() => setPushNotice(null)}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {pushNotice.title}
+          </Typography>
+          <Stack component="ul" sx={{ m: 0, pl: 2, mt: 0.5 }}>
+            {pushNotice.details.map((line, index) => (
+              <Typography key={`${index}-${line.slice(0, 40)}`} component="li" variant="body2">
+                {line}
+              </Typography>
+            ))}
+          </Stack>
+        </Alert>
+      ) : null}
 
       {queue.error && <AppErrorAlert error={queue.error} onRetry={() => void queue.refetch()} />}
       {mapsQuery.error && (
@@ -214,6 +306,11 @@ export default function FulfillmentQueue({
       )}
       {pushError && <AppErrorAlert error={pushError} />}
       {pdf.error && <AppErrorAlert error={pdf.error} />}
+      {pdfError ? (
+        <Alert severity="error" onClose={() => setPdfError(null)}>
+          {pdfError}
+        </Alert>
+      ) : null}
 
       <TableContainer>
         <Table size="small">
@@ -225,6 +322,7 @@ export default function FulfillmentQueue({
               <TableCell>Pick</TableCell>
               <TableCell>Pack</TableCell>
               <TableCell>Inventory</TableCell>
+              <TableCell>Ready</TableCell>
               <TableCell>ShipStation</TableCell>
               <TableCell>Tracking</TableCell>
               <TableCell>Status</TableCell>
@@ -234,7 +332,13 @@ export default function FulfillmentQueue({
           <TableBody>
             {nodes.map((order) => {
               const map = mapsById.get(order.id);
-              const label = order.documentNumber || order.orderNumber || order.id.slice(0, 8);
+              const label = orderLabel(order);
+              const blocked = ineligibilityReason({
+                order,
+                orgSettings,
+                mapRow: map ?? null,
+              });
+              const readyTitle = blocked ? `${blocked} ${skipNextStep(blocked)}` : 'Eligible to push.';
               return (
                 <TableRow key={order.id} hover>
                   {canPush ? (
@@ -252,6 +356,15 @@ export default function FulfillmentQueue({
                   <TableCell>{statusChip(order.pickingStatus)}</TableCell>
                   <TableCell>{statusChip(order.packingStatus)}</TableCell>
                   <TableCell>{inventoryLabel(order)}</TableCell>
+                  <TableCell>
+                    <Tooltip title={readyTitle}>
+                      <Chip
+                        size="small"
+                        color={blocked ? 'warning' : 'success'}
+                        label={blocked ? 'Blocked' : 'Ready'}
+                      />
+                    </Tooltip>
+                  </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5} alignItems="center">
                       <span>{map?.ssShipmentId ?? '—'}</span>
@@ -273,17 +386,31 @@ export default function FulfillmentQueue({
                   </TableCell>
                   <TableCell>{map?.trackingNumber ?? '—'}</TableCell>
                   <TableCell>
-                    {map?.lastError ? (
-                      <Chip size="small" color="warning" label={map.lastError} sx={{ maxWidth: 220 }} />
-                    ) : (
-                      statusChip(map?.pushStatus)
-                    )}
+                    <Stack spacing={0.5}>
+                      <Typography variant="body2">{pushStatusLabel(map?.pushStatus)}</Typography>
+                      {map?.lastError ? (
+                        <Tooltip title={map.lastError}>
+                          <Chip
+                            size="small"
+                            color="warning"
+                            label={map.lastError}
+                            sx={{
+                              maxWidth: 280,
+                              '& .MuiChip-label': { overflow: 'hidden', textOverflow: 'ellipsis' },
+                            }}
+                          />
+                        </Tooltip>
+                      ) : null}
+                    </Stack>
                   </TableCell>
                   <TableCell align="right">
                     <IconButton
                       size="small"
                       aria-label="Download packing slip"
-                      onClick={() => setPdfOrderId(order.id)}
+                      onClick={() => {
+                        setPdfError(null);
+                        setPdfOrderId(order.id);
+                      }}
                     >
                       <DownloadIcon fontSize="small" />
                     </IconButton>
@@ -293,7 +420,7 @@ export default function FulfillmentQueue({
             })}
             {nodes.length === 0 && !queue.loading ? (
               <TableRow>
-                <TableCell colSpan={canPush ? 10 : 9}>
+                <TableCell colSpan={canPush ? 11 : 10}>
                   <Typography variant="body2" sx={{ color: 'text.secondary', py: 2 }}>
                     No open sales orders.
                   </Typography>
@@ -327,6 +454,8 @@ export default function FulfillmentQueue({
       <Box sx={{ display: 'none' }} aria-hidden>
         {pdf.loading ? 'pdf' : null}
       </Box>
+
+      <ActivityLog query={activityQuery} />
     </Stack>
   );
 }

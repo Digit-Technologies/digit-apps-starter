@@ -10,8 +10,20 @@ import { loadApiTokenDigit, shipstationDb } from './runtimeConfig.js';
 
 const DEFAULT_API_URL_DIGIT = 'https://api.digit-software.com/graphql';
 
+const MAX_RETRIES = 2;
+
 export function digitApiUrl() {
   return DEFAULT_API_URL_DIGIT;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryAfterMs(response, attempt) {
+  const header = Number(response.headers.get('retry-after'));
+  if (Number.isFinite(header) && header > 0) return Math.min(header * 1000, 5000);
+  return 500 * 2 ** attempt;
 }
 
 /**
@@ -27,7 +39,7 @@ export async function digitGraphql({ env, query, variables }) {
     throw new HandlerError({
       code: AppErrorCode.MISSING_CONFIG,
       message:
-        'Paste a Digit API token on the setup screen (API_TOKEN_DIGIT) so this app can write tracking back from ShipStation.',
+        'Add the API_TOKEN_DIGIT app secret in Digit so this app can write tracking back from ShipStation.',
       status: 503,
     });
   }
@@ -35,23 +47,27 @@ export async function digitGraphql({ env, query, variables }) {
   const url = digitApiUrl();
 
   let response;
-  try {
-    response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ query, variables }),
-    });
-  } catch {
-    return {
-      ok: false,
-      code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'Could not reach the Digit API. Try again in a moment.',
-      status: 502,
-    };
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ query, variables }),
+      });
+    } catch {
+      return {
+        ok: false,
+        code: AppErrorCode.UPSTREAM_ERROR,
+        message: 'Could not reach the Digit API. Try again in a moment.',
+        status: 502,
+      };
+    }
+    if (response.status !== 429 || attempt >= MAX_RETRIES) break;
+    await sleep(retryAfterMs(response, attempt));
   }
 
   if (response.status === 401 || response.status === 403) {
@@ -59,8 +75,17 @@ export async function digitGraphql({ env, query, variables }) {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
       message:
-        'The Digit API token was rejected. Create a token in Digit → Settings → API Tokens with the same permissions as this app’s manifest, then paste it as API_TOKEN_DIGIT.',
+        'The Digit API token was rejected. Create a token in Digit → Settings → API Tokens with the same permissions as this app’s manifest, then set it as the API_TOKEN_DIGIT app secret.',
       status: 400,
+    };
+  }
+
+  if (response.status === 429) {
+    return {
+      ok: false,
+      code: AppErrorCode.UPSTREAM_ERROR,
+      message: 'Digit API rate limit reached. This run stopped early and will resume on the next sync.',
+      status: 429,
     };
   }
 
@@ -87,15 +112,18 @@ export async function digitGraphql({ env, query, variables }) {
 
   if (Array.isArray(payload?.errors) && payload.errors.length > 0) {
     const first = payload.errors[0];
-    const message =
+    const raw =
       typeof first?.message === 'string' && first.message
         ? first.message
         : 'Digit GraphQL request failed.';
+    const extCode =
+      first?.extensions && typeof first.extensions.code === 'string' ? first.extensions.code : null;
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message,
+      message: extCode ? `[${extCode}] ${raw}` : raw,
       status: 502,
+      detail: { graphqlCode: extCode },
     };
   }
 

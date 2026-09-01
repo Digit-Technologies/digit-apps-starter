@@ -17,6 +17,9 @@ Handler: `src/backend/webhooks.js`.
    If `__JOBS` is missing (local), run `processSsWebhook` inline.
 4. Return 200 within the delivery budget.
 
+After the job runs, `appendActivity` with event + ids only (no tracking, no payload).
+Invalid signature stays 401 with no activity row. See [error-handling.md](error-handling.md).
+
 `verifyWebhookSignature` (HMAC) is the wrong scheme for ShipStation V2.
 
 ## Outbound (register with ShipStation)
