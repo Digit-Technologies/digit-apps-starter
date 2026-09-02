@@ -47,7 +47,13 @@ export default function UnitsProducedTile({ values, unitSymbol }: UnitsProducedT
           </Typography>
         )}
       </Typography>
-      <Stack direction="row" spacing={0.5} alignItems="baseline" sx={{ mt: 0.5 }}>
+      <Stack
+        direction="row"
+        spacing={0.5}
+        sx={{
+          alignItems: "baseline",
+          mt: 0.5
+        }}>
         {delta !== null ? (
           <>
             <Typography variant="body2" sx={{ color: deltaColor, fontWeight: 600 }}>

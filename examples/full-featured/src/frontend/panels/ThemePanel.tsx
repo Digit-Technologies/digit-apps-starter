@@ -38,7 +38,9 @@ export default function ThemePanel() {
 
       <Stack spacing={1}>
         <Typography variant="overline">Buttons</Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={1} useFlexGap sx={{
+          flexWrap: "wrap"
+        }}>
           <Button variant="contained">Contained</Button>
           <Button variant="outlined">Outlined</Button>
           <Button variant="text">Text</Button>

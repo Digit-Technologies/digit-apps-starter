@@ -20,14 +20,13 @@ Depend on it from an app:
   "dependencies": {
     "@digit/lib-frontend": "file:../../packages/lib-frontend",
     "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@mui/material": "^7.3.9",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.3.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   }
 }
 ```
-
 Use `file:../packages/lib-frontend` when the app sits at the repo root (not under
 `examples/`).
 

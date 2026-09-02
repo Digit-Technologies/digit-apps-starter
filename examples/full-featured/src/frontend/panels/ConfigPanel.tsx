@@ -30,7 +30,9 @@ export default function ConfigPanel() {
       </Button>
 
       {loading && (
-        <Stack direction="row" spacing={1.5} alignItems="center">
+        <Stack direction="row" spacing={1.5} sx={{
+          alignItems: "center"
+        }}>
           <CircularProgress size={18} />
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Loading greeting…
