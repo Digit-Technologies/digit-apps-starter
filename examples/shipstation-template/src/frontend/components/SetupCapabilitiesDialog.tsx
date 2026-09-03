@@ -37,7 +37,8 @@ export default function SetupCapabilitiesDialog({
       <DialogTitle id="setup-capabilities-title">Setup and capabilities</DialogTitle>
       <DialogContent dividers sx={{ px: { xs: 2, sm: 3 }, py: 3 }}>
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-          Check which app secrets are configured and what features are ready to use.
+          Configure Digit app secrets, then see what works for the active ShipStation mode (V1 or
+          V2 — never both).
         </Typography>
         <Stack spacing={3}>
           {showSetup ? (

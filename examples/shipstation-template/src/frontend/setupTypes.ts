@@ -35,6 +35,9 @@ export type SetupData = {
   apiTokenPresent: boolean;
   webhookUrlPresent: boolean;
   shipStationKeyPresent: boolean;
+  shipStationSecretPresent: boolean;
+  shipStationWebhookTokenPresent: boolean;
+  shipStationApiMode: 'v1' | 'v2' | 'missing';
   anyChannelConfigured: boolean;
   items: SetupItem[];
   channels: ChannelSetupEntry[];

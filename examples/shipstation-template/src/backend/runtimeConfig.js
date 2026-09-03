@@ -1,7 +1,8 @@
 /**
- * App config. API_TOKEN_DIGIT and PUBLIC_WEBHOOK_URL are managed in Digit's built-in
- * App Secrets UI and reach the Worker as `env.KEY`. The D1 `app_config` rows are a
- * read-only fallback for setups saved before that switch.
+ * App config. ShipStation and Digit secrets are managed in Digit's built-in App Secrets
+ * UI and reach the Worker as `env.KEY` only — do not fall back to D1 `app_config` for
+ * those keys (legacy rows are deleted by migration 0007). `app_config` still holds the
+ * generated ENCRYPTION_KEY used to decrypt legacy connection ciphertext.
  * Do not use a DIGIT_ prefix — Digit reserves it for platform bindings.
  */
 
@@ -14,6 +15,8 @@ export const CONFIG = {
   apiTokenDigit: 'API_TOKEN_DIGIT',
   publicWebhookUrl: 'PUBLIC_WEBHOOK_URL',
   shipStationApiKey: 'SHIPSTATION_API_KEY',
+  shipStationApiSecret: 'SHIPSTATION_API_SECRET',
+  shipStationWebhookToken: 'SHIPSTATION_WEBHOOK_TOKEN',
   faireApiKey: 'FAIRE_API_KEY',
 };
 
@@ -65,15 +68,21 @@ export async function ensureEncryptionKeyBytes({ env, db }) {
 
 /**
  * `source` tells the setup screen where a live value came from: `appSecret` is a Digit
- * app secret/env var injected into the Worker, `appDatabase` is a legacy D1 row.
+ * app secret/env var injected into the Worker, `appDatabase` is a legacy D1 row (only
+ * when `dbFallback` is true — channel secrets may still use it; core setup secrets do not).
  *
  * @returns {Promise<{ value: string | null, source: 'appSecret' | 'appDatabase' | null }>}
  */
-async function readStored({ env, db, key, envKeys, encrypted }) {
+async function readStored({ env, db, key, envKeys, encrypted, dbFallback = true }) {
   for (const envKey of envKeys) {
     const fromEnv = optionalEnv({ env, key: envKey });
-    if (fromEnv) return { value: fromEnv, source: 'appSecret' };
+    // Only non-empty strings count — ignore platform object bindings and blank secrets.
+    if (typeof fromEnv === 'string') {
+      const trimmed = fromEnv.trim();
+      if (trimmed) return { value: trimmed, source: 'appSecret' };
+    }
   }
+  if (!dbFallback) return { value: null, source: null };
   const row = await configRow({ db, key });
   if (!row?.value) return { value: null, source: null };
   if (encrypted || row.encrypted) {
@@ -95,22 +104,41 @@ async function loadStored(args) {
   return (await readStored(args)).value;
 }
 
+/** Core setup secrets: Digit App Secrets only (no D1 ghost after removal). */
 const API_TOKEN_DIGIT_SOURCE = {
   key: CONFIG.apiTokenDigit,
-  envKeys: [CONFIG.apiTokenDigit, 'DIGIT_API_TOKEN'],
+  // Do not also read DIGIT_API_TOKEN — DIGIT_ is reserved for platform bindings.
+  envKeys: [CONFIG.apiTokenDigit],
   encrypted: true,
+  dbFallback: false,
 };
 
 const PUBLIC_WEBHOOK_URL_SOURCE = {
   key: CONFIG.publicWebhookUrl,
   envKeys: [CONFIG.publicWebhookUrl],
   encrypted: false,
+  dbFallback: false,
 };
 
 const SHIPSTATION_API_KEY_SOURCE = {
   key: CONFIG.shipStationApiKey,
   envKeys: [CONFIG.shipStationApiKey],
   encrypted: true,
+  dbFallback: false,
+};
+
+const SHIPSTATION_API_SECRET_SOURCE = {
+  key: CONFIG.shipStationApiSecret,
+  envKeys: [CONFIG.shipStationApiSecret],
+  encrypted: true,
+  dbFallback: false,
+};
+
+const SHIPSTATION_WEBHOOK_TOKEN_SOURCE = {
+  key: CONFIG.shipStationWebhookToken,
+  envKeys: [CONFIG.shipStationWebhookToken],
+  encrypted: true,
+  dbFallback: false,
 };
 
 export async function loadApiTokenDigit({ env, db }) {
@@ -135,6 +163,36 @@ export async function loadShipStationApiKey({ env, db }) {
 
 export async function readShipStationApiKey({ env, db }) {
   return readStored({ env, db, ...SHIPSTATION_API_KEY_SOURCE });
+}
+
+export async function loadShipStationApiSecret({ env, db }) {
+  return loadStored({ env, db, ...SHIPSTATION_API_SECRET_SOURCE });
+}
+
+export async function readShipStationApiSecret({ env, db }) {
+  return readStored({ env, db, ...SHIPSTATION_API_SECRET_SOURCE });
+}
+
+export async function loadShipStationWebhookToken({ env, db }) {
+  return loadStored({ env, db, ...SHIPSTATION_WEBHOOK_TOKEN_SOURCE });
+}
+
+export async function readShipStationWebhookToken({ env, db }) {
+  return readStored({ env, db, ...SHIPSTATION_WEBHOOK_TOKEN_SOURCE });
+}
+
+/**
+ * Key alone → V2. Key + secret → V1. Missing key → null.
+ * @returns {Promise<null | { apiVersion: 'v1' | 'v2', apiKey: string, apiSecret?: string }>}
+ */
+export async function resolveShipStationCredentials({ env, db }) {
+  const apiKey = await loadShipStationApiKey({ env, db });
+  if (!apiKey) return null;
+  const apiSecret = await loadShipStationApiSecret({ env, db });
+  if (apiSecret) {
+    return { apiVersion: 'v1', apiKey, apiSecret };
+  }
+  return { apiVersion: 'v2', apiKey };
 }
 
 export async function loadFaireApiKey({ env, db }) {

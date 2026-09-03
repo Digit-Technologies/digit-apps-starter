@@ -1,11 +1,12 @@
 /**
- * Inbound ShipStation V2 webhooks. Verify RSA-SHA256 over raw bytes, then enqueue.
+ * Inbound ShipStation webhooks (V2 RSA-SHA256 or V1 token query).
  * Do not log `body` (addresses / tracking).
  */
 
-import { requireEnv } from '@digit/lib-backend';
+import { optionalEnv, requireEnv } from '@digit/lib-backend';
 
 import { processSsWebhook } from '../jobs.js';
+import { loadShipStationWebhookToken, shipstationDb } from '../runtimeConfig.js';
 import { createWebhookHandler, parseJsonBody } from './pipeline.js';
 
 const JWKS_URLS = [
@@ -17,6 +18,25 @@ let jwksCache = { keys: [], fetchedAt: 0 };
 
 function header(headers, name) {
   return headers[name] || headers[name.toLowerCase()] || '';
+}
+
+function timingSafeEqualString(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+function tokenFromQuery(query) {
+  if (!query) return '';
+  try {
+    const params = new URLSearchParams(query.startsWith('?') ? query.slice(1) : query);
+    return params.get('token') || '';
+  } catch {
+    return '';
+  }
 }
 
 async function loadJwks() {
@@ -61,7 +81,7 @@ async function verifyWithJwk({ jwk, signatureB64, timestamp, body }) {
     const signed = new TextEncoder().encode(`${timestamp}.${rawBody}`);
     const binary = atob(signatureB64);
     const signature = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) signature[i] = binary.charCodeAt(i);
+    for (let i = 0; i < signature.length; i += 1) signature[i] = binary.charCodeAt(i);
     return crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, signature, signed);
   } catch {
     return false;
@@ -89,17 +109,46 @@ async function verifyRsaSha256({ headers, body }) {
   return verifyWithJwk({ jwk, signatureB64, timestamp, body });
 }
 
+async function verifyV1Token({ env, query }) {
+  const db = shipstationDb({ env }) || optionalEnv({ env, key: 'SHIPSTATION_DB' }) || null;
+  const expected = await loadShipStationWebhookToken({ env, db });
+  if (!expected) return false;
+  const provided = tokenFromQuery(query || '');
+  return timingSafeEqualString(provided, expected);
+}
+
+async function verifyShipStationWebhook({ headers, body, env, query }) {
+  const hasRsa =
+    Boolean(header(headers, 'x-shipengine-rsa-sha256-key-id')) &&
+    Boolean(header(headers, 'x-shipengine-rsa-sha256-signature')) &&
+    Boolean(header(headers, 'x-shipengine-timestamp'));
+  if (hasRsa) {
+    return verifyRsaSha256({ headers, body });
+  }
+  return verifyV1Token({ env, query });
+}
+
 function extractIds(payload) {
   const record = payload?.data || payload || {};
+  const orders = Array.isArray(payload?.orders)
+    ? payload.orders
+    : Array.isArray(record?.orders)
+      ? record.orders
+      : null;
+  const firstOrder = orders?.[0];
+  const rawShipmentId =
+    record.shipment_id ||
+    record.shipmentId ||
+    payload?.shipment_id ||
+    firstOrder?.orderId ||
+    record.orderId ||
+    null;
+  const rawLabelId = record.label_id || record.labelId || payload?.label_id || null;
   return {
-    event: String(payload?.event || payload?.resource_type || record.event || ''),
+    event: String(payload?.event || payload?.resource_type || record.event || record.resource_type || ''),
     resourceUrl: payload?.resource_url || payload?.resourceUrl || record.resource_url || null,
-    ssShipmentId:
-      record.shipment_id ||
-      record.shipmentId ||
-      payload?.shipment_id ||
-      null,
-    labelId: record.label_id || record.labelId || payload?.label_id || null,
+    ssShipmentId: rawShipmentId != null ? String(rawShipmentId) : null,
+    labelId: rawLabelId != null ? String(rawLabelId) : null,
   };
 }
 
@@ -114,7 +163,7 @@ async function organizationIdForWebhook({ env }) {
 }
 
 export const shipstationWebhook = createWebhookHandler({
-  verify: verifyRsaSha256,
+  verify: verifyShipStationWebhook,
   parsePayload: parseJsonBody,
   extractIds,
   jobName: 'process-ss-webhook',

@@ -316,25 +316,23 @@ export default function FulfillmentQueue({
         borderColor: 'divider',
       }}
     >
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: selectedCount === 0 && pushDisabledReason ? 'warning.main' : 'text.secondary',
+        }}
+      >
         {selectedCount > 0
           ? `${selectedCount} order${selectedCount === 1 ? '' : 's'} selected`
           : pushDisabledReason ?? 'Select orders to push'}
       </Typography>
-      <Stack direction="row" spacing={1} alignItems="center">
-        {pushDisabledReason && selectedCount === 0 ? (
-          <Typography variant="body2" sx={{ color: 'warning.main', display: { xs: 'none', sm: 'block' } }}>
-            {pushDisabledReason}
-          </Typography>
-        ) : null}
-        <Button
-          variant="contained"
-          onClick={() => void pushSelected()}
-          disabled={pushing || Boolean(pushDisabledReason) || selectedCount === 0}
-        >
-          {pushing ? 'Pushing…' : 'Push selected'}
-        </Button>
-      </Stack>
+      <Button
+        variant="contained"
+        onClick={() => void pushSelected()}
+        disabled={pushing || Boolean(pushDisabledReason) || selectedCount === 0}
+      >
+        {pushing ? 'Pushing…' : 'Push selected'}
+      </Button>
     </Stack>
   ) : null;
 

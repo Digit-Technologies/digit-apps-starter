@@ -2,8 +2,8 @@
  * ShipStation connection, org settings, and carrier catalog (D1).
  * Returns a Response when the request matches; otherwise null.
  *
- * The ShipStation API key is an org-level Digit app secret, never pasted into this app and
- * never selected into JSON responses. `api_key_encrypted` only holds legacy pasted keys.
+ * Credentials are org-level Digit app secrets (never pasted into this app, never
+ * selected into JSON). `api_key_encrypted` only holds legacy pasted keys (V2).
  */
 
 import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-common';
@@ -16,6 +16,8 @@ import {
   ensureEncryptionKeyBytes,
   loadPublicWebhookUrl,
   loadShipStationApiKey,
+  loadShipStationWebhookToken,
+  resolveShipStationCredentials,
 } from './runtimeConfig.js';
 import {
   createWebhook,
@@ -23,15 +25,17 @@ import {
   listCarrierServices,
   listCarriers,
 } from './shipstation.js';
-import { loadOrgSettings, publicConnection } from './sync.js';
+import { liveCredentials, publicConnection, loadOrgSettings } from './sync.js';
 
-const WEBHOOK_EVENTS = [
+const WEBHOOK_EVENTS_V2 = [
   'label_created_v2',
   'track',
   'fulfillment_shipped_v2',
   'shipment_created_v2',
   'sales_orders_imported',
 ];
+
+const WEBHOOK_EVENTS_V1 = ['SHIP_NOTIFY', 'ORDER_NOTIFY', 'FULFILLMENT_SHIPPED'];
 
 async function encryptionKeyBytes({ env, db }) {
   return ensureEncryptionKeyBytes({ env, db });
@@ -40,7 +44,7 @@ async function encryptionKeyBytes({ env, db }) {
 async function liveConnection({ db, organizationId }) {
   return db
     .prepare(
-      `SELECT id, organization_id, created_at, updated_at
+      `SELECT id, organization_id, api_version, created_at, updated_at
        FROM shipstation_connection
        WHERE organization_id = ? AND deleted = 0
        LIMIT 1`,
@@ -52,7 +56,7 @@ async function liveConnection({ db, organizationId }) {
 async function liveConnectionWithSecret({ db, organizationId }) {
   return db
     .prepare(
-      `SELECT id, api_key_encrypted FROM shipstation_connection
+      `SELECT id, api_key_encrypted, api_version FROM shipstation_connection
        WHERE organization_id = ? AND deleted = 0
        LIMIT 1`,
     )
@@ -86,14 +90,27 @@ function normalizeServiceList(data) {
   return [];
 }
 
-async function syncCarriers({ db, connectionId, apiKey, carriers }) {
+function appendWebhookToken(baseUrl, token) {
+  const url = new URL(baseUrl);
+  url.searchParams.set('token', token);
+  return url.toString();
+}
+
+async function syncCarriers({ db, connectionId, credentials, carriers }) {
   for (const carrier of carriers) {
     const shipstationCarrierId = String(
-      carrier.carrier_id ?? carrier.carrierId ?? carrier.id ?? '',
+      carrier.carrier_id ??
+        carrier.carrierId ??
+        carrier.code ??
+        carrier.id ??
+        carrier.shippingProviderId ??
+        '',
     );
     if (!shipstationCarrierId) continue;
-    const name = String(carrier.friendly_name ?? carrier.name ?? shipstationCarrierId);
-    const carrierCode = carrier.carrier_code ?? carrier.carrierCode ?? null;
+    const name = String(
+      carrier.friendly_name ?? carrier.name ?? carrier.nickname ?? shipstationCarrierId,
+    );
+    const carrierCode = carrier.carrier_code ?? carrier.carrierCode ?? carrier.code ?? null;
 
     const inserted = await db
       .prepare(
@@ -108,12 +125,18 @@ async function syncCarriers({ db, connectionId, apiKey, carriers }) {
 
     let services = normalizeServiceList(carrier.services);
     if (services.length === 0) {
-      const listed = await listCarrierServices({ apiKey, carrierId: shipstationCarrierId });
+      const listed = await listCarrierServices({
+        credentials,
+        carrierId: shipstationCarrierId,
+        carrierCode: carrierCode || shipstationCarrierId,
+      });
       if (listed.ok) services = normalizeServiceList(listed.data);
     }
 
     for (const service of services) {
-      const code = String(service.service_code ?? service.serviceCode ?? service.code ?? '');
+      const code = String(
+        service.service_code ?? service.serviceCode ?? service.code ?? '',
+      );
       if (!code) continue;
       const serviceName = String(service.name ?? code);
       await db
@@ -128,20 +151,41 @@ async function syncCarriers({ db, connectionId, apiKey, carriers }) {
   }
 }
 
-async function registerWebhooks({ db, env, connectionId, apiKey }) {
+async function registerWebhooks({ db, env, connectionId, credentials }) {
   const url = await loadPublicWebhookUrl({ env, db });
   if (!url) return;
 
-  for (const event of WEBHOOK_EVENTS) {
+  let targetUrl = url;
+  const events =
+    credentials.apiVersion === 'v1' ? WEBHOOK_EVENTS_V1 : WEBHOOK_EVENTS_V2;
+
+  if (credentials.apiVersion === 'v1') {
+    const token = await loadShipStationWebhookToken({ env, db });
+    if (!token) {
+      return {
+        ok: false,
+        code: AppErrorCode.MISSING_CONFIG,
+        message:
+          'V1 webhooks require SHIPSTATION_WEBHOOK_TOKEN (appended as ?token= on the public URL). Add it in Digit app secrets, then reconnect.',
+        status: 503,
+      };
+    }
+    targetUrl = appendWebhookToken(url, token);
+  }
+
+  for (const event of events) {
     const created = await createWebhook({
-      apiKey,
+      credentials,
       name: `Digit ${event}`,
       event,
-      url,
+      url: targetUrl,
     });
     if (!created.ok || !created.data) continue;
-    const webhookId = created.data.webhook_id ?? created.data.webhookId;
-    if (!webhookId) continue;
+    const webhookId =
+      created.data.webhook_id ??
+      created.data.webhookId ??
+      created.data.id;
+    if (webhookId == null) continue;
     await db
       .prepare(
         `INSERT INTO shipstation_webhook
@@ -151,9 +195,10 @@ async function registerWebhooks({ db, env, connectionId, apiKey }) {
       .bind(connectionId, String(webhookId), event)
       .run();
   }
+  return { ok: true };
 }
 
-async function deregisterWebhooks({ db, connectionId, apiKey }) {
+async function deregisterWebhooks({ db, connectionId, credentials }) {
   const { results } = await db
     .prepare(
       `SELECT id, shipstation_webhook_id FROM shipstation_webhook
@@ -163,11 +208,9 @@ async function deregisterWebhooks({ db, connectionId, apiKey }) {
     .all();
 
   for (const row of results ?? []) {
-    await deleteWebhook({ apiKey, webhookId: row.shipstation_webhook_id });
+    await deleteWebhook({ credentials, webhookId: row.shipstation_webhook_id });
     await db
-      .prepare(
-        `UPDATE shipstation_webhook SET deleted = 1 WHERE id = ?`,
-      )
+      .prepare(`UPDATE shipstation_webhook SET deleted = 1 WHERE id = ?`)
       .bind(row.id)
       .run();
   }
@@ -226,6 +269,48 @@ async function loadCarriers({ db, connectionId }) {
   }));
 }
 
+async function retireConnectionLocal({ db, connectionId }) {
+  await db
+    .prepare(
+      `UPDATE shipstation_webhook SET deleted = 1
+       WHERE connection_id = ? AND deleted = 0`,
+    )
+    .bind(connectionId)
+    .run();
+  await db
+    .prepare(
+      `UPDATE shipstation_service SET deleted = 1, updated_at = datetime('now')
+       WHERE connection_id = ? AND deleted = 0`,
+    )
+    .bind(connectionId)
+    .run();
+  await db
+    .prepare(
+      `UPDATE shipstation_carrier SET deleted = 1, updated_at = datetime('now')
+       WHERE connection_id = ? AND deleted = 0`,
+    )
+    .bind(connectionId)
+    .run();
+  await db
+    .prepare(
+      `UPDATE shipstation_connection
+       SET deleted = 1, updated_at = datetime('now')
+       WHERE id = ?`,
+    )
+    .bind(connectionId)
+    .run();
+}
+
+/**
+ * Soft-delete a live connection (and optionally deregister remote webhooks).
+ */
+async function retireConnection({ db, connectionId, credentials }) {
+  if (credentials) {
+    await deregisterWebhooks({ db, connectionId, credentials });
+  }
+  await retireConnectionLocal({ db, connectionId });
+}
+
 /**
  * @returns {Promise<Response | null>}
  */
@@ -241,7 +326,19 @@ export async function handleConnection({ request, env, path, method }) {
       return ok({ data: { connected: false, organizationId: org.organizationId } });
     }
     const count = await carrierCount({ db, connectionId: row.id });
-    return ok({ data: publicConnection(row, { carrierCount: count }) });
+    const resolved = await resolveShipStationCredentials({ env, db });
+    const creds = resolved
+      ? await liveCredentials({ db, env, organizationId: org.organizationId })
+      : null;
+    const credentialsMissing = !resolved;
+    return ok({
+      data: publicConnection(row, {
+        carrierCount: count,
+        apiVersion: row.api_version || 'v2',
+        ...(creds?.mismatch ? { mismatch: creds.mismatch } : {}),
+        ...(credentialsMissing ? { credentialsMissing: true, staleConnection: true } : {}),
+      }),
+    });
   }
 
   if (method === 'GET' && path === '/carriers') {
@@ -276,26 +373,55 @@ export async function handleConnection({ request, env, path, method }) {
     }
     const { organizationId } = parsed.value;
 
-    const apiKey = await loadShipStationApiKey({ env, db });
-    if (!apiKey) {
+    const credentials = await resolveShipStationCredentials({ env, db });
+    if (!credentials) {
       return err({
         code: AppErrorCode.MISSING_CONFIG,
         message:
-          'No ShipStation API key is configured. Add SHIPSTATION_API_KEY to this app’s secrets in Digit, then try again.',
+          'No ShipStation API key is configured. Add SHIPSTATION_API_KEY to this app’s secrets in Digit (and SHIPSTATION_API_SECRET for V1), then try again.',
         status: 503,
       });
     }
 
-    const existing = await liveConnection({ db, organizationId });
+    const webhookUrl = await loadPublicWebhookUrl({ env, db });
+    if (credentials.apiVersion === 'v1' && webhookUrl) {
+      const token = await loadShipStationWebhookToken({ env, db });
+      if (!token) {
+        return err({
+          code: AppErrorCode.MISSING_CONFIG,
+          message:
+            'V1 mode needs SHIPSTATION_WEBHOOK_TOKEN when PUBLIC_WEBHOOK_URL is set (V1 webhooks have no signature). Add the token in Digit app secrets, then connect.',
+          status: 503,
+        });
+      }
+    }
+
+    const existing = await liveConnectionWithSecret({ db, organizationId });
     if (existing) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'This organization already has a ShipStation account connected. Disconnect it first to reconnect.',
-        status: 409,
+      // Stale row after secrets were removed/restored, or UI showed Connect while still linked.
+      // Retire the old connection so Connect can succeed without a separate Disconnect click.
+      let retireCreds = credentials;
+      if (existing.api_version && credentials.apiVersion !== existing.api_version) {
+        retireCreds = null;
+      }
+      await retireConnection({
+        db,
+        connectionId: existing.id,
+        credentials: retireCreds,
+      });
+      await appendActivity({
+        db,
+        organizationId,
+        actor: 'user',
+        action: 'disconnect',
+        status: 'success',
+        message:
+          'Replaced the previous ShipStation connection before reconnecting with current secrets.',
+        detail: { previousConnectionId: existing.id },
       });
     }
 
-    const listed = await listCarriers({ apiKey });
+    const listed = await listCarriers({ credentials });
     if (!listed.ok) {
       return err({
         code: listed.code,
@@ -306,19 +432,19 @@ export async function handleConnection({ request, env, path, method }) {
 
     let inserted;
     try {
-      // The key itself lives in Digit app secrets; this column stays empty for new rows.
       inserted = await db
         .prepare(
-          `INSERT INTO shipstation_connection (organization_id, api_key_encrypted, deleted)
-           VALUES (?, '', 0)
-           RETURNING id, organization_id, created_at, updated_at`,
+          `INSERT INTO shipstation_connection (organization_id, api_key_encrypted, api_version, deleted)
+           VALUES (?, '', ?, 0)
+           RETURNING id, organization_id, api_version, created_at, updated_at`,
         )
-        .bind(organizationId)
+        .bind(organizationId, credentials.apiVersion)
         .first();
     } catch {
       return err({
         code: AppErrorCode.VALIDATION_ERROR,
-        message: 'This organization already has a ShipStation account connected. Disconnect it first to reconnect.',
+        message:
+          'This organization already has a ShipStation account connected. Disconnect it first to reconnect.',
         status: 409,
       });
     }
@@ -326,22 +452,41 @@ export async function handleConnection({ request, env, path, method }) {
     await syncCarriers({
       db,
       connectionId: inserted.id,
-      apiKey,
+      credentials,
       carriers: normalizeCarrierList(listed.data),
     });
-    await registerWebhooks({ db, env, connectionId: inserted.id, apiKey });
+    const registered = await registerWebhooks({
+      db,
+      env,
+      connectionId: inserted.id,
+      credentials,
+    });
+    if (registered && registered.ok === false) {
+      return err({
+        code: registered.code,
+        message: registered.message,
+        status: registered.status,
+      });
+    }
 
     const count = await carrierCount({ db, connectionId: inserted.id });
+    const versionLabel = credentials.apiVersion === 'v1' ? 'V1' : 'V2';
     await appendActivity({
       db,
       organizationId,
       actor: 'user',
       action: 'connect',
       status: 'success',
-      message: `Connected ShipStation and synced ${count} carrier(s). Print labels in ShipStation after pushing orders from the queue.`,
-      detail: { carrierCount: count },
+      message: `Connected ShipStation ${versionLabel} and synced ${count} carrier(s). Print labels in ShipStation after pushing orders from the queue.`,
+      detail: { carrierCount: count, apiVersion: credentials.apiVersion },
     });
-    return ok({ data: publicConnection(inserted, { carrierCount: count }), status: 201 });
+    return ok({
+      data: publicConnection(inserted, {
+        carrierCount: count,
+        apiVersion: inserted.api_version || credentials.apiVersion,
+      }),
+      status: 201,
+    });
   }
 
   if (method === 'PATCH' && path === '/org-settings') {
@@ -442,52 +587,35 @@ export async function handleConnection({ request, env, path, method }) {
       });
     }
 
-    let apiKey = await loadShipStationApiKey({ env, db });
-    if (!apiKey && row.api_key_encrypted) {
+    let credentials = await resolveShipStationCredentials({ env, db });
+    if (!credentials && row.api_key_encrypted) {
       try {
-        apiKey = await decryptSecret({
+        const apiKey = await decryptSecret({
           stored: row.api_key_encrypted,
           keyBytes: await encryptionKeyBytes({ env, db }),
         });
+        if (apiKey) {
+          credentials = { apiVersion: 'v2', apiKey };
+        }
       } catch {
-        apiKey = null;
+        credentials = null;
+      }
+    }
+    if (credentials && row.api_version && credentials.apiVersion !== row.api_version) {
+      // Prefer stored connection version when secrets disagree mid-disconnect.
+      credentials = {
+        ...credentials,
+        apiVersion: row.api_version === 'v1' ? 'v1' : 'v2',
+      };
+      if (credentials.apiVersion === 'v1' && !credentials.apiSecret) {
+        credentials = null;
       }
     }
 
-    if (apiKey) {
-      await deregisterWebhooks({ db, connectionId: row.id, apiKey });
-    } else {
-      await db
-        .prepare(
-          `UPDATE shipstation_webhook SET deleted = 1
-           WHERE connection_id = ? AND deleted = 0`,
-        )
-        .bind(row.id)
-        .run();
+    if (credentials) {
+      await deregisterWebhooks({ db, connectionId: row.id, credentials });
     }
-
-    await db
-      .prepare(
-        `UPDATE shipstation_service SET deleted = 1, updated_at = datetime('now')
-         WHERE connection_id = ? AND deleted = 0`,
-      )
-      .bind(row.id)
-      .run();
-    await db
-      .prepare(
-        `UPDATE shipstation_carrier SET deleted = 1, updated_at = datetime('now')
-         WHERE connection_id = ? AND deleted = 0`,
-      )
-      .bind(row.id)
-      .run();
-    await db
-      .prepare(
-        `UPDATE shipstation_connection
-         SET deleted = 1, updated_at = datetime('now')
-         WHERE id = ?`,
-      )
-      .bind(row.id)
-      .run();
+    await retireConnectionLocal({ db, connectionId: row.id });
 
     await appendActivity({
       db,
@@ -504,3 +632,6 @@ export async function handleConnection({ request, env, path, method }) {
 
   return null;
 }
+
+// Re-export for tests / callers that imported liveConnection from here historically.
+export { liveCredentials, loadShipStationApiKey };

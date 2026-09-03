@@ -1,5 +1,6 @@
 /**
  * Verify → enqueue → 200 fast. Never log webhook bodies.
+ * Pass `query` into verify so V1 ShipStation token checks can run.
  */
 
 import { digitJobs, optionalEnv } from '@digit/lib-backend';
@@ -9,7 +10,7 @@ import { recordWebhookDelivery, webhookAlreadyProcessed } from '../channels/stor
 
 /**
  * @param {object} args
- * @param {(ctx: { headers: Record<string, string>, body: Uint8Array, env: Record<string, unknown> }) => Promise<boolean>} args.verify
+ * @param {(ctx: { headers: Record<string, string>, body: Uint8Array, env: Record<string, unknown>, query?: string }) => Promise<boolean>} args.verify
  * @param {(body: Uint8Array) => Record<string, unknown>} args.parsePayload
  * @param {(payload: Record<string, unknown>) => Record<string, unknown>} args.extractIds
  * @param {string} args.jobName
@@ -28,9 +29,9 @@ export function createWebhookHandler({
   runInline,
   channelId = null,
 }) {
-  return async function webhookHandler({ headers, body, env }) {
+  return async function webhookHandler({ headers, body, env, query }) {
     const db = optionalEnv({ env, key: 'SHIPSTATION_DB' }) || null;
-    const valid = await verify({ headers, body, env });
+    const valid = await verify({ headers, body, env, query: query || '' });
     if (!valid) {
       return { status: 401, headers: { 'content-type': 'text/plain' }, body: 'invalid signature' };
     }

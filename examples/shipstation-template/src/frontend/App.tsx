@@ -111,6 +111,11 @@ type ConnectionData = {
   organizationId?: string;
   id?: number;
   carrierCount?: number;
+  apiVersion?: 'v1' | 'v2' | string;
+  mismatch?: string;
+  /** Connection row exists but ShipStation secrets were removed — not operable. */
+  credentialsMissing?: boolean;
+  staleConnection?: boolean;
 };
 
 type OrgSettingsData = {
@@ -139,8 +144,9 @@ function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
 
 function setupProgressFrom(data: SetupData | undefined) {
   if (!data?.items?.length) return null;
-  const present = data.items.filter((item) => item.present).length;
-  return { present, total: data.items.length };
+  const required = data.items.filter((item) => item.required);
+  const present = required.filter((item) => item.present).length;
+  return { present, total: required.length };
 }
 
 export default function App() {
@@ -169,21 +175,50 @@ export default function App() {
     skip: !organizationId || !configLoaded,
   });
   const connected = Boolean(connectionQuery.data?.connected);
+  const credentialsMissing = Boolean(
+    connectionQuery.data?.credentialsMissing || connectionQuery.data?.staleConnection,
+  );
+  /** Secrets removed after connect leave a D1 row — do not show the queue until restored or disconnected. */
+  const operable = connected && !credentialsMissing;
   const activityQuery = useActivityQuery(organizationId ?? '');
 
   const [mutate, { error: mutationError, loading: mutating, reset: resetMutation }] =
     useBackendMutation<ConnectionData>();
+  const [checkSetup] = useBackendMutation<SetupData>();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [setupCapabilitiesOpen, setSetupCapabilitiesOpen] = useState(false);
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
+  const [connectBlocker, setConnectBlocker] = useState<string | null>(null);
 
   const connect = async () => {
     if (!organizationId) return;
     resetMutation();
     setSuccessNotice(null);
+    setConnectBlocker(null);
+
+    // Fresh setup read so we never POST when Digit secrets were just removed.
+    const setupResult = await checkSetup({ path: '/setup', method: 'GET' });
+    if (!setupResult.ok) {
+      setConnectBlocker(
+        setupResult.error.code === 'BACKEND_UNAVAILABLE'
+          ? 'The app backend is unavailable, so Connect cannot check your ShipStation API key. Wait a moment and try again.'
+          : setupResult.error.message ||
+              'Could not verify ShipStation setup before connecting.',
+      );
+      await setupQuery.refetch();
+      return;
+    }
+    await setupQuery.refetch();
+    if (!setupResult.data?.shipStationKeyPresent) {
+      setConnectBlocker(
+        'No ShipStation API key is configured. Add SHIPSTATION_API_KEY to this app’s secrets in Digit (and SHIPSTATION_API_SECRET only for V1), then reload and connect.',
+      );
+      return;
+    }
+
     const result = await mutate({
       path: '/connection',
       method: 'POST',
@@ -191,15 +226,16 @@ export default function App() {
     });
     if (!result.ok) return;
     const carriers = result.data?.carrierCount ?? 0;
+    const version = result.data?.apiVersion === 'v1' ? 'V1' : 'V2';
     setSuccessNotice(
-      `Connected to ShipStation and synced ${carriers} carrier(s). Pick and pack stay in Digit; print labels in ShipStation after you push orders from the queue.`,
+      `Connected to ShipStation ${version} and synced ${carriers} carrier(s). Pick and pack stay in Digit; print labels in ShipStation after you push orders from the queue.`,
     );
     await connectionQuery.refetch();
     await orgSettingsQuery.refetch();
   };
 
   const openSettings = () => {
-    if (!connectionQuery.data?.connected) return;
+    if (!operable) return;
     resetMutation();
     setSuccessNotice(null);
     setDraft(draftFromOrg(orgSettingsQuery.data));
@@ -252,11 +288,20 @@ export default function App() {
     (!!organizationId && configLoaded && (connectionQuery.loading || orgSettingsQuery.loading));
 
   const showContent = !notPublished && !setupQuery.error;
+  const backendUnavailable =
+    setupQuery.error?.code === 'BACKEND_UNAVAILABLE' ||
+    connectionQuery.error?.code === 'BACKEND_UNAVAILABLE' ||
+    orgSettingsQuery.error?.code === 'BACKEND_UNAVAILABLE' ||
+    mutationError?.code === 'BACKEND_UNAVAILABLE';
+  const canOfferConnect = !backendUnavailable && !connectionQuery.error;
   const featureStatusProps = {
-    connected,
+    connected: operable,
     apiTokenPresent,
     webhookUrlPresent,
     shipStationKeyPresent,
+    shipStationApiMode: setupData?.shipStationApiMode,
+    shipStationSecretPresent: Boolean(setupData?.shipStationSecretPresent),
+    shipStationWebhookTokenPresent: Boolean(setupData?.shipStationWebhookTokenPresent),
     channels: setupData?.channels ?? [],
   };
 
@@ -265,6 +310,9 @@ export default function App() {
       commandBar={
         <ConnectionBar
           connected={connected}
+          operable={operable}
+          credentialsMissing={credentialsMissing}
+          apiVersion={connectionQuery.data?.apiVersion}
           carrierCount={connectionQuery.data?.carrierCount}
           loading={loading}
           isAdmin={isAdmin}
@@ -302,13 +350,28 @@ export default function App() {
         <AppErrorAlert error={orgSettingsQuery.error} onRetry={() => void orgSettingsQuery.refetch()} />
       )}
       {mutationError && <AppErrorAlert error={mutationError} />}
+      {connectBlocker ? (
+        <Alert severity="warning" onClose={() => setConnectBlocker(null)}>
+          {connectBlocker}
+        </Alert>
+      ) : null}
+      {connectionQuery.data?.mismatch ? (
+        <Alert severity="warning">{connectionQuery.data.mismatch}</Alert>
+      ) : null}
+      {credentialsMissing ? (
+        <Alert severity="warning">
+          ShipStation app secrets were removed, so this org is <strong>not connected</strong> even
+          though a local connection record remains. Click <strong>Clear connection</strong> to remove
+          it, or restore <strong>SHIPSTATION_API_KEY</strong> and reload.
+        </Alert>
+      ) : null}
       {successNotice ? (
         <Alert severity="success" onClose={() => setSuccessNotice(null)}>
           {successNotice}
         </Alert>
       ) : null}
 
-      {showContent && connected && organizationId ? (
+      {showContent && operable && organizationId ? (
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <FulfillmentQueue
             organizationId={organizationId}
@@ -322,30 +385,59 @@ export default function App() {
         </Paper>
       ) : null}
 
-      {showContent && !connected && isAdmin && organizationId && !loading ? (
+      {showContent && !operable && isAdmin && organizationId && !loading ? (
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <SectionHeader
             overline="Connection"
-            title="Connect your account"
-            description="Validate your API key and register webhooks before pushing orders."
+            title={credentialsMissing ? 'Connection inactive' : 'Connect your account'}
+            description={
+              credentialsMissing
+                ? 'Secrets are missing. Clear the leftover connection, or restore the ShipStation API key and reload.'
+                : 'Validate credentials (V2 key, or V1 key plus secret) and register webhooks before pushing orders.'
+            }
           />
           <Box sx={{ mt: 2 }}>
-            <ConnectPanel
-              shipStationKeyPresent={shipStationKeyPresent}
-              mutating={mutating}
-              onConnect={() => void connect()}
-            />
+            {credentialsMissing ? (
+              <Stack spacing={2}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                  The fulfillment queue stays hidden until ShipStation credentials are live again.
+                </Typography>
+                <Button
+                  color="error"
+                  variant="outlined"
+                  onClick={() => {
+                    resetMutation();
+                    setSuccessNotice(null);
+                    setDisconnectOpen(true);
+                  }}
+                  sx={{ alignSelf: 'flex-start' }}
+                >
+                  Clear connection
+                </Button>
+              </Stack>
+            ) : !canOfferConnect ? (
+              <Alert severity="warning">
+                The app backend is unavailable right now, so Connect cannot verify your ShipStation
+                API key. Use Retry on the error above, then try again.
+              </Alert>
+            ) : (
+              <ConnectPanel
+                shipStationKeyPresent={shipStationKeyPresent}
+                mutating={mutating}
+                onConnect={() => void connect()}
+              />
+            )}
           </Box>
         </Paper>
       ) : null}
 
-      {showContent && !connected && !isAdmin && organizationId && !loading ? (
+      {showContent && !operable && !isAdmin && organizationId && !loading ? (
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
-          <NonAdminNotice connected={connected} />
+          <NonAdminNotice connected={operable} />
         </Paper>
       ) : null}
 
-      {showContent && connected && organizationId ? (
+      {showContent && operable && organizationId ? (
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <ActivityLog query={activityQuery} />
         </Paper>

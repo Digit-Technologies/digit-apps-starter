@@ -3,10 +3,9 @@
  */
 
 import { AppErrorCode } from '@digit/lib-common';
-import { HandlerError, requireEnv } from '@digit/lib-backend';
+import { requireEnv } from '@digit/lib-backend';
 
 import { afterDigitShipped } from './channels/index.js';
-import { decryptSecret } from './crypto.js';
 import { digitGraphql } from './digitGraphql.js';
 import { appendActivity } from './activity.js';
 import {
@@ -23,13 +22,18 @@ import {
 } from './digitQueries.js';
 import { ineligibilityReason, skipNextStep } from './eligibility.js';
 import { digitOrderToShipment, orgShipFrom } from './mappers/digitToShipStation.js';
+import { digitOrderToV1Order } from './mappers/digitToShipStationV1.js';
+import {
+  normalizeSsRecord,
+  normalizedToImportShipment,
+} from './mappers/normalizeSsRecord.js';
 import {
   ssBillingAddressInput,
   ssCompanyName,
   ssLineSkus,
   ssShipToLocationInput,
 } from './mappers/shipStationToDigit.js';
-import { loadEncryptionKeyBytes, loadShipStationApiKey } from './runtimeConfig.js';
+import { resolveShipStationCredentials } from './runtimeConfig.js';
 import {
   createShipments,
   fetchResourceUrl,
@@ -39,22 +43,10 @@ import {
   listShipments,
 } from './shipstation.js';
 
-async function encryptionKeyBytes({ env, db }) {
-  const keyBytes = await loadEncryptionKeyBytes({ env, db });
-  if (!keyBytes) {
-    throw new HandlerError({
-      code: AppErrorCode.MISSING_CONFIG,
-      message: 'Save configuration on the setup screen before connecting ShipStation.',
-      status: 503,
-    });
-  }
-  return keyBytes;
-}
-
 export async function liveConnection({ db, organizationId }) {
   return db
     .prepare(
-      `SELECT id, organization_id, created_at, updated_at
+      `SELECT id, organization_id, api_version, created_at, updated_at
        FROM shipstation_connection
        WHERE organization_id = ? AND deleted = 0
        LIMIT 1`,
@@ -64,13 +56,23 @@ export async function liveConnection({ db, organizationId }) {
 }
 
 /**
- * The ShipStation key is an org-level Digit app secret (`SHIPSTATION_API_KEY`). Rows written
- * before that switch still carry `api_key_encrypted`, so those keep working as a fallback.
+ * Live ShipStation credentials for a connected org.
+ * Secrets come from Digit app secrets only. Legacy `api_key_encrypted` on the
+ * connection row is not used here — removing the Digit secret must clear
+ * operable/connected UI (disconnect still reads ciphertext to deregister webhooks).
+ *
+ * @returns {Promise<null | {
+ *   connectionId: number,
+ *   apiVersion: 'v1' | 'v2',
+ *   apiKey?: string,
+ *   apiSecret?: string,
+ *   mismatch?: string,
+ * }>}
  */
-export async function liveApiKey({ db, env, organizationId }) {
+export async function liveCredentials({ db, env, organizationId }) {
   const row = await db
     .prepare(
-      `SELECT id, api_key_encrypted FROM shipstation_connection
+      `SELECT id, api_version FROM shipstation_connection
        WHERE organization_id = ? AND deleted = 0
        LIMIT 1`,
     )
@@ -78,30 +80,55 @@ export async function liveApiKey({ db, env, organizationId }) {
     .first();
   if (!row) return null;
 
-  const fromSecret = await loadShipStationApiKey({ env, db });
-  if (fromSecret) return { connectionId: row.id, apiKey: fromSecret };
+  const storedVersion = row.api_version === 'v1' ? 'v1' : 'v2';
+  const resolved = await resolveShipStationCredentials({ env, db });
+  if (!resolved) return null;
 
-  if (!row.api_key_encrypted) return null;
-  try {
-    const apiKey = await decryptSecret({
-      stored: row.api_key_encrypted,
-      keyBytes: await encryptionKeyBytes({ env, db }),
-    });
-    return { connectionId: row.id, apiKey };
-  } catch {
-    return null;
+  if (resolved.apiVersion !== storedVersion) {
+    return {
+      connectionId: row.id,
+      apiVersion: storedVersion,
+      mismatch:
+        `ShipStation secrets are ${resolved.apiVersion.toUpperCase()} but this connection was opened as ${storedVersion.toUpperCase()}. Disconnect and reconnect to switch API versions.`,
+    };
   }
+  return {
+    connectionId: row.id,
+    apiVersion: storedVersion,
+    apiKey: resolved.apiKey,
+    ...(resolved.apiSecret ? { apiSecret: resolved.apiSecret } : {}),
+  };
 }
 
 export function publicConnection(row, extra = {}) {
+  const credentialsMissing = Boolean(extra.credentialsMissing);
   return {
     id: row.id,
     organizationId: row.organization_id,
-    connected: true,
+    // Row may still exist after secrets were removed — that is not "connected".
+    connected: !credentialsMissing,
+    staleConnection: credentialsMissing || Boolean(extra.staleConnection),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    apiVersion: row.api_version || extra.apiVersion || 'v2',
     ...(extra.carrierCount !== undefined ? { carrierCount: extra.carrierCount } : {}),
+    ...(extra.mismatch ? { mismatch: extra.mismatch } : {}),
+    ...(credentialsMissing ? { credentialsMissing: true } : {}),
   };
+}
+
+/** Credentials object for shipstation.js, or null when the connection cannot call ShipStation. */
+function credentialsForApi(secret) {
+  if (!secret || secret.mismatch || !secret.apiKey) return null;
+  return {
+    apiVersion: secret.apiVersion,
+    apiKey: secret.apiKey,
+    ...(secret.apiSecret ? { apiSecret: secret.apiSecret } : {}),
+  };
+}
+
+function reconnectMessage(secret) {
+  return secret?.mismatch || 'Connect a ShipStation account first.';
 }
 
 export function normalizeOrgSettings(row, organizationId) {
@@ -244,9 +271,28 @@ async function mapBySsShipment({ db, connectionId, ssShipmentId }) {
     .first();
 }
 
+function recordsFromSsPayload(data) {
+  if (!data) return [];
+  if (Array.isArray(data.orders)) return data.orders;
+  if (Array.isArray(data.shipments)) return data.shipments;
+  if (Array.isArray(data)) return data;
+  if (data.shipment) return [data.shipment];
+  if (data.order) return [data.order];
+  return [data];
+}
+
 function firstCreatedShipment(data) {
-  const list = Array.isArray(data?.shipments) ? data.shipments : Array.isArray(data) ? data : [];
-  return list[0] ?? data?.shipment ?? null;
+  return recordsFromSsPayload(data)[0] ?? null;
+}
+
+function isInboundImportEvent(event) {
+  const value = String(event || '').toLowerCase();
+  return (
+    value.includes('shipment_created') ||
+    value.includes('sales_orders_imported') ||
+    value.includes('order_notify') ||
+    value.includes('ship_notify')
+  );
 }
 
 export async function fetchDigitOrder({ env, orderId }) {
@@ -320,9 +366,10 @@ export async function pushOrder({
   recordActivity = true,
   preloaded = null,
 }) {
-  const secret = await liveApiKey({ db, env, organizationId });
-  if (!secret) {
-    const message = 'Connect a ShipStation account first.';
+  const secret = await liveCredentials({ db, env, organizationId });
+  const credentials = credentialsForApi(secret);
+  if (!credentials) {
+    const message = reconnectMessage(secret);
     await recordPushActivity({
       db,
       organizationId,
@@ -401,14 +448,21 @@ export async function pushOrder({
     return { ok: true, data: { orderId, skipped: true, reason, message: reason, meaning } };
   }
 
-  const shipmentBody = digitOrderToShipment({
-    order,
-    shipFrom: orgShipFrom({ organization }),
-  });
-  const created = await createShipments({
-    apiKey: secret.apiKey,
-    shipments: [shipmentBody],
-  });
+  const created =
+    secret.apiVersion === 'v1'
+      ? await createShipments({
+          credentials,
+          order: digitOrderToV1Order({ order }),
+        })
+      : await createShipments({
+          credentials,
+          shipments: [
+            digitOrderToShipment({
+              order,
+              shipFrom: orgShipFrom({ organization }),
+            }),
+          ],
+        });
   if (!created.ok) {
     await upsertMap({
       db,
@@ -433,7 +487,9 @@ export async function pushOrder({
   }
 
   const ssShipment = firstCreatedShipment(created.data);
-  const ssShipmentId = ssShipment?.shipment_id || ssShipment?.shipmentId || null;
+  const createdRecord = normalizeSsRecord(ssShipment?.order || ssShipment);
+  const ssShipmentId =
+    createdRecord.ssShipmentId || ssShipment?.shipment_id || ssShipment?.shipmentId || null;
   if (!ssShipmentId) {
     await upsertMap({
       db,
@@ -517,6 +573,20 @@ export async function pollOutboundPush({ env, db }) {
   const pushed = [];
   for (const row of results ?? []) {
     const organizationId = row.organization_id;
+    const creds = await liveCredentials({ db, env, organizationId });
+    if (!credentialsForApi(creds)) {
+      if (creds?.mismatch) {
+        await appendActivity({
+          db,
+          organizationId,
+          actor: 'schedule',
+          action: 'poll',
+          status: 'error',
+          message: creds.mismatch,
+        });
+      }
+      continue;
+    }
     const orgSettings = await loadOrgSettings({ db, organizationId });
     if (orgSettings.syncMode !== 'digit_to_ss') continue;
 
@@ -676,15 +746,6 @@ async function applyDigitShipmentWriteback({
   return { ok: true, data: { digitOrderId, digitShipmentId, trackingNumber } };
 }
 
-function trackingFromSs(record) {
-  return (
-    record?.tracking_number ||
-    record?.trackingNumber ||
-    record?.packages?.[0]?.tracking_number ||
-    null
-  );
-}
-
 export async function processSsFulfillment({
   env,
   db,
@@ -692,34 +753,35 @@ export async function processSsFulfillment({
   ssShipmentId,
   labelId,
   resourceUrl,
+  record: preloaded = null,
 }) {
-  const secret = await liveApiKey({ db, env, organizationId });
-  if (!secret) return { ok: true, data: { skipped: true, reason: 'No live ShipStation connection.' } };
-
-  let record = null;
-  if (resourceUrl) {
-    const fetched = await fetchResourceUrl({ apiKey: secret.apiKey, resourceUrl });
-    if (fetched.ok) record = fetched.data;
+  const secret = await liveCredentials({ db, env, organizationId });
+  const credentials = credentialsForApi(secret);
+  if (!credentials) {
+    return {
+      ok: true,
+      data: { skipped: true, reason: reconnectMessage(secret) },
+    };
   }
-  if (!record && labelId) {
-    const fetched = await getLabel({ apiKey: secret.apiKey, labelId });
+
+  let record = preloaded;
+  if (!record && resourceUrl) {
+    const fetched = await fetchResourceUrl({ credentials, resourceUrl });
+    if (fetched.ok) record = firstCreatedShipment(fetched.data);
+  }
+  if (!record && labelId && credentials.apiVersion !== 'v1') {
+    const fetched = await getLabel({ credentials, labelId });
     if (fetched.ok) record = fetched.data;
   }
   if (!record && ssShipmentId) {
-    const fetched = await getShipment({ apiKey: secret.apiKey, shipmentId: ssShipmentId });
-    if (fetched.ok) record = fetched.data;
+    const fetched = await getShipment({ credentials, shipmentId: ssShipmentId });
+    if (fetched.ok) record = firstCreatedShipment(fetched.data) || fetched.data;
   }
 
-  const shipmentId =
-    ssShipmentId ||
-    record?.shipment_id ||
-    record?.shipmentId ||
-    null;
-  const resolvedLabelId = labelId || record?.label_id || record?.labelId || null;
-  const externalId =
-    record?.external_shipment_id ||
-    record?.externalShipmentId ||
-    null;
+  const normalized = normalizeSsRecord(record);
+  const shipmentId = ssShipmentId || normalized.ssShipmentId || null;
+  const resolvedLabelId = labelId || normalized.labelId || null;
+  const externalId = normalized.externalId || null;
 
   let map = shipmentId
     ? await mapBySsShipment({ db, connectionId: secret.connectionId, ssShipmentId: shipmentId })
@@ -734,9 +796,9 @@ export async function processSsFulfillment({
       .bind(secret.connectionId, externalId)
       .first();
   }
-  if (!map) {
+  if (!map && record) {
     const orgSettings = await loadOrgSettings({ db, organizationId });
-    if (orgSettings.syncMode === 'ss_to_digit' && record) {
+    if (orgSettings.syncMode === 'ss_to_digit') {
       const imported = await importSsShipment({
         env,
         db,
@@ -748,7 +810,7 @@ export async function processSsFulfillment({
       map = await mapBySsShipment({
         db,
         connectionId: secret.connectionId,
-        ssShipmentId: shipmentId,
+        ssShipmentId: shipmentId || imported.data?.ssShipmentId,
       });
     }
   }
@@ -756,20 +818,19 @@ export async function processSsFulfillment({
     return { ok: true, data: { skipped: true, reason: 'No Digit order mapped for this shipment.' } };
   }
 
-  const cost = record?.shipment_cost || record?.shipmentCost;
   return applyDigitShipmentWriteback({
     env,
     db,
     organizationId,
     connectionId: secret.connectionId,
     digitOrderId: map.digit_order_id,
-    trackingNumber: trackingFromSs(record),
-    carrierName: record?.carrier_code || record?.carrierCode || record?.service_code || null,
-    shipDate: record?.ship_date || record?.shipDate || record?.created_at || null,
+    trackingNumber: normalized.trackingNumber,
+    carrierName: normalized.carrierCode,
+    shipDate: normalized.shipDate,
     labelId: resolvedLabelId,
     ssShipmentId: shipmentId,
-    costAmount: cost?.amount ?? null,
-    costCurrency: cost?.currency ?? null,
+    costAmount: normalized.costAmount,
+    costCurrency: normalized.costCurrency,
   });
 }
 
@@ -785,8 +846,9 @@ async function findItemBySku({ env, sku }) {
   return { ok: true, data: match };
 }
 
-export async function importSsShipment({ env, db, organizationId, connectionId, shipment }) {
-  const ssShipmentId = shipment?.shipment_id || shipment?.shipmentId;
+export async function importSsShipment({ env, db, organizationId, connectionId, shipment: rawShipment }) {
+  const shipment = normalizedToImportShipment(normalizeSsRecord(rawShipment));
+  const ssShipmentId = shipment.shipment_id;
   if (!ssShipmentId) {
     return {
       ok: false,
@@ -936,15 +998,28 @@ export async function pollInbound({ env, db }) {
     const organizationId = row.organization_id;
     const orgSettings = await loadOrgSettings({ db, organizationId });
     if (orgSettings.syncMode !== 'ss_to_digit') continue;
-    const secret = await liveApiKey({ db, env, organizationId });
-    if (!secret) continue;
+    const secret = await liveCredentials({ db, env, organizationId });
+    const credentials = credentialsForApi(secret);
+    if (!credentials) {
+      if (secret?.mismatch) {
+        await appendActivity({
+          db,
+          organizationId,
+          actor: 'schedule',
+          action: 'poll',
+          status: 'error',
+          message: secret.mismatch,
+        });
+      }
+      continue;
+    }
     const listed = await listShipments({
-      apiKey: secret.apiKey,
-      query: 'page=1&page_size=25',
+      credentials,
+      query: secret.apiVersion === 'v1' ? 'pageSize=25&page=1' : 'page=1&page_size=25',
     });
     if (!listed.ok) continue;
-    const shipments = listed.data?.shipments ?? listed.data ?? [];
-    for (const shipment of Array.isArray(shipments) ? shipments : []) {
+    const shipments = listed.data?.shipments ?? listed.data?.orders ?? listed.data ?? [];
+    for (const shipment of Array.isArray(shipments) ? shipments : recordsFromSsPayload(shipments)) {
       const result = await importSsShipment({
         env,
         db,
@@ -1040,7 +1115,7 @@ export async function processWebhookJob({ env, payload }) {
   const db = requireEnv({ env, key: 'SHIPSTATION_DB' });
   const organizationId = payload?.organizationId;
   const resourceUrl = payload?.resourceUrl;
-  const ssShipmentId = payload?.ssShipmentId;
+  const ssShipmentId = payload?.ssShipmentId != null ? String(payload.ssShipmentId) : null;
   const labelId = payload?.labelId;
   const event = payload?.event || '';
 
@@ -1048,72 +1123,103 @@ export async function processWebhookJob({ env, payload }) {
     return { skipped: true };
   }
 
-  if (event.includes('shipment_created') || event.includes('sales_orders_imported')) {
-    const secret = await liveApiKey({ db, env, organizationId });
-    if (!secret) {
-      const skipped = { skipped: true };
-      await recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result: skipped });
-      return skipped;
-    }
-    let shipment = payload?.shipment || null;
-    if (!shipment && ssShipmentId) {
-      const fetched = await getShipment({ apiKey: secret.apiKey, shipmentId: ssShipmentId });
-      if (fetched.ok) shipment = fetched.data;
-    }
-    if (!shipment && resourceUrl) {
-      const fetched = await fetchResourceUrl({ apiKey: secret.apiKey, resourceUrl });
-      if (fetched.ok) shipment = firstCreatedShipment(fetched.data) || fetched.data;
-    }
+  const secret = await liveCredentials({ db, env, organizationId });
+  const credentials = credentialsForApi(secret);
+  if (!credentials) {
+    const skipped = { skipped: true, reason: reconnectMessage(secret) };
+    await recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result: skipped });
+    return skipped;
+  }
+
+  let records = payload?.shipment ? [payload.shipment] : [];
+  if (records.length === 0 && resourceUrl) {
+    const fetched = await fetchResourceUrl({ credentials, resourceUrl });
+    if (fetched.ok) records = recordsFromSsPayload(fetched.data);
+  }
+  if (records.length === 0 && ssShipmentId) {
+    const fetched = await getShipment({ credentials, shipmentId: ssShipmentId });
+    if (fetched.ok) records = recordsFromSsPayload(fetched.data);
+  }
+  if (records.length > 25) records = records.slice(0, 25);
+
+  if (isInboundImportEvent(event)) {
     const orgSettings = await loadOrgSettings({ db, organizationId });
-    if (orgSettings.syncMode === 'ss_to_digit' && shipment) {
-      const imported = await importSsShipment({
-        env,
-        db,
-        organizationId,
-        connectionId: secret.connectionId,
-        shipment,
-      });
-      if (imported.ok && imported.data && !imported.data.skipped) {
-        await appendActivity({
+    if (orgSettings.syncMode === 'ss_to_digit') {
+      for (const shipment of records) {
+        const imported = await importSsShipment({
+          env,
           db,
           organizationId,
-          actor: 'webhook',
-          action: 'webhook',
-          status: 'success',
-          message: `Imported ShipStation shipment as Digit order ${imported.data.digitOrderId}.`,
-          digitOrderId: imported.data.digitOrderId,
-          ssShipmentId: imported.data.ssShipmentId ?? ssShipmentId ?? null,
-          detail: { event },
+          connectionId: secret.connectionId,
+          shipment,
         });
-      } else if (!imported.ok) {
-        await appendActivity({
-          db,
-          organizationId,
-          actor: 'webhook',
-          action: 'webhook',
-          status: 'error',
-          message: imported.message || 'Inbound import failed.',
-          ssShipmentId: ssShipmentId || null,
-          detail: { event, code: imported.code ?? null },
-        });
+        if (imported.ok && imported.data && !imported.data.skipped) {
+          await appendActivity({
+            db,
+            organizationId,
+            actor: 'webhook',
+            action: 'webhook',
+            status: 'success',
+            message: `Imported ShipStation shipment as Digit order ${imported.data.digitOrderId}.`,
+            digitOrderId: imported.data.digitOrderId,
+            ssShipmentId: imported.data.ssShipmentId ?? ssShipmentId ?? null,
+            detail: { event },
+          });
+        } else if (!imported.ok) {
+          await appendActivity({
+            db,
+            organizationId,
+            actor: 'webhook',
+            action: 'webhook',
+            status: 'error',
+            message: imported.message || 'Inbound import failed.',
+            ssShipmentId: ssShipmentId || null,
+            detail: { event, code: imported.code ?? null },
+          });
+        }
       }
     }
   }
 
-  const result = await processSsFulfillment({
-    env,
-    db,
-    organizationId,
-    ssShipmentId,
-    labelId,
-    resourceUrl,
-  });
-  await recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result });
-  return result;
+  if (records.length === 0) {
+    const result = await processSsFulfillment({
+      env,
+      db,
+      organizationId,
+      ssShipmentId,
+      labelId,
+      resourceUrl,
+    });
+    await recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result });
+    return result;
+  }
+
+  let lastResult = { ok: true, data: { skipped: true, reason: 'No Digit order mapped for this shipment.' } };
+  for (const record of records) {
+    const normalized = normalizeSsRecord(record);
+    lastResult = await processSsFulfillment({
+      env,
+      db,
+      organizationId,
+      ssShipmentId: normalized.ssShipmentId || ssShipmentId,
+      labelId: normalized.labelId || labelId,
+      resourceUrl: null,
+      record,
+    });
+    await recordWebhookOutcome({
+      db,
+      organizationId,
+      event,
+      ssShipmentId: normalized.ssShipmentId || ssShipmentId,
+      result: lastResult,
+    });
+  }
+  return lastResult;
 }
 
 export async function resolveShipmentByExternalId({ env, db, organizationId, externalShipmentId }) {
-  const secret = await liveApiKey({ db, env, organizationId });
-  if (!secret) return null;
-  return getShipmentByExternalId({ apiKey: secret.apiKey, externalShipmentId });
+  const secret = await liveCredentials({ db, env, organizationId });
+  const credentials = credentialsForApi(secret);
+  if (!credentials) return null;
+  return getShipmentByExternalId({ credentials, externalShipmentId });
 }

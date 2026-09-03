@@ -14,6 +14,10 @@ import { motionTransition } from './motion';
 
 export type ConnectionBarProps = {
   connected: boolean;
+  /** Connection can call ShipStation (secrets present). */
+  operable?: boolean;
+  credentialsMissing?: boolean;
+  apiVersion?: 'v1' | 'v2' | string | null;
   carrierCount?: number;
   loading: boolean;
   isAdmin: boolean;
@@ -28,8 +32,17 @@ export type ConnectionBarProps = {
   onOpenSetupCapabilities: () => void;
 };
 
+function connectedLabel(apiVersion?: 'v1' | 'v2' | string | null) {
+  if (apiVersion === 'v1') return 'Connected (V1)';
+  if (apiVersion === 'v2') return 'Connected (V2)';
+  return 'Connected';
+}
+
 export default function ConnectionBar({
   connected,
+  operable = connected,
+  credentialsMissing = false,
+  apiVersion = null,
   carrierCount = 0,
   loading,
   isAdmin,
@@ -59,9 +72,11 @@ export default function ConnectionBar({
             ShipStation
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {connected
+            {operable
               ? 'Pick and pack in Digit, push orders, print labels in ShipStation.'
-              : 'Connect ShipStation to sync carriers and push packed orders for labels.'}
+              : credentialsMissing
+                ? 'Connection inactive — restore ShipStation secrets or disconnect.'
+                : 'Connect ShipStation to sync carriers and push packed orders for labels.'}
           </Typography>
         </Stack>
 
@@ -103,15 +118,28 @@ export default function ConnectionBar({
             </Typography>
           ) : !isAdmin ? (
             <Chip
-              label={connected ? 'Connected' : 'Not connected'}
-              color={connected ? 'success' : 'default'}
+              label={operable ? connectedLabel(apiVersion) : 'Not connected'}
+              color={operable ? 'success' : 'default'}
               size="small"
               sx={motionTransition('background-color, box-shadow', '0.3s')}
             />
-          ) : connected ? (
+          ) : credentialsMissing ? (
+            <>
+              <Chip size="small" color="warning" label="Not connected" />
+              <Button
+                variant="outlined"
+                size="small"
+                color="error"
+                startIcon={<LinkOffIcon />}
+                onClick={onOpenDisconnect}
+              >
+                Clear connection
+              </Button>
+            </>
+          ) : operable ? (
             <>
               <Chip
-                label="Connected"
+                label={connectedLabel(apiVersion)}
                 color="success"
                 size="small"
                 sx={motionTransition('background-color, box-shadow', '0.3s')}
@@ -163,7 +191,8 @@ export function ConnectPanel({
     return (
       <Alert severity="warning">
         No ShipStation API key is configured for this organization. Add{' '}
-        <strong>SHIPSTATION_API_KEY</strong> to this app’s secrets in Digit, then reload and
+        <strong>SHIPSTATION_API_KEY</strong> to this app’s secrets in Digit (and{' '}
+        <strong>SHIPSTATION_API_SECRET</strong> only if you use V1 Basic auth), then reload and
         connect.
       </Alert>
     );
@@ -172,8 +201,10 @@ export function ConnectPanel({
   return (
     <Stack spacing={2}>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-        Connecting validates your API key, syncs the carrier catalog, and registers webhooks for
-        label and tracking events.
+        Connecting validates your credentials against ShipStation — API key alone is V2; key plus
+        SHIPSTATION_API_SECRET is V1 — then syncs carriers and registers webhooks. If a previous
+        connection is still on file, Connect replaces it. Switching API versions the same way.
+        V1 with a public webhook URL also needs SHIPSTATION_WEBHOOK_TOKEN.
       </Typography>
       <Button variant="contained" onClick={onConnect} disabled={mutating} sx={{ alignSelf: 'flex-start' }}>
         {mutating ? 'Connecting…' : 'Connect ShipStation'}

@@ -2,8 +2,8 @@
 
 ## What it does
 
-Phase 1 org Digit app: connect one ShipStation V2 account, push packed (or inventory-ready)
-Digit sales orders into ShipStation as shipments/`create_sales_order`, and write tracking
+Phase 1 org Digit app: connect one ShipStation account (V2 key, or V1 key + secret), push packed (or inventory-ready)
+Digit sales orders into ShipStation as V2 shipments/`create_sales_order` or V1 orders, and write tracking
 back when ShipStation purchases a label. Operators pick/pack in Digit and print labels in
 ShipStation. Rate shopping, label purchase in-app, return labels, and shipping-fee capture
 are Phase 2 — those controls are not in the UI.
@@ -20,19 +20,26 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
   Keys from MCP `appPermissions`. The Worker uses `API_TOKEN_DIGIT` for the same operations
   on webhooks and the 5-minute poll — grant the token those permissions too.
 - D1 `SHIPSTATION_DB` — publish binding only (not shown in the UI). `0001_init.sql` plus
-  `0002_order_sync.sql`, `0003_app_config.sql`, and `0004_activity_log.sql`. Do not edit `0001` after a consumer has published.
+  `0002_order_sync.sql`, `0003_app_config.sql`, `0004_activity_log.sql`,
+  `0006_api_version.sql`, and `0007_drop_legacy_app_secrets.sql`. Do not edit `0001` after
+  a consumer has published.
 - **All secrets are organization-level Digit app secrets**, managed only in Digit's built-in
-  App Secrets UI: `SHIPSTATION_API_KEY`, `API_TOKEN_DIGIT`, `PUBLIC_WEBHOOK_URL`. The app
-  never accepts, writes, returns, or logs their values. Digit injects them into the Worker as
-  `env.KEY`. The published app is a template for many organizations, so **no secret is ever
-  shared across organizations**. Do not use a `DIGIT_` prefix — Digit reserves it for platform
-  bindings.
-- `GET /setup` reports `items[].source` (`appSecret` | `appDatabase`) so the UI can show
-  whether a value is live.
-- `POST /connection` no longer takes a key: it reads `SHIPSTATION_API_KEY`, validates it with
-  a live `listCarriers` call, then creates the local connection row, syncs carriers, and
-  registers webhooks. `api_key_encrypted` is written as `''` for new rows and only read as a
-  **legacy fallback** for keys pasted before this switch (same for the D1 `app_config` rows).
+  App Secrets UI: `SHIPSTATION_API_KEY`, `SHIPSTATION_API_SECRET` (V1),
+  `SHIPSTATION_WEBHOOK_TOKEN` (V1 webhooks), `API_TOKEN_DIGIT`, `PUBLIC_WEBHOOK_URL`.
+  Key alone = V2; key + secret = V1. V1 + `PUBLIC_WEBHOOK_URL` requires the webhook token.
+  The app never accepts, writes, returns, or logs their values. Digit injects them into the
+  Worker as `env.KEY`. There is **no D1 fallback** for these keys (legacy `app_config` rows
+  are deleted on publish via `0007`) so removing a secret in Digit drops setup progress to
+  match. The published app is a template for many organizations, so **no secret is ever
+  shared across organizations**. Do not use a `DIGIT_` prefix — Digit reserves it for
+  platform bindings.
+- `GET /setup` reports `items[].source` (`appSecret` when live) plus `shipStationApiMode`
+  (`v1` | `v2` | `missing`). Setup progress counts **required** items only.
+- `POST /connection` no longer takes a key: it reads `SHIPSTATION_API_KEY` (and
+  `SHIPSTATION_API_SECRET` for V1), validates with a live carrier list, then creates the local
+  connection row (`api_version`), syncs carriers, and registers webhooks.
+  `api_key_encrypted` is written as `''` for new rows and only read as a
+  **legacy V2 fallback** for keys pasted before this switch.
   The auto-generated `ENCRYPTION_KEY` row stays only to decrypt those legacy values.
 - Disconnect deregisters webhooks and soft-deletes local rows; removing the key itself is
   done in Digit.
@@ -199,6 +206,68 @@ js?id=AW-16540468916:848 Cross-Origin-Opener-Policy policy would block the windo
 ReferenceError: motionFadeIn is not defined
 ```
 
+```
+write a plan to refactor the app to accept both v2 and v1 shipstation api keys
+```
+
+```
+Use option A for question 1 and option A for question 2
+```
+
+```
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+```
+
+```
+even when I remove the shipstation api key the app shows that the set up is still "1 of 3"
+when it should be "0 of 3"
+```
+
+```
+seperate v1 and v2 capabilities so that it is clear that the user will get either v1 OR v2
+but not both.
+```
+
+```
+when I reload the app and remove the secrets it still shows "1 out of 3" and now it shows
+the whole fulfillment queue as well.
+```
+
+```
+why is it still showing that shipstation is live when on the connect shipstation page?
+
+I'm getting this error when I try to connect: This organization already has a ShipStation
+account connected. Disconnect it first to reconnect.
+```
+
+```
+This still didn't fix the issue. I removed all shipstation api keys and the chip and modal
+are still saying the app is connected to shipstation
+```
+
+```
+It's still not working. When I try to connect to shipstation it doesn't raise an error
+indicating that thre is no shipstation api key present
+```
+
+```
+still not working
+```
+
+```
+on a new branch called - ui-fixes write a plan to complete the following tasks:
+- ensure that text is visible on both dark and light mode
+- remove duplicate text from fulfillment log re: digit api key
+- In settings modal under "What you can do" remove duplicate shipstation v1 and v2 entries.
+- In settings modal under Finish Setup instead of splitting V1 an V2 shipstation token info, use a toggle to toggle between the two.
+```
+
+```
+UI fixes (dark/light, duplicates, V1/V2 toggle)
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+```
+
 ## Context supplied
 
 - Work stays on git branch `shipstation-template` tracking `fork/shipstation-template`
@@ -206,6 +275,7 @@ ReferenceError: motionFadeIn is not defined
 - Phase 1: COM-01–COM-08 plus CS-12/13/14/16 and CS-01 as a Faire recipe/stub.
 - Strip FR-3 rate-shop, carrier defaults, dims, label-cost, return-email, and address-block
   settings from UI and Worker JSON. Leave `0001` columns at SQL defaults.
-- Digit native pick/pack/PDF; ShipStation native labels. Worker `POST /v2/shipments` with
-  `create_sales_order: true`. Webhooks: RSA-SHA256 JWKS verify, then jobs.
+- Digit native pick/pack/PDF; ShipStation native labels. Worker push is V2
+  `POST /v2/shipments` with `create_sales_order: true`, or V1 `POST /orders/createorder`.
+  Webhooks: V2 RSA-SHA256 JWKS verify, or V1 query token, then jobs.
 - `API_TOKEN_DIGIT` because webhooks have no iframe Digit session.

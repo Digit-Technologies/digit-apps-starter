@@ -10,10 +10,10 @@ authenticate the viewing user.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/setup` | Read-only status for secrets and `channels[]` adapter configuration (presence only). |
+| `GET` | `/setup` | Read-only status for secrets and `channels[]` adapter configuration (presence only). Includes `shipStationApiMode` (`v1` \| `v2` \| `missing`). |
 | `POST` | `/setup` | Rejected. App owners manage these values in Digit's built-in App Secrets UI. |
-| `GET` | `/connection?organizationId=` | Live connection (no API key, no Phase 2 rate fields). `{ connected: false }` if none. |
-| `POST` | `/connection` | Body: `organizationId` only. Reads `SHIPSTATION_API_KEY`, validates it with `GET /v2/carriers`, syncs carriers, registers webhooks. 503 if the secret is missing, 409 if a live connection exists. |
+| `GET` | `/connection?organizationId=` | Live connection (no API key, no Phase 2 rate fields). Includes `apiVersion`. `{ connected: false }` if none. `mismatch` when secrets no longer match the stored API version. |
+| `POST` | `/connection` | Body: `organizationId` only. Reads `SHIPSTATION_API_KEY` (and `SHIPSTATION_API_SECRET` for V1), validates with `GET /v2/carriers` or `GET /carriers`, syncs carriers, registers version-appropriate webhooks. 503 if the key is missing (or V1 webhook token missing when a public URL is set), 409 if a live connection exists. |
 | `DELETE` | `/connection` | Deregister webhooks; soft-delete connection/carriers/services. Leaves `shipment_label` and order map rows. |
 | `GET` | `/carriers?organizationId=` | Cached carrier catalog (Phase 2; UI does not show pickers). |
 | `GET` | `/org-settings?organizationId=` | `defaultFulfillmentMethod`, `syncMode`, `pushWhen`, `laneTagId`. |

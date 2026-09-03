@@ -1,6 +1,9 @@
 # ShipStation API v2 — thin map
 
-Base URL: `https://api.shipstation.com`. Auth: header `api-key`. **V2 only.**
+Base URL: `https://api.shipstation.com`. Auth: header `api-key`. Used when
+`SHIPSTATION_API_KEY` is set and `SHIPSTATION_API_SECRET` is **not**.
+
+V1 paths: [shipstation-v1-map.md](shipstation-v1-map.md).
 
 Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 
@@ -17,7 +20,7 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 | `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Digit order id |
 | `GET` | `/v2/shipments` | Inbound poll |
 | `GET` | `/v2/labels/{id}` | Label created webhook |
-| `GET` | resource_url | Thin webhook payloads (SSRF: `api.shipstation.com` / `api.shipengine.com` only) |
+| `GET` | resource_url | Thin webhook payloads (SSRF: `api.shipstation.com` / `api.shipengine.com` / `ssapi.shipstation.com`) |
 
 ## Webhook events registered on connect
 

@@ -4,11 +4,13 @@ Checklists only. Look up shapes on Digit MCP / ShipStation docs MCP.
 
 ## New ShipStation endpoint
 
-1. Confirm method + path + body on ShipStation docs MCP (V2).
-2. Add a helper in `src/backend/shipstation.js` using `ssFetch`.
-3. Decrypt the key only inside the Worker (`liveApiKey` in `sync.js`).
+1. Confirm method + path + body on ShipStation docs MCP for the API version in use
+   ([v2 map](shipstation-v2-map.md), [v1 map](shipstation-v1-map.md)).
+2. Add a helper in `src/backend/shipstation.js` using `ssFetch` (dispatch on
+   `credentials.apiVersion`).
+3. Resolve credentials only inside the Worker (`liveCredentials` in `sync.js`).
 4. Expose a `/proxy/backend` route; call it with `useBackendQuery` / `useBackendMutation`.
-5. Parse failures through `ssFetch` (upstream `errors[]`). `appendActivity`. UI: Alert with meaning + refetch `/sync/activity`.
+5. Parse failures through `ssFetch` (upstream errors). `appendActivity`. UI: Alert with meaning + refetch `/sync/activity`.
 
 ## New Digit write
 
@@ -50,10 +52,11 @@ Scan: Digit `pickItem` + item `scanCodeSerialNumber` in a clone UI — not this 
 
 ## New inbound webhook event
 
-1. Confirm event name and RSA-SHA256 headers on docs MCP.
-2. Add to `WEBHOOK_EVENTS` in `connection.js`; disconnect must `deleteWebhook`.
-3. Handle on path `shipstation`; verify raw bytes → `digitJobs.submit` → 200.
-4. `appendActivity` after the job (ids + outcome only).
+1. Confirm event name and verify scheme on docs MCP (V2 RSA-SHA256 vs V1 unsigned + token).
+2. Add to `WEBHOOK_EVENTS_V2` or `WEBHOOK_EVENTS_V1` in `connection.js`; disconnect must `deleteWebhook`.
+3. Handle on path `shipstation`; verify raw bytes (and query token for V1) → `digitJobs.submit` → 200.
+4. `appendActivity` after the job (ids + outcome only). Activity copy should say “ShipStation”
+   generically; mention V1/V2 only in connect/setup errors.
 
 ## New D1 table or column
 

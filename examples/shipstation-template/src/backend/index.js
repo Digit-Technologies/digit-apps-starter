@@ -2,8 +2,8 @@
  * ShipStation template Worker.
  *
  * D1 binding: SHIPSTATION_DB
- * Config: API_TOKEN_DIGIT and PUBLIC_WEBHOOK_URL are managed in Digit's built-in App
- * Secrets UI; D1 app_config is a read-only fallback for older saves.
+ * Config: API_TOKEN_DIGIT, PUBLIC_WEBHOOK_URL, and ShipStation secrets are Digit App
+ * Secrets (Worker `env` only). D1 `app_config` keeps ENCRYPTION_KEY for legacy decrypt.
  * Optional channel secrets: FAIRE_API_KEY, SHOPIFY_*, WOOCOMMERCE_* (see runtimeConfig.CHANNEL_SECRETS)
  * Digit GraphQL URL is always https://api.digit-software.com/graphql.
  */

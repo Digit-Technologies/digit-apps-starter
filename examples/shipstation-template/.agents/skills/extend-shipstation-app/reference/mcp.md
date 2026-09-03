@@ -4,10 +4,11 @@ Both MCPs are required before changing Digit GraphQL or ShipStation HTTP. If eit
 disconnected, **stop** and ask the user to connect it. Do not invent schema, permission
 keys, or ShipStation request bodies.
 
-Do **not** put a ShipStation API key (or Digit token) in MCP config, `mcp.json`, or
-committed files. Each organization manages `SHIPSTATION_API_KEY`, `API_TOKEN_DIGIT`, and
-`PUBLIC_WEBHOOK_URL` in Digit's built-in App Secrets UI. There is no MCP tool for app env
-vars or secrets.
+Do **not** put a ShipStation API key or secret (or Digit token) in MCP config, `mcp.json`,
+or committed files. Each organization manages `SHIPSTATION_API_KEY`,
+`SHIPSTATION_API_SECRET` (V1), `SHIPSTATION_WEBHOOK_TOKEN` (V1 webhooks),
+`API_TOKEN_DIGIT`, and `PUBLIC_WEBHOOK_URL` in Digit's built-in App Secrets UI. There is
+no MCP tool for app env vars or secrets.
 
 ## Digit MCP
 
@@ -37,17 +38,21 @@ Cursor `mcp.json` (HTTP):
 }
 ```
 
-Use it to confirm method, path, auth header (`api-key`), and JSON shape for **V2**
-(`https://api.shipstation.com`). Then implement the call in `src/backend/shipstation.js`.
+Use it to confirm method, path, auth, and JSON shape for the API version you are
+calling, then implement the call in `src/backend/shipstation.js` (via `ssFetch`).
 
-ShipStation also has V1 (`ssapi.shipstation.com`) and ShipEngine. This template is **V2
-only**. Ignore V1 examples.
+- **V2:** `https://api.shipstation.com`, header `api-key`. Map:
+  [shipstation-v2-map.md](shipstation-v2-map.md).
+- **V1:** `https://ssapi.shipstation.com`, Basic `key:secret`. Map:
+  [shipstation-v1-map.md](shipstation-v1-map.md).
+
+Runtime mode is **not** chosen in MCP config. Key alone = V2; key + secret = V1.
 
 ## Fallback if docs MCP is down
 
 1. Ask the user to connect `https://docs.shipstation.com/mcp`.
-2. If they cannot: fetch the **live** OpenAPI for that session from
-   `https://docs.shipstation.com/_bundle/apis/@shipstation-v2/openapi.yaml`.
+2. If they cannot: fetch the **live** OpenAPI for that session (V2:
+   `https://docs.shipstation.com/_bundle/apis/@shipstation-v2/openapi.yaml`).
    Do not commit that file. Do not paste ShipStation prose docs into the repo.
 
 A third-party *live* ShipStation API MCP (key in Cursor, tools that POST to ShipStation)

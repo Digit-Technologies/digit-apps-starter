@@ -55,10 +55,10 @@ New sync, connect, webhook, or poll paths must `appendActivity` and refetch
 
 ## Verbose upstream errors
 
-All ShipStation HTTP goes through `ssFetch`. On failure, parse the V2 / ShipEngine
-body (`request_id`, `errors[].error_code`, `errors[].message`, `errors[].field_name`).
-Confirm the shape on ShipStation docs MCP before changing parsers. Do **not** include
-`field_value` (may be PII) or request bodies.
+All ShipStation HTTP goes through `ssFetch`. On failure, parse the version-appropriate
+body: V2 / ShipEngine `{ request_id, errors[].error_code, errors[].message, errors[].field_name }`;
+V1 often `{ Message }` / `{ message }`. Confirm the shape on ShipStation docs MCP before
+changing parsers. Do **not** include `field_value` (may be PII) or request bodies.
 
 Digit Worker GraphQL (`digitGraphql.js`): include `errors[0].message` and
 `extensions.code` when present.
@@ -78,6 +78,7 @@ surprise. Do not duplicate that in a second status column — sync state (`pushe
 
 ## Webhooks and jobs
 
-- Invalid signature: 401, no body logging, no activity row (unauthenticated noise).
+- Invalid signature or V1 webhook token: 401, no body logging, no activity row
+  (unauthenticated noise).
 - After verify: enqueue `process-ss-webhook`, then `appendActivity` on skip / error /
   success using event name + Digit order id / ShipStation shipment id only.
