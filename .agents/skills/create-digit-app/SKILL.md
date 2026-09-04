@@ -112,6 +112,13 @@ All apps share React + MUI + `@digit/lib-frontend` and the same folder conventio
 There is no local Digit preview (Worker / env / D1 are platform-injected) — pack + publish
 is the path.
 
+**Debugging a published app.** The harness forwards uncaught errors, unhandled rejections,
+`console.error` / `console.warn`, bundle load failures and failed Digit API / backend calls
+to the Digit host. In Digit Studio they appear in the preview's Console tab and are attached
+to the next chat message automatically; elsewhere ask the user to copy them from the Console
+tab. Report unexpected states with `console.error` (not `console.log`) so they get there, and
+never replace `console.error` or `window.onerror` — wrapping them breaks forwarding.
+
 ### 2. App must already exist in Digit
 
 Publishing **never creates** an app. Ask the user to create the app in the Digit UI first,
