@@ -37,8 +37,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Build curated archive
-        id: build
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Stage curated tree
         run: |
           set -euo pipefail
 
@@ -85,6 +89,39 @@ jobs:
           test ! -d "$STAGE/apps/app/frontend"
           test ! -d "$STAGE/apps/app/backend"
           test ! -f "$STAGE/apps/app/app.zip"
+
+          echo "STAGE=$STAGE" >> "$GITHUB_ENV"
+
+      # Runs what the harness runs after seeding, on a copy so the archive stays clean.
+      - name: Verify the seed installs and packs
+        run: |
+          set -euo pipefail
+
+          CHECK="$(mktemp -d)/digit-apps-starter"
+          cp -R "$STAGE" "$CHECK"
+          cd "$CHECK"
+
+          npm install --no-audit --no-fund
+
+          # A second copy means the seed's pins disagree with lib-frontend's peers, and
+          # every app built from it bundles two Reacts.
+          for pkg in react react-dom @mui/material; do
+            copies="$(find . -path "*/node_modules/$pkg/package.json")"
+            if [ "$(printf '%s\n' "$copies" | wc -l)" -ne 1 ]; then
+              echo "::error::$pkg resolves to more than one copy"
+              echo "$copies"
+              npm ls react react-dom @mui/material --all || true
+              exit 1
+            fi
+          done
+
+          npm run pack -w apps/app
+          unzip -Z1 apps/app/app.zip | grep -Fx 'frontend/index.js' >/dev/null
+
+      - name: Build curated archive
+        id: build
+        run: |
+          set -euo pipefail
 
           DATE_TAG="starter-$(date -u +%Y.%m.%d)-${GITHUB_SHA::7}"
           {
