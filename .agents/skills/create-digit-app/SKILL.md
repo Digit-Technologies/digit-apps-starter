@@ -79,6 +79,11 @@ as you know which Digit API calls the app makes — inventing fields or permissi
 fails at runtime or publish validation. Re-check step 7 whenever you add or change a Digit
 API call.
 
+The checklist tracks progress, not tool calls — a step is not one call. Batch whatever your
+harness lets you batch: several schema lookups together, several file reads together, several
+edits together, and search with a shell `grep -rn` rather than a walk per file. Spending a
+round trip per file is the slowest way to work through this.
+
 ### 1. Scaffold the app
 
 This repo is a single **npm workspace**. Apps live in `apps/<name>` — that depth is
