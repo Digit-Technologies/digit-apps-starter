@@ -13,8 +13,8 @@ Reference Digit app that exercises the main platform surfaces in one place:
 | Jobs | Submit `note-stats` via `digitJobs`, watch runs; hourly `prune-notes` schedule |
 | Config | Env `WELCOME_MESSAGE` via `/proxy/backend/greeting` |
 
-Uses `@digit/lib-frontend`, `@digit/lib-backend`, `@digit/lib-common`, and
-`@digit/lib-build` (`digit-app pack`).
+Uses `@sutton/lib-frontend`, `@sutton/lib-backend`, `@sutton/lib-common`, and
+`@sutton/lib-build` (`digit-app pack`).
 
 Layout:
 

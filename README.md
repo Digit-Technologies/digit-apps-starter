@@ -15,7 +15,7 @@ npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
 ```
 
 This repo is one npm workspace (`packages/*`, `examples/*`, `apps/*`). Always install from
-the repo root — `@digit/lib-build` is linked with `file:`, so npm installs its Vite build
+the repo root — `@sutton/lib-build` is linked with `file:`, so npm installs its Vite build
 toolchain into the root `node_modules` rather than the app's.
 
 The curated starter archive includes `apps/app/`, pre-scaffolded from the frontend-only
@@ -31,7 +31,7 @@ Agents should follow:
 
 That skill covers:
 
-- **React + MUI + `@digit/lib-frontend`** (required default stack)
+- **React + MUI + `@sutton/lib-frontend`** (required default stack)
 - `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
 - Mounting to `#root` with `DigitThemeProvider`
 - Root `manifest.json` (staged at the zip root by pack)
@@ -43,17 +43,18 @@ That skill covers:
 
 | Package | Role |
 | --- | --- |
-| [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
-| [`packages/lib-frontend`](packages/lib-frontend) (`@digit/lib-frontend`) | Theme, harness types, Digit/backend **hooks**, error UI |
-| [`packages/lib-backend`](packages/lib-backend) (`@digit/lib-backend`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
-| [`packages/lib-build`](packages/lib-build) (`@digit/lib-build`) | `digit-app pack` — shared Vite build + `app.zip` |
+| [`packages/lib-common`](packages/lib-common) (`@sutton/lib-common`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
+| [`packages/lib-frontend`](packages/lib-frontend) (`@sutton/lib-frontend`) | Theme, harness types, Digit/backend **hooks**, error UI |
+| [`packages/lib-backend`](packages/lib-backend) (`@sutton/lib-backend`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
+| [`packages/lib-build`](packages/lib-build) (`@sutton/lib-build`) | `digit-app pack` — shared Vite build + `app.zip` |
 
 Runtime packages expose a slim root export for everyday app/Worker code. Other files
 under `src/` are implementation details — do not deep-import them. Helpers use named
 arguments. Runtime packages do **not** re-export each other.
 
-Apps depend on them via `file:…` — not on private `digit-web`. With a Worker, depend on
-`lib-frontend` + `lib-backend` + `lib-common`, plus `lib-build` as a devDependency.
+Apps depend on them via `file:…` in this monorepo (or semver ranges from NPM once published
+as `@sutton/*`). With a Worker, depend on `lib-frontend` + `lib-backend` + `lib-common`,
+plus `lib-build` as a devDependency. See [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ## Example
 

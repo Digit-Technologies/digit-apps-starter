@@ -2,7 +2,7 @@
  * Public API for Digit app Cloudflare Workers.
  * Only import from this package root — other files are implementation details.
  *
- * Codes, validation, and result types come from `@digit/lib-common` — this package
+ * Codes, validation, and result types come from `@sutton/lib-common` — this package
  * does not re-export them.
  */
 

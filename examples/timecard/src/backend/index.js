@@ -6,8 +6,8 @@
  * useDigitApiQuery so no manifest permission is required).
  */
 
-import { AppErrorCode } from '@digit/lib-common';
-import { backendPath, createHandler, err } from '@digit/lib-backend';
+import { AppErrorCode } from '@sutton/lib-common';
+import { backendPath, createHandler, err } from '@sutton/lib-backend';
 
 import { handleShifts } from './shifts.js';
 

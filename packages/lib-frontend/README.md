@@ -1,4 +1,4 @@
-# `@digit/lib-frontend`
+# `@sutton/lib-frontend`
 
 Digit frontend kit for custom apps: MUI theme (`DigitThemeProvider`), React data
 hooks for the Digit API and app backend, and error normalization/display.
@@ -25,7 +25,7 @@ Every app template wraps its UI in `DigitThemeProvider`:
 
 ```tsx
 import { createRoot } from "react-dom/client";
-import { DigitThemeProvider } from "@digit/lib-frontend";
+import { DigitThemeProvider } from "@sutton/lib-frontend";
 import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
@@ -43,7 +43,7 @@ The provider:
 
 Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`,
 `DigitHostDownloadOptions`, and `DigitHostPrintOptions`) are exported from this package.
-Importing `@digit/lib-frontend` also augments `Window`. Prefer the data hooks over calling
+Importing `@sutton/lib-frontend` also augments `Window`. Prefer the data hooks over calling
 `window.DigitProxyClient` yourself. Do not add a local `digit.d.ts` for the harness.
 
 Host-mediated printing takes a self-contained HTML snapshot:
@@ -82,7 +82,7 @@ import {
   useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
-} from "@digit/lib-frontend";
+} from "@sutton/lib-frontend";
 
 // Digit GraphQL API
 const { data, error, loading, refetch } = useDigitApiQuery({
@@ -113,8 +113,8 @@ Error kinds:
 | `unavailable` | Missing `DigitProxyClient` (local Vite without harness)               |
 | `unknown`     | Thrown / non-JSON / unexpected shapes                                 |
 
-Platform codes stay distinct from app codes (`AppErrorCode` on `@digit/lib-common`).
-Pair with `@digit/lib-backend` on the Worker so result shapes match.
+Platform codes stay distinct from app codes (`AppErrorCode` on `@sutton/lib-common`).
+Pair with `@sutton/lib-backend` on the Worker so result shapes match.
 
 `AppErrorAlert` maps known platform / backend codes to a title, safe message, optional
 next-step guidance (e.g. `MISSING_CONFIG` → set env/secrets in Digit), visible support
@@ -126,7 +126,7 @@ info for debugging, and Retry when the error looks transient. Prefer rendering
 ```json
 {
   "dependencies": {
-    "@digit/lib-frontend": "file:../../packages/lib-frontend"
+    "@sutton/lib-frontend": "file:../../packages/lib-frontend"
   }
 }
 ```
@@ -135,7 +135,7 @@ Apps must also depend on the peer packages (`react`, `react-dom`, `@mui/material
 `@emotion/react`, `@emotion/styled`). Vite configs need `resolve.preserveSymlinks: true`
 so peers resolve from the app’s `node_modules` when the package is linked via `file:`.
 
-See also [`@digit/lib-backend`](../lib-backend) for Worker helpers.
+See also [`@sutton/lib-backend`](../lib-backend) for Worker helpers.
 
 Styling is MUI + `DigitThemeProvider` only — do not add parallel CSS variable themes.
 The Digit harness may inject Inter on the shell HTML.

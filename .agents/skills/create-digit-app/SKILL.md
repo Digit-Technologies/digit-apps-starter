@@ -2,7 +2,7 @@
 name: create-digit-app
 description: >-
   Build and publish Digit custom apps (React + MUI + Digit theme via
-  @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
+  @sutton/lib-frontend, optional Cloudflare Worker backends via @sutton/lib-backend,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Digit app, editing an app in a local clone
@@ -20,7 +20,7 @@ support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
 Use `DigitHost.download` for files and `DigitHost.print` for printable HTML.
 See [reference/iframe-constraints.md](reference/iframe-constraints.md).
 
-**Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
+**Default stack (required):** React + MUI + `@sutton/lib-frontend` (`DigitThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
 package. Users are often non-developers — one path keeps apps looking and behaving
 like Digit.
@@ -100,15 +100,15 @@ npm run new-app -- my-app       # copies examples/full-featured → apps/my-app
 do not invent a new project shape.
 
 The template covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API, secrets,
-D1 via the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Keep the
-`@digit/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
+D1 via the Worker (`useBackendQuery` / `@sutton/lib-backend`), and env config. Keep the
+`@sutton/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
 configs, a local pack script, or a per-app `npm install`.
 
-**Always install from the repo root.** `@digit/lib-build` is a `file:` link, so npm puts
+**Always install from the repo root.** `@sutton/lib-build` is a `file:` link, so npm puts
 its build toolchain (Vite) in the root `node_modules`, not the app's. Running `npm install`
 only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
-All apps share React + MUI + `@digit/lib-frontend` and the same folder conventions.
+All apps share React + MUI + `@sutton/lib-frontend` and the same folder conventions.
 There is no local Digit preview (Worker / env / D1 are platform-injected) — pack + publish
 is the path.
 
@@ -128,7 +128,7 @@ then resolve its `id` with MCP **`apps`** (or have the user paste it).
 
 ```
 apps/my-app/
-├── package.json            # @digit/lib-* ; "pack": "digit-app pack"
+├── package.json            # @sutton/lib-* ; "pack": "digit-app pack"
 ├── manifest.json           # staged at zip root by digit-app pack
 ├── SPEC.md
 ├── src/frontend/           # main.tsx → #root + DigitThemeProvider; App.tsx
@@ -137,7 +137,7 @@ apps/my-app/
 └── backend/                # BUILD when Worker present — gitignored
 ```
 
-Edit `src/frontend` and `src/backend` only. Harness types come from `@digit/lib-frontend`
+Edit `src/frontend` and `src/backend` only. Harness types come from `@sutton/lib-frontend`
 — no local `digit.d.ts`. Prefer data hooks over calling `window.DigitProxyClient`.
 
 ```bash
@@ -145,7 +145,7 @@ npm run pack -w apps/my-app     # from repo root → app.zip
 ```
 
 `app.zip` has root `manifest.json`, `frontend/` (+ `backend/` when declared), and
-`project/` (source + vendored `@digit/lib-*`). Digit deploys `frontend/` / `backend/`
+`project/` (source + vendored `@sutton/lib-*`). Digit deploys `frontend/` / `backend/`
 only; still upload the zip **unchanged**. Details:
 [reference/manifest.md](reference/manifest.md), [reference/publish.md](reference/publish.md).
 
@@ -165,7 +165,7 @@ only; still upload the zip **unchanged**. Details:
   hard-coded colors or custom CSS. See [reference/theming.md](reference/theming.md).
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
-- **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
+- **Entry is IIFE `frontend/index.js`.** `@sutton/lib-build` packs it — no alternate bundler.
 - **Digit API:** `useDigitApiQuery` / `useDigitApiMutation`. Look up operations via
   `graphql-schema://…` first. Never call Digit GraphQL with a bearer token from the browser.
 - **Sort / filter / page via the API:** When the GraphQL field (or backend route) accepts
@@ -291,20 +291,20 @@ upstream starter.
 | ------------------------------------- | --------------------------------------------------------------- |
 | Any new app                           | Copy `full-featured`, delete unused tabs/routes                 |
 | Digit GraphQL                         | Schema resources → hooks + `appPermissions` → `key` in manifest |
-| Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
-| Codes / JSON validation               | `@digit/lib-common`                                             |
+| Env / secrets / D1 / third-party HTTP | Worker + `@sutton/lib-backend`                                   |
+| Codes / JSON validation               | `@sutton/lib-common`                                             |
 
 ## Packages (`lib-*`)
 
 Import from each package **root only**. Helpers use **named arguments**. Runtime packages
-do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
+do **not** re-export each other. Use `@sutton/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`              |
-| `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
-| `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
-| `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
+| `@sutton/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`              |
+| `@sutton/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
+| `@sutton/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
+| `@sutton/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
 
 ### Backend Worker
 

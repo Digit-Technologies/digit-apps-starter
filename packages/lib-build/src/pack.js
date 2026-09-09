@@ -33,8 +33,17 @@ async function resolvePackagesDir({ root }) {
     return monorepo;
   }
   throw new Error(
-    'cannot find @digit/lib-* packages (expected ./packages or monorepo packages/ next to lib-build)',
+    'cannot find @sutton/lib-* packages (expected ./packages or monorepo packages/ next to lib-build)',
   );
+}
+
+const LIB_SCOPES = ['@sutton/lib-', '@sutton/lib-'];
+
+function libFolderFromDepName(name) {
+  for (const prefix of LIB_SCOPES) {
+    if (name.startsWith(prefix)) return name.slice(prefix.length);
+  }
+  return null;
 }
 
 function digitLibFoldersFromPackageJson(pkg) {
@@ -43,8 +52,8 @@ function digitLibFoldersFromPackageJson(pkg) {
     const deps = pkg[section];
     if (!deps) continue;
     for (const name of Object.keys(deps)) {
-      if (!name.startsWith('@digit/lib-')) continue;
-      folders.add(name.slice('@digit/'.length));
+      const folder = libFolderFromDepName(name);
+      if (folder) folders.add(folder);
     }
   }
   // Always vendor the build tooling used to re-pack.
@@ -57,8 +66,8 @@ function rewriteDigitLibDeps(pkg) {
     const deps = pkg[section];
     if (!deps) continue;
     for (const name of Object.keys(deps)) {
-      if (!name.startsWith('@digit/lib-')) continue;
-      const folder = name.slice('@digit/'.length);
+      const folder = libFolderFromDepName(name);
+      if (!folder) continue;
       deps[name] = `file:./packages/${folder}`;
     }
   }

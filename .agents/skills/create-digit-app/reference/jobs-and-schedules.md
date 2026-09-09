@@ -31,7 +31,7 @@ Rules (publish-validated):
 ## Handle runs with `createHandler({ jobs })`
 
 ```js
-import { createHandler, requireEnv } from '@digit/lib-backend';
+import { createHandler, requireEnv } from '@sutton/lib-backend';
 
 export default createHandler({
   jobs: {
@@ -73,7 +73,7 @@ Every published backend Worker gets a `DIGIT_JOBS` binding (platform-injected â€
 declare it; the `DIGIT_` prefix is reserved). `digitJobs({ env })` returns it typed:
 
 ```js
-import { digitJobs, ok } from '@digit/lib-backend';
+import { digitJobs, ok } from '@sutton/lib-backend';
 
 // In a route: queue work and return immediately.
 const { runId } = await digitJobs({ env }).submit({

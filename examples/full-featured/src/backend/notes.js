@@ -8,8 +8,8 @@ import {
   optionalString,
   parseJsonResponse,
   requiredString,
-} from '@digit/lib-common';
-import { err, ok, requireEnv } from '@digit/lib-backend';
+} from '@sutton/lib-common';
+import { err, ok, requireEnv } from '@sutton/lib-backend';
 
 function toNote(row) {
   return {

@@ -1,0 +1,120 @@
+# Publishing `@sutton/*` libraries to NPM
+
+This document describes how shared Digit app-builder libraries leave this monorepo and
+land on NPM. **Nothing in this repo publishes automatically until release secrets and org
+access are configured.**
+
+## Packages
+
+| NPM name | Path | Purpose |
+| --- | --- | --- |
+| `@sutton/lib-common` | `packages/lib-common` | Error codes, result types, pure validation |
+| `@sutton/lib-frontend` | `packages/lib-frontend` | MUI theme, harness types, React data hooks, error UI |
+| `@sutton/lib-backend` | `packages/lib-backend` | Worker handler helpers, env/secrets, jobs, webhooks |
+| `@sutton/lib-build` | `packages/lib-build` | `digit-app pack` CLI and shared Vite configs |
+
+Dependency graph:
+
+```
+lib-common (no internal deps)
+    ↑
+lib-frontend, lib-backend
+lib-build (standalone tooling)
+```
+
+## Versioning — Release Please (manifest mode)
+
+We use [Release Please](https://github.com/googleapis/release-please) in **manifest mode**
+(same family of tooling used on `digit-api`):
+
+- `release-please-config.json` — per-package release settings and grouped release PR title
+- `.release-please-manifest.json` — last released version for each package path
+
+On every push to `main`, the `release-please` workflow opens or updates a **Release PR**
+that bumps versions, updates changelogs, and refreshes the manifest. Merging that PR creates
+GitHub releases and tags (for example `lib-common-v1.2.0`).
+
+Commit messages on `main` should follow [Conventional Commits](https://www.conventionalcommits.org/)
+so Release Please can infer semver bumps (`feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major).
+
+### Why Release Please (vs alternatives)
+
+| Option | Fit for this repo |
+| --- | --- |
+| **Release Please (chosen)** | Already familiar on `digit-api`; native monorepo manifest + `node-workspace` plugin keeps `@sutton/lib-*` versions aligned; generates changelogs and release PRs with no manual version edits. |
+| Changesets | Excellent for independent per-package semver, but adds author overhead (changeset files on every PR) and a second merge step. Overkill while these four packages ship together. |
+| Manual tags + `npm version` | Minimal tooling, but error-prone in a monorepo and no changelog discipline. |
+| Lerna / Nx release | Heavier infra than needed for four small packages with no build graph orchestration beyond `npm run build:packages`. |
+
+## Publish workflow (release time only)
+
+The `publish-npm-packages` workflow is **not** wired to run on every merge. It runs when:
+
+1. A GitHub **Release** is published (typically by Release Please after the Release PR merges), or
+2. A maintainer triggers **workflow_dispatch** (defaults to `dry_run: true`).
+
+Steps:
+
+1. Install dependencies from the repo root (`npm ci`).
+2. `npm run build:packages` — compile TS libraries to `dist/` (`lib-build` ships plain JS from `src/`).
+3. `npm run verify:packages` — smoke-test that `hello-world` still packs.
+4. For each package under `packages/*` with a `"name": "@sutton/..."`:
+   - `npm publish --dry-run` when `dry_run=true`
+   - `npm publish --provenance --access <public|restricted>` when `dry_run=false`
+
+### Who triggers publish?
+
+| Step | Actor |
+| --- | --- |
+| Day-to-day merges to `main` | Release Please bot (opens Release PR only) |
+| Merge Release PR | Maintainer (creates GitHub release + tag) |
+| NPM publish | GitHub Actions on `release: published`, using `NPM_TOKEN` |
+
+Use workflow_dispatch with `dry_run: false` only for emergency republish/debug after the
+Release exists.
+
+### Required secrets (not configured in this PR)
+
+| Secret | Purpose |
+| --- | --- |
+| `NPM_TOKEN` | Automation token with publish access to `@sutton/*` on npmjs.com |
+
+Optional hardening:
+
+- `NPM_CONFIG_PROVENANCE=true` (enabled via `--provenance` flag in the workflow)
+- OIDC trusted publishing on npm (replace long-lived token when org policy allows)
+
+## Local dry-run
+
+```bash
+npm ci
+npm run build:packages
+npm publish --dry-run -w @sutton/lib-common
+npm publish --dry-run -w @sutton/lib-frontend
+npm publish --dry-run -w @sutton/lib-backend
+npm publish --dry-run -w @sutton/lib-build
+```
+
+## Consumer migration (vendored → registry)
+
+Today, `digit-app pack` vendors `@sutton/lib-*` (and legacy `@sutton/lib-*`) into
+`project/packages/` inside `app.zip`. After registry publish:
+
+1. New apps depend on semver ranges in `package.json` (`"@sutton/lib-frontend": "^1.0.0"`).
+2. Pack can stop vendoring once Digit Studio / agent sessions install from the registry.
+3. During migration, pack accepts **either** scope and still vendors for offline zip builds.
+
+See open questions in the tracking PR before flipping default app templates to registry deps.
+
+## Production-readiness checklist
+
+- [ ] NPM org `@sutton` access and automation token (`NPM_TOKEN` secret)
+- [ ] Public vs private package visibility decided
+- [ ] Initial semver baseline (stay `0.x` until API stable, or jump to `1.0.0`?)
+- [ ] Breaking-change policy documented for app authors
+- [ ] Changelog review gate on Release PR merges
+- [ ] CI test gate before publish (pack smoke test today; add unit tests if/when added)
+- [ ] npm provenance enabled (workflow uses `--provenance`; confirm org setting)
+- [ ] Dual-publish / vendoring sunset plan for starter zip and Digit Studio
+- [ ] Update `create-digit-app` skill and starter asset once registry is live
+- [ ] Dependabot / Renovate for consumer repos after migration

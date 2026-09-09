@@ -1,0 +1,6 @@
+{
+  "packages/lib-common": "0.1.0",
+  "packages/lib-frontend": "0.1.0",
+  "packages/lib-backend": "0.1.0",
+  "packages/lib-build": "0.1.0"
+}

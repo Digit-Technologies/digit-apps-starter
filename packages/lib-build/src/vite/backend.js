@@ -3,7 +3,7 @@ import path from 'node:path';
 import { inlineBundleLicenses } from './inlineBundleLicenses.js';
 
 /**
- * Internal Vite config: bundle Worker + @digit/lib-backend into backend/index.js (ESM).
+ * Internal Vite config: bundle Worker + @sutton/lib-backend into backend/index.js (ESM).
  *
  * Uses an application build (not `build.lib`) with `preserveEntrySignatures` so the
  * Worker default export is kept while Oxc can fully minify — lib + `es` skips

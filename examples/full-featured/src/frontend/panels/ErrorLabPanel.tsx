@@ -13,7 +13,7 @@ import {
   useBackendMutation,
   useDigitApiMutation,
   type AppError,
-} from '@digit/lib-frontend';
+} from '@sutton/lib-frontend';
 
 const FIXTURES: Record<string, AppError> = {
   platform_session: {

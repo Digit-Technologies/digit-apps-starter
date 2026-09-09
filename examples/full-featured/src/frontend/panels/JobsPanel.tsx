@@ -12,7 +12,7 @@ import {
   AppErrorAlert,
   useBackendMutation,
   useBackendQuery,
-} from '@digit/lib-frontend';
+} from '@sutton/lib-frontend';
 
 type JobRun = {
   runId: string;

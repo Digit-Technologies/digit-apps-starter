@@ -2,7 +2,7 @@
 // payload to https://{app-id}.<apps domain>/webhooks/note-created and it lands here.
 // ALWAYS verify before acting — the endpoint is public; the signature is the only auth.
 
-import { requireEnv, verifyWebhookSignature } from '@digit/lib-backend';
+import { requireEnv, verifyWebhookSignature } from '@sutton/lib-backend';
 
 const json = (status, data) => ({
   status,

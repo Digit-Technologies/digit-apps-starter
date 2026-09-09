@@ -1,7 +1,7 @@
 // Only the platform holds the dispatch binding that can call `triggerJob`, so invocations are
 // platform-originated by construction — unreachable over HTTP, no auth of their own needed.
 
-import { AppErrorCode } from '@digit/lib-common';
+import { AppErrorCode } from '@sutton/lib-common';
 
 import { HandlerError } from './createHandler';
 

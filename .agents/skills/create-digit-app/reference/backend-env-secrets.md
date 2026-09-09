@@ -14,19 +14,19 @@ into the frontend bundle.
 
 ## Worker access
 
-Prefer `@digit/lib-backend`: wrap with `createHandler`, read bindings with `requireEnv`
+Prefer `@sutton/lib-backend`: wrap with `createHandler`, read bindings with `requireEnv`
 (or `optionalEnv` when absence is a valid branch). Missing required keys become structured
 `{ ok: false, error }` responses — do not read `env.KEY` ad hoc and return plain text.
 
 ```js
-import { AppErrorCode } from '@digit/lib-common';
+import { AppErrorCode } from '@sutton/lib-common';
 import {
   backendPath,
   createHandler,
   err,
   ok,
   requireEnv,
-} from '@digit/lib-backend';
+} from '@sutton/lib-backend';
 
 export default createHandler({
   fetch: async ({ request, env }) => {
@@ -72,7 +72,7 @@ Never put secret values or raw upstream bodies into `error.message` / success `d
 Frontend reads env-backed data only through the backend proxy, via hooks:
 
 ```ts
-import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
+import { AppErrorAlert, useBackendQuery } from '@sutton/lib-frontend';
 
 const { data, error, loading, refetch } = useBackendQuery<{ authenticated: boolean }>({
   path: '/external-status',

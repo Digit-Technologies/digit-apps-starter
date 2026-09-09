@@ -9,7 +9,7 @@ import Stack from '@mui/material/Stack';
 import Switch from '@mui/material/Switch';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert } from '@digit/lib-frontend';
+import { AppErrorAlert } from '@sutton/lib-frontend';
 
 import ChartCard from './components/ChartCard';
 import MosChart from './components/MosChart';

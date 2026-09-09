@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client';
 
-import { DigitThemeProvider } from '@digit/lib-frontend';
+import { DigitThemeProvider } from '@sutton/lib-frontend';
 
 import App from './App';
 

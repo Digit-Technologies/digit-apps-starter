@@ -1,4 +1,4 @@
-import { AppErrorCode } from '@digit/lib-common';
+import { AppErrorCode } from '@sutton/lib-common';
 
 import { HandlerError } from './createHandler';
 

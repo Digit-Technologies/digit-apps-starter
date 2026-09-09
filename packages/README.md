@@ -1,0 +1,18 @@
+# `@sutton/*` shared libraries
+
+These packages are published to NPM under the `@sutton` scope for Digit custom app
+builders, Studio sessions, and vibe-coded apps. They replace vendored copies inside
+`app.zip` with semver'd dependencies.
+
+| Package | NPM | Role |
+| --- | --- | --- |
+| `lib-common` | `@sutton/lib-common` | Error codes, result types, pure validation |
+| `lib-frontend` | `@sutton/lib-frontend` | Theme, harness types, React hooks, error UI |
+| `lib-backend` | `@sutton/lib-backend` | Worker handler helpers, env/secrets, jobs |
+| `lib-build` | `@sutton/lib-build` | `digit-app pack` CLI |
+
+See [docs/npm-publishing.md](../docs/npm-publishing.md) for versioning, CI publish flow,
+and migration notes.
+
+**Legacy scope:** Older docs and archives may still reference `@sutton/lib-*`. `digit-app pack`
+accepts both scopes during migration.
