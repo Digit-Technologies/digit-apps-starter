@@ -84,16 +84,128 @@ behavior matches release time.
 Use workflow_dispatch with `dry_run: false` only for emergency republish/debug after the
 Release exists.
 
-### Required secrets (not configured in this PR)
+## NPM org and `NPM_TOKEN` setup (runbook)
 
-| Secret | Purpose |
+**Status:** documented — **awaiting Sean to provision**. This repo does not include credentials
+and the `@sutton` npm organization may not exist yet. Follow the steps below before the first
+real publish.
+
+### 1. Create or claim the `@sutton` npm organization
+
+| Item | Guidance |
 | --- | --- |
-| `NPM_TOKEN` | Automation token with publish access to `@sutton/*` on npmjs.com |
+| **Who should own it?** | **Recommendation:** a shared npm user or billing account owned by Digit engineering (e.g. `digit-engineering@…` or an existing platform admin), not an individual developer laptop account. **Placeholder if unknown:** assign an **npm org Owner** (Sean or delegated platform admin) to create the org and invite maintainers. |
+| **Create the org** | Log in at [npmjs.com](https://www.npmjs.com/) → avatar → **Add an Organization** → choose the **free** plan unless npm Teams is required → set the org slug to **`sutton`** (publishes as `@sutton/…`). |
+| **Confirm the slug** | After creation, the org URL should be `https://www.npmjs.com/org/sutton`. If `@sutton` is already taken by someone else, stop and pick a different scope — **do not change package names in this repo without a product decision.** |
+| **Membership** | Add at least two **Owners** or **Admins** (bus factor). Developers who only need to publish from CI do **not** need personal publish tokens once `NPM_TOKEN` is in GitHub. |
+| **2FA** | Enable **two-factor authentication** on all owner accounts (npm requires this for publishing). |
 
-Optional hardening:
+### 2. Create an automation token with publish access
 
-- `NPM_CONFIG_PROVENANCE=true` (enabled via `--provenance` flag in the workflow)
-- OIDC trusted publishing on npm (replace long-lived token when org policy allows)
+Use a **Granular Access Token** (preferred) or an **Automation** classic token for CI.
+
+#### Option A — Granular Access Token (recommended)
+
+1. npm → avatar → **Access Tokens** → **Generate New Token** → **Granular Access Token**.
+2. **Token name:** e.g. `github-digit-apps-starter-publish`.
+3. **Expiration:** set a rotation policy (e.g. 90 days) or maximum allowed; calendar a renewal.
+4. **Permissions:**
+   - **Organizations:** select **`sutton`** → **Read and write** (or **Publish** if shown).
+   - **Packages and scopes:** limit to **`@sutton/*`** with **Read and write** if the UI allows scope restriction.
+5. **Bypass 2FA for automation:** allow only if npm presents this option for granular tokens used in CI (required for unattended publishes).
+6. **Generate** → copy the token once (`npm_…`). Store it only in GitHub Secrets — never commit it.
+
+#### Option B — Classic Automation token
+
+1. npm → **Access Tokens** → **Generate New Token** → **Classic Token** → type **Automation**.
+2. Scope: publish access to the `@sutton` org (automation tokens are publish-oriented and bypass 2FA for CI).
+3. Copy and store in GitHub Secrets only.
+
+**Minimum capability:** the token must be able to `npm publish` all four packages:
+
+- `@sutton/lib-common`
+- `@sutton/lib-frontend`
+- `@sutton/lib-backend`
+- `@sutton/lib-build`
+
+**Verify locally (optional, on a maintainer machine):**
+
+```bash
+export NPM_TOKEN="npm_…"   # paste once; do not commit
+npm whoami --registry=https://registry.npmjs.org
+npm publish --dry-run --access public -w @sutton/lib-common
+```
+
+### 3. Add `NPM_TOKEN` to GitHub
+
+| Setting | Value |
+| --- | --- |
+| **Secret name** | `NPM_TOKEN` (must match [`.github/workflows/publish-npm-packages.yml`](../.github/workflows/publish-npm-packages.yml) — workflow maps it to `NODE_AUTH_TOKEN`) |
+| **Secret value** | The npm token from step 2 |
+
+**Where to store it:**
+
+| Location | When to use |
+| --- | --- |
+| **Repository secret** (default) | `Digit-Technologies/digit-apps-starter` → **Settings → Secrets and variables → Actions → New repository secret**. Sufficient for this repo alone. |
+| **Organization secret** | If multiple Digit repos will publish `@sutton/*`, create an org secret and allow access to selected repositories. |
+| **Environment secret** (optional hardening) | Create a GitHub Environment (e.g. `npm-publish`) with **Required reviewers** and put `NPM_TOKEN` there; then add `environment: npm-publish` to the publish job. **Not configured in this PR** — recommended before enabling real publishes. |
+
+**Do not** use repository **Variables** for the token (variables are not secret). No other secrets are required for publish today.
+
+### 4. Publish workflow gates (dry-run vs real)
+
+Two workflows chain together; only the second touches npm.
+
+```mermaid
+flowchart LR
+  merge[Merge to main] --> rp[release-please.yml]
+  rp --> rpr[Release PR opened/updated]
+  rpr --> mergeRP[Maintainer merges Release PR]
+  mergeRP --> ghRel[GitHub Release published]
+  ghRel --> pub[publish-npm-packages.yml real publish]
+  manual[workflow_dispatch] --> dry{dry_run input}
+  dry -->|true default| dryRun[npm publish --dry-run]
+  dry -->|false| pub
+```
+
+| Trigger | Workflow | `DRY_RUN` | npm registry |
+| --- | --- | --- | --- |
+| Push to `main` | `release-please.yml` | n/a | **No publish** — opens/updates Release PR only |
+| Merge Release Please PR | `release-please.yml` (via GitHub Release) | n/a | Creates GitHub Release + tags; **does not** publish to npm by itself |
+| **`release: published`** | `publish-npm-packages.yml` | `false` | **Real publish** — requires `NPM_TOKEN` |
+| **`workflow_dispatch`** (default) | `publish-npm-packages.yml` | `true` | **Dry-run only** — safe to run without `NPM_TOKEN` |
+| **`workflow_dispatch`** (`dry_run: false`) | `publish-npm-packages.yml` | `false` | **Real publish** — emergency/debug; requires `NPM_TOKEN` |
+
+**Recommended validation order after adding `NPM_TOKEN`:**
+
+1. Actions → **Publish NPM packages** → **Run workflow** → leave **dry_run: true** → confirm build + dry-run passes.
+2. Merge the first Release Please PR (or publish a GitHub Release manually for bootstrap) → confirm **`release: published`** job succeeds and packages appear on npm.
+
+**Release Please gate:** day-to-day feature merges do **not** publish. Only merging the **Release PR** (or an explicit GitHub Release) triggers a real npm upload.
+
+### 5. First-publish checklist
+
+Complete before merging the first Release Please release or running `workflow_dispatch` with `dry_run: false`:
+
+- [ ] `@sutton` npm org exists; owners/admins invited; 2FA enabled
+- [ ] Org slug confirmed (`https://www.npmjs.com/org/sutton`) — package scope matches repo (`@sutton/lib-*`)
+- [ ] No conflicting packages already published under the same names (check npm search / `@sutton/lib-common`)
+- [ ] Granular or Automation token created with **publish** rights to `@sutton/*`
+- [ ] GitHub **`NPM_TOKEN`** secret set on `digit-apps-starter` (or org/environment per step 3)
+- [ ] **Dry-run workflow** green (`workflow_dispatch`, `dry_run: true`)
+- [ ] All four `package.json` files at intended version (**`1.0.0`**) and `.release-please-manifest.json` aligned
+- [ ] **`publishConfig.access: "public"`** present on each package (already in repo)
+- [ ] CI uses **`npm publish --access public`** (already in workflow — required for scoped first publish)
+- [ ] **Provenance:** workflow passes `--provenance` and sets `id-token: write`; confirm npm org allows provenance for GitHub Actions (npm → org → publishing settings). If provenance fails on first run, check npm docs for [trusted publishing](https://docs.npmjs.com/generating-provenances) — OIDC can replace long-lived tokens later
+- [ ] Post-publish: verify `npm view @sutton/lib-common version` and install smoke test from a clean directory
+- [ ] Phase 1 vendoring unchanged — apps still work if npm is down (see phased cutover below)
+
+### Optional hardening (later)
+
+- GitHub **Environment** `npm-publish` with required reviewers on the publish job
+- npm **trusted publishing** (OIDC) linked to `Digit-Technologies/digit-apps-starter` to retire long-lived `NPM_TOKEN`
+- Token rotation calendar reminder before granular token expiry
 
 ## Local dry-run
 
@@ -164,11 +276,10 @@ Digit deploy or agent restore time.
 ### What stays open (not decided in this PR)
 
 - **Phase timing and gates** — proposal only; Sean to confirm when to enter Phase 2 / 3
-- **NPM `@sutton` org ownership and `NPM_TOKEN`** for CI publish (see checklist below)
 
 ## Production-readiness checklist
 
-- [ ] NPM org `@sutton` access and automation token (`NPM_TOKEN` secret)
+- [ ] **NPM org + `NPM_TOKEN`** — [setup runbook documented](#npm-org-and-npm_token-setup-runbook); awaiting Sean to provision
 - [x] **Public** package visibility on npmjs.com (decided)
 - [x] **Initial semver baseline `1.0.0`** for all four packages (decided)
 - [x] **Grouped versioning** — one shared semver across all four packages via `linked-versions` (decided)
