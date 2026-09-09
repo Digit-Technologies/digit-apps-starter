@@ -1,6 +1,6 @@
 {
   "name": "@sutton/lib-frontend",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Digit custom app frontend helpers — MUI theme, harness types, React data hooks, error UI",
   "license": "MIT",
   "type": "module",

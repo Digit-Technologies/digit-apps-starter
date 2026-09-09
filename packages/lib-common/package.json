@@ -1,6 +1,6 @@
 {
   "name": "@sutton/lib-common",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Shared error codes, result types, and validation for Digit custom apps",
   "license": "MIT",
   "type": "module",

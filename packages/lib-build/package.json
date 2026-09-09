@@ -1,6 +1,6 @@
 {
   "name": "@sutton/lib-build",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "digit-app pack — shared Vite build and app.zip packaging for Digit custom apps",
   "license": "MIT",
   "type": "module",

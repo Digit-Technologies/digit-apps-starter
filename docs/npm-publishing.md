@@ -2,8 +2,8 @@
 
 This document describes how shared Digit app-builder libraries leave this monorepo and
 land on NPM. **All `@sutton/*` packages publish as public** on [npmjs.com](https://www.npmjs.com/)
-(MIT license). **Nothing in this repo publishes automatically until release secrets and org
-access are configured.**
+(MIT license). The **initial release is `1.0.0`** for all four packages. **Nothing in this
+repo publishes automatically until release secrets and org access are configured.**
 
 ## Packages
 
@@ -115,7 +115,7 @@ See open questions in the tracking PR before flipping default app templates to r
 
 - [ ] NPM org `@sutton` access and automation token (`NPM_TOKEN` secret)
 - [x] **Public** package visibility on npmjs.com (decided)
-- [ ] Initial semver baseline (stay `0.x` until API stable, or jump to `1.0.0`?)
+- [x] **Initial semver baseline `1.0.0`** for all four packages (decided)
 - [ ] Breaking-change policy documented for app authors
 - [ ] Changelog review gate on Release PR merges
 - [ ] CI test gate before publish (pack smoke test today; add unit tests if/when added)
