@@ -48,7 +48,7 @@ jobs:
           set -euo pipefail
           for pkg in lib-common lib-frontend lib-backend lib-build; do
             echo "=== npm publish --dry-run @sutton/${pkg} ==="
-            npm publish --dry-run -w "@sutton/${pkg}"
+            npm publish --dry-run --access public -w "@sutton/${pkg}"
           done
 
       - name: Publish all @sutton packages

@@ -1,7 +1,8 @@
 # Publishing `@sutton/*` libraries to NPM
 
 This document describes how shared Digit app-builder libraries leave this monorepo and
-land on NPM. **Nothing in this repo publishes automatically until release secrets and org
+land on NPM. **All `@sutton/*` packages publish as public** on [npmjs.com](https://www.npmjs.com/)
+(MIT license). **Nothing in this repo publishes automatically until release secrets and org
 access are configured.**
 
 ## Packages
@@ -59,8 +60,12 @@ Steps:
 2. `npm run build:packages` — compile TS libraries to `dist/` (`lib-build` ships plain JS from `src/`).
 3. `npm run verify:packages` — smoke-test that `hello-world` still packs.
 4. For each package under `packages/*` with a `"name": "@sutton/..."`:
-   - `npm publish --dry-run` when `dry_run=true`
-   - `npm publish --provenance --access <public|restricted>` when `dry_run=false`
+   - `npm publish --dry-run --access public` when `dry_run=true`
+   - `npm publish --provenance --access public` when `dry_run=false`
+
+Scoped packages require an explicit `--access public` on first publish (also set in each
+package's `publishConfig.access`). CI and local dry-runs use the same flag so publish
+behavior matches release time.
 
 ### Who triggers publish?
 
@@ -89,15 +94,15 @@ Optional hardening:
 ```bash
 npm ci
 npm run build:packages
-npm publish --dry-run -w @sutton/lib-common
-npm publish --dry-run -w @sutton/lib-frontend
-npm publish --dry-run -w @sutton/lib-backend
-npm publish --dry-run -w @sutton/lib-build
+npm publish --dry-run --access public -w @sutton/lib-common
+npm publish --dry-run --access public -w @sutton/lib-frontend
+npm publish --dry-run --access public -w @sutton/lib-backend
+npm publish --dry-run --access public -w @sutton/lib-build
 ```
 
 ## Consumer migration (vendored → registry)
 
-Today, `digit-app pack` vendors `@sutton/lib-*` (and legacy `@sutton/lib-*`) into
+Today, `digit-app pack` vendors `@sutton/lib-*` (and legacy `@digit/lib-*`) into
 `project/packages/` inside `app.zip`. After registry publish:
 
 1. New apps depend on semver ranges in `package.json` (`"@sutton/lib-frontend": "^1.0.0"`).
@@ -109,7 +114,7 @@ See open questions in the tracking PR before flipping default app templates to r
 ## Production-readiness checklist
 
 - [ ] NPM org `@sutton` access and automation token (`NPM_TOKEN` secret)
-- [ ] Public vs private package visibility decided
+- [x] **Public** package visibility on npmjs.com (decided)
 - [ ] Initial semver baseline (stay `0.x` until API stable, or jump to `1.0.0`?)
 - [ ] Breaking-change policy documented for app authors
 - [ ] Changelog review gate on Release PR merges

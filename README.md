@@ -53,8 +53,8 @@ under `src/` are implementation details — do not deep-import them. Helpers use
 arguments. Runtime packages do **not** re-export each other.
 
 Apps depend on them via `file:…` in this monorepo (or semver ranges from NPM once published
-as `@sutton/*`). With a Worker, depend on `lib-frontend` + `lib-backend` + `lib-common`,
-plus `lib-build` as a devDependency. See [docs/npm-publishing.md](docs/npm-publishing.md).
+as public `@sutton/*` packages). With a Worker, depend on `lib-frontend` + `lib-backend` +
+`lib-common`, plus `lib-build` as a devDependency. See [docs/npm-publishing.md](docs/npm-publishing.md).
 
 ## Example
 

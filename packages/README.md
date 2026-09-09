@@ -1,8 +1,8 @@
 # `@sutton/*` shared libraries
 
-These packages are published to NPM under the `@sutton` scope for Digit custom app
-builders, Studio sessions, and vibe-coded apps. They replace vendored copies inside
-`app.zip` with semver'd dependencies.
+These packages are published to NPM as **public** packages under the `@sutton` scope for
+Digit custom app builders, Studio sessions, and vibe-coded apps. They replace vendored
+copies inside `app.zip` with semver'd dependencies.
 
 | Package | NPM | Role |
 | --- | --- | --- |
