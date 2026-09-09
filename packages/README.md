@@ -11,9 +11,10 @@ copies inside `app.zip` with semver'd dependencies.
 | `lib-backend` | `@sutton/lib-backend` | Worker handler helpers, env/secrets, jobs |
 | `lib-build` | `@sutton/lib-build` | `digit-app pack` CLI |
 
-Initial registry release: **`1.0.0`** for all four packages. See
-[docs/npm-publishing.md](../docs/npm-publishing.md) for versioning, CI publish flow, and
-migration notes.
+Initial registry release: **`1.0.0`** for all four packages. **Grouped versioning:** all
+`@sutton/*` packages share one semver and release together (Release Please `linked-versions`
++ `node-workspace`). See [docs/npm-publishing.md](../docs/npm-publishing.md) for CI publish
+flow and migration notes.
 
 **Legacy scope:** Older docs and archives may still reference `@sutton/lib-*`. `digit-app pack`
 accepts both scopes during migration.

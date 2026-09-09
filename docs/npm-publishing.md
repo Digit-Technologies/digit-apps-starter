@@ -23,17 +23,23 @@ lib-frontend, lib-backend
 lib-build (standalone tooling)
 ```
 
-## Versioning — Release Please (manifest mode)
+## Versioning — Release Please (manifest mode, grouped)
 
 We use [Release Please](https://github.com/googleapis/release-please) in **manifest mode**
 (same family of tooling used on `digit-api`):
 
-- `release-please-config.json` — per-package release settings and grouped release PR title
+- `release-please-config.json` — per-package release settings, plugins, and grouped release PR title
 - `.release-please-manifest.json` — last released version for each package path
 
-On every push to `main`, the `release-please` workflow opens or updates a **Release PR**
-that bumps versions, updates changelogs, and refreshes the manifest. Merging that PR creates
-GitHub releases and tags (for example `lib-common-v1.2.0`).
+**Grouped versioning (decided):** all four `@sutton/*` packages share **one semver** and bump
+together. Release Please uses the `node-workspace` plugin (updates local dependency refs in
+`package.json`) plus the `linked-versions` plugin (group `@sutton/libraries`) so
+`lib-common`, `lib-frontend`, `lib-backend`, and `lib-build` always release at the same
+version (for example `1.2.0` on all four).
+
+On every push to `main`, the `release-please` workflow opens or updates a **single Release PR**
+that bumps all linked versions, updates changelogs, and refreshes the manifest. Merging that PR
+creates GitHub releases and tags (for example `lib-common-v1.2.0`, all at the same version).
 
 Commit messages on `main` should follow [Conventional Commits](https://www.conventionalcommits.org/)
 so Release Please can infer semver bumps (`feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major).
@@ -42,8 +48,8 @@ so Release Please can infer semver bumps (`feat:` → minor, `fix:` → patch, `
 
 | Option | Fit for this repo |
 | --- | --- |
-| **Release Please (chosen)** | Already familiar on `digit-api`; native monorepo manifest + `node-workspace` plugin keeps `@sutton/lib-*` versions aligned; generates changelogs and release PRs with no manual version edits. |
-| Changesets | Excellent for independent per-package semver, but adds author overhead (changeset files on every PR) and a second merge step. Overkill while these four packages ship together. |
+| **Release Please (chosen)** | Already familiar on `digit-api`; manifest mode with `node-workspace` + `linked-versions` keeps all four `@sutton/lib-*` packages on one shared semver; generates changelogs and a single release PR with no manual version edits. |
+| Changesets | Excellent for independent per-package semver, but adds author overhead (changeset files on every PR) and a second merge step. Not needed now that grouped versioning is decided. |
 | Manual tags + `npm version` | Minimal tooling, but error-prone in a monorepo and no changelog discipline. |
 | Lerna / Nx release | Heavier infra than needed for four small packages with no build graph orchestration beyond `npm run build:packages`. |
 
@@ -116,6 +122,7 @@ See open questions in the tracking PR before flipping default app templates to r
 - [ ] NPM org `@sutton` access and automation token (`NPM_TOKEN` secret)
 - [x] **Public** package visibility on npmjs.com (decided)
 - [x] **Initial semver baseline `1.0.0`** for all four packages (decided)
+- [x] **Grouped versioning** — one shared semver across all four packages via `linked-versions` (decided)
 - [ ] Breaking-change policy documented for app authors
 - [ ] Changelog review gate on Release PR merges
 - [ ] CI test gate before publish (pack smoke test today; add unit tests if/when added)

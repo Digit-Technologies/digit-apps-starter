@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "separate-pull-requests": false,
-  "group-pull-request-title": "chore: release @sutton libraries",
+  "group-pull-request-title-pattern": "chore: release @sutton libraries ${version}",
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },
@@ -15,7 +15,17 @@
     { "type": "build", "section": "Build System", "hidden": true },
     { "type": "ci", "section": "Continuous Integration", "hidden": true }
   ],
-  "plugins": ["node-workspace"],
+  "plugins": [
+    {
+      "type": "node-workspace",
+      "merge": false
+    },
+    {
+      "type": "linked-versions",
+      "groupName": "@sutton/libraries",
+      "components": ["lib-common", "lib-frontend", "lib-backend", "lib-build"]
+    }
+  ],
   "packages": {
     "packages/lib-common": {
       "component": "lib-common",
