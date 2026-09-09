@@ -1,12 +1,33 @@
 {
-  "name": "@digit/lib-common",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@heysutton/lib-common",
+  "version": "1.0.0",
+  "description": "Shared error codes, result types, and validation for Digit custom apps",
+  "license": "MIT",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Digit-Technologies/digit-apps-starter.git",
+    "directory": "packages/lib-common"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "typescript": "^7.0.2"

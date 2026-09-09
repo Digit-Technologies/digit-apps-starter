@@ -3,7 +3,7 @@
 Apps run on a per-app origin. The only egress the frontend CSP allows is same-origin, so
 Digit data and app backends are reached through Digit-hosted proxies.
 
-Prefer the React hooks from `@digit/lib-frontend` — they wrap the harness client and
+Prefer the React hooks from `@heysutton/lib-frontend` — they wrap the harness client and
 normalize errors for `AppErrorAlert`. The package’s public data API is **hooks only**
 (imperative fetch helpers stay private).
 
@@ -30,7 +30,7 @@ import {
   useDigitApiQuery,
   useBackendQuery,
   useBackendMutation,
-} from '@digit/lib-frontend';
+} from '@heysutton/lib-frontend';
 
 const { data, error, loading, refetch } = useDigitApiQuery({
   query: `
@@ -53,7 +53,7 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 Confirm root fields and selection sets against `graphql-schema://…` before shipping.
-Types for `window.DigitHost` are exported from `@digit/lib-frontend` (`DigitHost`,
+Types for `window.DigitHost` are exported from `@heysutton/lib-frontend` (`DigitHost`,
 `DigitHostSettings`). Prefer the hooks over calling `window.DigitProxyClient` yourself.
 
 ## Sort, filter, and pagination
@@ -85,11 +85,11 @@ When `manifest.backend` is set, `useBackendQuery` / `useBackendMutation` hit
 - Always go through these helpers so `X-Digit-Proxy-Client` is set
 - Paths starting with `/__` are reserved and refused
 - The platform sets `X-Digit-App-Id` from the Host header — the browser cannot spoof another app's worker
-- Pair with `@digit/lib-backend` on the Worker (`createHandler`, `backendPath`, `ok` / `err`)
+- Pair with `@heysutton/lib-backend` on the Worker (`createHandler`, `backendPath`, `ok` / `err`)
 
 ```js
-import { AppErrorCode } from '@digit/lib-common';
-import { backendPath, createHandler, ok, err, requireEnv } from '@digit/lib-backend';
+import { AppErrorCode } from '@heysutton/lib-common';
+import { backendPath, createHandler, ok, err, requireEnv } from '@heysutton/lib-backend';
 
 export default createHandler({
   fetch: async ({ request, env }) => {
@@ -108,17 +108,17 @@ export default createHandler({
 });
 ```
 
-Import codes / validation from `@digit/lib-common`; Worker Response helpers from
-`@digit/lib-backend` (no re-exports between packages).
+Import codes / validation from `@heysutton/lib-common`; Worker Response helpers from
+`@heysutton/lib-backend` (no re-exports between packages).
 
 ## Host display settings
 
 ```ts
-import type { DigitHostSettings } from '@digit/lib-frontend';
+import type { DigitHostSettings } from '@heysutton/lib-frontend';
 
 window.DigitHost?.getSettings(); // DigitHostSettings | null
 window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
 ```
 
-`data-theme` and `lang` are also set on `<html>`. Apps using `@digit/lib-frontend` get
+`data-theme` and `lang` are also set on `<html>`. Apps using `@heysutton/lib-frontend` get
 light/dark sync automatically via `DigitThemeProvider` — see [theming.md](theming.md).

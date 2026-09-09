@@ -47,7 +47,7 @@ function supportInfo(error: AppError, presentedMessage: string): string | null {
  * instead of branching on `AppErrorCode` in UI.
  *
  * @example Query failure with refetch
- * import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
+ * import { AppErrorAlert, useBackendQuery } from '@heysutton/lib-frontend';
  *
  * function NotesList() {
  *   const { data, error, loading, refetch } = useBackendQuery({ path: '/notes' });
@@ -60,7 +60,7 @@ function supportInfo(error: AppError, presentedMessage: string): string | null {
  * }
  *
  * @example Mutation failure (no retry button — validation / config errors)
- * import { AppErrorAlert, useBackendMutation } from '@digit/lib-frontend';
+ * import { AppErrorAlert, useBackendMutation } from '@heysutton/lib-frontend';
  *
  * function SaveNote() {
  *   const [saveNote, { error, loading }] = useBackendMutation();
@@ -79,7 +79,7 @@ function supportInfo(error: AppError, presentedMessage: string): string | null {
  * }
  *
  * @example Digit GraphQL query + custom title
- * import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
+ * import { AppErrorAlert, useDigitApiQuery } from '@heysutton/lib-frontend';
  *
  * function Items() {
  *   const { error, refetch } = useDigitApiQuery({

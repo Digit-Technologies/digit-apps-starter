@@ -1,4 +1,4 @@
-import type { ErrorResult, SuccessResult } from '@digit/lib-common';
+import type { ErrorResult, SuccessResult } from '@heysutton/lib-common';
 
 /** Kind of failure after normalizing a Digit proxy / backend / GraphQL result. */
 export type AppErrorKind = 'platform' | 'graphql' | 'backend' | 'unavailable' | 'unknown';

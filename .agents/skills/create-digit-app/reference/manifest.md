@@ -4,7 +4,7 @@
 it is Digit publish config, not a Vite static asset.
 
 **Publish zip:** required at the **zip root**, sibling of `frontend/` and `backend/`.
-`digit-app pack` (`@digit/lib-build`) stages the root file there. Validated at publish
+`digit-app pack` (`@heysutton/lib-build`) stages the root file there. Validated at publish
 time. Not uploaded to the serving bucket as-is — Digit snapshots it onto the publish row
 and derives `active.json` / bundle assets from it.
 
@@ -98,7 +98,7 @@ project/                 # required in the zip — source, SPEC, tooling (not de
   src/
   SPEC.md
   package.json
-  packages/              # vendored @digit/lib-* (+ lib-build)
+  packages/              # vendored @heysutton/lib-* (+ lib-build)
 ```
 
 Max zip size: **10MB**. Do not strip `project/` or rebuild the archive by hand.

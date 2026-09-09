@@ -4,7 +4,7 @@ This is the app source for the "Production Dashboard" Digit app, exported from
 `apps/production-dashboard` in a local clone of
 [`digit-apps-starter`](https://github.com/Digit-Technologies/digit-apps-starter).
 
-It's UI-only (no backend/Worker/D1) and depends on `@digit/lib-frontend` via a `file:`
+It's UI-only (no backend/Worker/D1) and depends on `@heysutton/lib-frontend` via a `file:`
 link, so it can't be built standalone — it needs to live inside the starter monorepo.
 
 ## To use this again
@@ -24,7 +24,7 @@ starter prompt.
 
 - `manifest.json` — declares `READ_ORGANIZATION_DETAIL_AND_METRICS` (required by
   `dailyMetrics`); no `backend` block.
-- `src/frontend/` — React + MUI + `@digit/lib-frontend` UI:
+- `src/frontend/` — React + MUI + `@heysutton/lib-frontend` UI:
   - `main.tsx` — mounts `<App />` inside `DigitThemeProvider`.
   - `App.tsx` — page layout (KPI row + charts row) and the "Preview data" toggle.
   - `useDailyMetrics.ts` — fetches `dailyMetrics`, normalizes the response (including the

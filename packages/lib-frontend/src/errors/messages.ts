@@ -1,4 +1,4 @@
-import { AppErrorCode } from '@digit/lib-common';
+import { AppErrorCode } from '@heysutton/lib-common';
 
 import type { AppError } from './types';
 

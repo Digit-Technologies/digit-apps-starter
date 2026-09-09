@@ -10,7 +10,9 @@
     "apps/*"
   ],
   "scripts": {
-    "new-app": "node scripts/new-app.mjs"
+    "new-app": "node scripts/new-app.mjs",
+    "build:packages": "npm run build -w @heysutton/lib-common -w @heysutton/lib-frontend -w @heysutton/lib-backend",
+    "verify:packages": "npm run pack -w examples/hello-world"
   },
   "engines": {
     "node": ">=22"

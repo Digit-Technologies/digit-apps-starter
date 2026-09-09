@@ -1,8 +1,22 @@
 {
-  "name": "@digit/lib-build",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@heysutton/lib-build",
+  "version": "1.0.0",
+  "description": "digit-app pack — shared Vite build and app.zip packaging for Digit custom apps",
+  "license": "MIT",
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Digit-Technologies/digit-apps-starter.git",
+    "directory": "packages/lib-build"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
   "bin": {
     "digit-app": "./src/cli.js"
   },

@@ -31,7 +31,7 @@ Rules (publish-validated):
 ## Handle deliveries with `createHandler({ webhooks })`
 
 ```js
-import { createHandler, requireEnv, verifyWebhookSignature } from '@digit/lib-backend';
+import { createHandler, requireEnv, verifyWebhookSignature } from '@heysutton/lib-backend';
 
 export default createHandler({
   webhooks: {

@@ -4,7 +4,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
+import { AppErrorAlert, useDigitApiQuery } from '@heysutton/lib-frontend';
 
 type CurrentUserData = {
   currentUser?: { username: string | null; email: string | null } | null;

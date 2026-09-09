@@ -1,15 +1,36 @@
 {
-  "name": "@digit/lib-backend",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@heysutton/lib-backend",
+  "version": "1.0.0",
+  "description": "Digit custom app Cloudflare Worker helpers — handlers, env/secrets, jobs, webhooks",
+  "license": "MIT",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Digit-Technologies/digit-apps-starter.git",
+    "directory": "packages/lib-backend"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@digit/lib-common": "file:../lib-common"
+    "@heysutton/lib-common": "file:../lib-common"
   },
   "devDependencies": {
     "typescript": "^7.0.2"
