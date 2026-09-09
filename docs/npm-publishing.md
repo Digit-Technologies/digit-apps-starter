@@ -106,16 +106,65 @@ npm publish --dry-run --access public -w @sutton/lib-backend
 npm publish --dry-run --access public -w @sutton/lib-build
 ```
 
-## Consumer migration (vendored → registry)
+## Phased vendoring cutover (proposal for review)
 
-Today, `digit-app pack` vendors `@sutton/lib-*` (and legacy `@digit/lib-*`) into
-`project/packages/` inside `app.zip`. After registry publish:
+Today, `digit-app pack` copies `@sutton/lib-*` (and legacy `@digit/lib-*`) into
+`project/packages/` inside every `app.zip`. Registry publish does **not** require an immediate
+stop to vendoring. The plan below is a **proposal for Sean to review** — no phase dates or
+stop-at-first-publish assumption.
 
-1. New apps depend on semver ranges in `package.json` (`"@sutton/lib-frontend": "^1.0.0"`).
-2. Pack can stop vendoring once Digit Studio / agent sessions install from the registry.
-3. During migration, pack accepts **either** scope and still vendors for offline zip builds.
+### Risks to manage across all phases
 
-See open questions in the tracking PR before flipping default app templates to registry deps.
+| Risk | Mitigation |
+| --- | --- |
+| **Version skew** — vendored copy in zip ≠ semver in `package.json` | Grouped `@sutton/*` releases (one shared version); in Phase 2+, pack should pin vendored copies to the same version as registry deps when both paths exist |
+| **Dual-publish drift** — starter zip, Studio, and NPM disagree on lib versions | Record `starterRelease` / app manifest lib version; smoke-test pack after each `@sutton` release |
+| **Offline / air-gapped zip rebuild** — no registry in some agent sessions | Keep vendoring through Phase 2; only remove in Phase 3 when consumers can install from NPM |
+| **Breaking changes** — app pinned to old vendored libs while registry moved on | Semver + changelog on Release PR; major bumps require explicit Studio/template updates |
+
+### Phase 1 — Registry live, vendoring unchanged (default after first publish)
+
+**Goal:** `@sutton/*` exists on NPM at the grouped semver (starting **1.0.0**); generated apps
+still get vendored libs in `app.zip` exactly as today.
+
+| | |
+| --- | --- |
+| **Pack behavior** | Continue copying all depended `@sutton/lib-*` (+ `lib-build`) into `project/packages/` |
+| **App `package.json`** | Examples / starter still use `file:../../packages/...` in monorepo; published apps keep vendored `file:./packages/...` after pack |
+| **Optional dual-path** | Early adopters may add registry semver ranges in source *before* pack (allowlist / feature flag in Studio) — pack still vendors for zip portability unless explicitly opted out |
+| **Success criteria** | `npm publish` dry-run green; `npm run verify:packages` passes; at least one manual install of `@sutton/lib-frontend@1.0.0` from npmjs.com in a clean project |
+| **Rollback** | Unpublish is not reliable on NPM — rollback = publish a patch release or document “do not use” version; vendoring path unchanged so apps keep working without registry |
+
+### Phase 2 — Registry-first templates, vendored fallback
+
+**Goal:** New apps and Digit Studio scaffolds declare **`@sutton/*` semver ranges** (e.g.
+`"@sutton/lib-frontend": "^1.0.0"`) as the source of truth; pack still vendors matching
+versions into the zip for offline re-pack and agent iteration.
+
+| | |
+| --- | --- |
+| **Templates / skill** | `create-digit-app` skill + `examples/*` + starter `apps/app` use registry semver in `package.json` (not `file:` to monorepo packages) |
+| **Pack behavior** | Resolve registry version at pack time (or pin to lockfile), **then** copy those exact versions into `project/packages/` so vendored tree matches declared semver |
+| **Starter zip** | May still ship `packages/` source for monorepo dev, but consumer apps target NPM |
+| **Success criteria** | Fresh scaffold → `npm install` → `npm run pack` with no monorepo `file:` links; vendored folders in zip match `package-lock.json` / pinned `@sutton/*` versions; Studio builder session smoke test |
+| **Rollback** | Revert templates to `file:` / full vendoring-only deps; pack ignore registry resolution flag |
+
+### Phase 3 — Stop bundling vendored libs into `app.zip`
+
+**Goal:** `project/` inside `app.zip` contains source + tooling only; libs come from NPM at
+Digit deploy or agent restore time.
+
+| | |
+| --- | --- |
+| **Pack behavior** | Stop copying `project/packages/`; `package.json` + lockfile (or shrinkwrap) list `@sutton/*` registry deps only |
+| **Prerequisites** | Digit Studio and starter consumers install from NPM in the harness; migration note for existing apps (“re-pack with registry deps”); network/registry available in builder sessions |
+| **Success criteria** | `app.zip` has no `project/packages/lib-*`; unpack → `npm ci` → `npm run pack` succeeds; no duplicate React/MUI from vendored + hoisted installs |
+| **Rollback** | Re-enable Phase 2 vendoring in `lib-build` behind a manifest or pack flag (`"vendorLibs": true`) until all active apps migrate |
+
+### What stays open (not decided in this PR)
+
+- **Phase timing and gates** — proposal only; Sean to confirm when to enter Phase 2 / 3
+- **NPM `@sutton` org ownership and `NPM_TOKEN`** for CI publish (see checklist below)
 
 ## Production-readiness checklist
 
@@ -127,6 +176,6 @@ See open questions in the tracking PR before flipping default app templates to r
 - [ ] Changelog review gate on Release PR merges
 - [ ] CI test gate before publish (pack smoke test today; add unit tests if/when added)
 - [ ] npm provenance enabled (workflow uses `--provenance`; confirm org setting)
-- [ ] Dual-publish / vendoring sunset plan for starter zip and Digit Studio
-- [ ] Update `create-digit-app` skill and starter asset once registry is live
+- [ ] **Phased vendoring cutover** — proposal documented above; awaiting review (no stop date)
+- [ ] Update `create-digit-app` skill and starter asset when Phase 2 begins
 - [ ] Dependabot / Renovate for consumer repos after migration

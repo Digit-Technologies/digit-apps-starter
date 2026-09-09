@@ -14,7 +14,8 @@ copies inside `app.zip` with semver'd dependencies.
 Initial registry release: **`1.0.0`** for all four packages. **Grouped versioning:** all
 `@sutton/*` packages share one semver and release together (Release Please `linked-versions`
 + `node-workspace`). See [docs/npm-publishing.md](../docs/npm-publishing.md) for CI publish
-flow and migration notes.
+flow and the **phased vendoring cutover** proposal (registry live → registry-first templates →
+stop bundling libs in `app.zip`).
 
 **Legacy scope:** Older docs and archives may still reference `@sutton/lib-*`. `digit-app pack`
 accepts both scopes during migration.
