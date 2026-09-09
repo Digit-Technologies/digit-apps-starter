@@ -1,5 +1,5 @@
 {
-  "name": "@sutton/lib-common",
+  "name": "@heysutton/lib-common",
   "version": "1.0.0",
   "description": "Shared error codes, result types, and validation for Digit custom apps",
   "license": "MIT",

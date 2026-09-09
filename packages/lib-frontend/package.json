@@ -1,5 +1,5 @@
 {
-  "name": "@sutton/lib-frontend",
+  "name": "@heysutton/lib-frontend",
   "version": "1.0.0",
   "description": "Digit custom app frontend helpers — MUI theme, harness types, React data hooks, error UI",
   "license": "MIT",
@@ -30,7 +30,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@sutton/lib-common": "file:../lib-common"
+    "@heysutton/lib-common": "file:../lib-common"
   },
   "peerDependencies": {
     "@emotion/react": "^11",

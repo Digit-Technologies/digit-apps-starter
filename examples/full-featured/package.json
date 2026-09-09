@@ -7,9 +7,9 @@
     "pack": "digit-app pack"
   },
   "dependencies": {
-    "@sutton/lib-backend": "file:../../packages/lib-backend",
-    "@sutton/lib-common": "file:../../packages/lib-common",
-    "@sutton/lib-frontend": "file:../../packages/lib-frontend",
+    "@heysutton/lib-backend": "file:../../packages/lib-backend",
+    "@heysutton/lib-common": "file:../../packages/lib-common",
+    "@heysutton/lib-frontend": "file:../../packages/lib-frontend",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.3.1",
@@ -17,7 +17,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@sutton/lib-build": "file:../../packages/lib-build",
+    "@heysutton/lib-build": "file:../../packages/lib-build",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "typescript": "^7.0.2"

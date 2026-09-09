@@ -33,15 +33,19 @@ async function resolvePackagesDir({ root }) {
     return monorepo;
   }
   throw new Error(
-    'cannot find @sutton/lib-* packages (expected ./packages or monorepo packages/ next to lib-build)',
+    'cannot find @heysutton/lib-* packages (expected ./packages or monorepo packages/ next to lib-build)',
   );
 }
 
-const LIB_SCOPES = ['@sutton/lib-', '@sutton/lib-'];
+/** Canonical scope plus legacy aliases pack accepts when vendoring (see docs/npm-publishing.md). */
+const LIB_SCOPES = ['@heysutton', '@digit'];
 
 function libFolderFromDepName(name) {
-  for (const prefix of LIB_SCOPES) {
-    if (name.startsWith(prefix)) return name.slice(prefix.length);
+  for (const scope of LIB_SCOPES) {
+    const prefix = `${scope}/`;
+    if (!name.startsWith(prefix)) continue;
+    const folder = name.slice(prefix.length);
+    if (folder.startsWith('lib-')) return folder;
   }
   return null;
 }

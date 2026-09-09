@@ -27,7 +27,7 @@ wired to a real host).
   `POST /jobs/note-stats` — handlers in `src/backend/jobs.js`, UI in the Jobs tab
 
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code.
-`@sutton/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@sutton/lib-build`)
+`@heysutton/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@heysutton/lib-build`)
 vendors those packages (including `lib-build`) under `project/packages/` in `app.zip`.
 Local Digit preview is not supported yet.
 
@@ -40,7 +40,7 @@ UI, Digit GraphQL, a Worker calling a public API, secrets-backed third-party HTT
 CRUD, and env-driven config — as separate tabs so someone can copy the example and delete
 what they don't need.
 
-Use the shared @sutton/lib-frontend / lib-backend / lib-common helpers instead of
+Use the shared @heysutton/lib-frontend / lib-backend / lib-common helpers instead of
 hand-rolling proxy fetches and Worker response shapes. Keep the stack React + MUI +
 DigitThemeProvider.
 

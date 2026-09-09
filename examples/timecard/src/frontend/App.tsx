@@ -19,7 +19,7 @@ import {
   useBackendMutation,
   useBackendQuery,
   useDigitApiQuery,
-} from '@sutton/lib-frontend';
+} from '@heysutton/lib-frontend';
 
 import {
   endOfLocalDay,

@@ -5,7 +5,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useDigitApiQuery } from '@sutton/lib-frontend';
+import { AppErrorAlert, useDigitApiQuery } from '@heysutton/lib-frontend';
 
 type ItemNode = { id: string; name?: string | null; sku?: string | null };
 
@@ -38,7 +38,7 @@ export default function DigitApiPanel() {
         Digit API
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-        <code>useDigitApiQuery</code> from <code>@sutton/lib-frontend</code> with{' '}
+        <code>useDigitApiQuery</code> from <code>@heysutton/lib-frontend</code> with{' '}
         <code>READ_ITEM</code>. Platform vs GraphQL errors are normalized for{' '}
         <code>AppErrorAlert</code>.
       </Typography>

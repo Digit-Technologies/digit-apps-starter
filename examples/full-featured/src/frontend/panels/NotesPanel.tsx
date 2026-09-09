@@ -15,7 +15,7 @@ import {
   AppErrorAlert,
   useBackendMutation,
   useBackendQuery,
-} from '@sutton/lib-frontend';
+} from '@heysutton/lib-frontend';
 
 type Note = {
   id: number;

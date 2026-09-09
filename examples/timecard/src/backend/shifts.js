@@ -6,8 +6,8 @@
  * an open clock-in and one user never sees another user's shifts.
  */
 
-import { AppErrorCode, parseJsonResponse, requiredString } from '@sutton/lib-common';
-import { err, ok, requireEnv } from '@sutton/lib-backend';
+import { AppErrorCode, parseJsonResponse, requiredString } from '@heysutton/lib-common';
+import { err, ok, requireEnv } from '@heysutton/lib-backend';
 
 const PAGE_SIZE = 10;
 

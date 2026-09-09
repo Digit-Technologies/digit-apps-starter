@@ -1,4 +1,4 @@
-# `@sutton/lib-common`
+# `@heysutton/lib-common`
 
 Zero-dependency types and helpers shared by Digit app **frontend** and **backend**:
 
@@ -6,7 +6,7 @@ Zero-dependency types and helpers shared by Digit app **frontend** and **backend
 - JSON result **types** `{ ok: true, data }` / `{ ok: false, error: { code, message } }`
 - Pure validation (`requiredString`, `optionalString`, `parseObject`, `parseJsonResponse`)
 
-No React, no `Response` — those live in `@sutton/lib-frontend` / `@sutton/lib-backend`.
+No React, no `Response` — those live in `@heysutton/lib-frontend` / `@heysutton/lib-backend`.
 
 ## Public API
 
@@ -14,22 +14,22 @@ Import from the package root only (`AppErrorCode`, result types, validation help
 Other files under `src/` are implementation details.
 
 Apps that use a Worker (or that branch on app error codes in the UI) should depend on this
-package **directly**. `@sutton/lib-frontend` and `@sutton/lib-backend` do **not** re-export
+package **directly**. `@heysutton/lib-frontend` and `@heysutton/lib-backend` do **not** re-export
 these helpers.
 
 ## Result wire shape
 
-Worker responses use this JSON shape (built with `ok` / `err` from `@sutton/lib-backend`):
+Worker responses use this JSON shape (built with `ok` / `err` from `@heysutton/lib-backend`):
 
 ```ts
-import type { SuccessResult, ErrorResult, Result } from '@sutton/lib-common';
+import type { SuccessResult, ErrorResult, Result } from '@heysutton/lib-common';
 
 // SuccessResult: { ok: true, data: T }
 // ErrorResult:   { ok: false, error: { code, message } }
 ```
 
 App Workers should return `ok({ data })` / `err({ code, message })` from
-`@sutton/lib-backend` — do not hand-build these objects.
+`@heysutton/lib-backend` — do not hand-build these objects.
 
 ## Validation
 
@@ -37,7 +37,7 @@ Parsers return `{ ok: true, value }` or `{ ok: false, error: { code, message } }
 (note: `value`, not `data`):
 
 ```ts
-import { parseObject, requiredString, optionalString } from '@sutton/lib-common';
+import { parseObject, requiredString, optionalString } from '@heysutton/lib-common';
 
 const parsed = parseObject({
   value: body,
@@ -63,10 +63,10 @@ use `parseObject({ value, fields })`.
 ```json
 {
   "dependencies": {
-    "@sutton/lib-common": "file:../../packages/lib-common"
+    "@heysutton/lib-common": "file:../../packages/lib-common"
   }
 }
 ```
 
-With a Worker, depend on `@sutton/lib-common` alongside `@sutton/lib-backend`.
+With a Worker, depend on `@heysutton/lib-common` alongside `@heysutton/lib-backend`.
 Frontend-only apps can skip it unless they import codes/types in UI code.

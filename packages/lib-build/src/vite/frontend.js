@@ -14,7 +14,7 @@ export function frontendViteConfig({ root }) {
   return {
     root,
     publicDir: false,
-    // file: linked @sutton/lib-* peer-depend on react/MUI — resolve from the app.
+    // file: linked @heysutton/lib-* peer-depend on react/MUI — resolve from the app.
     resolve: { preserveSymlinks: true },
     plugins: [react(), cssInjectedByJsPlugin(), inlineBundleLicenses()],
     build: {

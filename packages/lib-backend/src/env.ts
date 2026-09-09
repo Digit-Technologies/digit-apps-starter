@@ -1,4 +1,4 @@
-import { AppErrorCode } from '@sutton/lib-common';
+import { AppErrorCode } from '@heysutton/lib-common';
 
 import { HandlerError } from './createHandler';
 

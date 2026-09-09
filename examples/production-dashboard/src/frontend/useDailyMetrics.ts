@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useDigitApiQuery, type AppError } from '@sutton/lib-frontend';
+import { useDigitApiQuery, type AppError } from '@heysutton/lib-frontend';
 
 import { buildDayWindow, localDayKey, type DayBucket } from './dateWindow';
 import { getPreviewStubData } from './previewStubData';

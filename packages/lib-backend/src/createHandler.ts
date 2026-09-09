@@ -1,4 +1,4 @@
-import { AppErrorCode, type AppErrorCode as AppErrorCodeType } from '@sutton/lib-common';
+import { AppErrorCode, type AppErrorCode as AppErrorCodeType } from '@heysutton/lib-common';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 
 import { runJobHandler, type JobHandlers, type JobInvocation } from './jobs';
@@ -63,7 +63,7 @@ export type CreateHandlerArgs = {
  * `ctx` is Cloudflare’s `ExecutionContext` (e.g. `waitUntil`) — not an app bag.
  *
  * @example Env var + success
- * import { createHandler, requireEnv, ok } from '@sutton/lib-backend';
+ * import { createHandler, requireEnv, ok } from '@heysutton/lib-backend';
  *
  * export default createHandler({
  *   fetch: async ({ env }) => {
@@ -73,8 +73,8 @@ export type CreateHandlerArgs = {
  * });
  *
  * @example Path match + domain failure
- * import { AppErrorCode } from '@sutton/lib-common';
- * import { backendPath, createHandler, err, ok } from '@sutton/lib-backend';
+ * import { AppErrorCode } from '@heysutton/lib-common';
+ * import { backendPath, createHandler, err, ok } from '@heysutton/lib-backend';
  *
  * export default createHandler({
  *   fetch: async ({ request }) => {
@@ -97,8 +97,8 @@ export type CreateHandlerArgs = {
  * });
  *
  * @example Validate JSON body
- * import { AppErrorCode, parseJsonResponse, requiredString } from '@sutton/lib-common';
- * import { createHandler, err, ok } from '@sutton/lib-backend';
+ * import { AppErrorCode, parseJsonResponse, requiredString } from '@heysutton/lib-common';
+ * import { createHandler, err, ok } from '@heysutton/lib-backend';
  *
  * export default createHandler({
  *   fetch: async ({ request }) => {
@@ -125,8 +125,8 @@ export type CreateHandlerArgs = {
  * });
  *
  * @example Secret + upstream fetch + waitUntil
- * import { AppErrorCode } from '@sutton/lib-common';
- * import { createHandler, requireEnv, err, ok } from '@sutton/lib-backend';
+ * import { AppErrorCode } from '@heysutton/lib-common';
+ * import { createHandler, requireEnv, err, ok } from '@heysutton/lib-backend';
  *
  * export default createHandler({
  *   fetch: async ({ env, ctx }) => {

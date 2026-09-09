@@ -62,12 +62,12 @@ realistic builder-perspective SPEC.
 - `src/backend/` — Worker source (when the app has a backend)
 - Root config: `manifest.json`, `package.json`, `package-lock.json`, `tsconfig.json`,
   `index.html` (if any), `README.md`, `SPEC.md`
-- `package.json` must use `@sutton/lib-build` (`"pack": "digit-app pack"`)
+- `package.json` must use `@heysutton/lib-build` (`"pack": "digit-app pack"`)
 
 ### Do not keep / do not commit
 
 - Built `frontend/` and `backend/` (gitignored; only packed into `app.zip`)
-- Per-app Vite configs or `scripts/pack.sh` — owned by `@sutton/lib-build`
+- Per-app Vite configs or `scripts/pack.sh` — owned by `@heysutton/lib-build`
 - `node_modules/`
 - `.vite/`
 - `*.zip` (`npm run pack` creates `app.zip` for Digit upload only)

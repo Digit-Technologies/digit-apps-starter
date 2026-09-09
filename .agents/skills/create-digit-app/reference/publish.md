@@ -10,7 +10,7 @@ required for this workflow.
 2. You know the app `id` — resolve with MCP `apps`, or ask the user.
 3. GraphQL operations checked against `graphql-schema://…` and `manifest.permissions`
    filled with **`key`** values from MCP **`appPermissions`**.
-4. `app.zip` ready via `npm run pack` (`digit-app pack` from `@sutton/lib-build`). Local
+4. `app.zip` ready via `npm run pack` (`digit-app pack` from `@heysutton/lib-build`). Local
    `pack` only prepares the zip; MCP `publishApp` is what goes live.
 
 There is no local Digit preview — pack + publish is the workflow.
@@ -68,7 +68,7 @@ app.zip
 ├── backend/                  # when manifest.backend is set
 │   ├── index.js
 │   └── migrations/
-└── project/                  # required — source, SPEC, vendored @sutton/lib-*
+└── project/                  # required — source, SPEC, vendored @heysutton/lib-*
 ```
 
 **Do not modify the zip after pack.** Digit deploys from `frontend/` / `backend/`;
@@ -100,5 +100,5 @@ applies pending migrations — see [d1-migrations.md](d1-migrations.md). On fail
 
 - `manifest.json` at the zip root and `frontend/index.js`
 - When `manifest.backend` is set: `backend/index.js`
-- `project/` with source, `SPEC.md`, and vendored `@sutton/lib-*` (including `lib-build`)
+- `project/` with source, `SPEC.md`, and vendored `@heysutton/lib-*` (including `lib-build`)
 - `manifest.permissions` are **`key`** values from **`appPermissions`**

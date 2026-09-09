@@ -11,7 +11,7 @@
   ],
   "scripts": {
     "new-app": "node scripts/new-app.mjs",
-    "build:packages": "npm run build -w @sutton/lib-common -w @sutton/lib-frontend -w @sutton/lib-backend",
+    "build:packages": "npm run build -w @heysutton/lib-common -w @heysutton/lib-frontend -w @heysutton/lib-backend",
     "verify:packages": "npm run pack -w examples/hello-world"
   },
   "engines": {

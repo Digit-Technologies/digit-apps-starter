@@ -1,5 +1,5 @@
 {
-  "name": "@sutton/lib-backend",
+  "name": "@heysutton/lib-backend",
   "version": "1.0.0",
   "description": "Digit custom app Cloudflare Worker helpers — handlers, env/secrets, jobs, webhooks",
   "license": "MIT",
@@ -30,7 +30,7 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@sutton/lib-common": "file:../lib-common"
+    "@heysutton/lib-common": "file:../lib-common"
   },
   "devDependencies": {
     "typescript": "^7.0.2"

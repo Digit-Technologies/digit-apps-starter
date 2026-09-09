@@ -38,7 +38,7 @@ export default function App() {
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
         Reference app for theme, errors, Digit GraphQL, public APIs, secrets, D1 CRUD, and
-        env config — using <code>@sutton/lib-frontend</code> and <code>@sutton/lib-backend</code>.
+        env config — using <code>@heysutton/lib-frontend</code> and <code>@heysutton/lib-backend</code>.
       </Typography>
 
       <Tabs
