@@ -15,9 +15,9 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 | `GET` | `/v2/carriers/{id}/services` | Services when the carrier list has none |
 | `POST` | `/v2/environment/webhooks` | Register inbound URL |
 | `DELETE` | `/v2/environment/webhooks/{id}` | Disconnect |
-| `POST` | `/v2/shipments` | Push Digit SO (`create_sales_order: true`) |
+| `POST` | `/v2/shipments` | Push Digit shipment (`create_sales_order: true`) |
 | `GET` | `/v2/shipments/{id}` | Writeback / inbound |
-| `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Digit order id |
+| `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Digit shipment id |
 | `GET` | `/v2/shipments` | Inbound poll |
 | `GET` | `/v2/labels/{id}` | Label created webhook |
 | `GET` | resource_url | Thin webhook payloads (SSRF: `api.shipstation.com` / `api.shipengine.com` / `ssapi.shipstation.com`) |

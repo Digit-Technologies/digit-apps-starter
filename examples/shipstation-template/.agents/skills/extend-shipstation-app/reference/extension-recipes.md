@@ -62,7 +62,7 @@ Scan: Digit `pickItem` + item `scanCodeSerialNumber` in a clone UI — not this 
 
 1. Add `src/backend/migrations/0003_….sql` (never edit applied files).
 2. Never select `api_key_encrypted` into JSON.
-3. In scheduled or batch paths, reuse data you already listed (`pushOrder({ preloaded })`)
+3. In scheduled or batch paths, reuse data you already listed (`pushShipment({ preloaded })`)
    and cap work per run. A Digit query per row trips the API rate limit (429).
 
 ## New UI screen

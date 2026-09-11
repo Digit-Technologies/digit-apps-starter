@@ -18,9 +18,9 @@ authenticate the viewing user.
 | `GET` | `/carriers?organizationId=` | Cached carrier catalog (Phase 2; UI does not show pickers). |
 | `GET` | `/org-settings?organizationId=` | `defaultFulfillmentMethod`, `syncMode`, `pushWhen`, `laneTagId`. |
 | `PATCH` | `/org-settings` | Upsert those Phase 1 settings. |
-| `GET` | `/sync/orders?organizationId=&orderIds=` | D1 maps for the listed Digit order ids (comma-separated, max 100). |
+| `GET` | `/sync/shipments?organizationId=&shipmentIds=` | D1 maps for the listed Digit shipment ids (comma-separated, max 100). |
 | `GET` | `/sync/activity?organizationId=` | Latest ~100 activity events (pushes, settings, webhooks, poll). |
-| `POST` | `/sync/push` | Body: `organizationId`, `orderIds[]` (max 25). Always HTTP 200 with `{ results, summary: { pushed, skipped, failed } }`. UI must read per-order `skipped` / `meaning`. |
+| `POST` | `/sync/push` | Body: `organizationId`, `shipmentIds[]` (max 25). Always HTTP 200 with `{ results, summary: { pushed, skipped, failed } }`. UI must read per-shipment `skipped` / `meaning`. |
 | `POST` | `/sync/poll` | Run outbound + inbound poll once (same work as the schedule). |
 | `GET` | `/channels/status?organizationId=` | Channel adapter configuration and D1 `channel_connection` rows (read-only). |
 

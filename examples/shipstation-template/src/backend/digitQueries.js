@@ -3,15 +3,76 @@ const ADDRESS_FIELDS = `
   isShippingDefault isShipFromDefault isBillingDefault isManufacturingDefault
 `;
 
+const ORGANIZATION_FIELDS = `
+  id
+  name
+  replyToEmail
+  defaultCurrency { code }
+  addresses { ${ADDRESS_FIELDS} }
+`;
+
+const SHIPMENT_NODE_FIELDS = `
+  id
+  documentNumber
+  shippingNumber
+  shippingStatus
+  trackingNumber
+  notes
+  createdAt
+  shippingAddress { ${ADDRESS_FIELDS} }
+  packContainers {
+    id
+    packedItems {
+      id
+      quantity
+      pickedItem {
+        id
+        orderItem {
+          id
+          quantity
+          customerSku
+          item { id name sku }
+        }
+      }
+    }
+  }
+  order {
+    id
+    documentNumber
+    orderNumber
+    orderDate
+    notes
+    customer { id name }
+    customerContact { id fullName phone email }
+    shippingAddress { ${ADDRESS_FIELDS} }
+    billingAddress { ${ADDRESS_FIELDS} }
+  }
+`;
+
+export const SHIPMENT_LIST_QUERY = `
+  query ShipStationShipmentQueue($connection: ConnectionInput) {
+    organization { ${ORGANIZATION_FIELDS} }
+    shipments(
+      shippingStatuses: [awaiting_carrier]
+      connection: $connection
+      order: { by: createdAt, direction: desc }
+    ) {
+      pageInfo { hasNextPage endCursor }
+      nodes { ${SHIPMENT_NODE_FIELDS} }
+    }
+  }
+`;
+
+export const SHIPMENT_BY_ID_QUERY = `
+  query ShipStationShipmentById($shipmentId: ID!) {
+    organization { ${ORGANIZATION_FIELDS} }
+    shipment(shipmentId: $shipmentId) { ${SHIPMENT_NODE_FIELDS} }
+  }
+`;
+
 export const ORDER_DETAIL_QUERY = `
   query ShipStationOrder($orderIds: [ID!], $connection: ConnectionInput) {
-    organization {
-      id
-      name
-      replyToEmail
-      defaultCurrency { code }
-      addresses { ${ADDRESS_FIELDS} }
-    }
+    organization { ${ORGANIZATION_FIELDS} }
     orders(
       orderIds: $orderIds
       orderStatuses: [unfulfilled, partially_fulfilled]
@@ -59,13 +120,7 @@ export const ORDER_DETAIL_QUERY = `
 
 export const ORDER_BY_ID_QUERY = `
   query ShipStationOrderById($orderIds: [ID!]!) {
-    organization {
-      id
-      name
-      replyToEmail
-      defaultCurrency { code }
-      addresses { ${ADDRESS_FIELDS} }
-    }
+    organization { ${ORGANIZATION_FIELDS} }
     orders(orderIds: $orderIds, connection: { first: 20 }) {
       nodes {
         id

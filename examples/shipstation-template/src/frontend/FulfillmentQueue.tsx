@@ -27,7 +27,6 @@ import {
 } from '@digit/lib-frontend';
 
 import EmptyState from './components/EmptyState';
-import FulfillmentLane from './components/FulfillmentLane';
 import OrderQueueCard from './components/OrderQueueCard';
 import QueueStatusDisplay from './components/QueueStatusDisplay';
 import SectionHeader from './components/SectionHeader';
@@ -42,8 +41,8 @@ const PAGE_SIZE = 10;
 
 const QUEUE_QUERY = `
   query ShipStationQueue($connection: ConnectionInput) {
-    orders(
-      orderStatuses: [unfulfilled, partially_fulfilled]
+    shipments(
+      shippingStatuses: [awaiting_carrier]
       connection: $connection
       order: { by: createdAt, direction: desc }
     ) {
@@ -51,16 +50,26 @@ const QUEUE_QUERY = `
       nodes {
         id
         documentNumber
-        orderNumber
-        orderStatus
-        packingStatus
-        pickingStatus
-        customer { name }
-        tags { id value }
-        items {
-          quantity
-          itemAvailability
-          totalShippedQuantity
+        shippingNumber
+        shippingStatus
+        trackingNumber
+        packContainers {
+          packedItems {
+            quantity
+            pickedItem {
+              orderItem {
+                id
+                customerSku
+                item { id name sku }
+              }
+            }
+          }
+        }
+        order {
+          id
+          documentNumber
+          orderNumber
+          customer { name }
         }
       }
     }
@@ -73,32 +82,45 @@ const PDF_QUERY = `
   }
 `;
 
-type OrderNode = {
+type PackedContainer = {
+  packedItems?: {
+    quantity?: number;
+    pickedItem?: {
+      orderItem?: { id?: string; customerSku?: string | null; item?: { id: string; name?: string | null; sku?: string | null } | null } | null;
+    } | null;
+  }[] | null;
+};
+
+type ShipmentNode = {
   id: string;
   documentNumber?: string | null;
-  orderNumber?: string | null;
-  orderStatus?: string | null;
-  packingStatus?: string | null;
-  pickingStatus?: string | null;
-  customer?: { name?: string | null } | null;
-  tags?: { id: string; value: string }[] | null;
-  items?: { quantity: number; itemAvailability?: string | null; totalShippedQuantity?: number }[] | null;
+  shippingNumber?: string | null;
+  shippingStatus?: string | null;
+  trackingNumber?: string | null;
+  packContainers?: PackedContainer[] | null;
+  order?: {
+    id: string;
+    documentNumber?: string | null;
+    orderNumber?: string | null;
+    customer?: { name?: string | null } | null;
+  } | null;
 };
 
 type QueueData = {
-  orders?: {
+  shipments?: {
     pageInfo?: {
       hasNextPage?: boolean;
       hasPreviousPage?: boolean;
       startCursor?: string | null;
       endCursor?: string | null;
     };
-    nodes?: OrderNode[];
+    nodes?: ShipmentNode[];
   };
 };
 
 type MapRow = {
   digitOrderId: string;
+  digitShipmentId?: string | null;
   ssShipmentId?: string | null;
   source?: string | null;
   pushStatus?: string | null;
@@ -111,7 +133,7 @@ type MapsData = { maps: MapRow[] };
 type PdfData = { generateSalesOrderPdf?: { url: string } | null };
 
 type PushResult = {
-  orderId: string;
+  shipmentId: string;
   ok: boolean;
   skipped: boolean;
   ssShipmentId?: string | null;
@@ -124,24 +146,47 @@ type PushData = {
   summary: { pushed: number; skipped: number; failed: number };
 };
 
-function orderLabel(order: OrderNode) {
-  return order.documentNumber || order.orderNumber || order.id.slice(0, 8);
+function ticketLabel(shipment: ShipmentNode) {
+  return shipment.documentNumber || shipment.shippingNumber || shipment.id.slice(0, 8);
+}
+
+function shipmentPath(shipmentId: string) {
+  return `/fulfillment/shipments/${shipmentId}`;
 }
 
 function salesOrderPath(orderId: string) {
   return `/sales/orders/${orderId}`;
 }
 
-function OrderLink({ orderId, label }: { orderId: string; label: string }) {
+function DigitLink({
+  path,
+  label,
+  variant = 'body1Link',
+}: {
+  path: string;
+  label: string;
+  variant?: 'body1Link' | 'subtitle2';
+}) {
   const navigate = window.DigitHost?.navigate;
-  if (!navigate) return label;
+  if (!navigate) {
+    return variant === 'subtitle2' ? (
+      <Typography variant="subtitle2">{label}</Typography>
+    ) : (
+      <>{label}</>
+    );
+  }
   return (
     <Link
       component="button"
       type="button"
       underline="hover"
-      onClick={() => navigate({ path: salesOrderPath(orderId) })}
-      sx={{ typography: 'body1Link', color: 'inherit', verticalAlign: 'inherit' }}
+      onClick={() => navigate({ path })}
+      sx={{
+        typography: variant,
+        color: 'inherit',
+        verticalAlign: 'inherit',
+        textAlign: 'left',
+      }}
     >
       {label}
     </Link>
@@ -206,16 +251,18 @@ export default function FulfillmentQueue({
     },
   });
 
-  const nodes = queue.data?.orders?.nodes ?? [];
-  const orderIds = nodes.map((node) => node.id).join(',');
+  const nodes = queue.data?.shipments?.nodes ?? [];
+  const shipmentIds = nodes.map((node) => node.id).join(',');
   const mapsQuery = useBackendQuery<MapsData>({
-    path: `/sync/orders?organizationId=${encodeURIComponent(organizationId)}&orderIds=${encodeURIComponent(orderIds)}`,
+    path: `/sync/shipments?organizationId=${encodeURIComponent(organizationId)}&shipmentIds=${encodeURIComponent(shipmentIds)}`,
     skip: !organizationId || nodes.length === 0,
   });
 
   const mapsById = useMemo(() => {
     const map = new Map<string, MapRow>();
-    for (const row of mapsQuery.data?.maps ?? []) map.set(row.digitOrderId, row);
+    for (const row of mapsQuery.data?.maps ?? []) {
+      if (row.digitShipmentId) map.set(row.digitShipmentId, row);
+    }
     return map;
   }, [mapsQuery.data]);
 
@@ -256,16 +303,16 @@ export default function FulfillmentQueue({
   const selectedCount = Object.values(selected).filter(Boolean).length;
 
   const pushSelected = async () => {
-    const orderIdsToPush = Object.entries(selected)
+    const shipmentIdsToPush = Object.entries(selected)
       .filter(([, on]) => on)
       .map(([id]) => id);
-    if (orderIdsToPush.length === 0) return;
+    if (shipmentIdsToPush.length === 0) return;
     reset();
     setPushNotice(null);
     const result = await mutate({
       path: '/sync/push',
       method: 'POST',
-      body: { organizationId, orderIds: orderIdsToPush },
+      body: { organizationId, shipmentIds: shipmentIdsToPush },
     });
     if (!result.ok) return;
     const summary = result.data?.summary ?? { pushed: 0, skipped: 0, failed: 0 };
@@ -283,14 +330,14 @@ export default function FulfillmentQueue({
     setSelected((current) => {
       const next = { ...current };
       for (const row of rows) {
-        if (row.ok && !row.skipped) next[row.orderId] = false;
+        if (row.ok && !row.skipped) next[row.shipmentId] = false;
       }
       return next;
     });
     await Promise.all([queue.refetch(), mapsQuery.refetch(), onPushComplete?.()]);
   };
 
-  const pageInfo = queue.data?.orders?.pageInfo;
+  const pageInfo = queue.data?.shipments?.pageInfo;
 
   const pushBar = canPush ? (
     <Stack
@@ -323,8 +370,8 @@ export default function FulfillmentQueue({
         }}
       >
         {selectedCount > 0
-          ? `${selectedCount} order${selectedCount === 1 ? '' : 's'} selected`
-          : pushDisabledReason ?? 'Select orders to push'}
+          ? `${selectedCount} shipment${selectedCount === 1 ? '' : 's'} selected`
+          : pushDisabledReason ?? 'Select shipments to push'}
       </Typography>
       <Button
         variant="contained"
@@ -340,8 +387,8 @@ export default function FulfillmentQueue({
     <Stack spacing={2}>
       <SectionHeader
         overline="Queue"
-        title="Fulfillment queue"
-        description="Pick and pack in Digit, then push orders to ShipStation. Tracking writes back when a label is purchased."
+        title="Shipping queue"
+        description="Shipments awaiting a carrier. Push to ShipStation to print the label."
       />
 
       {pushNotice ? (
@@ -379,9 +426,8 @@ export default function FulfillmentQueue({
             <TableHead>
               <TableRow>
                 {canPush ? <TableCell padding="checkbox" sx={selectionHeadCellSx} /> : null}
-                <TableCell>Order</TableCell>
+                <TableCell>Shipment</TableCell>
                 <TableCell>Customer</TableCell>
-                <TableCell>Lane</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell>ShipStation ID</TableCell>
                 <TableCell>Tracking</TableCell>
@@ -389,34 +435,43 @@ export default function FulfillmentQueue({
               </TableRow>
             </TableHead>
             <TableBody>
-              {nodes.map((order) => {
-                const map = mapsById.get(order.id);
-                const label = orderLabel(order);
+              {nodes.map((shipment) => {
+                const map = mapsById.get(shipment.id);
+                const label = ticketLabel(shipment);
                 const blocked = ineligibilityReason({
-                  order,
+                  shipment,
                   orgSettings,
                   mapRow: map ?? null,
                 });
                 const pushDisplay = queuePushDisplay({ blocked, mapRow: map ?? null });
                 return (
-                  <TableRow key={order.id} hover sx={motionFadeIn}>
+                  <TableRow key={shipment.id} hover sx={motionFadeIn}>
                     {canPush ? (
                       <TableCell padding="checkbox" sx={selectionBodyCellSx}>
                         <Checkbox
-                          checked={Boolean(selected[order.id])}
+                          checked={Boolean(selected[shipment.id])}
                           onChange={(event) =>
-                            setSelected((current) => ({ ...current, [order.id]: event.target.checked }))
+                            setSelected((current) => ({
+                              ...current,
+                              [shipment.id]: event.target.checked,
+                            }))
                           }
                         />
                       </TableCell>
                     ) : null}
                     <TableCell>
-                      <OrderLink orderId={order.id} label={label} />
+                      <Stack spacing={0.25}>
+                        <DigitLink path={shipmentPath(shipment.id)} label={label} />
+                        {shipment.order?.id ? (
+                          <DigitLink
+                            path={salesOrderPath(shipment.order.id)}
+                            label={shipment.order.documentNumber || shipment.order.orderNumber || 'Sales order'}
+                            variant="subtitle2"
+                          />
+                        ) : null}
+                      </Stack>
                     </TableCell>
-                    <TableCell>{order.customer?.name ?? '—'}</TableCell>
-                    <TableCell>
-                      <FulfillmentLane order={order} mapRow={map ?? null} orgSettings={orgSettings} />
-                    </TableCell>
+                    <TableCell>{shipment.order?.customer?.name ?? '—'}</TableCell>
                     <TableCell>
                       <QueueStatusDisplay pushDisplay={pushDisplay} />
                     </TableCell>
@@ -450,9 +505,11 @@ export default function FulfillmentQueue({
                       <IconButton
                         size="small"
                         aria-label="Download packing slip"
+                        disabled={!shipment.order?.id}
                         onClick={() => {
+                          if (!shipment.order?.id) return;
                           setPdfError(null);
-                          setPdfOrderId(order.id);
+                          setPdfOrderId(shipment.order.id);
                         }}
                       >
                         <DownloadIcon fontSize="small" />
@@ -463,10 +520,10 @@ export default function FulfillmentQueue({
               })}
               {nodes.length === 0 && !queue.loading ? (
                 <TableRow>
-                  <TableCell colSpan={canPush ? 8 : 7}>
+                  <TableCell colSpan={canPush ? 7 : 6}>
                     <EmptyState
-                      title="No orders waiting to ship"
-                      description="Unfulfilled and partially fulfilled sales orders show up here. Push packed orders to create ShipStation shipments."
+                      title="No shipments awaiting carrier"
+                      description="Create a shipment in Digit. Awaiting carrier rows show up here."
                     />
                   </TableCell>
                 </TableRow>
@@ -477,30 +534,33 @@ export default function FulfillmentQueue({
       </Box>
 
       <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' }, pb: selectedCount > 0 ? 8 : 0 }}>
-        {nodes.map((order) => (
+        {nodes.map((shipment) => (
           <OrderQueueCard
-            key={order.id}
-            order={order}
-            map={mapsById.get(order.id)}
+            key={shipment.id}
+            shipment={shipment}
+            map={mapsById.get(shipment.id)}
             orgSettings={orgSettings}
             canPush={canPush}
-            selected={Boolean(selected[order.id])}
-            onSelect={(checked) => setSelected((current) => ({ ...current, [order.id]: checked }))}
+            selected={Boolean(selected[shipment.id])}
+            onSelect={(checked) =>
+              setSelected((current) => ({ ...current, [shipment.id]: checked }))
+            }
             onCopySsId={(id) => {
               void navigator.clipboard.writeText(id);
               setCopyHint(id);
             }}
             copyHint={copyHint}
             onDownloadSlip={() => {
+              if (!shipment.order?.id) return;
               setPdfError(null);
-              setPdfOrderId(order.id);
+              setPdfOrderId(shipment.order.id);
             }}
           />
         ))}
         {nodes.length === 0 && !queue.loading ? (
           <EmptyState
-            title="No orders waiting to ship"
-            description="Unfulfilled and partially fulfilled sales orders show up here. Push packed orders to create ShipStation shipments."
+            title="No shipments awaiting carrier"
+            description="Create a shipment in Digit. Awaiting carrier rows show up here."
           />
         ) : null}
       </Stack>

@@ -1,8 +1,8 @@
 /**
- * Digit sales order → ShipStation V1 order body (POST /orders/createorder).
+ * Digit shipment → ShipStation V1 order body (POST /orders/createorder).
  */
 
-import { skuForLine } from './digitToShipStation.js';
+import { packedLinesFromShipment, skuForLine } from './digitToShipStation.js';
 
 function countryCode(value) {
   const raw = String(value ?? '').trim();
@@ -32,26 +32,36 @@ function v1Address(address, { name, companyName, phone }) {
 }
 
 /**
- * @param {{ order: object, shipFrom: object }} args
+ * @param {{ shipment: object }} args
  */
-export function digitOrderToV1Order({ order }) {
+export function digitShipmentToV1Order({ shipment }) {
+  const order = shipment?.order;
   const customerName = order?.customer?.name || '';
+  const shipAddress = shipment?.shippingAddress || order?.shippingAddress;
   const shipToName =
-    order?.customerContact?.fullName || order?.shippingAddress?.title || customerName;
-  const orderKey = String(order.id).slice(0, 50);
-  const orderNumber = String(order.documentNumber || order.orderNumber || orderKey).slice(0, 50);
+    order?.customerContact?.fullName || shipAddress?.title || customerName;
+  const orderKey = String(shipment?.id || order?.id || '').slice(0, 50);
+  const orderNumber = String(
+    shipment?.documentNumber ||
+      shipment?.shippingNumber ||
+      order?.documentNumber ||
+      order?.orderNumber ||
+      orderKey,
+  ).slice(0, 50);
   const orderDate =
-    order.orderDate || order.createdAt || order.created_at || new Date().toISOString();
+    order?.orderDate ||
+    shipment?.createdAt ||
+    order?.createdAt ||
+    order?.created_at ||
+    new Date().toISOString();
 
-  const items = (order?.items ?? [])
-    .filter((line) => line?.item)
-    .map((line) => ({
-      lineItemKey: String(line.id),
-      sku: skuForLine(line) || undefined,
-      name: line.item.name || skuForLine(line) || 'Item',
-      quantity: Math.max(1, Math.round(Number(line.quantity) || 1)),
-      unitPrice: Number(line.unitPrice ?? line.price ?? 0) || 0,
-    }));
+  const items = packedLinesFromShipment(shipment).map((line) => ({
+    lineItemKey: String(line.id),
+    sku: skuForLine(line) || undefined,
+    name: line.item.name || skuForLine(line) || 'Item',
+    quantity: Math.max(1, Math.round(Number(line.quantity) || 1)),
+    unitPrice: Number(line.unitPrice ?? line.price ?? 0) || 0,
+  }));
 
   return {
     orderNumber,
@@ -59,15 +69,43 @@ export function digitOrderToV1Order({ order }) {
     orderDate,
     orderStatus: 'awaiting_shipment',
     customerEmail: order?.customerContact?.email || order?.customer?.email || undefined,
-    billTo: v1Address(order.billingAddress || order.shippingAddress, {
+    billTo: v1Address(order?.billingAddress || shipAddress, {
       name: customerName || shipToName,
       companyName: customerName,
     }),
-    shipTo: v1Address(order.shippingAddress, {
+    shipTo: v1Address(shipAddress, {
       name: shipToName,
       companyName: customerName,
     }),
     items,
-    internalNotes: order.notes ? String(order.notes).slice(0, 1000) : undefined,
+    internalNotes: [order?.notes, shipment?.notes].filter(Boolean).join('\n').slice(0, 1000) || undefined,
   };
+}
+
+/**
+ * @param {{ order: object }} args
+ * @deprecated Prefer digitShipmentToV1Order for the shipping queue.
+ */
+export function digitOrderToV1Order({ order }) {
+  return digitShipmentToV1Order({
+    shipment: {
+      id: order?.id,
+      documentNumber: order?.documentNumber,
+      shippingNumber: order?.orderNumber,
+      createdAt: order?.createdAt || order?.created_at,
+      shippingAddress: order?.shippingAddress,
+      notes: order?.notes,
+      order,
+      packContainers: [
+        {
+          packedItems: (order?.items ?? [])
+            .filter((line) => line?.item)
+            .map((line) => ({
+              quantity: line.quantity,
+              pickedItem: { orderItem: line },
+            })),
+        },
+      ],
+    },
+  });
 }

@@ -17,12 +17,13 @@ import {
   CREATE_SHIPMENT_MUTATION,
   ITEMS_BY_SEARCH_QUERY,
   ORDER_BY_ID_QUERY,
-  ORDER_DETAIL_QUERY,
+  SHIPMENT_BY_ID_QUERY,
+  SHIPMENT_LIST_QUERY,
   UPDATE_SHIPMENT_MUTATION,
 } from './digitQueries.js';
 import { ineligibilityReason, skipNextStep } from './eligibility.js';
-import { digitOrderToShipment, orgShipFrom } from './mappers/digitToShipStation.js';
-import { digitOrderToV1Order } from './mappers/digitToShipStationV1.js';
+import { digitShipmentToShipment, orgShipFrom } from './mappers/digitToShipStation.js';
+import { digitShipmentToV1Order } from './mappers/digitToShipStationV1.js';
 import {
   normalizeSsRecord,
   normalizedToImportShipment,
@@ -170,6 +171,22 @@ export function publicMapRow(row) {
   };
 }
 
+export async function mapsForShipments({ db, connectionId, shipmentIds }) {
+  if (!shipmentIds.length) return [];
+  const placeholders = shipmentIds.map(() => '?').join(',');
+  const { results } = await db
+    .prepare(
+      `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id, source,
+              push_status, last_error, tracking_number, carrier_name, ship_date,
+              shipment_cost_amount, shipment_cost_currency
+       FROM shipstation_order_map
+       WHERE connection_id = ? AND deleted = 0 AND digit_shipment_id IN (${placeholders})`,
+    )
+    .bind(connectionId, ...shipmentIds)
+    .all();
+  return (results ?? []).map(publicMapRow);
+}
+
 export async function mapsForOrders({ db, connectionId, orderIds }) {
   if (!orderIds.length) return [];
   const placeholders = orderIds.map(() => '?').join(',');
@@ -186,15 +203,30 @@ export async function mapsForOrders({ db, connectionId, orderIds }) {
   return (results ?? []).map(publicMapRow);
 }
 
-async function upsertMap({ db, connectionId, organizationId, digitOrderId, fields }) {
-  const existing = await db
-    .prepare(
-      `SELECT id FROM shipstation_order_map
-       WHERE connection_id = ? AND digit_order_id = ? AND deleted = 0
-       LIMIT 1`,
-    )
-    .bind(connectionId, digitOrderId)
-    .first();
+async function upsertMap({ db, connectionId, organizationId, digitOrderId, digitShipmentId, fields }) {
+  let existing = null;
+  if (digitShipmentId) {
+    existing = await db
+      .prepare(
+        `SELECT id FROM shipstation_order_map
+         WHERE connection_id = ? AND digit_shipment_id = ? AND deleted = 0
+         LIMIT 1`,
+      )
+      .bind(connectionId, digitShipmentId)
+      .first();
+  }
+  if (!existing && digitOrderId && !digitShipmentId) {
+    existing = await db
+      .prepare(
+        `SELECT id FROM shipstation_order_map
+         WHERE connection_id = ? AND digit_order_id = ? AND deleted = 0
+         LIMIT 1`,
+      )
+      .bind(connectionId, digitOrderId)
+      .first();
+  }
+
+  const shipmentId = digitShipmentId ?? fields.digitShipmentId ?? null;
 
   if (!existing) {
     await db
@@ -211,7 +243,7 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, field
         digitOrderId,
         fields.ssShipmentId ?? null,
         fields.ssLabelId ?? null,
-        fields.digitShipmentId ?? null,
+        shipmentId,
         fields.source ?? 'digit',
         fields.pushStatus ?? 'pending',
         fields.lastError ?? null,
@@ -245,7 +277,7 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, field
     .bind(
       fields.ssShipmentId ?? null,
       fields.ssLabelId ?? null,
-      fields.digitShipmentId ?? null,
+      shipmentId,
       fields.source ?? null,
       fields.pushStatus ?? null,
       fields.lastError === undefined ? null : fields.lastError,
@@ -315,15 +347,41 @@ export async function fetchDigitOrder({ env, orderId }) {
   return { ok: true, data: { order, organization } };
 }
 
-function pushMeaning({ skipped, reason, ssShipmentId, orderLabel }) {
+export async function fetchDigitShipment({ env, shipmentId }) {
+  const result = await digitGraphql({
+    env,
+    query: SHIPMENT_BY_ID_QUERY,
+    variables: { shipmentId },
+  });
+  if (!result.ok) return result;
+  const shipment = result.data?.shipment ?? null;
+  const organization = result.data?.organization ?? null;
+  if (!shipment) {
+    return {
+      ok: false,
+      code: AppErrorCode.VALIDATION_ERROR,
+      message: 'Digit shipment not found.',
+      status: 400,
+    };
+  }
+  return { ok: true, data: { shipment, organization } };
+}
+
+function pushMeaning({ skipped, reason, ssShipmentId, shipmentLabel }) {
   if (skipped) {
     return `${reason} ${skipNextStep(reason)}`.trim();
   }
-  return `Created ShipStation shipment ${ssShipmentId} for ${orderLabel}. It stays in this queue until it is fulfilled in Digit. Print the label in ShipStation.`;
+  return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel}. Print the label in ShipStation. This Digit shipment stays in the queue until it is marked shipped.`;
 }
 
-function orderLabel(order, orderId) {
-  return order?.documentNumber || order?.orderNumber || orderId;
+function shipmentLabel(shipment, shipmentId) {
+  return (
+    shipment?.documentNumber ||
+    shipment?.shippingNumber ||
+    shipment?.order?.documentNumber ||
+    shipment?.order?.orderNumber ||
+    shipmentId
+  );
 }
 
 async function recordPushActivity({
@@ -354,14 +412,14 @@ async function recordPushActivity({
 }
 
 /**
- * `preloaded` lets the scheduled poll reuse the order it already listed. Without it every
- * candidate order costs another Digit query, which is enough to hit the API rate limit.
+ * `preloaded` lets the scheduled poll reuse the shipment it already listed. Without it every
+ * candidate costs another Digit query, which is enough to hit the API rate limit.
  */
-export async function pushOrder({
+export async function pushShipment({
   env,
   db,
   organizationId,
-  orderId,
+  shipmentId,
   actor = 'user',
   recordActivity = true,
   preloaded = null,
@@ -377,7 +435,7 @@ export async function pushOrder({
       recordActivity,
       skipped: false,
       ok: false,
-      orderId,
+      orderId: null,
       ssShipmentId: null,
       message,
     });
@@ -392,16 +450,16 @@ export async function pushOrder({
   const existing = await db
     .prepare(
       `SELECT * FROM shipstation_order_map
-       WHERE connection_id = ? AND digit_order_id = ? AND deleted = 0
+       WHERE connection_id = ? AND digit_shipment_id = ? AND deleted = 0
        LIMIT 1`,
     )
-    .bind(secret.connectionId, orderId)
+    .bind(secret.connectionId, shipmentId)
     .first();
 
   const loaded =
-    preloaded?.order
-      ? { ok: true, data: { order: preloaded.order, organization: preloaded.organization ?? null } }
-      : await fetchDigitOrder({ env, orderId });
+    preloaded?.shipment
+      ? { ok: true, data: { shipment: preloaded.shipment, organization: preloaded.organization ?? null } }
+      : await fetchDigitShipment({ env, shipmentId });
   if (!loaded.ok) {
     await recordPushActivity({
       db,
@@ -410,30 +468,34 @@ export async function pushOrder({
       recordActivity,
       skipped: false,
       ok: false,
-      orderId,
+      orderId: null,
       ssShipmentId: null,
       message: loaded.message,
       detail: loaded.detail ?? { code: loaded.code },
     });
     return loaded;
   }
-  const { order, organization } = loaded.data;
-  const label = orderLabel(order, orderId);
+  const { shipment, organization } = loaded.data;
+  const orderId = shipment?.order?.id ?? null;
+  const label = shipmentLabel(shipment, shipmentId);
 
   const reason = ineligibilityReason({
-    order,
+    shipment,
     orgSettings,
     mapRow: existing ? publicMapRow(existing) : null,
   });
   if (reason) {
-    await upsertMap({
-      db,
-      connectionId: secret.connectionId,
-      organizationId,
-      digitOrderId: orderId,
-      fields: { pushStatus: 'skipped', lastError: reason, source: existing?.source ?? 'digit' },
-    });
-    const meaning = pushMeaning({ skipped: true, reason, orderLabel: label });
+    if (orderId) {
+      await upsertMap({
+        db,
+        connectionId: secret.connectionId,
+        organizationId,
+        digitOrderId: orderId,
+        digitShipmentId: shipmentId,
+        fields: { pushStatus: 'skipped', lastError: reason, source: existing?.source ?? 'digit' },
+      });
+    }
+    const meaning = pushMeaning({ skipped: true, reason, shipmentLabel: label });
     await recordPushActivity({
       db,
       organizationId,
@@ -445,20 +507,20 @@ export async function pushOrder({
       ssShipmentId: existing?.ss_shipment_id ?? null,
       message: meaning,
     });
-    return { ok: true, data: { orderId, skipped: true, reason, message: reason, meaning } };
+    return { ok: true, data: { shipmentId, orderId, skipped: true, reason, message: reason, meaning } };
   }
 
   const created =
     secret.apiVersion === 'v1'
       ? await createShipments({
           credentials,
-          order: digitOrderToV1Order({ order }),
+          order: digitShipmentToV1Order({ shipment }),
         })
       : await createShipments({
           credentials,
           shipments: [
-            digitOrderToShipment({
-              order,
+            digitShipmentToShipment({
+              shipment,
               shipFrom: orgShipFrom({ organization }),
             }),
           ],
@@ -469,6 +531,7 @@ export async function pushOrder({
       connectionId: secret.connectionId,
       organizationId,
       digitOrderId: orderId,
+      digitShipmentId: shipmentId,
       fields: { pushStatus: 'error', lastError: created.message, source: 'digit' },
     });
     await recordPushActivity({
@@ -496,6 +559,7 @@ export async function pushOrder({
       connectionId: secret.connectionId,
       organizationId,
       digitOrderId: orderId,
+      digitShipmentId: shipmentId,
       fields: {
         pushStatus: 'error',
         lastError: 'ShipStation did not return a shipment id.',
@@ -527,6 +591,7 @@ export async function pushOrder({
     connectionId: secret.connectionId,
     organizationId,
     digitOrderId: orderId,
+    digitShipmentId: shipmentId,
     fields: {
       ssShipmentId,
       pushStatus: 'pushed',
@@ -534,7 +599,7 @@ export async function pushOrder({
       source: 'digit',
     },
   });
-  const meaning = pushMeaning({ skipped: false, ssShipmentId, orderLabel: label });
+  const meaning = pushMeaning({ skipped: false, ssShipmentId, shipmentLabel: label });
   await recordPushActivity({
     db,
     organizationId,
@@ -549,6 +614,7 @@ export async function pushOrder({
   return {
     ok: true,
     data: {
+      shipmentId,
       orderId,
       ssShipmentId,
       skipped: false,
@@ -560,7 +626,7 @@ export async function pushOrder({
 
 const POLL_PAGE_SIZE = 25;
 const MAX_POLL_PAGES = 5;
-/** Keeps one scheduled run inside the Digit API rate limit. Remaining orders wait for the next run. */
+/** Keeps one scheduled run inside the Digit API rate limit. Remaining shipments wait for the next run. */
 const MAX_PUSHES_PER_RUN = 25;
 
 export async function pollOutboundPush({ env, db }) {
@@ -594,31 +660,31 @@ export async function pollOutboundPush({ env, db }) {
     for (let page = 0; page < MAX_POLL_PAGES; page += 1) {
       const listed = await digitGraphql({
         env,
-        query: ORDER_DETAIL_QUERY,
+        query: SHIPMENT_LIST_QUERY,
         variables: {
           connection: { first: POLL_PAGE_SIZE, ...(after ? { after } : {}) },
         },
       });
       if (!listed.ok) break;
       const organization = listed.data?.organization ?? null;
-      const nodes = listed.data?.orders?.nodes ?? [];
-      for (const order of nodes) {
-        const result = await pushOrder({
+      const nodes = listed.data?.shipments?.nodes ?? [];
+      for (const shipment of nodes) {
+        const result = await pushShipment({
           env,
           db,
           organizationId,
-          orderId: order.id,
+          shipmentId: shipment.id,
           actor: 'schedule',
           recordActivity: true,
-          preloaded: { order, organization },
+          preloaded: { shipment, organization },
         });
         if (result.ok && result.data && !result.data.skipped) {
           pushed.push(result.data);
         }
       }
       if (pushed.length >= MAX_PUSHES_PER_RUN) break;
-      if (!listed.data?.orders?.pageInfo?.hasNextPage) break;
-      after = listed.data.orders.pageInfo.endCursor;
+      if (!listed.data?.shipments?.pageInfo?.hasNextPage) break;
+      after = listed.data.shipments.pageInfo.endCursor;
     }
   }
   return { pushed: pushed.length };
@@ -630,6 +696,7 @@ async function applyDigitShipmentWriteback({
   organizationId,
   connectionId,
   digitOrderId,
+  mappedDigitShipmentId = null,
   trackingNumber,
   carrierName,
   shipDate,
@@ -643,7 +710,9 @@ async function applyDigitShipmentWriteback({
   const { order } = loaded.data;
 
   let digitShipmentId =
-    order.shipments?.find((shipment) => shipment.shippingStatus !== 'cancelled')?.id ?? null;
+    mappedDigitShipmentId ||
+    order.shipments?.find((shipment) => shipment.shippingStatus !== 'cancelled')?.id ||
+    null;
 
   if (!digitShipmentId) {
     const unpacked = (order.packContainers ?? []).filter((container) => !container.shipment);
@@ -704,6 +773,7 @@ async function applyDigitShipmentWriteback({
     connectionId,
     organizationId,
     digitOrderId,
+    digitShipmentId,
     fields: {
       digitShipmentId,
       ssShipmentId,
@@ -790,6 +860,16 @@ export async function processSsFulfillment({
     map = await db
       .prepare(
         `SELECT * FROM shipstation_order_map
+         WHERE connection_id = ? AND digit_shipment_id = ? AND deleted = 0
+         LIMIT 1`,
+      )
+      .bind(secret.connectionId, externalId)
+      .first();
+  }
+  if (!map && externalId) {
+    map = await db
+      .prepare(
+        `SELECT * FROM shipstation_order_map
          WHERE connection_id = ? AND digit_order_id = ? AND deleted = 0
          LIMIT 1`,
       )
@@ -824,6 +904,7 @@ export async function processSsFulfillment({
     organizationId,
     connectionId: secret.connectionId,
     digitOrderId: map.digit_order_id,
+    mappedDigitShipmentId: map.digit_shipment_id ?? null,
     trackingNumber: normalized.trackingNumber,
     carrierName: normalized.carrierCode,
     shipDate: normalized.shipDate,

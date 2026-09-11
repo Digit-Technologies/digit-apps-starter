@@ -47,29 +47,42 @@ function billToNote({ billingAddress, customerName }) {
   return parts.length ? `Bill-to: ${parts.join(' · ')}` : '';
 }
 
+export function packedLinesFromShipment(shipment) {
+  const lines = [];
+  for (const container of shipment?.packContainers ?? []) {
+    for (const packed of container.packedItems ?? []) {
+      const orderItem = packed?.pickedItem?.orderItem;
+      if (!orderItem?.item) continue;
+      lines.push({
+        id: orderItem.id,
+        quantity: packed.quantity ?? orderItem.quantity,
+        customerSku: orderItem.customerSku,
+        item: orderItem.item,
+      });
+    }
+  }
+  return lines;
+}
+
 /**
- * @param {{ order: object, shipFrom: object }} args
+ * @param {{ shipment: object, shipFrom: object }} args
  */
-export function digitOrderToShipment({ order, shipFrom }) {
+export function digitShipmentToShipment({ shipment, shipFrom }) {
+  const order = shipment?.order;
   const customerName = order?.customer?.name || '';
+  const shipAddress = shipment?.shippingAddress || order?.shippingAddress;
   const shipToName =
-    order?.customerContact?.fullName || order?.shippingAddress?.title || customerName;
-  const billingDiffers =
-    order?.billingAddress?.id &&
-    order?.shippingAddress?.id &&
-    order.billingAddress.id !== order.shippingAddress.id;
+    order?.customerContact?.fullName || shipAddress?.title || customerName;
 
-  const items = (order?.items ?? [])
-    .filter((line) => line?.item)
-    .map((line) => ({
-      name: line.item.name || skuForLine(line) || 'Item',
-      sku: skuForLine(line) || undefined,
-      quantity: Math.max(1, Math.round(Number(line.quantity) || 1)),
-      external_order_id: order.id,
-      external_order_item_id: line.id,
-    }));
+  const items = packedLinesFromShipment(shipment).map((line) => ({
+    name: line.item.name || skuForLine(line) || 'Item',
+    sku: skuForLine(line) || undefined,
+    quantity: Math.max(1, Math.round(Number(line.quantity) || 1)),
+    external_order_id: order?.id,
+    external_order_item_id: line.id,
+  }));
 
-  const externalId = String(order.id).slice(0, 50);
+  const externalId = String(shipment?.id || '').slice(0, 50);
   const note = billToNote({
     billingAddress: order?.billingAddress,
     customerName,
@@ -77,16 +90,49 @@ export function digitOrderToShipment({ order, shipFrom }) {
 
   return {
     external_shipment_id: externalId,
-    shipment_number: order.documentNumber || order.orderNumber || externalId,
+    shipment_number:
+      shipment?.documentNumber ||
+      shipment?.shippingNumber ||
+      order?.documentNumber ||
+      order?.orderNumber ||
+      externalId,
     create_sales_order: true,
-    ship_to: addressFromDigit(order.shippingAddress, {
+    ship_to: addressFromDigit(shipAddress, {
       name: shipToName,
-      companyName: billingDiffers ? customerName : customerName,
+      companyName: customerName,
     }),
     ship_from: shipFrom,
     items,
-    internal_notes: [order.notes, note].filter(Boolean).join('\n').slice(0, 1000) || undefined,
+    internal_notes: [order?.notes, shipment?.notes, note].filter(Boolean).join('\n').slice(0, 1000) || undefined,
   };
+}
+
+/**
+ * @param {{ order: object, shipFrom: object }} args
+ * @deprecated Prefer digitShipmentToShipment for the shipping queue.
+ */
+export function digitOrderToShipment({ order, shipFrom }) {
+  return digitShipmentToShipment({
+    shipment: {
+      id: order?.id,
+      documentNumber: order?.documentNumber,
+      shippingNumber: order?.orderNumber,
+      shippingAddress: order?.shippingAddress,
+      notes: order?.notes,
+      order,
+      packContainers: [
+        {
+          packedItems: (order?.items ?? [])
+            .filter((line) => line?.item)
+            .map((line) => ({
+              quantity: line.quantity,
+              pickedItem: { orderItem: line },
+            })),
+        },
+      ],
+    },
+    shipFrom,
+  });
 }
 
 export function orgShipFrom({ organization }) {

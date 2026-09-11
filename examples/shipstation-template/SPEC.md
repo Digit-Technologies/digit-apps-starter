@@ -2,11 +2,11 @@
 
 ## What it does
 
-Phase 1 org Digit app: connect one ShipStation account (V2 key, or V1 key + secret), push packed (or inventory-ready)
-Digit sales orders into ShipStation as V2 shipments/`create_sales_order` or V1 orders, and write tracking
-back when ShipStation purchases a label. Operators pick/pack in Digit and print labels in
-ShipStation. Rate shopping, label purchase in-app, return labels, and shipping-fee capture
-are Phase 2 — those controls are not in the UI.
+Phase 1 org Digit app: connect one ShipStation account (V2 key, or V1 key + secret), push Digit
+shipments in **awaiting_carrier** into ShipStation as V2 shipments/`create_sales_order` or V1 orders,
+and write tracking back when ShipStation purchases a label. Operators pick/pack and create the
+Digit shipment first; the shipping queue lists those shipments. Rate shopping, label purchase in-app,
+return labels, and shipping-fee capture are Phase 2 — those controls are not in the UI.
 
 Source for `npm run new-app -- my-app --from shipstation-template`. Connect and sync only
 work after a consumer publishes to Digit (Worker, D1, secrets).
@@ -14,14 +14,14 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
 ## Data & permissions
 
 - `manifest.permissions`: `UPDATE_ORGANIZATION` (admin gate via `currentPermissions`),
-  `READ_ORDER` / `UPDATE_ORDER` / `CREATE_ORDER`, `READ_SHIPMENT` / `CREATE_SHIPMENT` /
-  `UPDATE_SHIPMENT`, `CREATE_PACK_CONTAINER`, `READ_ITEM`, `READ_INVENTORY`, `READ_COMPANY` /
+  `READ_ORDER` / `UPDATE_ORDER` / `CREATE_ORDER`,   `READ_SHIPMENT` / `CREATE_SHIPMENT` /
+  `UPDATE_SHIPMENT`, `CREATE_PACK_CONTAINER` / `READ_PACK_CONTAINER`, `READ_PICKED_ITEM`, `READ_ITEM`, `READ_INVENTORY`, `READ_COMPANY` /
   `READ_COMPANY_DETAILS` / `CREATE_COMPANY`, `READ_CONTACT`, `READ_ORGANIZATION_LOCATION`.
   Keys from MCP `appPermissions`. The Worker uses `API_TOKEN_DIGIT` for the same operations
   on webhooks and the 5-minute poll — grant the token those permissions too.
 - D1 `SHIPSTATION_DB` — publish binding only (not shown in the UI). `0001_init.sql` plus
   `0002_order_sync.sql`, `0003_app_config.sql`, `0004_activity_log.sql`,
-  `0006_api_version.sql`, and `0007_drop_legacy_app_secrets.sql`. Do not edit `0001` after
+  `0006_api_version.sql`, `0007_drop_legacy_app_secrets.sql`, and `0008_shipment_map.sql`. Do not edit `0001` after
   a consumer has published.
 - **All secrets are organization-level Digit app secrets**, managed only in Digit's built-in
   App Secrets UI: `SHIPSTATION_API_KEY`, `SHIPSTATION_API_SECRET` (V1),
@@ -53,8 +53,8 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
   queue's push button is disabled with a reason when the Digit token is not live.
 - Schedule `poll-outbound-push` every 300s (also runs inbound import when sync mode is
   `ss_to_digit`).
-- **Rate limits:** the poll lists orders with `ORDER_DETAIL_QUERY` and hands each node to
-  `pushOrder` as `preloaded`, so ineligible orders cost no extra Digit query, and a run stops
+- **Rate limits:** the poll lists Digit shipments (`awaiting_carrier`) with `SHIPMENT_LIST_QUERY` and hands each node to
+  `pushShipment` as `preloaded`, so ineligible shipments cost no extra Digit query, and a run stops
   after `MAX_PUSHES_PER_RUN` (25). `digitGraphql` retries a 429 twice with backoff (honoring
   `Retry-After`) and then returns "Digit API rate limit reached". Keep per-order Digit calls
   out of any loop you add here — that is what caused "Too many requests" before.
@@ -268,6 +268,20 @@ UI fixes (dark/light, duplicates, V1/V2 toggle)
 Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
 ```
 
+```
+Refactor the app so that the queue pulls data from the Shipments table in digit
+```
+
+```
+make sure to use the /frontend-design /create-digit-app skills when forging this plan
+```
+
+```
+Shipping Queue from Digit Shipments
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+```
+
 ## Context supplied
 
 - Work stays on git branch `shipstation-template` tracking `fork/shipstation-template`
@@ -275,7 +289,8 @@ Implement the plan as specified, it is attached for your reference. Do NOT edit 
 - Phase 1: COM-01–COM-08 plus CS-12/13/14/16 and CS-01 as a Faire recipe/stub.
 - Strip FR-3 rate-shop, carrier defaults, dims, label-cost, return-email, and address-block
   settings from UI and Worker JSON. Leave `0001` columns at SQL defaults.
-- Digit native pick/pack/PDF; ShipStation native labels. Worker push is V2
+- Digit native pick/pack/PDF; operators create a Digit shipment (`awaiting_carrier`). The shipping
+  queue lists those shipments (not unfulfilled sales orders). Worker push is V2
   `POST /v2/shipments` with `create_sales_order: true`, or V1 `POST /orders/createorder`.
   Webhooks: V2 RSA-SHA256 JWKS verify, or V1 query token, then jobs.
 - `API_TOKEN_DIGIT` because webhooks have no iframe Digit session.

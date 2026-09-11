@@ -18,7 +18,7 @@ V2 paths: [shipstation-v2-map.md](shipstation-v2-map.md). Dispatch lives in
 | `GET` | `/carriers/listservices?carrierCode=` | Services when the carrier list has none |
 | `POST` | `/webhooks/subscribe` | Register inbound URL (`target_url`, `event`, `friendly_name`) |
 | `DELETE` | `/webhooks/{id}` | Disconnect |
-| `POST` | `/orders/createorder` | Push Digit SO (V1 order; `orderKey` = Digit order id) |
+| `POST` | `/orders/createorder` | Push Digit shipment (V1 order; `orderKey` = Digit shipment id) |
 | `GET` | `/orders/{orderId}` | Writeback / inbound |
 | `GET` | `/orders?orderNumber=` | Lookup by Digit document number / order key |
 | `GET` | `/orders?...` | Inbound poll |

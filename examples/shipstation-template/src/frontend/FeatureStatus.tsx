@@ -214,14 +214,14 @@ function digitFeatures({ connected }: FeatureStatusProps): Feature[] {
       needs: [],
     },
     gate({
-      title: 'Fulfillment queue',
-      detail: 'Sync status per order, batch push and retry, and the Digit sales-order PDF.',
+      title: 'Shipping queue',
+      detail: 'Digit shipments awaiting a carrier, batch push to ShipStation, and the sales-order packing slip.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
-      title: 'Hold orders that should not ship yet',
+      title: 'Hold shipments that should not ship yet',
       detail:
-        'Orders without available inventory are skipped. The optional tag filter and Manual fulfillment keep LTL or other 3PL orders in Digit.',
+        'Inbound-only mode, Manual fulfillment, and imported ShipStation rows stay in Digit. The queue lists awaiting-carrier shipments only.',
       requires: [[connected, CONNECTION]],
     }),
   ];

@@ -22,7 +22,10 @@ Typical starting queries (confirm on MCP; add whatever keys those fields require
 | Invoices | invoice types if you attach shipping cost |
 | Permissions | `appPermissions` for `READ_SHIPMENT` and any write keys you actually call |
 
-- Digit GraphQL used: `currentPermissions`, `organization`, `orders`, `items`,
+- Digit GraphQL used: `currentPermissions`, `organization`, `shipments`, `shipment`, `orders`, `items`,
   `companies`, `generateSalesOrderPdf`, and Worker mutations for orders/shipments.
   Look up fields on `graphql-schema://…` before adding more.
+- Queue and outbound poll filter `shipments(shippingStatuses: [awaiting_carrier])`. Nested `order`
+  and packed items (`packContainers.packedItems.pickedItem.orderItem`) need `READ_ORDER`,
+  `READ_PACK_CONTAINER`, `READ_PICKED_ITEM`, and `READ_ITEM`.
 - `manifest.permissions` must cover every Digit field the iframe **and** `API_TOKEN_DIGIT` call.

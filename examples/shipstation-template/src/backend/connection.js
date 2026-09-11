@@ -477,7 +477,7 @@ export async function handleConnection({ request, env, path, method }) {
       actor: 'user',
       action: 'connect',
       status: 'success',
-      message: `Connected ShipStation ${versionLabel} and synced ${count} carrier(s). Print labels in ShipStation after pushing orders from the queue.`,
+      message: `Connected ShipStation ${versionLabel} and synced ${count} carrier(s). Print labels in ShipStation after pushing shipments from the queue.`,
       detail: { carrierCount: count, apiVersion: credentials.apiVersion },
     });
     return ok({

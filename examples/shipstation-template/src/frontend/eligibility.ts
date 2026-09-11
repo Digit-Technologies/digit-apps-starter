@@ -14,80 +14,53 @@ export type MapRowForEligibility = {
   pushStatus?: string | null;
 };
 
-export type OrderForEligibility = {
-  packingStatus?: string | null;
-  tags?: { id: string }[] | null;
-  items?: { quantity: number; itemAvailability?: string | null; totalShippedQuantity?: number }[] | null;
+export type PackedLineForEligibility = {
+  packedItems?: { pickedItem?: { orderItem?: { item?: unknown } | null } | null }[] | null;
 };
 
-export function remainingToShip(line: {
-  quantity?: number;
-  totalShippedQuantity?: number | null;
-}) {
-  const quantity = Number(line?.quantity ?? 0);
-  const shipped = Number(line?.totalShippedQuantity ?? 0);
-  return Math.max(0, quantity - shipped);
-}
+export type ShipmentForEligibility = {
+  order?: { id?: string | null } | null;
+  packContainers?: PackedLineForEligibility[] | null;
+};
 
-export function inventoryEligible({ items }: { items?: OrderForEligibility['items'] }) {
-  const lines = (items ?? []).filter((line) => remainingToShip(line) > 0);
-  if (lines.length === 0) return false;
-  return lines.every((line) => line.itemAvailability === 'fully_available');
-}
-
-export function packingEligible({
-  packingStatus,
-  pushWhen,
-}: {
-  packingStatus?: string | null;
-  pushWhen?: string | null;
-}) {
-  if (pushWhen === 'inventory_available') return true;
-  return packingStatus === 'fully_packed';
-}
-
-export function laneEligible({
-  tags,
-  laneTagId,
-}: {
-  tags?: { id: string }[] | null;
-  laneTagId?: string | null;
-}) {
-  if (!laneTagId) return true;
-  return (tags ?? []).some((tag) => tag?.id === laneTagId);
+export function packedLineCount(shipment?: ShipmentForEligibility | null) {
+  let count = 0;
+  for (const container of shipment?.packContainers ?? []) {
+    for (const packed of container.packedItems ?? []) {
+      if (packed?.pickedItem?.orderItem?.item) count += 1;
+    }
+  }
+  return count;
 }
 
 export function ineligibilityReason({
-  order,
+  shipment,
   orgSettings,
   mapRow,
 }: {
-  order: OrderForEligibility;
+  shipment: ShipmentForEligibility;
   orgSettings?: OrgSettingsForEligibility | null;
   mapRow?: MapRowForEligibility | null;
 }): string | null {
   if ((orgSettings?.syncMode ?? 'digit_to_ss') === 'ss_to_digit') {
-    return 'Inbound-only mode does not push Digit orders to ShipStation.';
+    return 'Inbound-only mode does not push Digit shipments to ShipStation.';
   }
   if ((orgSettings?.defaultFulfillmentMethod ?? 'unspecified') === 'manual') {
-    return 'Default fulfillment method is Manual — orders are not pushed to ShipStation.';
+    return 'Default fulfillment method is Manual — shipments are not pushed to ShipStation.';
   }
   if (mapRow?.source === 'shipstation') {
-    return 'This order was imported from ShipStation and will not be re-pushed.';
+    return 'This shipment was imported from ShipStation and will not be re-pushed.';
   }
   if (mapRow && ['pushed', 'shipped'].includes(mapRow.pushStatus ?? '')) {
     return mapRow.pushStatus === 'shipped'
       ? 'Already shipped in ShipStation.'
       : 'Already pushed to ShipStation.';
   }
-  if (!laneEligible({ tags: order?.tags, laneTagId: orgSettings?.laneTagId })) {
-    return 'Order is not in the configured ShipStation lane (tag filter).';
+  if (!shipment?.order?.id) {
+    return 'This shipment is not linked to a sales order.';
   }
-  if (!inventoryEligible({ items: order?.items })) {
-    return 'Insufficient available inventory on one or more lines.';
-  }
-  if (!packingEligible({ packingStatus: order?.packingStatus, pushWhen: orgSettings?.pushWhen })) {
-    return 'Order is not fully packed yet.';
+  if (packedLineCount(shipment) === 0) {
+    return 'Shipment has no packed items.';
   }
   return null;
 }
@@ -98,25 +71,22 @@ export function skipNextStep(reason: string | null | undefined) {
     return 'Switch sync mode to Digit to ShipStation in Settings if you need to push.';
   }
   if (reason.includes('Manual')) {
-    return 'Change default fulfillment method to Unspecified or ShipStation, or leave this order in Digit.';
+    return 'Change default fulfillment method to Unspecified or ShipStation, or leave this shipment in Digit.';
   }
   if (reason.includes('imported from ShipStation')) {
     return 'Fulfill it in ShipStation; this app will not create a second shipment.';
   }
   if (reason.includes('Already shipped')) {
-    return 'Tracking should already be on the Digit order.';
+    return 'Tracking should already be on the Digit shipment.';
   }
   if (reason.includes('Already pushed')) {
-    return 'Print the label in ShipStation. This Digit order stays in the queue until it is fulfilled.';
+    return 'Print the label in ShipStation. This Digit shipment stays in the queue until it is marked shipped.';
   }
-  if (reason.includes('lane')) {
-    return 'Add the configured lane tag to this sales order, or clear the lane filter in Settings.';
+  if (reason.includes('not linked to a sales order')) {
+    return 'Multi-order or unlinked shipments are not pushed from this queue.';
   }
-  if (reason.includes('inventory')) {
-    return 'Wait until remaining lines are fully available, then try again.';
-  }
-  if (reason.includes('fully packed')) {
-    return 'Finish packing in Digit, then try again.';
+  if (reason.includes('no packed items')) {
+    return 'Pack items onto this Digit shipment, then try again.';
   }
   return 'Fix the issue above, then try again.';
 }
@@ -175,7 +145,7 @@ export function queuePushDisplay({
       chipColor: pushStatus === 'shipped' ? 'success' : 'default',
       tooltip:
         pushStatus === 'pushed'
-          ? `${pushStatusLabel(pushStatus)} This Digit order stays in the queue until it is fulfilled.`
+          ? `${pushStatusLabel(pushStatus)} This Digit shipment stays in the queue until it is marked shipped.`
           : pushStatusLabel(pushStatus),
       showPrimaryAsChip: false,
     };

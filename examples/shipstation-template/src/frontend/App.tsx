@@ -228,7 +228,7 @@ export default function App() {
     const carriers = result.data?.carrierCount ?? 0;
     const version = result.data?.apiVersion === 'v1' ? 'V1' : 'V2';
     setSuccessNotice(
-      `Connected to ShipStation ${version} and synced ${carriers} carrier(s). Pick and pack stay in Digit; print labels in ShipStation after you push orders from the queue.`,
+      `Connected to ShipStation ${version} and synced ${carriers} carrier(s). Create Digit shipments, then push from the shipping queue. Print labels in ShipStation.`,
     );
     await connectionQuery.refetch();
     await orgSettingsQuery.refetch();
@@ -276,7 +276,7 @@ export default function App() {
     setDisconnectOpen(false);
     setSettingsOpen(false);
     setSuccessNotice(
-      'Disconnected ShipStation. The fulfillment queue cannot push until you connect again. Order maps stay for audit.',
+      'Disconnected ShipStation. The shipping queue cannot push until you connect again. Shipment maps stay for audit.',
     );
     await connectionQuery.refetch();
     await orgSettingsQuery.refetch();
@@ -378,7 +378,7 @@ export default function App() {
             canPush
             orgSettings={orgSettingsQuery.data ?? null}
             pushDisabledReason={
-              apiTokenPresent ? null : 'Add the Digit API token to push orders to ShipStation.'
+              apiTokenPresent ? null : 'Add the Digit API token to push shipments to ShipStation.'
             }
             onPushComplete={() => activityQuery.refetch()}
           />
@@ -393,14 +393,14 @@ export default function App() {
             description={
               credentialsMissing
                 ? 'Secrets are missing. Clear the leftover connection, or restore the ShipStation API key and reload.'
-                : 'Validate credentials (V2 key, or V1 key plus secret) and register webhooks before pushing orders.'
+                : 'Validate credentials (V2 key, or V1 key plus secret) and register webhooks before pushing shipments.'
             }
           />
           <Box sx={{ mt: 2 }}>
             {credentialsMissing ? (
               <Stack spacing={2}>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  The fulfillment queue stays hidden until ShipStation credentials are live again.
+                  The shipping queue stays hidden until ShipStation credentials are live again.
                 </Typography>
                 <Button
                   color="error"

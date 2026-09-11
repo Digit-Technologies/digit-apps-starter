@@ -52,7 +52,7 @@ async function setupItems({ env, db }) {
       valid: Boolean(token.value),
       source: token.source,
       issue: token.value ? null : 'Add a Digit API token (da_…).',
-      enables: 'Pushing orders to ShipStation, tracking writeback, and the scheduled push.',
+      enables: 'Pushing shipments to ShipStation, tracking writeback, and the scheduled push.',
       description:
         'Digit API token used by this app for webhook writeback and scheduled push. Create it in Digit → Settings → API Tokens with the same permissions as this app. Saved as a Digit app secret, so its value is write-only.',
     },

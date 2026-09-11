@@ -4,10 +4,10 @@ import { err, ok, requireEnv } from '@digit/lib-backend';
 import { listActivity } from './activity.js';
 import {
   liveConnection,
-  mapsForOrders,
+  mapsForShipments,
   pollInbound,
   pollOutboundPush,
-  pushOrder,
+  pushShipment,
 } from './sync.js';
 
 function requireOrganizationId(url) {
@@ -24,10 +24,11 @@ function requireOrganizationId(url) {
   return { organizationId };
 }
 
-function pushResultRow(orderId, result) {
+function pushResultRow(shipmentId, result) {
   if (result.ok) {
     return {
-      orderId,
+      shipmentId,
+      orderId: result.data?.orderId ?? null,
       ok: true,
       skipped: Boolean(result.data?.skipped),
       ssShipmentId: result.data?.ssShipmentId ?? null,
@@ -37,12 +38,13 @@ function pushResultRow(orderId, result) {
   }
   const message = result.message || 'Push failed.';
   return {
-    orderId,
+    shipmentId,
+    orderId: null,
     ok: false,
     skipped: false,
     ssShipmentId: null,
     message,
-    meaning: `${message} The order was not created in ShipStation. Fix the error and try again.`,
+    meaning: `${message} The shipment was not created in ShipStation. Fix the error and try again.`,
   };
 }
 
@@ -51,19 +53,19 @@ export async function handleSync({ request, env, path, method }) {
   const db = requireEnv({ env, key: 'SHIPSTATION_DB' });
   const url = new URL(request.url);
 
-  if (method === 'GET' && path === '/sync/orders') {
+  if (method === 'GET' && path === '/sync/shipments') {
     const org = requireOrganizationId(url);
     if (org.error) return org.error;
     const row = await liveConnection({ db, organizationId: org.organizationId });
     if (!row) {
       return ok({ data: { maps: [] } });
     }
-    const ids = (url.searchParams.get('orderIds') || '')
+    const ids = (url.searchParams.get('shipmentIds') || '')
       .split(',')
       .map((id) => id.trim())
       .filter(Boolean)
       .slice(0, 100);
-    const maps = await mapsForOrders({ db, connectionId: row.id, orderIds: ids });
+    const maps = await mapsForShipments({ db, connectionId: row.id, shipmentIds: ids });
     return ok({ data: { maps } });
   }
 
@@ -88,27 +90,27 @@ export async function handleSync({ request, env, path, method }) {
       });
     }
     const organizationId = organizationIdResult.value;
-    const orderIds = Array.isArray(parsed.value.orderIds)
-      ? parsed.value.orderIds.map(String).filter(Boolean).slice(0, 25)
+    const shipmentIds = Array.isArray(parsed.value.shipmentIds)
+      ? parsed.value.shipmentIds.map(String).filter(Boolean).slice(0, 25)
       : [];
-    if (orderIds.length === 0) {
+    if (shipmentIds.length === 0) {
       return err({
         code: AppErrorCode.VALIDATION_ERROR,
-        message: 'orderIds must be a non-empty array.',
+        message: 'shipmentIds must be a non-empty array.',
         status: 400,
       });
     }
     const results = [];
-    for (const orderId of orderIds) {
-      const result = await pushOrder({
+    for (const shipmentId of shipmentIds) {
+      const result = await pushShipment({
         env,
         db,
         organizationId,
-        orderId,
+        shipmentId,
         actor: 'user',
         recordActivity: true,
       });
-      results.push(pushResultRow(orderId, result));
+      results.push(pushResultRow(shipmentId, result));
     }
     const summary = {
       pushed: results.filter((row) => row.ok && !row.skipped).length,

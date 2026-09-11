@@ -17,7 +17,7 @@ Published app:
   Public POST /webhooks/shipstation  -->  RSA-SHA256 (V2) or query token (V1) → job process-ss-webhook
   Public POST /webhooks/{channel}    -->  adapter verify → job process-{channel}-webhook (when declared)
   After SS writeback               -->  runAfterDigitShipped (Rutter or direct channel adapters)
-  Schedule poll-outbound-push (300s) -->  push eligible Digit SOs / inbound import
+  Schedule poll-outbound-push (300s) -->  push eligible Digit shipments (awaiting_carrier) / inbound import
 ```
 
 ## Secrets and bindings (names only)
@@ -62,9 +62,9 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/backend/digitGraphql.js` | Worker Digit GraphQL client. |
 | `src/backend/sync.js` | Push, writeback, inbound import, D1 map (`liveCredentials`). |
 | `src/backend/activity.js` | `appendActivity` / `listActivity` (no secrets or PII). |
-| `src/backend/eligibility.js` | Inventory / pack / lane / sync-mode gates. |
-| `src/backend/mappers/digitToShipStation.js` | SO → V2 shipment (`skuForLine`, bill-to notes). |
-| `src/backend/mappers/digitToShipStationV1.js` | SO → V1 order (`POST /orders/createorder`). |
+| `src/backend/eligibility.js` | Sync-mode / manual / import / already-pushed gates for Digit shipments. |
+| `src/backend/mappers/digitToShipStation.js` | Digit shipment → V2 (`packedLinesFromShipment`, `skuForLine`). |
+| `src/backend/mappers/digitToShipStationV1.js` | Digit shipment → V1 order (`POST /orders/createorder`). |
 | `src/backend/mappers/normalizeSsRecord.js` | V1 order / V2 shipment → shared fulfillment shape. |
 | `src/backend/mappers/shipStationToDigit.js` | Normalized SS record → Digit company/order. |
 | `src/backend/channels/` | Adapter registry, D1 store helpers, platform stubs. |
@@ -72,7 +72,7 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/backend/webhooks/` | Shared pipeline + ShipStation RSA / V1 token handler. |
 | `src/backend/handleChannels.js` | `GET /channels/status`. |
 | `src/backend/connection.js` | Connect/disconnect, org Phase 1 settings, webhooks, carriers. |
-| `src/backend/handleSync.js` | `/sync/orders`, `/sync/push`, `/sync/activity`. |
+| `src/backend/handleSync.js` | `/sync/shipments`, `/sync/push`, `/sync/activity`. |
 | `src/backend/webhooks.js` | Re-exports ShipStation webhook handler. |
 | `src/backend/jobs.js` | `process-ss-webhook`, `process-{channel}-webhook`, `poll-outbound-push`. |
 | `src/backend/runtimeConfig.js` | Digit-injected app secrets (`env`); `ENCRYPTION_KEY` in D1. |
@@ -81,7 +81,7 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/frontend/App.tsx` | Connect + Phase 1 settings. |
 | `src/frontend/SetupNeeded.tsx` | Reports missing app-secret keys and directs owners to Digit's App Secrets UI. |
 | `src/frontend/FeatureStatus.tsx` | Per-feature Working / Limited / Not yet and what each needs. |
-| `src/frontend/FulfillmentQueue.tsx` | Paginated SO queue, push results, activity panel. |
+| `src/frontend/FulfillmentQueue.tsx` | Paginated shipping queue (Digit `awaiting_carrier` shipments), push results. |
 | `src/frontend/ActivityLog.tsx` | D1 activity events. |
 | `src/frontend/eligibility.ts` | Keep in sync with `eligibility.js`. |
 | `manifest.json` | Permissions, D1, webhooks, schedule. |

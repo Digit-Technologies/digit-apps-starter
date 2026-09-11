@@ -14,9 +14,8 @@ app must keep that contract. Details live here; recipes and routes only cross-li
 - Pair `useBackendQuery` / `useBackendMutation` / `useDigitApiQuery` errors with
   `AppErrorAlert`. Surface `DigitHost.download` throws the same way.
 
-Example meaning for a successful push: the Digit sales order **stays in the
-unfulfilled queue**; operators print the label in ShipStation; tracking writes back
-later.
+Example meaning for a successful push: the Digit shipment **stays awaiting carrier** until
+ShipStation writes tracking back (`shipped`); operators print the label in ShipStation.
 
 ## HTTP 200 is not “all good”
 
@@ -25,7 +24,7 @@ mixed batch is not a single mutation error.
 
 ```js
 {
-  results: [{ orderId, ok, skipped, ssShipmentId, message, meaning }],
+  results: [{ shipmentId, orderId, ok, skipped, ssShipmentId, message, meaning }],
   summary: { pushed, skipped, failed }
 }
 ```
@@ -33,7 +32,7 @@ mixed batch is not a single mutation error.
 - `skipped: true` is eligibility (`ineligibilityReason`), not success. Show it.
 - `ok: false` on a result is a ShipStation or Digit failure; keep that row selected.
 - The UI must read `summary` and `meaning`. Do not treat hook `error === null` as
-  “every order pushed.”
+  “every shipment pushed.”
 
 ## Activity log
 

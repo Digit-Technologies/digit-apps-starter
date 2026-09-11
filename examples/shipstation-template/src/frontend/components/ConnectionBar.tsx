@@ -73,10 +73,10 @@ export default function ConnectionBar({
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {operable
-              ? 'Pick and pack in Digit, push orders, print labels in ShipStation.'
+              ? 'Create Digit shipments, push from the shipping queue, print labels in ShipStation.'
               : credentialsMissing
                 ? 'Connection inactive — restore ShipStation secrets or disconnect.'
-                : 'Connect ShipStation to sync carriers and push packed orders for labels.'}
+                : 'Connect ShipStation to sync carriers and push awaiting-carrier shipments for labels.'}
           </Typography>
         </Stack>
 
@@ -217,7 +217,7 @@ export function NonAdminNotice({ connected }: { connected: boolean }) {
   return (
     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
       {connected
-        ? 'Org admins manage connection and settings. You can work the fulfillment queue below.'
+        ? 'Org admins manage connection and settings. You can work the shipping queue below.'
         : 'Org admins can connect ShipStation. App owners manage secrets in Digit.'}
     </Typography>
   );
