@@ -12,6 +12,7 @@ export type OrgSettingsForEligibility = {
 export type MapRowForEligibility = {
   source?: string | null;
   pushStatus?: string | null;
+  ssShipmentId?: string | null;
 };
 
 export type PackedLineForEligibility = {
@@ -51,7 +52,8 @@ export function ineligibilityReason({
   if (mapRow?.source === 'shipstation') {
     return 'This shipment was imported from ShipStation and will not be re-pushed.';
   }
-  if (mapRow && ['pushed', 'shipped'].includes(mapRow.pushStatus ?? '')) {
+  // A ShipStation resource id is the durable guard: re-pushing would buy a second label.
+  if (mapRow && (mapRow.ssShipmentId || ['pushed', 'shipped'].includes(mapRow.pushStatus ?? ''))) {
     return mapRow.pushStatus === 'shipped'
       ? 'Already shipped in ShipStation.'
       : 'Already pushed to ShipStation.';
@@ -80,7 +82,7 @@ export function skipNextStep(reason: string | null | undefined) {
     return 'Tracking should already be on the Digit shipment.';
   }
   if (reason.includes('Already pushed')) {
-    return 'Print the label in ShipStation. This Digit shipment stays in the queue until it is marked shipped.';
+    return 'Download the shipping label from the queue. This Digit shipment stays until it is marked shipped.';
   }
   if (reason.includes('not linked to a sales order')) {
     return 'Multi-order or unlinked shipments are not pushed from this queue.';
@@ -94,7 +96,7 @@ export function skipNextStep(reason: string | null | undefined) {
 export function pushStatusLabel(value: string | null | undefined) {
   switch (value) {
     case 'pushed':
-      return 'In ShipStation — print label there';
+      return 'In ShipStation — download the label';
     case 'skipped':
       return 'Not pushed';
     case 'error':
@@ -124,10 +126,36 @@ export function queuePushDisplay({
   mapRow,
 }: {
   blocked: string | null;
-  mapRow?: { pushStatus?: string | null; lastError?: string | null } | null;
+  mapRow?: {
+    pushStatus?: string | null;
+    lastError?: string | null;
+    ssShipmentId?: string | null;
+  } | null;
 }): QueuePushDisplay {
   const pushStatus = mapRow?.pushStatus;
   const lastError = mapRow?.lastError ?? null;
+
+  /** A ShipStation id means the push landed, whatever a later skip wrote to push_status. */
+  const syncState =
+    pushStatus === 'shipped'
+      ? 'shipped'
+      : pushStatus === 'imported'
+        ? 'imported'
+        : pushStatus === 'pushed' || mapRow?.ssShipmentId
+          ? 'pushed'
+          : null;
+
+  if (syncState) {
+    return {
+      primary: pushStatusLabel(syncState),
+      chipColor: syncState === 'shipped' ? 'success' : 'default',
+      tooltip:
+        syncState === 'pushed'
+          ? `${pushStatusLabel(syncState)} This Digit shipment stays until it is marked shipped.`
+          : pushStatusLabel(syncState),
+      showPrimaryAsChip: false,
+    };
+  }
 
   if (lastError || pushStatus === 'error') {
     return {
@@ -136,18 +164,6 @@ export function queuePushDisplay({
       tooltip: lastError ? `Push failed. ${lastError}` : 'Push failed.',
       showPrimaryAsChip: true,
       lastError: null,
-    };
-  }
-
-  if (pushStatus && ['pushed', 'shipped', 'imported'].includes(pushStatus)) {
-    return {
-      primary: pushStatusLabel(pushStatus),
-      chipColor: pushStatus === 'shipped' ? 'success' : 'default',
-      tooltip:
-        pushStatus === 'pushed'
-          ? `${pushStatusLabel(pushStatus)} This Digit shipment stays in the queue until it is marked shipped.`
-          : pushStatusLabel(pushStatus),
-      showPrimaryAsChip: false,
     };
   }
 

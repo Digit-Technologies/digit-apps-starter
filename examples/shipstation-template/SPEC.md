@@ -4,9 +4,11 @@
 
 Phase 1 org Digit app: connect one ShipStation account (V2 key, or V1 key + secret), push Digit
 shipments in **awaiting_carrier** into ShipStation as V2 shipments/`create_sales_order` or V1 orders,
-and write tracking back when ShipStation purchases a label. Operators pick/pack and create the
-Digit shipment first; the shipping queue lists those shipments. Rate shopping, label purchase in-app,
-return labels, and shipping-fee capture are Phase 2 — those controls are not in the UI.
+rate-shop (cheapest or fastest), purchase a shipping label, and let operators download the PDF from
+the shipping queue. Tracking and Digit `shippingCarrierField` write back from the ShipStation
+carrier (aliases + conservative fuzzy match, plus Settings overrides). Unmatched carriers are
+left unset and logged so operators can map them. Operators pick/pack and create the Digit
+shipment first. Return labels, shipping-class mapping, and shipping-fee capture stay out of the UI.
 
 Source for `npm run new-app -- my-app --from shipstation-template`. Connect and sync only
 work after a consumer publishes to Digit (Worker, D1, secrets).
@@ -15,14 +17,16 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
 
 - `manifest.permissions`: `UPDATE_ORGANIZATION` (admin gate via `currentPermissions`),
   `READ_ORDER` / `UPDATE_ORDER` / `CREATE_ORDER`,   `READ_SHIPMENT` / `CREATE_SHIPMENT` /
-  `UPDATE_SHIPMENT`, `CREATE_PACK_CONTAINER` / `READ_PACK_CONTAINER`, `READ_PICKED_ITEM`, `READ_ITEM`, `READ_INVENTORY`, `READ_COMPANY` /
-  `READ_COMPANY_DETAILS` / `CREATE_COMPANY`, `READ_CONTACT`, `READ_ORGANIZATION_LOCATION`.
+  `UPDATE_SHIPMENT`, `CREATE_PACK_CONTAINER` / `READ_PACK_CONTAINER`, `READ_PICKED_ITEM`,
+  `READ_ITEM` / `READ_ITEM_COST_INFO`, `READ_INVENTORY`, `READ_COMPANY` /
+  `READ_COMPANY_DETAILS` / `CREATE_COMPANY`, `READ_CONTACT`, `READ_ORGANIZATION_LOCATION`,
+  `READ_ORGANIZATION_DYNAMIC_FIELD`.
   Keys from MCP `appPermissions`. The Worker uses `API_TOKEN_DIGIT` for the same operations
   on webhooks and the 5-minute poll — grant the token those permissions too.
 - D1 `SHIPSTATION_DB` — publish binding only (not shown in the UI). `0001_init.sql` plus
   `0002_order_sync.sql`, `0003_app_config.sql`, `0004_activity_log.sql`,
-  `0006_api_version.sql`, `0007_drop_legacy_app_secrets.sql`, and `0008_shipment_map.sql`. Do not edit `0001` after
-  a consumer has published.
+  `0006_api_version.sql`, `0007_drop_legacy_app_secrets.sql`, `0008_shipment_map.sql`,
+  `0009_label_rates.sql`, and `0010_carrier_digit_map.sql`. Do not edit `0001` after a consumer has published.
 - **All secrets are organization-level Digit app secrets**, managed only in Digit's built-in
   App Secrets UI: `SHIPSTATION_API_KEY`, `SHIPSTATION_API_SECRET` (V1),
   `SHIPSTATION_WEBHOOK_TOKEN` (V1 webhooks), `API_TOKEN_DIGIT`, `PUBLIC_WEBHOOK_URL`.
@@ -44,6 +48,11 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
 - Disconnect deregisters webhooks and soft-deletes local rows; removing the key itself is
   done in Digit.
 - Digit GraphQL URL is always `https://api.digit-software.com/graphql`.
+- ShipStation-first imports preserve V1 `items[].unitPrice` / V2 `items[].unit_price` as
+  Digit order-line unit cost. If absent, they use the matched item's non-null
+  `defaultSalesPrice`, then zero. Carrier matching runs before `createOrder` and sets
+  `shippingCarrierFieldId` when resolved. Shipping and payment terms remain unset because
+  ShipStation supplies no faithful source; add an explicit org-level default before populating them.
 - Optional secret `FAIRE_API_KEY` — enables the Faire adapter stub (`src/backend/channels/faire.js`).
 - `GET /setup` is read-only: per-item `present` / `source` / `enables` plus `ready`,
   `usable`, `apiTokenPresent`, `webhookUrlPresent`. `POST /setup` only returns a message
@@ -282,15 +291,64 @@ Shipping Queue from Digit Shipments
 Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
 ```
 
+```
+build out app so that when a shipment is sent to shipstation the shipping lable is returned and downloadable from the download icon in the shipping queue
+```
+
+```
+{
+  "mcpServers": {
+    "shipstation-docs": {
+      "url": "https://docs.shipstation.com/mcp"
+    }
+  }
+}
+```
+
+```
+ShipStation label purchase and queue download
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+```
+
+```
+does the app reset the digit shipping order with the correct carrier information from shipstation?
+```
+
+```
+write a plan to update the carrier to what is returned by shipstation. there may need to be some fuzzy matching involved
+```
+
+```
+Digit carrier writeback from ShipStation
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
+```
+
+```
+Investigate why clicking the 'Download packing slip' icon button results in an error: failed to fetch
+```
+
+```
+I can't run this locally I have to run through the Digit platform. Maybe we can build a button into the app for testing purposes that allows me to download the log and then I could provide attach it to this chat
+```
+
 ## Context supplied
 
 - Work stays on git branch `shipstation-template` tracking `fork/shipstation-template`
   (`loren-wolfe/digit-apps-starter`). Do not push to upstream `origin` unless asked.
 - Phase 1: COM-01–COM-08 plus CS-12/13/14/16 and CS-01 as a Faire recipe/stub.
-- Strip FR-3 rate-shop, carrier defaults, dims, label-cost, return-email, and address-block
-  settings from UI and Worker JSON. Leave `0001` columns at SQL defaults.
+- Strip FR-3 return-email, address-block, and shipping-fee capture from UI and Worker JSON.
+  Leave unused `0001` connection columns at SQL defaults. Rate shop + label purchase use
+  `org_settings` (`0009_label_rates.sql`): default weight/dims and cheapest/fastest.
 - Digit native pick/pack/PDF; operators create a Digit shipment (`awaiting_carrier`). The shipping
   queue lists those shipments (not unfulfilled sales orders). Worker push is V2
-  `POST /v2/shipments` with `create_sales_order: true`, or V1 `POST /orders/createorder`.
+  `POST /v2/shipments` with `create_sales_order: true`, or V1 `POST /orders/createorder`, then
+  rate-shop and label purchase (`POST /v2/rates` + `POST /v2/labels/rates/{id}`, or V1 getrates +
+  createlabelfororder). Shipping-label download uses `POST /sync/label`; packing-slip download uses
+  `POST /sync/packing-slip`, where the Worker calls `generateSalesOrderPdf`, fetches the presigned
+  PDF URL outside the iframe CSP, and returns base64. Both finish with `DigitHost.download`.
+  After label purchase and on ShipStation fulfillment writeback, Digit `shippingCarrierFieldId`
+  is set from the ShipStation carrier (aliases + fuzzy match; Settings can pin mismatches).
   Webhooks: V2 RSA-SHA256 JWKS verify, or V1 query token, then jobs.
 - `API_TOKEN_DIGIT` because webhooks have no iframe Digit session.

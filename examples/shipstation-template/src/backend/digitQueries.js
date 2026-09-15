@@ -18,6 +18,7 @@ const SHIPMENT_NODE_FIELDS = `
   shippingStatus
   trackingNumber
   notes
+  shippingCarrierField { id value }
   createdAt
   shippingAddress { ${ADDRESS_FIELDS} }
   packContainers {
@@ -102,6 +103,8 @@ export const ORDER_DETAIL_QUERY = `
           id
           shippingStatus
           trackingNumber
+          notes
+          shippingCarrierField { id value }
         }
         items {
           id
@@ -145,6 +148,8 @@ export const ORDER_BY_ID_QUERY = `
           id
           shippingStatus
           trackingNumber
+          notes
+          shippingCarrierField { id value }
         }
         items {
           id
@@ -161,10 +166,21 @@ export const ORDER_BY_ID_QUERY = `
   }
 `;
 
+export const GENERATE_SALES_ORDER_PDF_QUERY = `
+  query ShipStationGenerateSalesOrderPdf($orderId: ID!) {
+    generateSalesOrderPdf(orderId: $orderId) { url }
+  }
+`;
+
 export const ITEMS_BY_SEARCH_QUERY = `
   query ShipStationItems($search: String, $connection: ConnectionInput) {
     items(search: $search, connection: $connection) {
-      nodes { id name sku }
+      nodes {
+        id
+        name
+        sku
+        defaultSalesPrice { costAmount currency { code } }
+      }
     }
   }
 `;
@@ -209,10 +225,20 @@ export const CREATE_PACK_CONTAINER_MUTATION = `
   }
 `;
 
+export const SHIPPING_CARRIERS_QUERY = `
+  query ShipStationShippingCarriers {
+    organizationDynamicFields {
+      shippingCarriers {
+        options { id value deleted }
+      }
+    }
+  }
+`;
+
 export const CREATE_SHIPMENT_MUTATION = `
   mutation ShipStationCreateShipment($input: CreateShipmentInput!) {
     createShipment(input: $input) {
-      shipment { id trackingNumber shippingStatus }
+      shipment { id trackingNumber shippingStatus shippingCarrierField { id value } }
     }
   }
 `;
@@ -220,7 +246,7 @@ export const CREATE_SHIPMENT_MUTATION = `
 export const UPDATE_SHIPMENT_MUTATION = `
   mutation ShipStationUpdateShipment($input: UpdateShipmentInput!) {
     updateShipment(input: $input) {
-      shipment { id trackingNumber shippingStatus }
+      shipment { id trackingNumber shippingStatus shippingCarrierField { id value } }
     }
   }
 `;

@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import Checkbox from '@mui/material/Checkbox';
 
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 
 import { motionFadeIn } from './motion';
@@ -33,6 +34,8 @@ type ShipmentNode = ShipmentForEligibility & {
 type MapRow = {
   digitOrderId: string;
   ssShipmentId?: string | null;
+  ssLabelId?: string | null;
+  hasLabel?: boolean | null;
   pushStatus?: string | null;
   lastError?: string | null;
   trackingNumber?: string | null;
@@ -87,6 +90,8 @@ export default function OrderQueueCard({
   onSelect,
   onCopySsId,
   copyHint,
+  onDownloadLabel,
+  labelDownloading = false,
   onDownloadSlip,
 }: {
   shipment: ShipmentNode;
@@ -97,11 +102,14 @@ export default function OrderQueueCard({
   onSelect: (checked: boolean) => void;
   onCopySsId: (id: string) => void;
   copyHint: string | null;
+  onDownloadLabel: () => void;
+  labelDownloading?: boolean;
   onDownloadSlip: () => void;
 }) {
   const label = ticketLabel(shipment);
   const blocked = ineligibilityReason({ shipment, orgSettings, mapRow: map ?? null });
   const pushDisplay = queuePushDisplay({ blocked, mapRow: map ?? null });
+  const hasLabel = Boolean(map?.hasLabel || map?.ssLabelId);
 
   return (
     <Paper
@@ -135,14 +143,32 @@ export default function OrderQueueCard({
               ) : null}
             </Stack>
           </Stack>
-          <IconButton
-            size="small"
-            aria-label="Download packing slip"
-            disabled={!shipment.order?.id}
-            onClick={onDownloadSlip}
-          >
-            <DownloadIcon fontSize="small" />
-          </IconButton>
+          <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
+            <Tooltip title={hasLabel ? 'Download shipping label' : 'No shipping label yet. Push first.'}>
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label="Download shipping label"
+                  disabled={!hasLabel || labelDownloading}
+                  onClick={onDownloadLabel}
+                >
+                  <DownloadIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Tooltip title="Download packing slip">
+              <span>
+                <IconButton
+                  size="small"
+                  aria-label="Download packing slip"
+                  disabled={!shipment.order?.id}
+                  onClick={onDownloadSlip}
+                >
+                  <DescriptionIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+          </Stack>
         </Stack>
 
         <QueueStatusDisplay pushDisplay={pushDisplay} />

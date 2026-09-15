@@ -60,7 +60,8 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/backend/shipstationFetch.js` | Shared `ssFetch` (V1 Basic / V2 api-key, SSRF allowlist). |
 | `src/backend/shipstation.js` | Facade: dispatch helpers on `credentials.apiVersion`. |
 | `src/backend/digitGraphql.js` | Worker Digit GraphQL client. |
-| `src/backend/sync.js` | Push, writeback, inbound import, D1 map (`liveCredentials`). |
+| `src/backend/sync.js` | Push, writeback, inbound import, D1 map (`liveCredentials`). Inbound import carries ShipStation unit price (V1 `unitPrice`, V2 `unit_price`), falls back to Digit `defaultSalesPrice`, and resolves `shippingCarrierFieldId` before `createOrder`. Also sets the shipment carrier after label purchase / fulfillment writeback. |
+| `src/backend/matchDigitCarrier.js` | Map SS `carrier_code` / friendly name to Digit shipping-carrier options (manual map, aliases, conservative fuzzy). |
 | `src/backend/activity.js` | `appendActivity` / `listActivity` (no secrets or PII). |
 | `src/backend/eligibility.js` | Sync-mode / manual / import / already-pushed gates for Digit shipments. |
 | `src/backend/mappers/digitToShipStation.js` | Digit shipment → V2 (`packedLinesFromShipment`, `skuForLine`). |
@@ -72,7 +73,8 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/backend/webhooks/` | Shared pipeline + ShipStation RSA / V1 token handler. |
 | `src/backend/handleChannels.js` | `GET /channels/status`. |
 | `src/backend/connection.js` | Connect/disconnect, org Phase 1 settings, webhooks, carriers. |
-| `src/backend/handleSync.js` | `/sync/shipments`, `/sync/push`, `/sync/activity`. |
+| `src/backend/labels.js` | Rate shop + label purchase/download helpers. |
+| `src/backend/handleSync.js` | `/sync/shipments`, `/sync/push`, `/sync/label`, `/sync/activity`. |
 | `src/backend/webhooks.js` | Re-exports ShipStation webhook handler. |
 | `src/backend/jobs.js` | `process-ss-webhook`, `process-{channel}-webhook`, `poll-outbound-push`. |
 | `src/backend/runtimeConfig.js` | Digit-injected app secrets (`env`); `ENCRYPTION_KEY` in D1. |

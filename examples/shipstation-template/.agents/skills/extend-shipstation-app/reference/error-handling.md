@@ -7,7 +7,7 @@ app must keep that contract. Details live here; recipes and routes only cross-li
 
 - Use in-page MUI `Alert` / `AppErrorAlert` / Dialog. Never `window.alert`.
 - Every operator mutation (connect, save settings, disconnect, push, packing-slip
-  download) must show **outcome + meaning** after the call returns.
+  download, shipping-label download) must show **outcome + meaning** after the call returns.
 - Do not clear selection, close a dialog, or wipe form state until the result is known.
   On a mixed `/sync/push` batch, uncheck only rows that were actually created in
   ShipStation; keep skipped and failed rows selected.
@@ -15,7 +15,9 @@ app must keep that contract. Details live here; recipes and routes only cross-li
   `AppErrorAlert`. Surface `DigitHost.download` throws the same way.
 
 Example meaning for a successful push: the Digit shipment **stays awaiting carrier** until
-ShipStation writes tracking back (`shipped`); operators print the label in ShipStation.
+ShipStation writes tracking back (`shipped`); the Worker also sets Digit `shippingCarrierField`
+when the ShipStation carrier matches (or is mapped in Settings). Operators download the shipping
+label from the queue. Unmapped carriers log `carrier_unmapped` and leave Digit’s carrier unset.
 
 ## HTTP 200 is not “all good”
 
@@ -24,7 +26,7 @@ mixed batch is not a single mutation error.
 
 ```js
 {
-  results: [{ shipmentId, orderId, ok, skipped, ssShipmentId, message, meaning }],
+  results: [{ shipmentId, orderId, ok, skipped, ssShipmentId, ssLabelId, labelPurchased, message, meaning }],
   summary: { pushed, skipped, failed }
 }
 ```

@@ -111,6 +111,31 @@ function v1Headers({ apiKey, apiSecret }) {
   };
 }
 
+export function bytesToBase64(buffer) {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  const chunk = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function requestHeaders({ credentials, accept }) {
+  const isV1 = credentials.apiVersion === 'v1';
+  const headers = isV1
+    ? v1Headers({ apiKey: credentials.apiKey, apiSecret: credentials.apiSecret || '' })
+    : v2Headers({ apiKey: credentials.apiKey });
+  if (accept) headers.Accept = accept;
+  return headers;
+}
+
+function resolveTarget({ credentials, path, absoluteUrl }) {
+  const isV1 = credentials.apiVersion === 'v1';
+  const base = isV1 ? V1_BASE : V2_BASE;
+  return absoluteUrl || `${base}${path}`;
+}
+
 /**
  * @param {{
  *   credentials: { apiVersion: 'v1' | 'v2', apiKey: string, apiSecret?: string },
@@ -122,8 +147,7 @@ function v1Headers({ apiKey, apiSecret }) {
  */
 export async function ssFetch({ credentials, method, path, body, url: absoluteUrl }) {
   const isV1 = credentials.apiVersion === 'v1';
-  const base = isV1 ? V1_BASE : V2_BASE;
-  const target = absoluteUrl || `${base}${path}`;
+  const target = resolveTarget({ credentials, path, absoluteUrl });
 
   if (absoluteUrl && !allowedShipStationUrl(absoluteUrl)) {
     return {
@@ -134,9 +158,7 @@ export async function ssFetch({ credentials, method, path, body, url: absoluteUr
     };
   }
 
-  const headers = isV1
-    ? v1Headers({ apiKey: credentials.apiKey, apiSecret: credentials.apiSecret || '' })
-    : v2Headers({ apiKey: credentials.apiKey });
+  const headers = requestHeaders({ credentials });
 
   let response;
   try {
@@ -187,6 +209,85 @@ export async function ssFetch({ credentials, method, path, body, url: absoluteUr
   }
 
   return { ok: true, data: json };
+}
+
+/**
+ * Fetch a label PDF (or other binary) from an allowlisted ShipStation URL.
+ *
+ * @param {{
+ *   credentials: { apiVersion: 'v1' | 'v2', apiKey: string, apiSecret?: string },
+ *   method?: string,
+ *   path?: string,
+ *   url?: string,
+ * }} args
+ */
+export async function ssFetchBytes({ credentials, method = 'GET', path = '/', url: absoluteUrl }) {
+  const isV1 = credentials.apiVersion === 'v1';
+  const target = resolveTarget({ credentials, path, absoluteUrl });
+
+  if (absoluteUrl && !allowedShipStationUrl(absoluteUrl)) {
+    return {
+      ok: false,
+      code: AppErrorCode.VALIDATION_ERROR,
+      message: 'Refusing to fetch a non-ShipStation URL.',
+      status: 400,
+    };
+  }
+
+  const headers = requestHeaders({ credentials, accept: 'application/pdf, application/octet-stream, */*' });
+  delete headers['Content-Type'];
+
+  let response;
+  try {
+    response = await fetch(target, { method, headers });
+  } catch {
+    return {
+      ok: false,
+      code: AppErrorCode.UPSTREAM_ERROR,
+      message: 'Could not reach ShipStation. Try again in a moment.',
+      status: 502,
+    };
+  }
+
+  const buffer = await response.arrayBuffer();
+  const contentType = (response.headers.get('content-type') || '').split(';')[0].trim();
+
+  if (response.status === 401 || response.status === 403) {
+    return {
+      ok: false,
+      code: AppErrorCode.VALIDATION_ERROR,
+      message: isV1 ? INVALID_KEY_MESSAGE_V1 : INVALID_KEY_MESSAGE_V2,
+      status: 400,
+    };
+  }
+
+  if (!response.ok) {
+    let json = null;
+    try {
+      json = JSON.parse(new TextDecoder().decode(buffer));
+    } catch {
+      json = null;
+    }
+    return {
+      ok: false,
+      code: AppErrorCode.UPSTREAM_ERROR,
+      message: isV1
+        ? formatShipStationErrorV1(json, response.status)
+        : formatShipStationErrorV2(json, response.status),
+      status: 502,
+      detail: isV1
+        ? shipStationErrorDetailV1(json, response.status)
+        : shipStationErrorDetailV2(json, response.status),
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      pdfBase64: bytesToBase64(buffer),
+      contentType: contentType || 'application/pdf',
+    },
+  };
 }
 
 /** @deprecated Use INVALID_KEY_MESSAGE_V2 */

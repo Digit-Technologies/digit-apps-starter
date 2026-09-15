@@ -10,11 +10,12 @@
  *   labelId: string | null,
  *   trackingNumber: string | null,
  *   carrierCode: string | null,
+ *   serviceCode: string | null,
  *   shipDate: string | null,
  *   costAmount: number | null,
  *   costCurrency: string | null,
  *   shipmentNumber: string | null,
- *   items: Array<{ sku: string, name?: string, quantity: number }>,
+ *   items: Array<{ sku: string, name?: string, quantity: number, unitPrice: number | null }>,
  *   shipTo: object | null,
  *   billTo: object | null,
  *   raw: object,
@@ -41,7 +42,8 @@ export function normalizeSsRecord(record) {
       externalId: record.orderKey ? String(record.orderKey) : null,
       labelId: null,
       trackingNumber: tracking ? String(tracking) : null,
-      carrierCode: record.carrierCode || record.serviceCode || null,
+      carrierCode: record.carrierCode || null,
+      serviceCode: record.serviceCode || null,
       shipDate: shipDate ? String(shipDate) : null,
       costAmount:
         typeof record.shippingAmount === 'number'
@@ -56,6 +58,7 @@ export function normalizeSsRecord(record) {
           sku: String(item.sku || item.fulfillmentSku || '').trim(),
           name: item.name,
           quantity: Number(item.quantity) || 1,
+          unitPrice: finiteNumber(item.unitPrice ?? item.unit_price ?? item.price),
         }))
         .filter((item) => item.sku),
       shipTo: normalizeV1Address(record.shipTo),
@@ -90,7 +93,13 @@ export function normalizeSsRecord(record) {
           ? String(record.labelId)
           : null,
     trackingNumber: tracking ? String(tracking) : null,
-    carrierCode: record.carrier_code || record.carrierCode || record.service_code || null,
+    carrierCode:
+      record.carrier_code ||
+      record.carrierCode ||
+      record.carrier_id ||
+      record.carrierId ||
+      null,
+    serviceCode: record.service_code || record.serviceCode || null,
     shipDate: record.ship_date || record.shipDate || record.created_at || null,
     costAmount: cost?.amount ?? null,
     costCurrency: cost?.currency ?? null,
@@ -100,12 +109,19 @@ export function normalizeSsRecord(record) {
         sku: String(item.sku || item.fullfilment_sku || '').trim(),
         name: item.name,
         quantity: Number(item.quantity) || 1,
+        unitPrice: finiteNumber(item.unit_price ?? item.unitPrice ?? item.price),
       }))
       .filter((item) => item.sku),
     shipTo: normalizeV2Address(record.ship_to || record.shipTo),
     billTo: normalizeV2Address(record.bill_to || record.billTo || record.ship_to),
     raw: record,
   };
+}
+
+function finiteNumber(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 function emptyNormalized(raw) {
@@ -115,6 +131,7 @@ function emptyNormalized(raw) {
     labelId: null,
     trackingNumber: null,
     carrierCode: null,
+    serviceCode: null,
     shipDate: null,
     costAmount: null,
     costCurrency: null,
@@ -168,7 +185,10 @@ export function normalizedToImportShipment(normalized) {
       sku: item.sku,
       name: item.name,
       quantity: item.quantity,
+      unitPrice: item.unitPrice,
     })),
+    carrier_code: normalized.carrierCode,
+    service_code: normalized.serviceCode,
     advanced_options: {},
   };
 }

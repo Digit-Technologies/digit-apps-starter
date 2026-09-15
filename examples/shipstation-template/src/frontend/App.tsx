@@ -57,9 +57,17 @@ const SETTING_HINTS = {
   syncMode:
     'Digit to ShipStation creates ShipStation orders from Digit sales orders. ShipStation to Digit imports ShipStation shipments as Digit sales orders (for inbound or drop-ship workflows).',
   pushWhen:
-    'Fully packed waits until Digit packing is complete (then operators print labels in ShipStation). Inventory available pushes as soon as stock can fill the order.',
+    'Fully packed waits until Digit packing is complete. Inventory available pushes as soon as stock can fill the order. Push rate-shops and purchases a label.',
   laneTagId:
     'Optional Digit sales-order tag option UUID. When set, only tagged orders are pushed. Leave blank to include every eligible order.',
+  defaultWeightOz:
+    'Package weight used to rate-shop and buy a label. Digit shipments have no weight field, so this default applies to every push.',
+  defaultDims:
+    'Optional package size in inches. Leave blank to rate by weight only. Length, width, and height must all be set together.',
+  rateStrategy:
+    'Cheapest buys the lowest-cost rate. Fastest prefers the shortest transit time, then cost.',
+  carrierMap:
+    'ShipStation carrier codes are matched to Digit shipping-carrier options. Confirm or correct the mapping here when a label used a carrier Digit does not recognize.',
 } as const;
 
 const settingTooltipSlotProps = {
@@ -118,12 +126,35 @@ type ConnectionData = {
   staleConnection?: boolean;
 };
 
+type DigitCarrierOption = { id: string; value: string };
+type SsCarrierRow = { carrierCode: string; name: string };
+type CarrierMappingRow = {
+  ssCarrierCode: string;
+  digitOptionId: string | null;
+  source: string;
+};
+type UnmappedCarrierRow = {
+  carrierCode: string | null;
+  carrierName: string | null;
+  inCatalog?: boolean;
+};
+
 type OrgSettingsData = {
   organizationId: string;
   defaultFulfillmentMethod: string;
   syncMode: string;
   pushWhen: string;
   laneTagId: string | null;
+  defaultWeightOz?: number;
+  defaultLengthIn?: number | null;
+  defaultWidthIn?: number | null;
+  defaultHeightIn?: number | null;
+  rateStrategy?: string;
+  digitCarriers?: DigitCarrierOption[];
+  ssCarriers?: SsCarrierRow[];
+  carrierMappings?: CarrierMappingRow[];
+  unmappedCarriers?: UnmappedCarrierRow[];
+  digitCarriersError?: string | null;
 };
 
 type SettingsDraft = {
@@ -131,7 +162,28 @@ type SettingsDraft = {
   syncMode: string;
   pushWhen: string;
   laneTagId: string;
+  defaultWeightOz: string;
+  defaultLengthIn: string;
+  defaultWidthIn: string;
+  defaultHeightIn: string;
+  rateStrategy: string;
+  carrierByCode: Record<string, string>;
 };
+
+function carrierDraftFromOrg(orgSettings: OrgSettingsData | undefined): Record<string, string> {
+  const next: Record<string, string> = {};
+  const mapped = new Map(
+    (orgSettings?.carrierMappings ?? []).map((row) => [row.ssCarrierCode, row.digitOptionId || '']),
+  );
+  for (const row of orgSettings?.ssCarriers ?? []) {
+    next[row.carrierCode] = mapped.get(row.carrierCode) ?? '';
+  }
+  for (const row of orgSettings?.unmappedCarriers ?? []) {
+    if (!row.carrierCode || next[row.carrierCode] !== undefined) continue;
+    next[row.carrierCode] = mapped.get(row.carrierCode) ?? '';
+  }
+  return next;
+}
 
 function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
   return {
@@ -139,6 +191,12 @@ function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
     syncMode: orgSettings?.syncMode ?? 'digit_to_ss',
     pushWhen: orgSettings?.pushWhen ?? 'fully_packed',
     laneTagId: orgSettings?.laneTagId ?? '',
+    defaultWeightOz: String(orgSettings?.defaultWeightOz ?? 16),
+    defaultLengthIn: orgSettings?.defaultLengthIn != null ? String(orgSettings.defaultLengthIn) : '',
+    defaultWidthIn: orgSettings?.defaultWidthIn != null ? String(orgSettings.defaultWidthIn) : '',
+    defaultHeightIn: orgSettings?.defaultHeightIn != null ? String(orgSettings.defaultHeightIn) : '',
+    rateStrategy: orgSettings?.rateStrategy === 'fastest' ? 'fastest' : 'cheapest',
+    carrierByCode: carrierDraftFromOrg(orgSettings),
   };
 }
 
@@ -228,7 +286,7 @@ export default function App() {
     const carriers = result.data?.carrierCount ?? 0;
     const version = result.data?.apiVersion === 'v1' ? 'V1' : 'V2';
     setSuccessNotice(
-      `Connected to ShipStation ${version} and synced ${carriers} carrier(s). Create Digit shipments, then push from the shipping queue. Print labels in ShipStation.`,
+      `Connected to ShipStation ${version} and synced ${carriers} carrier(s). Create Digit shipments, then push from the shipping queue to purchase a label.`,
     );
     await connectionQuery.refetch();
     await orgSettingsQuery.refetch();
@@ -254,6 +312,19 @@ export default function App() {
         syncMode: draft.syncMode,
         pushWhen: draft.pushWhen,
         laneTagId: draft.laneTagId.trim() === '' ? null : draft.laneTagId.trim(),
+        defaultWeightOz: Number(draft.defaultWeightOz),
+        defaultLengthIn: draft.defaultLengthIn.trim() === '' ? null : Number(draft.defaultLengthIn),
+        defaultWidthIn: draft.defaultWidthIn.trim() === '' ? null : Number(draft.defaultWidthIn),
+        defaultHeightIn: draft.defaultHeightIn.trim() === '' ? null : Number(draft.defaultHeightIn),
+        rateStrategy: draft.rateStrategy,
+        ...(orgSettingsQuery.data?.digitCarriersError
+          ? {}
+          : {
+              mappings: Object.entries(draft.carrierByCode).map(([ssCarrierCode, digitOptionId]) => ({
+                ssCarrierCode,
+                digitOptionId: digitOptionId ? digitOptionId : null,
+              })),
+            }),
       },
     });
     if (!orgResult.ok) return;
@@ -451,7 +522,7 @@ export default function App() {
         featureStatus={featureStatusProps}
       />
 
-      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} fullWidth maxWidth="md">
         <DialogTitle>ShipStation settings</DialogTitle>
         <DialogContent>
           {draft && (
@@ -512,6 +583,147 @@ export default function App() {
                   fullWidth
                   helperText="Digit tag option UUID. Blank = all eligible orders."
                 />
+              </SettingField>
+              <SettingField title={SETTING_HINTS.defaultWeightOz} label="Default package weight">
+                <TextField
+                  label="Default weight (ounces)"
+                  type="number"
+                  value={draft.defaultWeightOz}
+                  onChange={(event) => setDraft({ ...draft, defaultWeightOz: event.target.value })}
+                  fullWidth
+                  inputProps={{ min: 0.1, step: 0.1 }}
+                />
+              </SettingField>
+              <SettingField title={SETTING_HINTS.defaultDims} label="Default package dimensions">
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                  <TextField
+                    label="Length (in)"
+                    type="number"
+                    value={draft.defaultLengthIn}
+                    onChange={(event) => setDraft({ ...draft, defaultLengthIn: event.target.value })}
+                    fullWidth
+                    inputProps={{ min: 0, step: 0.1 }}
+                  />
+                  <TextField
+                    label="Width (in)"
+                    type="number"
+                    value={draft.defaultWidthIn}
+                    onChange={(event) => setDraft({ ...draft, defaultWidthIn: event.target.value })}
+                    fullWidth
+                    inputProps={{ min: 0, step: 0.1 }}
+                  />
+                  <TextField
+                    label="Height (in)"
+                    type="number"
+                    value={draft.defaultHeightIn}
+                    onChange={(event) => setDraft({ ...draft, defaultHeightIn: event.target.value })}
+                    fullWidth
+                    inputProps={{ min: 0, step: 0.1 }}
+                  />
+                </Stack>
+              </SettingField>
+              <SettingField title={SETTING_HINTS.rateStrategy} label="Rate strategy">
+                <FormControl fullWidth>
+                  <InputLabel id="rate-strategy-label">Rate strategy</InputLabel>
+                  <Select
+                    labelId="rate-strategy-label"
+                    label="Rate strategy"
+                    value={draft.rateStrategy}
+                    onChange={(event) => setDraft({ ...draft, rateStrategy: event.target.value })}
+                  >
+                    <MenuItem value="cheapest">Cheapest</MenuItem>
+                    <MenuItem value="fastest">Fastest</MenuItem>
+                  </Select>
+                </FormControl>
+              </SettingField>
+              <SettingField title={SETTING_HINTS.carrierMap} label="Digit shipping carriers">
+                <Stack spacing={1.5}>
+                  {orgSettingsQuery.data?.digitCarriersError ? (
+                    <Alert severity="warning">{orgSettingsQuery.data.digitCarriersError}</Alert>
+                  ) : null}
+                  {(orgSettingsQuery.data?.ssCarriers ?? []).length === 0 &&
+                  (orgSettingsQuery.data?.unmappedCarriers ?? []).length === 0 ? (
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                      Connect ShipStation to load carriers, then map each one to a Digit shipping
+                      carrier.
+                    </Typography>
+                  ) : (
+                    (orgSettingsQuery.data?.ssCarriers ?? []).map((carrier) => (
+                      <FormControl fullWidth key={carrier.carrierCode}>
+                        <InputLabel id={`carrier-map-${carrier.carrierCode}`}>
+                          {carrier.name} ({carrier.carrierCode})
+                        </InputLabel>
+                        <Select
+                          labelId={`carrier-map-${carrier.carrierCode}`}
+                          label={`${carrier.name} (${carrier.carrierCode})`}
+                          value={draft.carrierByCode[carrier.carrierCode] ?? ''}
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              carrierByCode: {
+                                ...draft.carrierByCode,
+                                [carrier.carrierCode]: event.target.value,
+                              },
+                            })
+                          }
+                        >
+                          <MenuItem value="">Not mapped</MenuItem>
+                          {(orgSettingsQuery.data?.digitCarriers ?? []).map((option) => (
+                            <MenuItem key={option.id} value={option.id}>
+                              {option.value}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    ))
+                  )}
+                  {(orgSettingsQuery.data?.unmappedCarriers ?? [])
+                    .filter(
+                      (row) =>
+                        row.carrierCode &&
+                        !(orgSettingsQuery.data?.ssCarriers ?? []).some(
+                          (carrier) => carrier.carrierCode === row.carrierCode,
+                        ),
+                    )
+                    .map((row) => (
+                      <FormControl fullWidth key={row.carrierCode || row.carrierName || 'unknown'}>
+                        <InputLabel id={`unmapped-${row.carrierCode}`}>
+                          Unmapped: {row.carrierName || row.carrierCode}
+                        </InputLabel>
+                        <Select
+                          labelId={`unmapped-${row.carrierCode}`}
+                          label={`Unmapped: ${row.carrierName || row.carrierCode}`}
+                          value={draft.carrierByCode[row.carrierCode || ''] ?? ''}
+                          onChange={(event) =>
+                            setDraft({
+                              ...draft,
+                              carrierByCode: {
+                                ...draft.carrierByCode,
+                                [row.carrierCode || '']: event.target.value,
+                              },
+                            })
+                          }
+                        >
+                          <MenuItem value="">Not mapped</MenuItem>
+                          {(orgSettingsQuery.data?.digitCarriers ?? []).map((option) => (
+                            <MenuItem key={option.id} value={option.id}>
+                              {option.value}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                    ))}
+                  {(orgSettingsQuery.data?.unmappedCarriers ?? []).some(
+                    (row) =>
+                      row.carrierCode &&
+                      !(draft.carrierByCode[row.carrierCode] || '').trim(),
+                  ) ? (
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      Recent labels used a ShipStation carrier that is not mapped to Digit. Choose a
+                      Digit carrier above so the next shipment writes it back.
+                    </Typography>
+                  ) : null}
+                </Stack>
               </SettingField>
               {mutationError && <AppErrorAlert error={mutationError} />}
             </Stack>

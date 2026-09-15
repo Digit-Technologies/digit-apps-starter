@@ -15,6 +15,7 @@ import {
   CREATE_ORDER_MUTATION,
   CREATE_PACK_CONTAINER_MUTATION,
   CREATE_SHIPMENT_MUTATION,
+  GENERATE_SALES_ORDER_PDF_QUERY,
   ITEMS_BY_SEARCH_QUERY,
   ORDER_BY_ID_QUERY,
   SHIPMENT_BY_ID_QUERY,
@@ -35,6 +36,9 @@ import {
   ssShipToLocationInput,
 } from './mappers/shipStationToDigit.js';
 import { resolveShipStationCredentials } from './runtimeConfig.js';
+import { pdfBase64FromV2Label, purchaseLabelAfterCreate } from './labels.js';
+import { resolveDigitCarrier } from './matchDigitCarrier.js';
+import { bytesToBase64 } from './shipstationFetch.js';
 import {
   createShipments,
   fetchResourceUrl,
@@ -133,19 +137,29 @@ function reconnectMessage(secret) {
 }
 
 export function normalizeOrgSettings(row, organizationId) {
+  const weight = Number(row?.default_weight_oz);
+  const length = Number(row?.default_length_in);
+  const width = Number(row?.default_width_in);
+  const height = Number(row?.default_height_in);
   return {
     organizationId,
     defaultFulfillmentMethod: row?.default_fulfillment_method ?? 'unspecified',
     syncMode: row?.sync_mode ?? 'digit_to_ss',
     pushWhen: row?.push_when ?? 'fully_packed',
     laneTagId: row?.lane_tag_id || null,
+    defaultWeightOz: Number.isFinite(weight) && weight > 0 ? weight : 16,
+    defaultLengthIn: Number.isFinite(length) && length > 0 ? length : null,
+    defaultWidthIn: Number.isFinite(width) && width > 0 ? width : null,
+    defaultHeightIn: Number.isFinite(height) && height > 0 ? height : null,
+    rateStrategy: row?.rate_strategy === 'fastest' ? 'fastest' : 'cheapest',
   };
 }
 
 export async function loadOrgSettings({ db, organizationId }) {
   const row = await db
     .prepare(
-      `SELECT organization_id, default_fulfillment_method, sync_mode, push_when, lane_tag_id
+      `SELECT organization_id, default_fulfillment_method, sync_mode, push_when, lane_tag_id,
+              default_weight_oz, default_length_in, default_width_in, default_height_in, rate_strategy
        FROM org_settings WHERE organization_id = ?`,
     )
     .bind(organizationId)
@@ -160,6 +174,7 @@ export function publicMapRow(row) {
     digitShipmentId: row.digit_shipment_id,
     ssShipmentId: row.ss_shipment_id,
     ssLabelId: row.ss_label_id,
+    hasLabel: Boolean(row.ss_label_id) || Boolean(row.has_label_pdf),
     source: row.source,
     pushStatus: row.push_status,
     lastError: row.last_error,
@@ -178,7 +193,8 @@ export async function mapsForShipments({ db, connectionId, shipmentIds }) {
     .prepare(
       `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id, source,
               push_status, last_error, tracking_number, carrier_name, ship_date,
-              shipment_cost_amount, shipment_cost_currency
+              shipment_cost_amount, shipment_cost_currency,
+              CASE WHEN label_pdf_base64 IS NOT NULL AND length(label_pdf_base64) > 0 THEN 1 ELSE 0 END AS has_label_pdf
        FROM shipstation_order_map
        WHERE connection_id = ? AND deleted = 0 AND digit_shipment_id IN (${placeholders})`,
     )
@@ -194,7 +210,8 @@ export async function mapsForOrders({ db, connectionId, orderIds }) {
     .prepare(
       `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id, source,
               push_status, last_error, tracking_number, carrier_name, ship_date,
-              shipment_cost_amount, shipment_cost_currency
+              shipment_cost_amount, shipment_cost_currency,
+              CASE WHEN label_pdf_base64 IS NOT NULL AND length(label_pdf_base64) > 0 THEN 1 ELSE 0 END AS has_label_pdf
        FROM shipstation_order_map
        WHERE connection_id = ? AND deleted = 0 AND digit_order_id IN (${placeholders})`,
     )
@@ -234,8 +251,8 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, digit
         `INSERT INTO shipstation_order_map
            (connection_id, organization_id, digit_order_id, ss_shipment_id, ss_label_id,
             digit_shipment_id, source, push_status, last_error, tracking_number, carrier_name,
-            ship_date, shipment_cost_amount, shipment_cost_currency)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            ship_date, shipment_cost_amount, shipment_cost_currency, label_pdf_base64)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         connectionId,
@@ -252,6 +269,7 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, digit
         fields.shipDate ?? null,
         fields.shipmentCostAmount ?? null,
         fields.shipmentCostCurrency ?? null,
+        fields.labelPdfBase64 ?? null,
       )
       .run();
     return;
@@ -271,6 +289,7 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, digit
          ship_date = COALESCE(?, ship_date),
          shipment_cost_amount = COALESCE(?, shipment_cost_amount),
          shipment_cost_currency = COALESCE(?, shipment_cost_currency),
+         label_pdf_base64 = COALESCE(?, label_pdf_base64),
          updated_at = datetime('now')
        WHERE id = ?`,
     )
@@ -286,6 +305,7 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, digit
       fields.shipDate ?? null,
       fields.shipmentCostAmount ?? null,
       fields.shipmentCostCurrency ?? null,
+      fields.labelPdfBase64 ?? null,
       existing.id,
     )
     .run();
@@ -367,11 +387,15 @@ export async function fetchDigitShipment({ env, shipmentId }) {
   return { ok: true, data: { shipment, organization } };
 }
 
-function pushMeaning({ skipped, reason, ssShipmentId, shipmentLabel }) {
+function pushMeaning({ skipped, reason, ssShipmentId, shipmentLabel, labelPurchased, labelError }) {
   if (skipped) {
     return `${reason} ${skipNextStep(reason)}`.trim();
   }
-  return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel}. Print the label in ShipStation. This Digit shipment stays in the queue until it is marked shipped.`;
+  if (labelPurchased) {
+    return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel} and purchased a shipping label. Download it from the queue. This Digit shipment stays until it is marked shipped.`;
+  }
+  const extra = labelError ? ` The label was not purchased: ${labelError}` : '';
+  return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel}.${extra} Print the label in ShipStation or wait for a ShipStation label event, then download it from the queue.`;
 }
 
 function shipmentLabel(shipment, shipmentId) {
@@ -486,13 +510,24 @@ export async function pushShipment({
   });
   if (reason) {
     if (orderId) {
+      // Ineligibility is not a failure: keep the ShipStation state and leave lastError clear,
+      // otherwise the 5-minute poll paints pushed shipments red and drops the already-pushed guard.
+      const retainedStatus = ['shipped', 'imported'].includes(existing?.push_status ?? '')
+        ? existing.push_status
+        : existing?.ss_shipment_id
+          ? 'pushed'
+          : 'skipped';
       await upsertMap({
         db,
         connectionId: secret.connectionId,
         organizationId,
         digitOrderId: orderId,
         digitShipmentId: shipmentId,
-        fields: { pushStatus: 'skipped', lastError: reason, source: existing?.source ?? 'digit' },
+        fields: {
+          pushStatus: retainedStatus,
+          lastError: null,
+          source: existing?.source ?? 'digit',
+        },
       });
     }
     const meaning = pushMeaning({ skipped: true, reason, shipmentLabel: label });
@@ -522,6 +557,7 @@ export async function pushShipment({
             digitShipmentToShipment({
               shipment,
               shipFrom: orgShipFrom({ organization }),
+              orgSettings,
             }),
           ],
         });
@@ -599,7 +635,65 @@ export async function pushShipment({
       source: 'digit',
     },
   });
-  const meaning = pushMeaning({ skipped: false, ssShipmentId, shipmentLabel: label });
+
+  const purchased = await purchaseLabelAfterCreate({
+    credentials,
+    db,
+    connectionId: secret.connectionId,
+    ssShipmentId,
+    shipment,
+    organization,
+    orgSettings,
+  });
+  let labelPurchased = false;
+  let labelError = null;
+  let ssLabelId = null;
+  if (purchased.ok) {
+    labelPurchased = true;
+    ssLabelId = purchased.data?.ssLabelId ?? null;
+    await upsertMap({
+      db,
+      connectionId: secret.connectionId,
+      organizationId,
+      digitOrderId: orderId,
+      digitShipmentId: shipmentId,
+      fields: {
+        ssLabelId,
+        trackingNumber: purchased.data?.trackingNumber ?? null,
+        carrierName: purchased.data?.carrierName ?? null,
+        shipDate: purchased.data?.shipDate ?? null,
+        shipmentCostAmount: purchased.data?.shipmentCostAmount ?? null,
+        shipmentCostCurrency: purchased.data?.shipmentCostCurrency ?? null,
+        labelPdfBase64: purchased.data?.labelPdfBase64 ?? null,
+        pushStatus: 'pushed',
+        lastError: null,
+        source: 'digit',
+      },
+    });
+    await applyDigitCarrierField({
+      env,
+      db,
+      organizationId,
+      connectionId: secret.connectionId,
+      digitShipmentId: shipmentId,
+      digitOrderId: orderId,
+      ssShipmentId,
+      carrierCode: purchased.data?.carrierName ?? null,
+      serviceCode: purchased.data?.serviceCode ?? null,
+      actor,
+      recordActivity,
+    });
+  } else {
+    labelError = purchased.message || 'Label purchase failed.';
+  }
+
+  const meaning = pushMeaning({
+    skipped: false,
+    ssShipmentId,
+    shipmentLabel: label,
+    labelPurchased,
+    labelError,
+  });
   await recordPushActivity({
     db,
     organizationId,
@@ -617,9 +711,132 @@ export async function pushShipment({
       shipmentId,
       orderId,
       ssShipmentId,
+      ssLabelId,
       skipped: false,
-      message: `Created ShipStation shipment ${ssShipmentId}.`,
+      labelPurchased,
+      message: labelPurchased
+        ? `Created ShipStation shipment ${ssShipmentId} and purchased a label.`
+        : `Created ShipStation shipment ${ssShipmentId}.`,
       meaning,
+    },
+  };
+}
+
+export async function downloadShipmentLabel({ env, db, organizationId, shipmentId }) {
+  const secret = await liveCredentials({ db, env, organizationId });
+  const credentials = credentialsForApi(secret);
+  if (!credentials) {
+    return {
+      ok: false,
+      code: AppErrorCode.VALIDATION_ERROR,
+      message: reconnectMessage(secret),
+      status: 400,
+    };
+  }
+  const map = await db
+    .prepare(
+      `SELECT ss_label_id, label_pdf_base64, digit_shipment_id
+       FROM shipstation_order_map
+       WHERE connection_id = ? AND digit_shipment_id = ? AND deleted = 0
+       LIMIT 1`,
+    )
+    .bind(secret.connectionId, shipmentId)
+    .first();
+  if (!map) {
+    return {
+      ok: false,
+      code: AppErrorCode.VALIDATION_ERROR,
+      message:
+        'This shipment has not been pushed to ShipStation yet. Push it from the queue, then download the label.',
+      status: 400,
+    };
+  }
+  const stored = String(map.label_pdf_base64 || '').replace(/\s+/g, '');
+  if (stored) {
+    return {
+      ok: true,
+      data: {
+        filename: `shipping-label-${shipmentId}.pdf`,
+        contentType: 'application/pdf',
+        pdfBase64: stored,
+      },
+    };
+  }
+  if (map.ss_label_id && credentials.apiVersion !== 'v1') {
+    const fetched = await pdfBase64FromV2Label({ credentials, labelId: map.ss_label_id });
+    if (!fetched.ok) return fetched;
+    return {
+      ok: true,
+      data: {
+        filename: `shipping-label-${map.ss_label_id}.pdf`,
+        contentType: 'application/pdf',
+        pdfBase64: fetched.data.pdfBase64,
+      },
+    };
+  }
+  return {
+    ok: false,
+    code: AppErrorCode.VALIDATION_ERROR,
+    message:
+      'No shipping label is available yet. Push to purchase a label, or wait for a ShipStation label event, then try again.',
+    status: 400,
+  };
+}
+
+export async function downloadPackingSlip({ env, orderId }) {
+  const generated = await digitGraphql({
+    env,
+    query: GENERATE_SALES_ORDER_PDF_QUERY,
+    variables: { orderId },
+  });
+  if (!generated.ok) return generated;
+
+  const url = generated.data?.generateSalesOrderPdf?.url;
+  if (typeof url !== 'string' || !url) {
+    return {
+      ok: false,
+      code: AppErrorCode.UPSTREAM_ERROR,
+      message: 'Digit did not return a packing slip URL.',
+      status: 502,
+    };
+  }
+
+  let response;
+  try {
+    response = await fetch(url);
+  } catch {
+    return {
+      ok: false,
+      code: AppErrorCode.UPSTREAM_ERROR,
+      message: 'The app backend could not fetch the packing slip from Digit.',
+      status: 502,
+    };
+  }
+  if (!response.ok) {
+    return {
+      ok: false,
+      code: AppErrorCode.UPSTREAM_ERROR,
+      message: `Digit packing slip download failed (HTTP ${response.status}).`,
+      status: 502,
+    };
+  }
+
+  const buffer = await response.arrayBuffer();
+  if (buffer.byteLength > 10 * 1024 * 1024) {
+    return {
+      ok: false,
+      code: AppErrorCode.VALIDATION_ERROR,
+      message: 'The packing slip exceeds Digit’s 10MB download limit.',
+      status: 400,
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      filename: `packing-slip-${orderId}.pdf`,
+      contentType: 'application/pdf',
+      pdfBase64: bytesToBase64(buffer),
     },
   };
 }
@@ -690,6 +907,73 @@ export async function pollOutboundPush({ env, db }) {
   return { pushed: pushed.length };
 }
 
+function notesForCarrierWriteback({ matched, carrierName, existingNotes }) {
+  if (matched) return undefined;
+  if (existingNotes && String(existingNotes).trim()) return undefined;
+  if (carrierName) return `Carrier: ${carrierName}`;
+  return undefined;
+}
+
+async function applyDigitCarrierField({
+  env,
+  db,
+  organizationId,
+  connectionId,
+  digitShipmentId,
+  digitOrderId,
+  ssShipmentId,
+  carrierCode,
+  carrierName,
+  serviceCode,
+  actor,
+  recordActivity = true,
+}) {
+  if (!digitShipmentId || (!carrierCode && !carrierName)) {
+    return { ok: true, data: { skipped: true } };
+  }
+  const resolved = await resolveDigitCarrier({
+    env,
+    db,
+    organizationId,
+    connectionId,
+    carrierCode,
+    carrierName,
+    serviceCode,
+    actor,
+    digitOrderId,
+    ssShipmentId,
+    recordActivity,
+  });
+  if (!resolved.ok) return resolved;
+  if (!resolved.data.digitOptionId) return resolved;
+  const updated = await digitGraphql({
+    env,
+    query: UPDATE_SHIPMENT_MUTATION,
+    variables: {
+      input: {
+        shipmentId: digitShipmentId,
+        shippingCarrierFieldId: resolved.data.digitOptionId,
+      },
+    },
+  });
+  if (!updated.ok) {
+    if (recordActivity) {
+      await appendActivity({
+        db,
+        organizationId,
+        actor,
+        action: 'carrier_writeback',
+        status: 'error',
+        digitOrderId,
+        ssShipmentId,
+        message: updated.message || 'Could not set the Digit shipping carrier.',
+      });
+    }
+    return updated;
+  }
+  return resolved;
+}
+
 async function applyDigitShipmentWriteback({
   env,
   db,
@@ -699,6 +983,7 @@ async function applyDigitShipmentWriteback({
   mappedDigitShipmentId = null,
   trackingNumber,
   carrierName,
+  serviceCode,
   shipDate,
   labelId,
   ssShipmentId,
@@ -709,10 +994,32 @@ async function applyDigitShipmentWriteback({
   if (!loaded.ok) return loaded;
   const { order } = loaded.data;
 
-  let digitShipmentId =
-    mappedDigitShipmentId ||
-    order.shipments?.find((shipment) => shipment.shippingStatus !== 'cancelled')?.id ||
+  let digitShipment =
+    (mappedDigitShipmentId &&
+      order.shipments?.find((shipment) => shipment.id === mappedDigitShipmentId)) ||
+    order.shipments?.find((shipment) => shipment.shippingStatus !== 'cancelled') ||
     null;
+  let digitShipmentId = digitShipment?.id || mappedDigitShipmentId || null;
+
+  const resolved = await resolveDigitCarrier({
+    env,
+    db,
+    organizationId,
+    connectionId,
+    carrierCode: carrierName,
+    carrierName,
+    serviceCode,
+    actor: 'webhook',
+    digitOrderId,
+    ssShipmentId,
+    recordActivity: true,
+  });
+  const digitOptionId = resolved.ok ? resolved.data.digitOptionId : null;
+  const notes = notesForCarrierWriteback({
+    matched: Boolean(digitOptionId),
+    carrierName,
+    existingNotes: digitShipment?.notes,
+  });
 
   if (!digitShipmentId) {
     const unpacked = (order.packContainers ?? []).filter((container) => !container.shipment);
@@ -745,7 +1052,8 @@ async function applyDigitShipmentWriteback({
           shipmentType: 'carrier',
           shippingStatus: 'shipped',
           trackingNumber: trackingNumber || undefined,
-          notes: carrierName ? `Carrier: ${carrierName}` : undefined,
+          notes,
+          ...(digitOptionId ? { shippingCarrierFieldId: digitOptionId } : {}),
         },
       },
     });
@@ -760,8 +1068,9 @@ async function applyDigitShipmentWriteback({
           shipmentId: digitShipmentId,
           shippingStatus: 'shipped',
           trackingNumber: trackingNumber || undefined,
-          notes: carrierName ? `Carrier: ${carrierName}` : undefined,
+          ...(notes !== undefined ? { notes } : {}),
           dropOffDate: shipDate || undefined,
+          ...(digitOptionId ? { shippingCarrierFieldId: digitOptionId } : {}),
         },
       },
     });
@@ -907,6 +1216,7 @@ export async function processSsFulfillment({
     mappedDigitShipmentId: map.digit_shipment_id ?? null,
     trackingNumber: normalized.trackingNumber,
     carrierName: normalized.carrierCode,
+    serviceCode: normalized.serviceCode,
     shipDate: normalized.shipDate,
     labelId: resolvedLabelId,
     ssShipmentId: shipmentId,
@@ -1013,10 +1323,25 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
         status: 400,
       };
     }
+    const defaultSalesPrice = item.data.defaultSalesPrice;
+    const hasShipStationPrice =
+      typeof line.unitPrice === 'number' && Number.isFinite(line.unitPrice);
+    const hasDefaultSalesPrice =
+      defaultSalesPrice?.costAmount != null &&
+      Number.isFinite(Number(defaultSalesPrice.costAmount));
+    const costAmount = hasShipStationPrice
+      ? line.unitPrice
+      : hasDefaultSalesPrice
+        ? Number(defaultSalesPrice.costAmount)
+        : 0;
+    const lineCurrencyCode =
+      !hasShipStationPrice && hasDefaultSalesPrice
+        ? defaultSalesPrice.currency?.code || currencyCode
+        : currencyCode;
     lines.push({
       id: item.data.id,
       quantity: line.quantity,
-      cost: { currencyCode, costAmount: 0 },
+      cost: { currencyCode: lineCurrencyCode, costAmount },
     });
   }
   if (lines.length === 0) {
@@ -1028,6 +1353,19 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
     };
   }
 
+  const carrier = await resolveDigitCarrier({
+    env,
+    db,
+    organizationId,
+    connectionId,
+    carrierCode: shipment.carrier_code,
+    serviceCode: shipment.service_code,
+    actor: 'schedule',
+    ssShipmentId,
+    recordActivity: true,
+  });
+  if (!carrier.ok) return carrier;
+
   const createdOrder = await digitGraphql({
     env,
     query: CREATE_ORDER_MUTATION,
@@ -1037,6 +1375,9 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
         shippingAddressId,
         customerReferenceNumber: shipment.shipment_number || ssShipmentId,
         orderStatus: 'unfulfilled',
+        ...(carrier.data.digitOptionId
+          ? { shippingCarrierFieldId: carrier.data.digitOptionId }
+          : {}),
         items: lines,
       },
     },

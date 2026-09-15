@@ -19,8 +19,13 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 | `GET` | `/v2/shipments/{id}` | Writeback / inbound |
 | `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Digit shipment id |
 | `GET` | `/v2/shipments` | Inbound poll |
-| `GET` | `/v2/labels/{id}` | Label created webhook |
+| `GET` | `/v2/labels/{id}` | Label created webhook; queue download (`label_download_type=inline`) |
 | `GET` | resource_url | Thin webhook payloads (SSRF: `api.shipstation.com` / `api.shipengine.com` / `ssapi.shipstation.com`) |
+| `POST` | `/v2/rates` | Rate shop after push (`shipment_id` + synced `carrier_ids`) |
+| `POST` | `/v2/labels/rates/{rate_id}` | Purchase label from chosen rate (PDF inline) |
+
+Inbound import normalizes `items[].unit_price` as Digit unit cost and `carrier_id` for
+carrier matching. Missing line prices fall back to Digit item defaults.
 
 ## Webhook events registered on connect
 
@@ -28,6 +33,6 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 
 Inbound verify: RSA-SHA256 headers `x-shipengine-rsa-sha256-*` + `x-shipengine-timestamp` against JWKS (`/jwks` on those hosts). Not HMAC `verifyWebhookSignature`.
 
-## Phase 2 (not wrapped)
+## Later (not wrapped)
 
-Rates, `POST /v2/labels`, address validation, return labels. Do not add UI for them in Phase 1.
+Address validation, return labels, Rate Shopper one-shot (`POST /v2/labels/rate_shopper_id/{id}`). Rate shop + label purchase from a rate **are** wrapped.

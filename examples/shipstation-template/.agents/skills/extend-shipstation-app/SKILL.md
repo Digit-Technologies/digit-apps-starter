@@ -92,6 +92,7 @@ ShipStation extend:
 - [ ] `API_TOKEN_DIGIT` / `PUBLIC_WEBHOOK_URL` / ShipStation secrets are managed only
       in Digit's built-in App Secrets UI; the app never accepts, returns, or logs them
 - [ ] New D1 shape = new migration file, not an edit of 0001_init.sql
+- [ ] Digit shipment carrier writeback: `matchDigitCarrier.js` + Settings maps; never auto-create Digit options
 - [ ] Webhook: declared path, dual verify (RSA or V1 token), 200 fast, jobs for slow work
 - [ ] New sync/webhook/poll paths: `appendActivity` (no secrets/PII); UI Alert + activity refetch
 - [ ] `ssFetch` / `digitGraphql` errors include upstream messages (not HTTP-only)

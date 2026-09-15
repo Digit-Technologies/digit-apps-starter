@@ -4,7 +4,7 @@
  * to the browser.
  */
 
-import { ssFetch, allowedShipStationUrl, INVALID_KEY_MESSAGE } from './shipstationFetch.js';
+import { ssFetch, ssFetchBytes, allowedShipStationUrl, INVALID_KEY_MESSAGE } from './shipstationFetch.js';
 
 export { allowedShipStationUrl, INVALID_KEY_MESSAGE };
 
@@ -169,16 +169,129 @@ export async function getShipmentByExternalId({ credentials, externalShipmentId 
   });
 }
 
-export async function getLabel({ credentials, labelId }) {
+export async function getLabel({ credentials, labelId, downloadType = 'url', format = 'pdf' }) {
   const creds = requireCredentials(credentials);
   if (creds.apiVersion === 'v1') {
     // V1 has no standalone label GET; callers should use resource_url or getShipment.
     return getShipment({ credentials: creds, shipmentId: labelId });
   }
+  const params = new URLSearchParams({
+    label_download_type: downloadType,
+    label_format: format,
+  });
   return ssFetch({
     credentials: creds,
     method: 'GET',
-    path: `/v2/labels/${encodeURIComponent(labelId)}`,
+    path: `/v2/labels/${encodeURIComponent(labelId)}?${params.toString()}`,
+  });
+}
+
+/**
+ * V2: POST /v2/rates. V1 callers should use getRates.
+ */
+export async function calculateRates({ credentials, shipmentId, shipment, carrierIds }) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion === 'v1') {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'V1 rate shopping uses getRates, not calculateRates.',
+      status: 400,
+    };
+  }
+  const ids = (carrierIds ?? []).map(String).filter(Boolean);
+  if (ids.length === 0) {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'Rate shopping needs at least one ShipStation carrier id.',
+      status: 400,
+    };
+  }
+  const body = shipmentId
+    ? { shipment_id: shipmentId, rate_options: { carrier_ids: ids } }
+    : { shipment, rate_options: { carrier_ids: ids } };
+  return ssFetch({
+    credentials: creds,
+    method: 'POST',
+    path: '/v2/rates',
+    body,
+  });
+}
+
+/**
+ * V2: POST /v2/labels/rates/{rate_id}
+ */
+export async function createLabelFromRate({ credentials, rateId, labelFormat = 'pdf', labelLayout = '4x6' }) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion === 'v1') {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'V1 label purchase uses createLabelForOrder, not createLabelFromRate.',
+      status: 400,
+    };
+  }
+  return ssFetch({
+    credentials: creds,
+    method: 'POST',
+    path: `/v2/labels/rates/${encodeURIComponent(rateId)}`,
+    body: {
+      label_format: labelFormat,
+      label_layout: labelLayout,
+      label_download_type: 'inline',
+    },
+  });
+}
+
+/**
+ * V1: POST /shipments/getrates
+ */
+export async function getRates({ credentials, rateRequest }) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion !== 'v1') {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'V2 rate shopping uses calculateRates, not getRates.',
+      status: 400,
+    };
+  }
+  return ssFetch({
+    credentials: creds,
+    method: 'POST',
+    path: '/shipments/getrates',
+    body: rateRequest,
+  });
+}
+
+/**
+ * V1: POST /orders/createlabelfororder — response includes labelData (base64 PDF).
+ */
+export async function createLabelForOrder({ credentials, labelRequest }) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion !== 'v1') {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'V2 label purchase uses createLabelFromRate, not createLabelForOrder.',
+      status: 400,
+    };
+  }
+  return ssFetch({
+    credentials: creds,
+    method: 'POST',
+    path: '/orders/createlabelfororder',
+    body: labelRequest,
+  });
+}
+
+export async function fetchLabelPdfBytes({ credentials, url }) {
+  return ssFetchBytes({
+    credentials: requireCredentials(credentials),
+    method: 'GET',
+    path: '/',
+    url,
   });
 }
 

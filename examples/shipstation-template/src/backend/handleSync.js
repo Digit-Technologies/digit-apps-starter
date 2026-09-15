@@ -1,13 +1,15 @@
 import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-common';
 import { err, ok, requireEnv } from '@digit/lib-backend';
 
-import { listActivity } from './activity.js';
+import { appendActivity, listActivity } from './activity.js';
 import {
   liveConnection,
   mapsForShipments,
   pollInbound,
   pollOutboundPush,
   pushShipment,
+  downloadPackingSlip,
+  downloadShipmentLabel,
 } from './sync.js';
 
 function requireOrganizationId(url) {
@@ -32,6 +34,8 @@ function pushResultRow(shipmentId, result) {
       ok: true,
       skipped: Boolean(result.data?.skipped),
       ssShipmentId: result.data?.ssShipmentId ?? null,
+      ssLabelId: result.data?.ssLabelId ?? null,
+      labelPurchased: Boolean(result.data?.labelPurchased),
       message: result.data?.message ?? result.data?.reason ?? null,
       meaning: result.data?.meaning ?? result.data?.reason ?? null,
     };
@@ -43,7 +47,9 @@ function pushResultRow(shipmentId, result) {
     ok: false,
     skipped: false,
     ssShipmentId: null,
-    message,
+    ssLabelId: null,
+    labelPurchased: false,
+      message,
     meaning: `${message} The shipment was not created in ShipStation. Fix the error and try again.`,
   };
 }
@@ -118,6 +124,111 @@ export async function handleSync({ request, env, path, method }) {
       failed: results.filter((row) => !row.ok).length,
     };
     return ok({ data: { results, summary } });
+  }
+
+  if (method === 'POST' && path === '/sync/label') {
+    const parsed = await parseJsonResponse({ value: request.json() });
+    if (!parsed.ok) {
+      return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
+    }
+    const organizationIdResult = requiredString({ obj: parsed.value, key: 'organizationId' });
+    if (!organizationIdResult.ok) {
+      return err({
+        code: organizationIdResult.error.code,
+        message: organizationIdResult.error.message,
+        status: 400,
+      });
+    }
+    const shipmentIdResult = requiredString({ obj: parsed.value, key: 'shipmentId' });
+    if (!shipmentIdResult.ok) {
+      return err({
+        code: shipmentIdResult.error.code,
+        message: shipmentIdResult.error.message,
+        status: 400,
+      });
+    }
+    const organizationId = organizationIdResult.value;
+    const shipmentId = shipmentIdResult.value;
+    const result = await downloadShipmentLabel({ env, db, organizationId, shipmentId });
+    if (!result.ok) {
+      await appendActivity({
+        db,
+        organizationId,
+        actor: 'user',
+        action: 'label_download',
+        status: 'error',
+        message: result.message || 'Label download failed.',
+        digitOrderId: null,
+        ssShipmentId: null,
+        detail: { code: result.code ?? null },
+      });
+      return err({
+        code: result.code || AppErrorCode.UPSTREAM_ERROR,
+        message: result.message || 'Label download failed.',
+        status: result.status || 502,
+      });
+    }
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'user',
+      action: 'label_download',
+      status: 'success',
+      message: 'Downloaded a shipping label from the queue.',
+    });
+    return ok({ data: result.data });
+  }
+
+  if (method === 'POST' && path === '/sync/packing-slip') {
+    const parsed = await parseJsonResponse({ value: request.json() });
+    if (!parsed.ok) {
+      return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
+    }
+    const organizationIdResult = requiredString({ obj: parsed.value, key: 'organizationId' });
+    if (!organizationIdResult.ok) {
+      return err({
+        code: organizationIdResult.error.code,
+        message: organizationIdResult.error.message,
+        status: 400,
+      });
+    }
+    const orderIdResult = requiredString({ obj: parsed.value, key: 'orderId' });
+    if (!orderIdResult.ok) {
+      return err({
+        code: orderIdResult.error.code,
+        message: orderIdResult.error.message,
+        status: 400,
+      });
+    }
+    const organizationId = organizationIdResult.value;
+    const result = await downloadPackingSlip({ env, orderId: orderIdResult.value });
+    if (!result.ok) {
+      await appendActivity({
+        db,
+        organizationId,
+        actor: 'user',
+        action: 'packing_slip_download',
+        status: 'error',
+        message: result.message || 'Packing slip download failed.',
+        digitOrderId: orderIdResult.value,
+        detail: { code: result.code ?? null },
+      });
+      return err({
+        code: result.code || AppErrorCode.UPSTREAM_ERROR,
+        message: result.message || 'Packing slip download failed.',
+        status: result.status || 502,
+      });
+    }
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'user',
+      action: 'packing_slip_download',
+      status: 'success',
+      message: 'Downloaded a Digit packing slip from the queue.',
+      digitOrderId: orderIdResult.value,
+    });
+    return ok({ data: result.data });
   }
 
   if (method === 'POST' && path === '/sync/poll') {

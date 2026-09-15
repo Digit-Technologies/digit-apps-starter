@@ -52,8 +52,15 @@ export function ssLineSkus(shipment) {
       sku: String(item.sku || item.fullfilment_sku || '').trim(),
       name: item.name,
       quantity: Number(item.quantity) || 1,
+      unitPrice: finiteNumber(item.unitPrice ?? item.unit_price ?? item.price),
     }))
     .filter((item) => item.sku);
+}
+
+function finiteNumber(value) {
+  if (value == null || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
 }
 
 export { digitsOnlyPhone };

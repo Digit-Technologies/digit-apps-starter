@@ -36,15 +36,19 @@ See [channel-recipes.md](channel-recipes.md) and [channels.md](channels.md). Cop
 
 ## Inbound / ShipStation-first (drop-ship)
 
-Settings → Sync mode → ShipStation to Digit. Mapper: `shipStationToDigit.js` (bill-to company = Digit customer; ship-to = drop-ship location). Do not re-push rows with `source=shipstation`.
+Settings → Sync mode → ShipStation to Digit. Mapper: `shipStationToDigit.js` (bill-to company = Digit customer; ship-to = drop-ship location). Import line prices from V1 `unitPrice` / V2 `unit_price`; when absent, use the matched Digit item's non-null `defaultSalesPrice`, then zero. Resolve V1 `carrierCode` or V2 `carrier_id` through `matchDigitCarrier.js` and set `shippingCarrierFieldId` before `createOrder`. ShipStation has no faithful shipping/payment terms source, so leave both unset unless an explicit org-level default is added later. Do not re-push rows with `source=shipstation`.
+
+## Digit carrier from ShipStation
+
+Writeback sets `shippingCarrierFieldId` via `matchDigitCarrier.js` (manual D1 map, aliases, conservative fuzzy). Unmatched carriers stay unset and log `carrier_unmapped`. Operators correct maps in Settings. Do not create Digit carrier options. Do not map SS service codes to Digit shipping class unless asked.
 
 ## Lane filter
 
 Settings → Lane tag ID = Digit `Order.tags[].id`. Orders without that tag are skipped. Default fulfillment method **Manual** skips all pushes.
 
-## Phase 2: restore unused `0001` settings
+## Phase 2 leftovers on `0001`
 
-`shipstation_connection` still has `rate_timing`, `rate_mode`, `best_rate_strategy`, `defaults`, `add_cost_to_shipping_fees`, `auto_send_return_email`, `block_on_invalid_address`. Re-add GET/PATCH `/connection/settings` and UI only when implementing rate shop, in-app labels, or writing `Order.shippingFees` from `shipstation_order_map.shipment_cost_*`.
+`shipstation_connection` still has `rate_timing`, `rate_mode`, `best_rate_strategy`, `defaults`, `add_cost_to_shipping_fees`, `auto_send_return_email`, `block_on_invalid_address`. Do not re-add GET/PATCH `/connection/settings`. In-app rate shop + label purchase use `org_settings` (`0009_label_rates.sql`) instead of those unused connection columns.
 
 ## Phase 2: scan verification / multi-account
 
@@ -68,5 +72,5 @@ Scan: Digit `pickItem` + item `scanCodeSerialNumber` in a clone UI — not this 
 ## New UI screen
 
 1. MUI + `DigitThemeProvider`. Downloads via `DigitHost.download` only (surface throws).
-2. Paginate tables. No Phase 2 rate/label/fee toggles unless that phase is in scope.
+2. Paginate tables. No Phase 2 return-label or shipping-fee toggles unless that phase is in scope.
 3. Outcome Alerts and activity refetch after mutations.

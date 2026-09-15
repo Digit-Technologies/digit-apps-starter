@@ -10,7 +10,7 @@ import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-comm
 import { err, ok, requireEnv } from '@digit/lib-backend';
 
 import { decryptSecret } from './crypto.js';
-import { FULFILLMENT_METHODS, PUSH_WHENS, SYNC_MODES } from './eligibility.js';
+import { FULFILLMENT_METHODS, PUSH_WHENS, RATE_STRATEGIES, SYNC_MODES } from './eligibility.js';
 import { appendActivity } from './activity.js';
 import {
   ensureEncryptionKeyBytes,
@@ -26,6 +26,7 @@ import {
   listCarriers,
 } from './shipstation.js';
 import { liveCredentials, publicConnection, loadOrgSettings } from './sync.js';
+import { loadCarrierMapPayload, saveManualCarrierMaps } from './matchDigitCarrier.js';
 
 const WEBHOOK_EVENTS_V2 = [
   'label_created_v2',
@@ -358,7 +359,16 @@ export async function handleConnection({ request, env, path, method }) {
   if (method === 'GET' && path === '/org-settings') {
     const org = requireOrganizationId(url);
     if (org.error) return org.error;
-    return ok({ data: await loadOrgSettings({ db, organizationId: org.organizationId }) });
+    const organizationId = org.organizationId;
+    const settings = await loadOrgSettings({ db, organizationId });
+    const row = await liveConnection({ db, organizationId });
+    const carrierPayload = await loadCarrierMapPayload({
+      env,
+      db,
+      organizationId,
+      connectionId: row?.id ?? null,
+    });
+    return ok({ data: { ...settings, ...carrierPayload } });
   }
 
   if (method === 'POST' && path === '/connection') {
@@ -477,7 +487,7 @@ export async function handleConnection({ request, env, path, method }) {
       actor: 'user',
       action: 'connect',
       status: 'success',
-      message: `Connected ShipStation ${versionLabel} and synced ${count} carrier(s). Print labels in ShipStation after pushing shipments from the queue.`,
+      message: `Connected ShipStation ${versionLabel} and synced ${count} carrier(s). Push from the queue to purchase a label.`,
       detail: { carrierCount: count, apiVersion: credentials.apiVersion },
     });
     return ok({
@@ -519,6 +529,46 @@ export async function handleConnection({ request, env, path, method }) {
           ? null
           : String(body.laneTagId).trim();
 
+    let defaultWeightOz = current.defaultWeightOz;
+    if (body.defaultWeightOz !== undefined) {
+      const n = Number(body.defaultWeightOz);
+      if (!Number.isFinite(n) || n <= 0) {
+        return err({
+          code: AppErrorCode.VALIDATION_ERROR,
+          message: 'defaultWeightOz must be a number greater than 0.',
+          status: 400,
+        });
+      }
+      defaultWeightOz = n;
+    }
+
+    const parseDim = (key, currentValue) => {
+      if (body[key] === undefined) return { value: currentValue };
+      if (body[key] === null || body[key] === '') return { value: null };
+      const n = Number(body[key]);
+      if (!Number.isFinite(n) || n <= 0) {
+        return {
+          error: `${key} must be empty or a number greater than 0.`,
+        };
+      }
+      return { value: n };
+    };
+    const lengthIn = parseDim('defaultLengthIn', current.defaultLengthIn);
+    const widthIn = parseDim('defaultWidthIn', current.defaultWidthIn);
+    const heightIn = parseDim('defaultHeightIn', current.defaultHeightIn);
+    if (lengthIn.error || widthIn.error || heightIn.error) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: lengthIn.error || widthIn.error || heightIn.error,
+        status: 400,
+      });
+    }
+
+    let rateStrategy = current.rateStrategy;
+    if (body.rateStrategy !== undefined && body.rateStrategy !== null) {
+      rateStrategy = String(body.rateStrategy);
+    }
+
     if (!FULFILLMENT_METHODS.has(defaultFulfillmentMethod)) {
       return err({
         code: AppErrorCode.VALIDATION_ERROR,
@@ -540,30 +590,74 @@ export async function handleConnection({ request, env, path, method }) {
         status: 400,
       });
     }
+    if (!RATE_STRATEGIES.has(rateStrategy)) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'rateStrategy must be cheapest or fastest.',
+        status: 400,
+      });
+    }
 
     await db
       .prepare(
-        `INSERT INTO org_settings (organization_id, default_fulfillment_method, sync_mode, push_when, lane_tag_id)
-         VALUES (?, ?, ?, ?, ?)
+        `INSERT INTO org_settings (
+           organization_id, default_fulfillment_method, sync_mode, push_when, lane_tag_id,
+           default_weight_oz, default_length_in, default_width_in, default_height_in, rate_strategy
+         )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(organization_id) DO UPDATE SET
            default_fulfillment_method = excluded.default_fulfillment_method,
            sync_mode = excluded.sync_mode,
            push_when = excluded.push_when,
            lane_tag_id = excluded.lane_tag_id,
+           default_weight_oz = excluded.default_weight_oz,
+           default_length_in = excluded.default_length_in,
+           default_width_in = excluded.default_width_in,
+           default_height_in = excluded.default_height_in,
+           rate_strategy = excluded.rate_strategy,
            updated_at = datetime('now')`,
       )
-      .bind(organizationId, defaultFulfillmentMethod, syncMode, pushWhen, laneTagId)
+      .bind(
+        organizationId,
+        defaultFulfillmentMethod,
+        syncMode,
+        pushWhen,
+        laneTagId,
+        defaultWeightOz,
+        lengthIn.value,
+        widthIn.value,
+        heightIn.value,
+        rateStrategy,
+      )
       .run();
+
+    if (Array.isArray(body.mappings)) {
+      const connectionRow = await liveConnection({ db, organizationId });
+      if (connectionRow) {
+        await saveManualCarrierMaps({
+          db,
+          connectionId: connectionRow.id,
+          mappings: body.mappings,
+        });
+      }
+    }
+
     await appendActivity({
       db,
       organizationId,
       actor: 'user',
       action: 'settings',
       status: 'success',
-      message: `Saved settings (sync ${syncMode}, push when ${pushWhen}, fulfillment ${defaultFulfillmentMethod}).`,
+      message: `Saved settings (sync ${syncMode}, push when ${pushWhen}, fulfillment ${defaultFulfillmentMethod}, ${rateStrategy} rate).`,
+    });
+    const carrierPayload = await loadCarrierMapPayload({
+      env,
+      db,
+      organizationId,
+      connectionId: (await liveConnection({ db, organizationId }))?.id ?? null,
     });
     return ok({
-      data: await loadOrgSettings({ db, organizationId }),
+      data: { ...(await loadOrgSettings({ db, organizationId })), ...carrierPayload },
     });
   }
 

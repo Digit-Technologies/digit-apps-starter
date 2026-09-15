@@ -65,9 +65,37 @@ export function packedLinesFromShipment(shipment) {
 }
 
 /**
- * @param {{ shipment: object, shipFrom: object }} args
+ * V2 package for POST /v2/shipments and /v2/rates.
+ * Weight unit is `ounce` (V2). Optional inches when all three dims are set.
  */
-export function digitShipmentToShipment({ shipment, shipFrom }) {
+export function packageFromOrgSettings(orgSettings) {
+  const weightOz = Number(orgSettings?.defaultWeightOz);
+  const pkg = {
+    package_code: 'package',
+    weight: {
+      value: Number.isFinite(weightOz) && weightOz > 0 ? weightOz : 16,
+      unit: 'ounce',
+    },
+  };
+  const length = Number(orgSettings?.defaultLengthIn);
+  const width = Number(orgSettings?.defaultWidthIn);
+  const height = Number(orgSettings?.defaultHeightIn);
+  if (length > 0 && width > 0 && height > 0) {
+    pkg.dimensions = { length, width, height, unit: 'inch' };
+  }
+  return pkg;
+}
+
+/** V1 weight object (`units: ounces`). */
+export function v1WeightFromOrgSettings(orgSettings) {
+  const pkg = packageFromOrgSettings(orgSettings);
+  return { value: pkg.weight.value, units: 'ounces' };
+}
+
+/**
+ * @param {{ shipment: object, shipFrom: object, orgSettings?: object | null }} args
+ */
+export function digitShipmentToShipment({ shipment, shipFrom, orgSettings = null }) {
   const order = shipment?.order;
   const customerName = order?.customer?.name || '';
   const shipAddress = shipment?.shippingAddress || order?.shippingAddress;
@@ -103,6 +131,7 @@ export function digitShipmentToShipment({ shipment, shipFrom }) {
     }),
     ship_from: shipFrom,
     items,
+    packages: [packageFromOrgSettings(orgSettings)],
     internal_notes: [order?.notes, shipment?.notes, note].filter(Boolean).join('\n').slice(0, 1000) || undefined,
   };
 }

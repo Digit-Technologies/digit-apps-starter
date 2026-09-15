@@ -1,8 +1,9 @@
 const SYNC_MODES = new Set(['digit_to_ss', 'ss_to_digit']);
 const PUSH_WHENS = new Set(['fully_packed', 'inventory_available']);
 const FULFILLMENT_METHODS = new Set(['unspecified', 'shipstation', 'manual']);
+const RATE_STRATEGIES = new Set(['cheapest', 'fastest']);
 
-export { SYNC_MODES, PUSH_WHENS, FULFILLMENT_METHODS };
+export { SYNC_MODES, PUSH_WHENS, FULFILLMENT_METHODS, RATE_STRATEGIES };
 
 export function packedLineCount(shipment) {
   let count = 0;
@@ -27,7 +28,8 @@ export function ineligibilityReason({ shipment, orgSettings, mapRow }) {
   if (mapRow?.source === 'shipstation') {
     return 'This shipment was imported from ShipStation and will not be re-pushed.';
   }
-  if (mapRow && ['pushed', 'shipped'].includes(mapRow.pushStatus)) {
+  // A ShipStation resource id is the durable guard: re-pushing would buy a second label.
+  if (mapRow && (mapRow.ssShipmentId || ['pushed', 'shipped'].includes(mapRow.pushStatus))) {
     return mapRow.pushStatus === 'shipped'
       ? 'Already shipped in ShipStation.'
       : 'Already pushed to ShipStation.';
@@ -57,7 +59,7 @@ export function skipNextStep(reason) {
     return 'Tracking should already be on the Digit shipment.';
   }
   if (reason.includes('Already pushed')) {
-    return 'Print the label in ShipStation. This Digit shipment stays in the queue until it is marked shipped.';
+    return 'Download the shipping label from the queue. This Digit shipment stays until it is marked shipped.';
   }
   if (reason.includes('not linked to a sales order')) {
     return 'Multi-order or unlinked shipments are not pushed from this queue.';

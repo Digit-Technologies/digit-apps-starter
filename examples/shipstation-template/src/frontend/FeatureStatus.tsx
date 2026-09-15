@@ -110,8 +110,9 @@ function v2Features({
       ],
     }),
     gate({
-      title: 'Print labels in ShipStation',
-      detail: 'Buy and print labels in the ShipStation UI. This app does not rate-shop inside Digit.',
+      title: 'Buy shipping labels',
+      detail:
+        'Push rate-shops carriers and purchases a PDF label. Download it from the shipping queue.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
@@ -176,8 +177,9 @@ function v1Features({
       ],
     }),
     gate({
-      title: 'Print labels in ShipStation',
-      detail: 'Buy and print labels in the ShipStation UI. This app does not rate-shop inside Digit.',
+      title: 'Buy shipping labels',
+      detail:
+        'Push rate-shops V1 carriers and purchases a PDF label. Download it from the shipping queue.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
@@ -215,7 +217,7 @@ function digitFeatures({ connected }: FeatureStatusProps): Feature[] {
     },
     gate({
       title: 'Shipping queue',
-      detail: 'Digit shipments awaiting a carrier, batch push to ShipStation, and the sales-order packing slip.',
+      detail: 'Digit shipments awaiting a carrier, batch push (rate-shop + label), and packing-slip PDFs.',
       requires: [[connected, CONNECTION]],
     }),
     gate({

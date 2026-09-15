@@ -22,10 +22,15 @@ Typical starting queries (confirm on MCP; add whatever keys those fields require
 | Invoices | invoice types if you attach shipping cost |
 | Permissions | `appPermissions` for `READ_SHIPMENT` and any write keys you actually call |
 
-- Digit GraphQL used: `currentPermissions`, `organization`, `shipments`, `shipment`, `orders`, `items`,
-  `companies`, `generateSalesOrderPdf`, and Worker mutations for orders/shipments.
+- Digit GraphQL used: `currentPermissions`, `organization`, `organizationDynamicFields.shippingCarriers`,
+  `shipments`, `shipment`, `orders`, `items`,
+  `companies`, `generateSalesOrderPdf`, and Worker mutations for orders/shipments (`shippingCarrierFieldId`).
   Look up fields on `graphql-schema://…` before adding more.
 - Queue and outbound poll filter `shipments(shippingStatuses: [awaiting_carrier])`. Nested `order`
   and packed items (`packContainers.packedItems.pickedItem.orderItem`) need `READ_ORDER`,
   `READ_PACK_CONTAINER`, `READ_PICKED_ITEM`, and `READ_ITEM`.
+- Inbound import reads `Item.defaultSalesPrice` only as a fallback when ShipStation omits
+  unit price; that field requires `READ_ITEM_COST_INFO`. It writes each `OrderItemInput.cost`
+  and may set `CreateOrderInput.shippingCarrierFieldId`. It does not read order cost fields,
+  so `READ_ORDER_COST_INFO` is not required.
 - `manifest.permissions` must cover every Digit field the iframe **and** `API_TOKEN_DIGIT` call.

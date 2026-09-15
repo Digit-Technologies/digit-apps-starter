@@ -73,7 +73,7 @@ export default function ConnectionBar({
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {operable
-              ? 'Create Digit shipments, push from the shipping queue, print labels in ShipStation.'
+              ? 'Create Digit shipments, push from the shipping queue, then download the shipping label.'
               : credentialsMissing
                 ? 'Connection inactive — restore ShipStation secrets or disconnect.'
                 : 'Connect ShipStation to sync carriers and push awaiting-carrier shipments for labels.'}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -17,6 +17,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 
 import {
@@ -76,12 +77,6 @@ const QUEUE_QUERY = `
   }
 `;
 
-const PDF_QUERY = `
-  query ShipStationSlip($orderId: ID!) {
-    generateSalesOrderPdf(orderId: $orderId) { url }
-  }
-`;
-
 type PackedContainer = {
   packedItems?: {
     quantity?: number;
@@ -122,6 +117,8 @@ type MapRow = {
   digitOrderId: string;
   digitShipmentId?: string | null;
   ssShipmentId?: string | null;
+  ssLabelId?: string | null;
+  hasLabel?: boolean | null;
   source?: string | null;
   pushStatus?: string | null;
   lastError?: string | null;
@@ -130,13 +127,19 @@ type MapRow = {
 
 type MapsData = { maps: MapRow[] };
 
-type PdfData = { generateSalesOrderPdf?: { url: string } | null };
+type LabelData = {
+  filename: string;
+  contentType: string;
+  pdfBase64: string;
+};
 
 type PushResult = {
   shipmentId: string;
   ok: boolean;
   skipped: boolean;
   ssShipmentId?: string | null;
+  ssLabelId?: string | null;
+  labelPurchased?: boolean;
   message?: string | null;
   meaning?: string | null;
 };
@@ -148,6 +151,19 @@ type PushData = {
 
 function ticketLabel(shipment: ShipmentNode) {
   return shipment.documentNumber || shipment.shippingNumber || shipment.id.slice(0, 8);
+}
+
+function mapHasLabel(map?: MapRow | null) {
+  return Boolean(map?.hasLabel || map?.ssLabelId);
+}
+
+function pdfBufferFromBase64(pdfBase64: string) {
+  const binary = atob(pdfBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer;
 }
 
 function shipmentPath(shipmentId: string) {
@@ -231,9 +247,9 @@ export default function FulfillmentQueue({
   const [after, setAfter] = useState<string | null>(null);
   const [before, setBefore] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [pdfOrderId, setPdfOrderId] = useState<string | null>(null);
   const [copyHint, setCopyHint] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [labelLocalError, setLabelLocalError] = useState<string | null>(null);
   const [pushNotice, setPushNotice] = useState<{
     severity: 'success' | 'warning' | 'error';
     title: string;
@@ -267,38 +283,10 @@ export default function FulfillmentQueue({
   }, [mapsQuery.data]);
 
   const [mutate, { error: pushError, loading: pushing, reset }] = useBackendMutation<PushData>();
-
-  const pdf = useDigitApiQuery<PdfData>({
-    query: PDF_QUERY,
-    variables: { orderId: pdfOrderId },
-    skip: !pdfOrderId,
-  });
-
-  useEffect(() => {
-    const url = pdf.data?.generateSalesOrderPdf?.url;
-    if (!url || !pdfOrderId) return;
-    void (async () => {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) {
-          setPdfError(`Packing slip download failed (HTTP ${response.status}).`);
-          return;
-        }
-        const buffer = await response.arrayBuffer();
-        window.DigitHost?.download({
-          filename: `packing-slip-${pdfOrderId}.pdf`,
-          contentType: 'application/pdf',
-          data: buffer,
-        });
-        setPdfError(null);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Packing slip download failed.';
-        setPdfError(message);
-      } finally {
-        setPdfOrderId(null);
-      }
-    })();
-  }, [pdf.data, pdfOrderId]);
+  const [downloadLabelMutate, { error: labelError, loading: labelDownloading, reset: resetLabel }] =
+    useBackendMutation<LabelData>();
+  const [downloadSlipMutate, { error: slipError, loading: slipDownloading, reset: resetSlip }] =
+    useBackendMutation<LabelData>();
 
   const selectedCount = Object.values(selected).filter(Boolean).length;
 
@@ -335,6 +323,61 @@ export default function FulfillmentQueue({
       return next;
     });
     await Promise.all([queue.refetch(), mapsQuery.refetch(), onPushComplete?.()]);
+  };
+
+  const downloadShippingLabel = async (shipmentId: string) => {
+    resetLabel();
+    setLabelLocalError(null);
+    const result = await downloadLabelMutate({
+      path: '/sync/label',
+      method: 'POST',
+      body: { organizationId, shipmentId },
+    });
+    if (!result.ok) return;
+    const pdfBase64 = result.data?.pdfBase64;
+    if (!pdfBase64) {
+      setLabelLocalError('ShipStation did not return label PDF data.');
+      return;
+    }
+    try {
+      window.DigitHost?.download({
+        filename: result.data?.filename || `shipping-label-${shipmentId}.pdf`,
+        contentType: result.data?.contentType || 'application/pdf',
+        data: pdfBufferFromBase64(pdfBase64),
+      });
+      setLabelLocalError(null);
+      await onPushComplete?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Label download failed.';
+      setLabelLocalError(message);
+    }
+  };
+
+  const downloadPackingSlip = async (orderId: string) => {
+    resetSlip();
+    setPdfError(null);
+    const result = await downloadSlipMutate({
+      path: '/sync/packing-slip',
+      method: 'POST',
+      body: { organizationId, orderId },
+    });
+    if (!result.ok) return;
+    const pdfBase64 = result.data?.pdfBase64;
+    if (!pdfBase64) {
+      setPdfError('Digit did not return packing slip PDF data.');
+      return;
+    }
+    try {
+      const buffer = pdfBufferFromBase64(pdfBase64);
+      window.DigitHost?.download({
+        filename: result.data?.filename || `packing-slip-${orderId}.pdf`,
+        contentType: 'application/pdf',
+        data: buffer,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Packing slip download failed.';
+      setPdfError(message);
+    }
   };
 
   const pageInfo = queue.data?.shipments?.pageInfo;
@@ -388,7 +431,7 @@ export default function FulfillmentQueue({
       <SectionHeader
         overline="Queue"
         title="Shipping queue"
-        description="Shipments awaiting a carrier. Push to ShipStation to print the label."
+        description="Shipments awaiting a carrier. Push rate-shops and buys a label you can download here."
       />
 
       {pushNotice ? (
@@ -411,10 +454,16 @@ export default function FulfillmentQueue({
         <AppErrorAlert error={mapsQuery.error} onRetry={() => void mapsQuery.refetch()} />
       )}
       {pushError && <AppErrorAlert error={pushError} />}
-      {pdf.error && <AppErrorAlert error={pdf.error} />}
+      {slipError && <AppErrorAlert error={slipError} />}
+      {labelError && <AppErrorAlert error={labelError} />}
       {pdfError ? (
         <Alert severity="error" onClose={() => setPdfError(null)}>
           {pdfError}
+        </Alert>
+      ) : null}
+      {labelLocalError ? (
+        <Alert severity="error" onClose={() => setLabelLocalError(null)}>
+          {labelLocalError}
         </Alert>
       ) : null}
 
@@ -431,7 +480,7 @@ export default function FulfillmentQueue({
                 <TableCell>Status</TableCell>
                 <TableCell>ShipStation ID</TableCell>
                 <TableCell>Tracking</TableCell>
-                <TableCell align="right">Slip</TableCell>
+                <TableCell align="right">Files</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -502,18 +551,41 @@ export default function FulfillmentQueue({
                       </Typography>
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        aria-label="Download packing slip"
-                        disabled={!shipment.order?.id}
-                        onClick={() => {
-                          if (!shipment.order?.id) return;
-                          setPdfError(null);
-                          setPdfOrderId(shipment.order.id);
-                        }}
-                      >
-                        <DownloadIcon fontSize="small" />
-                      </IconButton>
+                      <Stack direction="row" spacing={0.25} justifyContent="flex-end">
+                        <Tooltip
+                          title={
+                            mapHasLabel(map)
+                              ? 'Download shipping label'
+                              : 'No shipping label yet. Push to ShipStation first.'
+                          }
+                        >
+                          <span>
+                            <IconButton
+                              size="small"
+                              aria-label="Download shipping label"
+                              disabled={!mapHasLabel(map) || labelDownloading}
+                              onClick={() => void downloadShippingLabel(shipment.id)}
+                            >
+                              <DownloadIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                        <Tooltip title="Download packing slip">
+                          <span>
+                            <IconButton
+                              size="small"
+                              aria-label="Download packing slip"
+                              disabled={!shipment.order?.id || slipDownloading}
+                              onClick={() => {
+                                if (!shipment.order?.id) return;
+                                void downloadPackingSlip(shipment.order.id);
+                              }}
+                            >
+                              <DescriptionIcon fontSize="small" />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 );
@@ -550,10 +622,11 @@ export default function FulfillmentQueue({
               setCopyHint(id);
             }}
             copyHint={copyHint}
+            onDownloadLabel={() => void downloadShippingLabel(shipment.id)}
+            labelDownloading={labelDownloading}
             onDownloadSlip={() => {
               if (!shipment.order?.id) return;
-              setPdfError(null);
-              setPdfOrderId(shipment.order.id);
+              void downloadPackingSlip(shipment.order.id);
             }}
           />
         ))}
@@ -585,10 +658,6 @@ export default function FulfillmentQueue({
           Next
         </Button>
       </Stack>
-
-      <Box sx={{ display: 'none' }} aria-hidden>
-        {pdf.loading ? 'pdf' : null}
-      </Box>
     </Stack>
   );
 }

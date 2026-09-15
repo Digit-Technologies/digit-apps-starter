@@ -28,7 +28,7 @@ type ActivityData = { events: ActivityEvent[] };
 
 function statusColor(status: string): 'success' | 'warning' | 'error' | 'default' {
   if (status === 'success') return 'success';
-  if (status === 'skipped') return 'warning';
+  if (status === 'skipped' || status === 'warning') return 'warning';
   if (status === 'error' || status === 'failed') return 'error';
   return 'default';
 }

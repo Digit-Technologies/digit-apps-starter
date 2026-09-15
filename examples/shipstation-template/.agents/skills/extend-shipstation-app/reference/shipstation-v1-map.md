@@ -23,11 +23,14 @@ V2 paths: [shipstation-v2-map.md](shipstation-v2-map.md). Dispatch lives in
 | `GET` | `/orders?orderNumber=` | Lookup by Digit document number / order key |
 | `GET` | `/orders?...` | Inbound poll |
 | `GET` | `resource_url` | Thin webhook payloads (SSRF: `ssapi.shipstation.com` also allowed) |
+| `POST` | `/shipments/getrates` | Rate shop per `carrierCode` after push |
+| `POST` | `/orders/createlabelfororder` | Purchase label (`labelData` base64 PDF) |
 
-V1 has no standalone label GET. Label/ship events must fetch `resource_url` (or `GET /orders/{id}`).
+V1 has no standalone label GET. Re-download uses stored `label_pdf_base64` on the order map. Label/ship events still fetch `resource_url` (or `GET /orders/{id}`).
 
 D1 `ss_shipment_id` stores the V1 numeric `orderId` (stringified). Sync normalizes V1 orders
-through `normalizeSsRecord` before writeback/import.
+through `normalizeSsRecord` before writeback/import. Inbound order lines use V1
+`items[].unitPrice` as Digit unit cost; missing prices fall back to Digit item defaults.
 
 ## Webhook events registered on connect
 
