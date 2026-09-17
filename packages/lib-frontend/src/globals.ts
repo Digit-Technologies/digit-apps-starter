@@ -26,6 +26,9 @@ export type DigitHostPrintOptions = {
   html: string;
 };
 
+/** Params passed to `DigitHost.invoke` — a plain JSON-serializable object, `{}` when a capability takes none. */
+export type DigitHostInvokeParams = Record<string, unknown>;
+
 /** Read-only host display channel plus host-mediated actions (`window.DigitHost`). */
 export type DigitHost = {
   getSettings: () => DigitHostSettings | null;
@@ -36,6 +39,10 @@ export type DigitHost = {
   download: (options: DigitHostDownloadOptions) => void;
   /** Opens the browser print dialog for a sanitized HTML snapshot. */
   print: (options: DigitHostPrintOptions) => void;
+  /** Calls a host capability: resolves with data, `null` if cancelled, rejects on error. */
+  invoke?: (method: string, params?: DigitHostInvokeParams) => Promise<unknown>;
+  /** Optional: a harness older than the host capability API omits this entirely. */
+  capabilities?: readonly string[];
 };
 
 /** Harness credential proxy (`window.DigitProxyClient`) — used by data hooks; not a public app API. */

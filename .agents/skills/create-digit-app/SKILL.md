@@ -17,7 +17,8 @@ Build Digit custom apps that run inside Digit as **sandboxed iframes** with a lo
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
 support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
-Use `DigitHost.download` for files and `DigitHost.print` for printable HTML.
+Use `DigitHost.download` for files, `DigitHost.print` for printable HTML, and
+`DigitHost.invoke` for other host-mediated actions (feature-detect via `DigitHost.capabilities`).
 See [reference/iframe-constraints.md](reference/iframe-constraints.md).
 
 **Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
@@ -213,6 +214,35 @@ rel="stylesheet">`, and the print CSP blocks network CSS.
 Do not send PDF bytes to `DigitHost.print`. Download a PDF with
 `DigitHost.download({ filename, contentType: 'application/pdf', data })`. Printing only
 accepts HTML and opens the browser print dialog.
+
+#### Other host-mediated actions
+
+Download and print are dedicated methods. Every other host-mediated action goes through
+one generic call: `DigitHost.invoke(method, params?)`. Host capabilities vary by
+environment, so feature-detect before calling one — never hardcode a method name you
+have not confirmed is available:
+
+```ts
+if (window.DigitHost?.capabilities?.includes("openModal")) {
+  const result = await window.DigitHost.invoke?.("openModal", { modal: "item", id });
+}
+```
+
+Both `capabilities` and `invoke` are optional: an older harness omits them entirely, so
+optional-chain every access. Reaching straight for `capabilities.includes(...)` throws a
+`TypeError` inside the very check meant to keep the app working.
+
+`invoke` returns a promise:
+
+- `status: 'ok'` on the host side — the promise **resolves with the result data**.
+- `status: 'cancelled'` (the user dismissed a host UI) — the promise **resolves with
+  `null`**. This is a normal outcome, not an error; do not treat a `null` result as a
+  failure.
+- `status: 'error'` — the promise **rejects** with an `Error`. Handle it like any other
+  async failure (surface it with `AppErrorAlert`, etc.).
+
+If a method is not in `DigitHost.capabilities`, do not call `invoke` with it — fall back
+to in-page UI (MUI Dialog, etc.) instead.
 
 ### 5. `manifest.json`
 
