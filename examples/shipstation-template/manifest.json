@@ -30,11 +30,6 @@
         "name": "poll-outbound-push",
         "everySeconds": 300
       }
-    ],
-    "webhooks": [
-      {
-        "path": "shipstation"
-      }
     ]
   }
 }

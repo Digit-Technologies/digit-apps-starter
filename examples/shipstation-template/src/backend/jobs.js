@@ -1,22 +1,13 @@
 import { AppErrorCode } from '@digit/lib-common';
 import { HandlerError, requireEnv } from '@digit/lib-backend';
 
-import { processChannelWebhook } from './channels/registry.js';
-import { pollInbound, pollOutboundPush, processWebhookJob } from './sync.js';
-
-export async function processSsWebhook({ payload, env }) {
-  return processWebhookJob({ env, payload });
-}
-
-export async function processChannelWebhookJob({ payload, env, channelId }) {
-  return processChannelWebhook({ payload, env, channelId });
-}
+import { pollOutboundPush, pollPendingLabels } from './sync.js';
 
 export async function pollSync({ env }) {
   const db = requireEnv({ env, key: 'SHIPSTATION_DB' });
-  const outbound = await pollOutboundPush({ env, db });
-  const inbound = await pollInbound({ env, db });
-  return { ...outbound, ...inbound };
+  const outbound = await pollOutboundPush({ env, db, source: 'schedule' });
+  const labels = await pollPendingLabels({ env, db });
+  return { ...outbound, ...labels };
 }
 
 export function jobsUnavailable(error) {

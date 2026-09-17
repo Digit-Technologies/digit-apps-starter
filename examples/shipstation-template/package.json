@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "pack": "digit-app pack"
+    "pack": "digit-app pack",
+    "test": "node --test"
   },
   "dependencies": {
     "@digit/lib-backend": "file:../../packages/lib-backend",

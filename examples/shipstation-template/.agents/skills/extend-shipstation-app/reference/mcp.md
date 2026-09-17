@@ -6,8 +6,8 @@ keys, or ShipStation request bodies.
 
 Do **not** put a ShipStation API key or secret (or Digit token) in MCP config, `mcp.json`,
 or committed files. Each organization manages `SHIPSTATION_API_KEY`,
-`SHIPSTATION_API_SECRET` (V1), `SHIPSTATION_WEBHOOK_TOKEN` (V1 webhooks),
-`API_TOKEN_DIGIT`, and `PUBLIC_WEBHOOK_URL` in Digit's built-in App Secrets UI. There is
+`SHIPSTATION_API_SECRET` (V1), `JWT_TOKEN` (Digit staff generate this Clerk JWT and
+place it in the org’s app secrets) in Digit's built-in App Secrets UI. There is
 no MCP tool for app env vars or secrets.
 
 ## Digit MCP

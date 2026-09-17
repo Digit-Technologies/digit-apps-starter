@@ -3,6 +3,7 @@
  */
 
 import { packedLinesFromShipment, skuForLine } from './digitToShipStation.js';
+import { v1PackageFieldsFromDigitContainer } from './packageMapping.js';
 
 function countryCode(value) {
   const raw = String(value ?? '').trim();
@@ -32,9 +33,9 @@ function v1Address(address, { name, companyName, phone }) {
 }
 
 /**
- * @param {{ shipment: object }} args
+ * @param {{ shipment: object, orgSettings?: object | null }} args
  */
-export function digitShipmentToV1Order({ shipment }) {
+export function digitShipmentToV1Order({ shipment, orgSettings = null }) {
   const order = shipment?.order;
   const customerName = order?.customer?.name || '';
   const shipAddress = shipment?.shippingAddress || order?.shippingAddress;
@@ -77,6 +78,7 @@ export function digitShipmentToV1Order({ shipment }) {
       name: shipToName,
       companyName: customerName,
     }),
+    ...v1PackageFieldsFromDigitContainer(shipment?.packContainers?.[0], orgSettings),
     items,
     internalNotes: [order?.notes, shipment?.notes].filter(Boolean).join('\n').slice(0, 1000) || undefined,
   };

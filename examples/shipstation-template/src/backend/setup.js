@@ -10,25 +10,18 @@ import { AppErrorCode } from '@digit/lib-common';
 import { err, ok } from '@digit/lib-backend';
 
 import {
-  readApiTokenDigit,
-  readPublicWebhookUrl,
+  readJwtToken,
   readShipStationApiKey,
   readShipStationApiSecret,
-  readShipStationWebhookToken,
   resolveShipStationCredentials,
   shipstationDb,
 } from './runtimeConfig.js';
 import { channelSetupEntries } from './channels/registry.js';
 
 async function setupItems({ env, db }) {
-  const token = await readApiTokenDigit({ env, db });
-  const webhookUrl = await readPublicWebhookUrl({ env, db });
+  const token = await readJwtToken({ env, db });
   const shipStationKey = await readShipStationApiKey({ env, db });
   const shipStationSecret = await readShipStationApiSecret({ env, db });
-  const webhookToken = await readShipStationWebhookToken({ env, db });
-  const credentials = await resolveShipStationCredentials({ env, db });
-  const apiMode = credentials?.apiVersion ?? (shipStationKey.value ? 'v2' : 'missing');
-  const v1NeedsToken = apiMode === 'v1' && Boolean(webhookUrl.value);
 
   /** Required first so Setup "N of M" matches checklist numbering. */
   const required = [
@@ -40,33 +33,21 @@ async function setupItems({ env, db }) {
       valid: Boolean(shipStationKey.value),
       source: shipStationKey.source,
       issue: shipStationKey.value ? null : 'Add a ShipStation API key (V2 alone, or V1 key with secret).',
-      enables: 'Everything that talks to ShipStation: carrier sync, pushes, labels, webhooks.',
+      enables: 'Everything that talks to ShipStation: carrier sync, pushes, and label polling.',
       description:
         'ShipStation API key for this organization. Alone = V2 (api.shipstation.com). With SHIPSTATION_API_SECRET = V1 Basic auth (ssapi.shipstation.com). Validated when you connect.',
     },
     {
-      key: 'API_TOKEN_DIGIT',
+      key: 'JWT_TOKEN',
       kind: 'secret',
       required: true,
       present: Boolean(token.value),
       valid: Boolean(token.value),
       source: token.source,
-      issue: token.value ? null : 'Add a Digit API token (da_…).',
-      enables: 'Pushing shipments to ShipStation, tracking writeback, and the scheduled push.',
+      issue: token.value ? null : 'Ask Digit staff to generate JWT_TOKEN and place it on this account.',
+      enables: 'Pushing shipments to ShipStation, tracking writeback, and the scheduled poll.',
       description:
-        'Digit API token used by this app for webhook writeback and scheduled push. Create it in Digit → Settings → API Tokens with the same permissions as this app. Saved as a Digit app secret, so its value is write-only.',
-    },
-    {
-      key: 'PUBLIC_WEBHOOK_URL',
-      kind: 'secret',
-      required: true,
-      present: Boolean(webhookUrl.value),
-      valid: Boolean(webhookUrl.value),
-      source: webhookUrl.source,
-      issue: webhookUrl.value ? null : 'Add this app’s public /webhooks/shipstation URL.',
-      enables: 'Real-time tracking writeback and inbound ShipStation events.',
-      description:
-        'Public HTTPS URL for POST /webhooks/shipstation. Connect registers ShipStation fulfillment and label webhooks against it.',
+        'Clerk JWT used by the Worker for Digit GraphQL (poll writeback and scheduled push). Digit staff generate this token and place it in the organization’s app secrets. Do not create a da_ API token — those cannot update shipments. Saved as a Digit app secret, so its value is write-only.',
     },
   ];
 
@@ -82,27 +63,8 @@ async function setupItems({ env, db }) {
     description:
       'Optional. When set with SHIPSTATION_API_KEY, connect uses ShipStation V1. Disconnect and reconnect after adding or removing this secret.',
   };
-  const webhookTokenItem = {
-    key: 'SHIPSTATION_WEBHOOK_TOKEN',
-    kind: 'secret',
-    required: v1NeedsToken,
-    present: Boolean(webhookToken.value),
-    valid: !v1NeedsToken || Boolean(webhookToken.value),
-    source: webhookToken.source,
-    issue:
-      v1NeedsToken && !webhookToken.value
-        ? 'V1 webhooks have no signature — add an unguessable SHIPSTATION_WEBHOOK_TOKEN.'
-        : null,
-    enables: 'Inbound V1 webhook verification (token query param on PUBLIC_WEBHOOK_URL).',
-    description:
-      'Required for V1 when PUBLIC_WEBHOOK_URL is set. Appended as ?token=… on registered webhook URLs. Not used for V2 RSA verification.',
-  };
 
-  // Required first so Setup "N of M" matches checklist numbering.
-  if (v1NeedsToken) {
-    return [...required, webhookTokenItem, secretItem];
-  }
-  return [...required, secretItem, webhookTokenItem];
+  return [...required, secretItem];
 }
 
 function setupPayload({ db, items, channels, apiMode }) {
@@ -113,11 +75,9 @@ function setupPayload({ db, items, channels, apiMode }) {
   return {
     ready,
     usable: Boolean(db),
-    apiTokenPresent: present('API_TOKEN_DIGIT'),
-    webhookUrlPresent: present('PUBLIC_WEBHOOK_URL'),
+    apiTokenPresent: present('JWT_TOKEN'),
     shipStationKeyPresent: present('SHIPSTATION_API_KEY'),
     shipStationSecretPresent: present('SHIPSTATION_API_SECRET'),
-    shipStationWebhookTokenPresent: present('SHIPSTATION_WEBHOOK_TOKEN'),
     shipStationApiMode: apiMode,
     anyChannelConfigured,
     items,

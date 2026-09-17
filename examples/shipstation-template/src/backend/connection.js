@@ -9,55 +9,21 @@
 import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-common';
 import { err, ok, requireEnv } from '@digit/lib-backend';
 
-import { decryptSecret } from './crypto.js';
-import { FULFILLMENT_METHODS, PUSH_WHENS, RATE_STRATEGIES, SYNC_MODES } from './eligibility.js';
+import { FULFILLMENT_METHODS, normalizeFulfillmentMethod } from './eligibility.js';
 import { appendActivity } from './activity.js';
+import { loadShipStationApiKey, resolveShipStationCredentials } from './runtimeConfig.js';
 import {
-  ensureEncryptionKeyBytes,
-  loadPublicWebhookUrl,
-  loadShipStationApiKey,
-  loadShipStationWebhookToken,
-  resolveShipStationCredentials,
-} from './runtimeConfig.js';
-import {
-  createWebhook,
-  deleteWebhook,
   listCarrierServices,
   listCarriers,
 } from './shipstation.js';
 import { liveCredentials, publicConnection, loadOrgSettings } from './sync.js';
 import { loadCarrierMapPayload, saveManualCarrierMaps } from './matchDigitCarrier.js';
 
-const WEBHOOK_EVENTS_V2 = [
-  'label_created_v2',
-  'track',
-  'fulfillment_shipped_v2',
-  'shipment_created_v2',
-  'sales_orders_imported',
-];
-
-const WEBHOOK_EVENTS_V1 = ['SHIP_NOTIFY', 'ORDER_NOTIFY', 'FULFILLMENT_SHIPPED'];
-
-async function encryptionKeyBytes({ env, db }) {
-  return ensureEncryptionKeyBytes({ env, db });
-}
-
 async function liveConnection({ db, organizationId }) {
   return db
     .prepare(
       `SELECT id, organization_id, api_version, created_at, updated_at
        FROM shipstation_connection
-       WHERE organization_id = ? AND deleted = 0
-       LIMIT 1`,
-    )
-    .bind(organizationId)
-    .first();
-}
-
-async function liveConnectionWithSecret({ db, organizationId }) {
-  return db
-    .prepare(
-      `SELECT id, api_key_encrypted, api_version FROM shipstation_connection
        WHERE organization_id = ? AND deleted = 0
        LIMIT 1`,
     )
@@ -89,12 +55,6 @@ function normalizeServiceList(data) {
   if (Array.isArray(data)) return data;
   if (Array.isArray(data?.services)) return data.services;
   return [];
-}
-
-function appendWebhookToken(baseUrl, token) {
-  const url = new URL(baseUrl);
-  url.searchParams.set('token', token);
-  return url.toString();
 }
 
 async function syncCarriers({ db, connectionId, credentials, carriers }) {
@@ -149,71 +109,6 @@ async function syncCarriers({ db, connectionId, credentials, carriers }) {
         .bind(connectionId, carrierRowId, code, serviceName)
         .run();
     }
-  }
-}
-
-async function registerWebhooks({ db, env, connectionId, credentials }) {
-  const url = await loadPublicWebhookUrl({ env, db });
-  if (!url) return;
-
-  let targetUrl = url;
-  const events =
-    credentials.apiVersion === 'v1' ? WEBHOOK_EVENTS_V1 : WEBHOOK_EVENTS_V2;
-
-  if (credentials.apiVersion === 'v1') {
-    const token = await loadShipStationWebhookToken({ env, db });
-    if (!token) {
-      return {
-        ok: false,
-        code: AppErrorCode.MISSING_CONFIG,
-        message:
-          'V1 webhooks require SHIPSTATION_WEBHOOK_TOKEN (appended as ?token= on the public URL). Add it in Digit app secrets, then reconnect.',
-        status: 503,
-      };
-    }
-    targetUrl = appendWebhookToken(url, token);
-  }
-
-  for (const event of events) {
-    const created = await createWebhook({
-      credentials,
-      name: `Digit ${event}`,
-      event,
-      url: targetUrl,
-    });
-    if (!created.ok || !created.data) continue;
-    const webhookId =
-      created.data.webhook_id ??
-      created.data.webhookId ??
-      created.data.id;
-    if (webhookId == null) continue;
-    await db
-      .prepare(
-        `INSERT INTO shipstation_webhook
-           (connection_id, shipstation_webhook_id, event, deleted)
-         VALUES (?, ?, ?, 0)`,
-      )
-      .bind(connectionId, String(webhookId), event)
-      .run();
-  }
-  return { ok: true };
-}
-
-async function deregisterWebhooks({ db, connectionId, credentials }) {
-  const { results } = await db
-    .prepare(
-      `SELECT id, shipstation_webhook_id FROM shipstation_webhook
-       WHERE connection_id = ? AND deleted = 0`,
-    )
-    .bind(connectionId)
-    .all();
-
-  for (const row of results ?? []) {
-    await deleteWebhook({ credentials, webhookId: row.shipstation_webhook_id });
-    await db
-      .prepare(`UPDATE shipstation_webhook SET deleted = 1 WHERE id = ?`)
-      .bind(row.id)
-      .run();
   }
 }
 
@@ -303,12 +198,9 @@ async function retireConnectionLocal({ db, connectionId }) {
 }
 
 /**
- * Soft-delete a live connection (and optionally deregister remote webhooks).
+ * Soft-delete a live connection.
  */
-async function retireConnection({ db, connectionId, credentials }) {
-  if (credentials) {
-    await deregisterWebhooks({ db, connectionId, credentials });
-  }
+async function retireConnection({ db, connectionId }) {
   await retireConnectionLocal({ db, connectionId });
 }
 
@@ -393,31 +285,13 @@ export async function handleConnection({ request, env, path, method }) {
       });
     }
 
-    const webhookUrl = await loadPublicWebhookUrl({ env, db });
-    if (credentials.apiVersion === 'v1' && webhookUrl) {
-      const token = await loadShipStationWebhookToken({ env, db });
-      if (!token) {
-        return err({
-          code: AppErrorCode.MISSING_CONFIG,
-          message:
-            'V1 mode needs SHIPSTATION_WEBHOOK_TOKEN when PUBLIC_WEBHOOK_URL is set (V1 webhooks have no signature). Add the token in Digit app secrets, then connect.',
-          status: 503,
-        });
-      }
-    }
-
-    const existing = await liveConnectionWithSecret({ db, organizationId });
+    const existing = await liveConnection({ db, organizationId });
     if (existing) {
       // Stale row after secrets were removed/restored, or UI showed Connect while still linked.
       // Retire the old connection so Connect can succeed without a separate Disconnect click.
-      let retireCreds = credentials;
-      if (existing.api_version && credentials.apiVersion !== existing.api_version) {
-        retireCreds = null;
-      }
       await retireConnection({
         db,
         connectionId: existing.id,
-        credentials: retireCreds,
       });
       await appendActivity({
         db,
@@ -465,19 +339,6 @@ export async function handleConnection({ request, env, path, method }) {
       credentials,
       carriers: normalizeCarrierList(listed.data),
     });
-    const registered = await registerWebhooks({
-      db,
-      env,
-      connectionId: inserted.id,
-      credentials,
-    });
-    if (registered && registered.ok === false) {
-      return err({
-        code: registered.code,
-        message: registered.message,
-        status: registered.status,
-      });
-    }
 
     const count = await carrierCount({ db, connectionId: inserted.id });
     const versionLabel = credentials.apiVersion === 'v1' ? 'V1' : 'V2';
@@ -487,7 +348,7 @@ export async function handleConnection({ request, env, path, method }) {
       actor: 'user',
       action: 'connect',
       status: 'success',
-      message: `Connected ShipStation ${versionLabel} and synced ${count} carrier(s). Push from the queue to purchase a label.`,
+      message: `Connected ShipStation ${versionLabel} and synced ${count} carrier(s). Push from the queue, then buy labels in ShipStation.`,
       detail: { carrierCount: count, apiVersion: credentials.apiVersion },
     });
     return ok({
@@ -518,16 +379,8 @@ export async function handleConnection({ request, env, path, method }) {
 
     let defaultFulfillmentMethod = current.defaultFulfillmentMethod;
     if (body.defaultFulfillmentMethod !== undefined && body.defaultFulfillmentMethod !== null) {
-      defaultFulfillmentMethod = String(body.defaultFulfillmentMethod);
+      defaultFulfillmentMethod = normalizeFulfillmentMethod(String(body.defaultFulfillmentMethod));
     }
-    const syncMode = body.syncMode === undefined ? current.syncMode : body.syncMode;
-    const pushWhen = body.pushWhen === undefined ? current.pushWhen : body.pushWhen;
-    const laneTagId =
-      body.laneTagId === undefined
-        ? current.laneTagId
-        : body.laneTagId === null || body.laneTagId === ''
-          ? null
-          : String(body.laneTagId).trim();
 
     let defaultWeightOz = current.defaultWeightOz;
     if (body.defaultWeightOz !== undefined) {
@@ -542,93 +395,26 @@ export async function handleConnection({ request, env, path, method }) {
       defaultWeightOz = n;
     }
 
-    const parseDim = (key, currentValue) => {
-      if (body[key] === undefined) return { value: currentValue };
-      if (body[key] === null || body[key] === '') return { value: null };
-      const n = Number(body[key]);
-      if (!Number.isFinite(n) || n <= 0) {
-        return {
-          error: `${key} must be empty or a number greater than 0.`,
-        };
-      }
-      return { value: n };
-    };
-    const lengthIn = parseDim('defaultLengthIn', current.defaultLengthIn);
-    const widthIn = parseDim('defaultWidthIn', current.defaultWidthIn);
-    const heightIn = parseDim('defaultHeightIn', current.defaultHeightIn);
-    if (lengthIn.error || widthIn.error || heightIn.error) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: lengthIn.error || widthIn.error || heightIn.error,
-        status: 400,
-      });
-    }
-
-    let rateStrategy = current.rateStrategy;
-    if (body.rateStrategy !== undefined && body.rateStrategy !== null) {
-      rateStrategy = String(body.rateStrategy);
-    }
-
     if (!FULFILLMENT_METHODS.has(defaultFulfillmentMethod)) {
       return err({
         code: AppErrorCode.VALIDATION_ERROR,
-        message: 'defaultFulfillmentMethod must be unspecified, shipstation, or manual.',
+        message: 'defaultFulfillmentMethod must be scheduled or manual.',
         status: 400,
       });
     }
-    if (!SYNC_MODES.has(syncMode)) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'syncMode must be digit_to_ss or ss_to_digit.',
-        status: 400,
-      });
-    }
-    if (!PUSH_WHENS.has(pushWhen)) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'pushWhen must be fully_packed or inventory_available.',
-        status: 400,
-      });
-    }
-    if (!RATE_STRATEGIES.has(rateStrategy)) {
-      return err({
-        code: AppErrorCode.VALIDATION_ERROR,
-        message: 'rateStrategy must be cheapest or fastest.',
-        status: 400,
-      });
-    }
-
     await db
       .prepare(
         `INSERT INTO org_settings (
            organization_id, default_fulfillment_method, sync_mode, push_when, lane_tag_id,
            default_weight_oz, default_length_in, default_width_in, default_height_in, rate_strategy
          )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, 'digit_to_ss', 'fully_packed', NULL, ?, NULL, NULL, NULL, 'cheapest')
          ON CONFLICT(organization_id) DO UPDATE SET
            default_fulfillment_method = excluded.default_fulfillment_method,
-           sync_mode = excluded.sync_mode,
-           push_when = excluded.push_when,
-           lane_tag_id = excluded.lane_tag_id,
            default_weight_oz = excluded.default_weight_oz,
-           default_length_in = excluded.default_length_in,
-           default_width_in = excluded.default_width_in,
-           default_height_in = excluded.default_height_in,
-           rate_strategy = excluded.rate_strategy,
            updated_at = datetime('now')`,
       )
-      .bind(
-        organizationId,
-        defaultFulfillmentMethod,
-        syncMode,
-        pushWhen,
-        laneTagId,
-        defaultWeightOz,
-        lengthIn.value,
-        widthIn.value,
-        heightIn.value,
-        rateStrategy,
-      )
+      .bind(organizationId, defaultFulfillmentMethod, defaultWeightOz)
       .run();
 
     if (Array.isArray(body.mappings)) {
@@ -648,7 +434,7 @@ export async function handleConnection({ request, env, path, method }) {
       actor: 'user',
       action: 'settings',
       status: 'success',
-      message: `Saved settings (sync ${syncMode}, push when ${pushWhen}, fulfillment ${defaultFulfillmentMethod}, ${rateStrategy} rate).`,
+      message: `Saved settings (push ${defaultFulfillmentMethod}, default weight ${defaultWeightOz} oz).`,
     });
     const carrierPayload = await loadCarrierMapPayload({
       env,
@@ -672,7 +458,7 @@ export async function handleConnection({ request, env, path, method }) {
       return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
     }
     const { organizationId } = parsed.value;
-    const row = await liveConnectionWithSecret({ db, organizationId });
+    const row = await liveConnection({ db, organizationId });
     if (!row) {
       return err({
         code: AppErrorCode.VALIDATION_ERROR,
@@ -681,35 +467,7 @@ export async function handleConnection({ request, env, path, method }) {
       });
     }
 
-    let credentials = await resolveShipStationCredentials({ env, db });
-    if (!credentials && row.api_key_encrypted) {
-      try {
-        const apiKey = await decryptSecret({
-          stored: row.api_key_encrypted,
-          keyBytes: await encryptionKeyBytes({ env, db }),
-        });
-        if (apiKey) {
-          credentials = { apiVersion: 'v2', apiKey };
-        }
-      } catch {
-        credentials = null;
-      }
-    }
-    if (credentials && row.api_version && credentials.apiVersion !== row.api_version) {
-      // Prefer stored connection version when secrets disagree mid-disconnect.
-      credentials = {
-        ...credentials,
-        apiVersion: row.api_version === 'v1' ? 'v1' : 'v2',
-      };
-      if (credentials.apiVersion === 'v1' && !credentials.apiSecret) {
-        credentials = null;
-      }
-    }
-
-    if (credentials) {
-      await deregisterWebhooks({ db, connectionId: row.id, credentials });
-    }
-    await retireConnectionLocal({ db, connectionId: row.id });
+    await retireConnection({ db, connectionId: row.id });
 
     await appendActivity({
       db,

@@ -46,10 +46,23 @@ function formatWhen(createdAt: string) {
   return date.toLocaleString();
 }
 
+/** Detail carries the upstream error code, HTTP status, and request id. Show it, don't hide it. */
+function detailText(detail: unknown): string | null {
+  if (detail == null) return null;
+  if (typeof detail === 'string') return detail.trim() || null;
+  try {
+    const text = JSON.stringify(detail);
+    return text && text !== '{}' && text !== 'null' ? text : null;
+  } catch {
+    return null;
+  }
+}
+
 function copyText(event: ActivityEvent) {
   const lines = [
     `${formatWhen(event.createdAt)} ${event.actor} ${event.action} ${event.status}`,
     event.message,
+    detailText(event.detail),
     event.digitOrderId ? `Digit order: ${event.digitOrderId}` : null,
     event.ssShipmentId ? `ShipStation shipment: ${event.ssShipmentId}` : null,
     event.channelId ? `Channel: ${event.channelId}` : null,
@@ -75,7 +88,7 @@ export default function ActivityLog({
       <SectionHeader
         overline="Activity"
         title="Recent events"
-        description="Pushes, settings changes, webhooks, and scheduled jobs. Copy a row to share with support."
+        description="Pushes, settings changes, and scheduled jobs. Copy a row to share with support."
       />
       {query.error && (
         <AppErrorAlert error={query.error} onRetry={() => void query.refetch()} />
@@ -127,7 +140,25 @@ export default function ActivityLog({
                   {formatWhen(event.createdAt)} · {event.actor} · {event.action.replace(/_/g, ' ')}
                 </Typography>
               </Stack>
-              <Typography variant="body2">{event.message}</Typography>
+              <Typography
+                variant="body2"
+                sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+              >
+                {event.message}
+              </Typography>
+              {detailText(event.detail) ? (
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: statusColor(event.status) === 'error' ? 'error.main' : 'text.secondary',
+                    ...monoSx,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {detailText(event.detail)}
+                </Typography>
+              ) : null}
               {event.digitOrderId || event.ssShipmentId || event.channelId || event.externalOrderId ? (
                 <Typography variant="caption" sx={{ color: 'text.secondary', ...monoSx }}>
                   {[

@@ -3,6 +3,8 @@
  * used by sync writeback and inbound import.
  */
 
+import { trackingStatusFromSsRecord } from './digitShippingStatus.js';
+
 /**
  * @returns {{
  *   ssShipmentId: string | null,
@@ -11,6 +13,7 @@
  *   trackingNumber: string | null,
  *   carrierCode: string | null,
  *   serviceCode: string | null,
+ *   trackingStatus: string | null,
  *   shipDate: string | null,
  *   costAmount: number | null,
  *   costCurrency: string | null,
@@ -42,6 +45,7 @@ export function normalizeSsRecord(record) {
       externalId: record.orderKey ? String(record.orderKey) : null,
       labelId: null,
       trackingNumber: tracking ? String(tracking) : null,
+      trackingStatus: trackingStatusFromSsRecord(record),
       carrierCode: record.carrierCode || null,
       serviceCode: record.serviceCode || null,
       shipDate: shipDate ? String(shipDate) : null,
@@ -93,6 +97,7 @@ export function normalizeSsRecord(record) {
           ? String(record.labelId)
           : null,
     trackingNumber: tracking ? String(tracking) : null,
+    trackingStatus: trackingStatusFromSsRecord(record),
     carrierCode:
       record.carrier_code ||
       record.carrierCode ||
@@ -130,6 +135,7 @@ function emptyNormalized(raw) {
     externalId: null,
     labelId: null,
     trackingNumber: null,
+    trackingStatus: null,
     carrierCode: null,
     serviceCode: null,
     shipDate: null,

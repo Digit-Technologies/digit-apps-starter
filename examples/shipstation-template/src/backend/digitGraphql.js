@@ -1,12 +1,13 @@
 /**
- * Worker → Digit GraphQL using a service API token (webhooks have no iframe session).
- * Never log the token. Never call this from the frontend.
+ * Worker → Digit GraphQL using JWT_TOKEN (a Clerk user JWT). Digit staff generate this
+ * token and place it in the organization's app secrets. Webhooks/schedules have no
+ * iframe session. Never log the token. Never call this from the frontend.
  */
 
 import { AppErrorCode } from '@digit/lib-common';
 import { HandlerError } from '@digit/lib-backend';
 
-import { loadApiTokenDigit, shipstationDb } from './runtimeConfig.js';
+import { loadJwtToken, shipstationDb } from './runtimeConfig.js';
 
 const DEFAULT_API_URL_DIGIT = 'https://api.digit-software.com/graphql';
 
@@ -34,12 +35,12 @@ function retryAfterMs(response, attempt) {
  */
 export async function digitGraphql({ env, query, variables }) {
   const db = shipstationDb({ env });
-  const token = await loadApiTokenDigit({ env, db });
+  const token = await loadJwtToken({ env, db });
   if (!token) {
     throw new HandlerError({
       code: AppErrorCode.MISSING_CONFIG,
       message:
-        'Add the API_TOKEN_DIGIT app secret in Digit so this app can write tracking back from ShipStation.',
+        'Add the JWT_TOKEN app secret in Digit so this app can write tracking back from ShipStation. Digit staff generate this token and place it on the account.',
       status: 503,
     });
   }
@@ -75,7 +76,7 @@ export async function digitGraphql({ env, query, variables }) {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
       message:
-        'The Digit API token was rejected. Create a token in Digit → Settings → API Tokens with the same permissions as this app’s manifest, then set it as the API_TOKEN_DIGIT app secret.',
+        'The Digit JWT was rejected. Ask Digit staff to generate JWT_TOKEN and place it in this organization’s app secrets.',
       status: 400,
     };
   }

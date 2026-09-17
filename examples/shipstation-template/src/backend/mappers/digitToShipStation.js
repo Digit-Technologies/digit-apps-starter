@@ -3,6 +3,13 @@
  * Override skuForLine in a customer clone for branded SKUs (CS-04).
  */
 
+import {
+  packageFromOrgSettings,
+  packagesFromDigitShipment,
+} from './packageMapping.js';
+
+export { packageFromOrgSettings } from './packageMapping.js';
+
 export function skuForLine(line) {
   return String(line?.customerSku || line?.item?.sku || '').trim();
 }
@@ -48,42 +55,27 @@ function billToNote({ billingAddress, customerName }) {
 }
 
 export function packedLinesFromShipment(shipment) {
-  const lines = [];
+  const linesById = new Map();
   for (const container of shipment?.packContainers ?? []) {
     for (const packed of container.packedItems ?? []) {
       const orderItem = packed?.pickedItem?.orderItem;
       if (!orderItem?.item) continue;
-      lines.push({
+      const id = String(orderItem.id ?? '');
+      const quantity = Number(packed.quantity ?? orderItem.quantity);
+      const existing = linesById.get(id);
+      if (existing) {
+        existing.quantity += Number.isFinite(quantity) ? quantity : 1;
+        continue;
+      }
+      linesById.set(id, {
         id: orderItem.id,
-        quantity: packed.quantity ?? orderItem.quantity,
+        quantity: Number.isFinite(quantity) ? quantity : 1,
         customerSku: orderItem.customerSku,
         item: orderItem.item,
       });
     }
   }
-  return lines;
-}
-
-/**
- * V2 package for POST /v2/shipments and /v2/rates.
- * Weight unit is `ounce` (V2). Optional inches when all three dims are set.
- */
-export function packageFromOrgSettings(orgSettings) {
-  const weightOz = Number(orgSettings?.defaultWeightOz);
-  const pkg = {
-    package_code: 'package',
-    weight: {
-      value: Number.isFinite(weightOz) && weightOz > 0 ? weightOz : 16,
-      unit: 'ounce',
-    },
-  };
-  const length = Number(orgSettings?.defaultLengthIn);
-  const width = Number(orgSettings?.defaultWidthIn);
-  const height = Number(orgSettings?.defaultHeightIn);
-  if (length > 0 && width > 0 && height > 0) {
-    pkg.dimensions = { length, width, height, unit: 'inch' };
-  }
-  return pkg;
+  return [...linesById.values()];
 }
 
 /** V1 weight object (`units: ounces`). */
@@ -131,7 +123,7 @@ export function digitShipmentToShipment({ shipment, shipFrom, orgSettings = null
     }),
     ship_from: shipFrom,
     items,
-    packages: [packageFromOrgSettings(orgSettings)],
+    packages: packagesFromDigitShipment(shipment, orgSettings),
     internal_notes: [order?.notes, shipment?.notes, note].filter(Boolean).join('\n').slice(0, 1000) || undefined,
   };
 }

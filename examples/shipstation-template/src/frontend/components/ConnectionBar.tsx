@@ -4,8 +4,10 @@ import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Stack from '@mui/material/Stack';
+import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
@@ -28,8 +30,10 @@ export type ConnectionBarProps = {
   mutating: boolean;
   onConnect: () => void;
   onOpenSettings: () => void;
+  onOpenCarrierSettings: () => void;
   onOpenDisconnect: () => void;
   onOpenSetupCapabilities: () => void;
+  unmatchedCarrierCount?: number;
 };
 
 function connectedLabel(apiVersion?: 'v1' | 'v2' | string | null) {
@@ -53,8 +57,10 @@ export default function ConnectionBar({
   mutating,
   onConnect,
   onOpenSettings,
+  onOpenCarrierSettings,
   onOpenDisconnect,
   onOpenSetupCapabilities,
+  unmatchedCarrierCount = 0,
 }: ConnectionBarProps) {
   const setupIncomplete =
     setupProgress != null && setupProgress.present < setupProgress.total;
@@ -144,9 +150,32 @@ export default function ConnectionBar({
                 size="small"
                 sx={motionTransition('background-color, box-shadow', '0.3s')}
               />
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                {carrierCount} carrier{carrierCount === 1 ? '' : 's'}
-              </Typography>
+              <Tooltip
+                title={
+                  unmatchedCarrierCount > 0
+                    ? `${unmatchedCarrierCount} ShipStation service${
+                        unmatchedCarrierCount === 1 ? '' : 's'
+                      } need mapping to a Digit shipping carrier`
+                    : 'Carrier mapping'
+                }
+              >
+                <Chip
+                  size="small"
+                  color={unmatchedCarrierCount > 0 ? 'error' : 'default'}
+                  variant="outlined"
+                  icon={unmatchedCarrierCount > 0 ? <ErrorOutlineIcon /> : undefined}
+                  label={`${carrierCount} carrier${carrierCount === 1 ? '' : 's'}`}
+                  onClick={onOpenCarrierSettings}
+                  aria-label={
+                    unmatchedCarrierCount > 0
+                      ? `Carrier mapping, ${unmatchedCarrierCount} service${
+                          unmatchedCarrierCount === 1 ? '' : 's'
+                        } need mapping`
+                      : 'Carrier mapping'
+                  }
+                  sx={{ cursor: 'pointer' }}
+                />
+              </Tooltip>
               <Button
                 variant="outlined"
                 size="small"
@@ -202,9 +231,8 @@ export function ConnectPanel({
     <Stack spacing={2}>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
         Connecting validates your credentials against ShipStation — API key alone is V2; key plus
-        SHIPSTATION_API_SECRET is V1 — then syncs carriers and registers webhooks. If a previous
-        connection is still on file, Connect replaces it. Switching API versions the same way.
-        V1 with a public webhook URL also needs SHIPSTATION_WEBHOOK_TOKEN.
+        SHIPSTATION_API_SECRET is V1 — then syncs carriers. If a previous connection is still on
+        file, Connect replaces it. Switching API versions the same way.
       </Typography>
       <Button variant="contained" onClick={onConnect} disabled={mutating} sx={{ alignSelf: 'flex-start' }}>
         {mutating ? 'Connecting…' : 'Connect ShipStation'}

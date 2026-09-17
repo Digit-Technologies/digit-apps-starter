@@ -1,11 +1,10 @@
 ---
 name: extend-shipstation-app
 description: >-
-  Extend this Digit ShipStation template (encrypted V1/V2 connection, D1, inbound
-  /webhooks/shipstation, Worker ssFetch). Use when editing this template
-  directory or an app copied from it with new-app --from shipstation-template, or
-  when the user mentions ShipStation, labels, rates, tracking, or carriers while
-  working on this app.
+  Extend this Digit ShipStation template (encrypted V1/V2 connection, D1,
+  Worker ssFetch). Use when editing this template directory or an app copied
+  from it with new-app --from shipstation-template, or when the user mentions
+  ShipStation, labels, rates, tracking, or carriers while working on this app.
 ---
 
 # Extend ShipStation app
@@ -43,8 +42,8 @@ Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
   shared template, so nothing may leak between organizations.
   - `SHIPSTATION_API_KEY` alone → **V2**
   - key + `SHIPSTATION_API_SECRET` → **V1**
-  - V1 + `PUBLIC_WEBHOOK_URL` requires `SHIPSTATION_WEBHOOK_TOKEN`
-  - Also `API_TOKEN_DIGIT`, `PUBLIC_WEBHOOK_URL`
+  - Also `JWT_TOKEN` (Clerk JWT; **Digit staff generate this token and place it in the
+    organization’s app secrets**). Do not use a Settings → API Tokens `da_` key.
 - Never log or return `apiKey`, `apiSecret`, `api_key`, or `api_key_encrypted`. Do not
   `SELECT` the encrypted key into JSON responses.
 - Operator mutations must show **outcome + meaning** (MUI `Alert`, not `window.alert`).
@@ -52,17 +51,10 @@ Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
   `skipped: true` as a silent success; never clear selection or close dialogs until the
   result is shown. Persist troubleshooting events with `appendActivity`.
   Details: [reference/error-handling.md](reference/error-handling.md).
-- Inbound webhooks are **public**. Keep using the declared path `shipstation` (or add
-  another slug in `manifest.json`, max 10). Verify over **raw** body bytes before acting
-  (V2 RSA-SHA256 headers, else V1 query token); return 2xx within ~10s; enqueue heavier
-  work with `digitJobs`. Do not log webhook bodies (addresses / tracking). Details:
-  [reference/webhooks.md](reference/webhooks.md)
-  and create-digit-app [webhooks](../../../../../.agents/skills/create-digit-app/reference/webhooks.md) /
-  [jobs](../../../../../.agents/skills/create-digit-app/reference/jobs-and-schedules.md).
-- Outbound registration: connect POSTs version-appropriate events when
-  `PUBLIC_WEBHOOK_URL` is set (V2: `label_created_v2`, `track`, `fulfillment_shipped_v2`,
-  `shipment_created_v2`, `sales_orders_imported`; V1: `SHIP_NOTIFY`, `ORDER_NOTIFY`,
-  `FULFILLMENT_SHIPPED`). Disconnect must `deleteWebhook`.
+- This app has **no inbound webhooks**. Tracking writeback is the 5-minute
+  poll plus `POST /sync/poll`. Channel adapters are outbound-only (`afterDigitShipped`).
+  Details: [reference/webhooks.md](reference/webhooks.md).
+- Do not POST subscribe or DELETE ShipStation webhooks on connect/disconnect.
 - Org-admin in the UI (`UPDATE_ORGANIZATION`) is **not** Worker auth. Anyone who can
   open the published app can hit `/proxy/backend`.
 - Sort / filter / page Digit lists via GraphQL args. Paginate tables.
@@ -89,20 +81,20 @@ ShipStation extend:
 - [ ] create-digit-app stack / iframe / pack rules
 - [ ] Digit MCP connected; schema + appPermissions for any new Digit call
 - [ ] ShipStation docs MCP connected; lookup before new ssFetch paths (V1 or V2)
-- [ ] `API_TOKEN_DIGIT` / `PUBLIC_WEBHOOK_URL` / ShipStation secrets are managed only
-      in Digit's built-in App Secrets UI; the app never accepts, returns, or logs them
+- [ ] `JWT_TOKEN` / ShipStation API key (and V1 secret) are managed only
+      in Digit's built-in App Secrets UI; Digit staff generate `JWT_TOKEN` and
+      place it on the account. The app never accepts, returns, or logs them
 - [ ] New D1 shape = new migration file, not an edit of 0001_init.sql
-- [ ] Digit shipment carrier writeback: `matchDigitCarrier.js` + Settings maps; never auto-create Digit options
-- [ ] Webhook: declared path, dual verify (RSA or V1 token), 200 fast, jobs for slow work
-- [ ] New sync/webhook/poll paths: `appendActivity` (no secrets/PII); UI Alert + activity refetch
+- [ ] Digit shipment carrier writeback: `matchDigitCarrier.js` + carrier modal maps (service then carrier default); never auto-create Digit options
+- [ ] Tracking writeback: poll unlabeled maps (`GET /v2/labels` or V1 `GET /orders/{id}`)
+- [ ] New sync/poll paths: `appendActivity` (no secrets/PII); UI Alert + activity refetch
 - [ ] `ssFetch` / `digitGraphql` errors include upstream messages (not HTTP-only)
 - [ ] SPEC.md prompts updated
 
 Channel extend (Shopify, WooCommerce, Faire, …):
-- [ ] Read reference/channels.md — Rutter vs direct; inbound vs outbound
+- [ ] Read reference/channels.md — Rutter vs direct outbound adapter
 - [ ] Adapter in channels/{platform}.js registered in registry.js
 - [ ] Secret key names in runtimeConfig.CHANNEL_SECRETS (Digit App Secrets UI only)
-- [ ] Inbound: manifest webhook path + verifyWebhook (raw bytes) + process-{channelId}-webhook job
 - [ ] Outbound: afterDigitShipped via platformFetch; channel_order_map when ids differ
 - [ ] appendActivity channelId + externalOrderId; FeatureStatus / GET /setup if new secrets
 - [ ] Vendor API paths from channel-api-map.md + official docs — never invent

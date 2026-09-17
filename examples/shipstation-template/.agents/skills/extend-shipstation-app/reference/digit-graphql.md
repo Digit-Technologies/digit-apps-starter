@@ -26,11 +26,14 @@ Typical starting queries (confirm on MCP; add whatever keys those fields require
   `shipments`, `shipment`, `orders`, `items`,
   `companies`, `generateSalesOrderPdf`, and Worker mutations for orders/shipments (`shippingCarrierFieldId`).
   Look up fields on `graphql-schema://…` before adding more.
-- Queue and outbound poll filter `shipments(shippingStatuses: [awaiting_carrier])`. Nested `order`
+- Queue filters `shipments(shippingStatuses: …)` using Digit statuses mapped from ShipStation
+  label `tracking_status`: `unknown` → `awaiting_pickup`; `in_transit` / `delivered` / `error`
+  → `shipped`. Default All is those plus `awaiting_carrier` and `awaiting_drop_off`.
+  Outbound poll still uses `SHIPMENT_LIST_QUERY` with `shippingStatuses: [awaiting_carrier]`. Nested `order`
   and packed items (`packContainers.packedItems.pickedItem.orderItem`) need `READ_ORDER`,
   `READ_PACK_CONTAINER`, `READ_PICKED_ITEM`, and `READ_ITEM`.
-- Inbound import reads `Item.defaultSalesPrice` only as a fallback when ShipStation omits
-  unit price; that field requires `READ_ITEM_COST_INFO`. It writes each `OrderItemInput.cost`
-  and may set `CreateOrderInput.shippingCarrierFieldId`. It does not read order cost fields,
-  so `READ_ORDER_COST_INFO` is not required.
-- `manifest.permissions` must cover every Digit field the iframe **and** `API_TOKEN_DIGIT` call.
+- Outbound package mapping reads `PackContainer.container`, `packageGrossWeight`, and
+  `packageLength` / `packageWidth` / `packageHeight`, including each measurement's
+  `uom { name symbol type }`. V2 maps every Digit pack container to one ShipStation
+  package; V1 accepts only one pack container per Digit shipment.
+- `manifest.permissions` must cover every Digit field the iframe **and** `JWT_TOKEN` call.

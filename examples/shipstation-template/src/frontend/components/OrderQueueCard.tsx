@@ -13,16 +13,24 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { motionFadeIn } from './motion';
 import QueueStatusDisplay from './QueueStatusDisplay';
 import {
+  digitShippingStatusLabel,
   ineligibilityReason,
   queuePushDisplay,
+  shipStationLabelStatusLabel,
   type OrgSettingsForEligibility,
   type ShipmentForEligibility,
 } from '../eligibility';
+import {
+  packageContainerLabel,
+  packageCountLabel,
+  type PackageContainer,
+} from '../packageContainers';
 
-type ShipmentNode = ShipmentForEligibility & {
+type ShipmentNode = Omit<ShipmentForEligibility, 'packContainers'> & {
   id: string;
   documentNumber?: string | null;
   shippingNumber?: string | null;
+  packContainers?: PackageContainer[] | null;
   order?: {
     id?: string | null;
     documentNumber?: string | null;
@@ -39,6 +47,7 @@ type MapRow = {
   pushStatus?: string | null;
   lastError?: string | null;
   trackingNumber?: string | null;
+  trackingStatus?: string | null;
   source?: string | null;
 };
 
@@ -85,6 +94,7 @@ export default function OrderQueueCard({
   shipment,
   map,
   orgSettings,
+  apiVersion = null,
   canPush,
   selected,
   onSelect,
@@ -97,6 +107,7 @@ export default function OrderQueueCard({
   shipment: ShipmentNode;
   map?: MapRow;
   orgSettings?: OrgSettingsForEligibility | null;
+  apiVersion?: string | null;
   canPush: boolean;
   selected: boolean;
   onSelect: (checked: boolean) => void;
@@ -107,8 +118,17 @@ export default function OrderQueueCard({
   onDownloadSlip: () => void;
 }) {
   const label = ticketLabel(shipment);
-  const blocked = ineligibilityReason({ shipment, orgSettings, mapRow: map ?? null });
-  const pushDisplay = queuePushDisplay({ blocked, mapRow: map ?? null });
+  const blocked = ineligibilityReason({
+    shipment,
+    orgSettings,
+    mapRow: map ?? null,
+    apiVersion,
+  });
+  const pushDisplay = queuePushDisplay({
+    blocked,
+    mapRow: map,
+    shippingStatus: shipment.shippingStatus,
+  });
   const hasLabel = Boolean(map?.hasLabel || map?.ssLabelId);
 
   return (
@@ -125,6 +145,7 @@ export default function OrderQueueCard({
             {canPush ? (
               <Checkbox
                 checked={selected}
+                disabled={Boolean(blocked)}
                 onChange={(event) => onSelect(event.target.checked)}
                 inputProps={{ 'aria-label': `Select shipment ${label}` }}
                 sx={{ mt: -0.5, ml: -0.5 }}
@@ -144,7 +165,7 @@ export default function OrderQueueCard({
             </Stack>
           </Stack>
           <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
-            <Tooltip title={hasLabel ? 'Download shipping label' : 'No shipping label yet. Push first.'}>
+            <Tooltip title={hasLabel ? 'Download shipping label' : 'No shipping label yet. Buy it in ShipStation, then Refresh.'}>
               <span>
                 <IconButton
                   size="small"
@@ -171,9 +192,50 @@ export default function OrderQueueCard({
           </Stack>
         </Stack>
 
-        <QueueStatusDisplay pushDisplay={pushDisplay} />
+        <Stack
+          spacing={0.25}
+          sx={{ px: 1.25, py: 1, borderRadius: 1, bgcolor: 'action.hover' }}
+        >
+          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+            {packageCountLabel(shipment.packContainers)}
+          </Typography>
+          {(shipment.packContainers ?? []).map((container, index) => (
+            <Typography
+              key={container.id || index}
+              variant="caption"
+              sx={{ color: 'text.secondary' }}
+            >
+              {packageContainerLabel(container, index)}
+            </Typography>
+          ))}
+        </Stack>
 
         <Stack spacing={0.5}>
+          <Stack direction="row" spacing={0.75} alignItems="center">
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Push status
+            </Typography>
+            <QueueStatusDisplay pushDisplay={pushDisplay} />
+          </Stack>
+          <Stack direction="row" spacing={0.5}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Digit status
+            </Typography>
+            <Typography variant="caption">
+              {digitShippingStatusLabel(shipment.shippingStatus)}
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={0.5}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Tracking status
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={shipStationLabelStatusLabel(map) === '—' ? { color: 'text.disabled' } : undefined}
+            >
+              {shipStationLabelStatusLabel(map)}
+            </Typography>
+          </Stack>
           <Stack direction="row" spacing={0.5} alignItems="center">
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               ShipStation ID

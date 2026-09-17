@@ -12,19 +12,17 @@ import { decryptSecret, generateEncryptionKeyB64, parseEncryptionKey } from './c
 
 export const CONFIG = {
   encryptionKey: 'ENCRYPTION_KEY',
-  apiTokenDigit: 'API_TOKEN_DIGIT',
-  publicWebhookUrl: 'PUBLIC_WEBHOOK_URL',
+  jwtToken: 'JWT_TOKEN',
   shipStationApiKey: 'SHIPSTATION_API_KEY',
   shipStationApiSecret: 'SHIPSTATION_API_SECRET',
-  shipStationWebhookToken: 'SHIPSTATION_WEBHOOK_TOKEN',
   faireApiKey: 'FAIRE_API_KEY',
 };
 
 /** App secret keys per channel adapter id. Never expose values in API responses. */
 export const CHANNEL_SECRETS = {
   faire: ['FAIRE_API_KEY'],
-  shopify: ['SHOPIFY_ACCESS_TOKEN', 'SHOPIFY_WEBHOOK_SECRET'],
-  woocommerce: ['WOOCOMMERCE_WEBHOOK_SECRET', 'WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'],
+  shopify: ['SHOPIFY_ACCESS_TOKEN'],
+  woocommerce: ['WOOCOMMERCE_CONSUMER_KEY', 'WOOCOMMERCE_CONSUMER_SECRET'],
 };
 
 export function shipstationDb({ env }) {
@@ -105,18 +103,11 @@ async function loadStored(args) {
 }
 
 /** Core setup secrets: Digit App Secrets only (no D1 ghost after removal). */
-const API_TOKEN_DIGIT_SOURCE = {
-  key: CONFIG.apiTokenDigit,
+const JWT_TOKEN_SOURCE = {
+  key: CONFIG.jwtToken,
   // Do not also read DIGIT_API_TOKEN — DIGIT_ is reserved for platform bindings.
-  envKeys: [CONFIG.apiTokenDigit],
+  envKeys: [CONFIG.jwtToken],
   encrypted: true,
-  dbFallback: false,
-};
-
-const PUBLIC_WEBHOOK_URL_SOURCE = {
-  key: CONFIG.publicWebhookUrl,
-  envKeys: [CONFIG.publicWebhookUrl],
-  encrypted: false,
   dbFallback: false,
 };
 
@@ -134,27 +125,12 @@ const SHIPSTATION_API_SECRET_SOURCE = {
   dbFallback: false,
 };
 
-const SHIPSTATION_WEBHOOK_TOKEN_SOURCE = {
-  key: CONFIG.shipStationWebhookToken,
-  envKeys: [CONFIG.shipStationWebhookToken],
-  encrypted: true,
-  dbFallback: false,
-};
-
-export async function loadApiTokenDigit({ env, db }) {
-  return loadStored({ env, db, ...API_TOKEN_DIGIT_SOURCE });
+export async function loadJwtToken({ env, db }) {
+  return loadStored({ env, db, ...JWT_TOKEN_SOURCE });
 }
 
-export async function readApiTokenDigit({ env, db }) {
-  return readStored({ env, db, ...API_TOKEN_DIGIT_SOURCE });
-}
-
-export async function loadPublicWebhookUrl({ env, db }) {
-  return loadStored({ env, db, ...PUBLIC_WEBHOOK_URL_SOURCE });
-}
-
-export async function readPublicWebhookUrl({ env, db }) {
-  return readStored({ env, db, ...PUBLIC_WEBHOOK_URL_SOURCE });
+export async function readJwtToken({ env, db }) {
+  return readStored({ env, db, ...JWT_TOKEN_SOURCE });
 }
 
 export async function loadShipStationApiKey({ env, db }) {
@@ -171,14 +147,6 @@ export async function loadShipStationApiSecret({ env, db }) {
 
 export async function readShipStationApiSecret({ env, db }) {
   return readStored({ env, db, ...SHIPSTATION_API_SECRET_SOURCE });
-}
-
-export async function loadShipStationWebhookToken({ env, db }) {
-  return loadStored({ env, db, ...SHIPSTATION_WEBHOOK_TOKEN_SOURCE });
-}
-
-export async function readShipStationWebhookToken({ env, db }) {
-  return readStored({ env, db, ...SHIPSTATION_WEBHOOK_TOKEN_SOURCE });
 }
 
 /**

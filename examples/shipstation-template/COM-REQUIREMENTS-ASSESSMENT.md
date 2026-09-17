@@ -30,8 +30,8 @@ When a sales order is eligible, the app pushes it to ShipStation with ship-to ad
 | --- | --- |
 | Ship-to, SKUs, quantities, order reference | ✅ Implemented |
 | Manual push | ✅ “Push selected” in fulfillment queue |
-| Automatic push on fulfillable | ⚠️ 5-minute scheduled poll, not real-time status change |
-| Fulfillable = inventory + production complete | ⚠️ Inventory gate yes; default also requires **fully packed** unless org setting is changed to “inventory available”; no explicit production-complete check |
+| Automatic push on fulfillable | ⚠️ 5-minute scheduled poll when fulfillment method is Scheduled; Manual push waits for Refresh |
+| Fulfillable = inventory + production complete | ⚠️ Requires packed items on an awaiting-carrier Digit shipment; no explicit production-complete check |
 
 ---
 
@@ -39,7 +39,7 @@ When a sales order is eligible, the app pushes it to ShipStation with ship-to ad
 
 **Verdict: Mostly met**
 
-When ShipStation creates a label, webhooks trigger writeback to Digit: tracking number, carrier (in shipment notes), ship date, and shipment status set to shipped.
+When ShipStation creates a label, the five-minute poll (and Refresh) writes tracking back to Digit: tracking number, carrier, ship date, and shipment status set to shipped.
 
 | Spec element | Status |
 | --- | --- |
@@ -129,12 +129,11 @@ Update Digit shipment
 
 | Setting | Default | Effect on COM-01 |
 | --- | --- | --- |
-| `push_when` | `fully_packed` | Push after packing complete |
-| `push_when` | `inventory_available` | Push when inventory can fill the order |
-| `sync_mode` | `digit_to_ss` | Outbound push enabled |
-| Scheduled poll | Every 300s | Automatic push for newly eligible orders |
+| `default_fulfillment_method` | `scheduled` | 5-minute poll pushes eligible awaiting-carrier shipments |
+| `default_fulfillment_method` | `manual` | Push only on Refresh |
+| Scheduled poll | Every 300s | Label writeback always; outbound push only when scheduled |
 
-**Required secrets:** `SHIPSTATION_API_KEY`, `API_TOKEN_DIGIT`, `PUBLIC_WEBHOOK_URL` (for real-time writeback).
+**Required secrets:** `SHIPSTATION_API_KEY`, `JWT_TOKEN`. Optional `SHIPSTATION_API_SECRET` for V1.
 
 ---
 

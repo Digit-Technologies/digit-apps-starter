@@ -2,7 +2,7 @@
  * ShipStation template Worker.
  *
  * D1 binding: SHIPSTATION_DB
- * Config: API_TOKEN_DIGIT, PUBLIC_WEBHOOK_URL, and ShipStation secrets are Digit App
+ * Config: JWT_TOKEN (staff-generated Clerk JWT) and ShipStation secrets are Digit App
  * Secrets (Worker `env` only). D1 `app_config` keeps ENCRYPTION_KEY for legacy decrypt.
  * Optional channel secrets: FAIRE_API_KEY, SHOPIFY_*, WOOCOMMERCE_* (see runtimeConfig.CHANNEL_SECRETS)
  * Digit GraphQL URL is always https://api.digit-software.com/graphql.
@@ -11,23 +11,15 @@
 import { AppErrorCode } from '@digit/lib-common';
 import { backendPath, createHandler, err } from '@digit/lib-backend';
 
-import { channelJobHandlers, channelWebhookHandlers } from './channels/index.js';
 import { handleChannels } from './handleChannels.js';
 import { handleConnection } from './connection.js';
 import { handleSetup } from './setup.js';
 import { handleSync } from './handleSync.js';
-import { pollSync, processSsWebhook } from './jobs.js';
-import { shipstationWebhook } from './webhooks.js';
+import { pollSync } from './jobs.js';
 
 export default createHandler({
   jobs: {
-    'process-ss-webhook': processSsWebhook,
     'poll-outbound-push': pollSync,
-    ...channelJobHandlers(),
-  },
-  webhooks: {
-    shipstation: shipstationWebhook,
-    ...channelWebhookHandlers(),
   },
   fetch: async ({ request, env }) => {
     const path = backendPath(request);

@@ -11,6 +11,11 @@ const ORGANIZATION_FIELDS = `
   addresses { ${ADDRESS_FIELDS} }
 `;
 
+const MEASUREMENT_FIELDS = `
+  value
+  uom { name symbol type }
+`;
+
 const SHIPMENT_NODE_FIELDS = `
   id
   documentNumber
@@ -23,6 +28,11 @@ const SHIPMENT_NODE_FIELDS = `
   shippingAddress { ${ADDRESS_FIELDS} }
   packContainers {
     id
+    container
+    packageLength { ${MEASUREMENT_FIELDS} }
+    packageWidth { ${MEASUREMENT_FIELDS} }
+    packageHeight { ${MEASUREMENT_FIELDS} }
+    packageGrossWeight { ${MEASUREMENT_FIELDS} }
     packedItems {
       id
       quantity

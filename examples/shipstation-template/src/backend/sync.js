@@ -26,6 +26,10 @@ import { ineligibilityReason, skipNextStep } from './eligibility.js';
 import { digitShipmentToShipment, orgShipFrom } from './mappers/digitToShipStation.js';
 import { digitShipmentToV1Order } from './mappers/digitToShipStationV1.js';
 import {
+  digitShippingStatusFromSs,
+  digitShippingStatusFromTrackingStatus,
+} from './mappers/digitShippingStatus.js';
+import {
   normalizeSsRecord,
   normalizedToImportShipment,
 } from './mappers/normalizeSsRecord.js';
@@ -36,16 +40,15 @@ import {
   ssShipToLocationInput,
 } from './mappers/shipStationToDigit.js';
 import { resolveShipStationCredentials } from './runtimeConfig.js';
-import { pdfBase64FromV2Label, purchaseLabelAfterCreate } from './labels.js';
+import { pdfBase64FromV2Label } from './labels.js';
 import { resolveDigitCarrier } from './matchDigitCarrier.js';
 import { bytesToBase64 } from './shipstationFetch.js';
 import {
   createShipments,
-  fetchResourceUrl,
   getLabel,
   getShipment,
   getShipmentByExternalId,
-  listShipments,
+  listLabels,
 } from './shipstation.js';
 
 export async function liveConnection({ db, organizationId }) {
@@ -64,7 +67,7 @@ export async function liveConnection({ db, organizationId }) {
  * Live ShipStation credentials for a connected org.
  * Secrets come from Digit app secrets only. Legacy `api_key_encrypted` on the
  * connection row is not used here — removing the Digit secret must clear
- * operable/connected UI (disconnect still reads ciphertext to deregister webhooks).
+ * operable/connected UI.
  *
  * @returns {Promise<null | {
  *   connectionId: number,
@@ -136,35 +139,35 @@ function reconnectMessage(secret) {
   return secret?.mismatch || 'Connect a ShipStation account first.';
 }
 
-export function normalizeOrgSettings(row, organizationId) {
+export function normalizeOrgSettings(row, organizationId, { includeLegacyDimensions = false } = {}) {
   const weight = Number(row?.default_weight_oz);
   const length = Number(row?.default_length_in);
   const width = Number(row?.default_width_in);
   const height = Number(row?.default_height_in);
   return {
     organizationId,
-    defaultFulfillmentMethod: row?.default_fulfillment_method ?? 'unspecified',
-    syncMode: row?.sync_mode ?? 'digit_to_ss',
-    pushWhen: row?.push_when ?? 'fully_packed',
-    laneTagId: row?.lane_tag_id || null,
+    defaultFulfillmentMethod: row?.default_fulfillment_method === 'manual' ? 'manual' : 'scheduled',
     defaultWeightOz: Number.isFinite(weight) && weight > 0 ? weight : 16,
-    defaultLengthIn: Number.isFinite(length) && length > 0 ? length : null,
-    defaultWidthIn: Number.isFinite(width) && width > 0 ? width : null,
-    defaultHeightIn: Number.isFinite(height) && height > 0 ? height : null,
-    rateStrategy: row?.rate_strategy === 'fastest' ? 'fastest' : 'cheapest',
+    ...(includeLegacyDimensions
+      ? {
+          defaultLengthIn: Number.isFinite(length) && length > 0 ? length : null,
+          defaultWidthIn: Number.isFinite(width) && width > 0 ? width : null,
+          defaultHeightIn: Number.isFinite(height) && height > 0 ? height : null,
+        }
+      : {}),
   };
 }
 
-export async function loadOrgSettings({ db, organizationId }) {
+export async function loadOrgSettings({ db, organizationId, includeLegacyDimensions = false }) {
   const row = await db
     .prepare(
-      `SELECT organization_id, default_fulfillment_method, sync_mode, push_when, lane_tag_id,
-              default_weight_oz, default_length_in, default_width_in, default_height_in, rate_strategy
+      `SELECT organization_id, default_fulfillment_method, default_weight_oz,
+              default_length_in, default_width_in, default_height_in
        FROM org_settings WHERE organization_id = ?`,
     )
     .bind(organizationId)
     .first();
-  return normalizeOrgSettings(row, organizationId);
+  return normalizeOrgSettings(row, organizationId, { includeLegacyDimensions });
 }
 
 export function publicMapRow(row) {
@@ -179,6 +182,7 @@ export function publicMapRow(row) {
     pushStatus: row.push_status,
     lastError: row.last_error,
     trackingNumber: row.tracking_number,
+    trackingStatus: row.tracking_status ?? null,
     carrierName: row.carrier_name,
     shipDate: row.ship_date,
     shipmentCostAmount: row.shipment_cost_amount,
@@ -192,7 +196,7 @@ export async function mapsForShipments({ db, connectionId, shipmentIds }) {
   const { results } = await db
     .prepare(
       `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id, source,
-              push_status, last_error, tracking_number, carrier_name, ship_date,
+              push_status, last_error, tracking_number, tracking_status, carrier_name, ship_date,
               shipment_cost_amount, shipment_cost_currency,
               CASE WHEN label_pdf_base64 IS NOT NULL AND length(label_pdf_base64) > 0 THEN 1 ELSE 0 END AS has_label_pdf
        FROM shipstation_order_map
@@ -209,7 +213,7 @@ export async function mapsForOrders({ db, connectionId, orderIds }) {
   const { results } = await db
     .prepare(
       `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id, source,
-              push_status, last_error, tracking_number, carrier_name, ship_date,
+              push_status, last_error, tracking_number, tracking_status, carrier_name, ship_date,
               shipment_cost_amount, shipment_cost_currency,
               CASE WHEN label_pdf_base64 IS NOT NULL AND length(label_pdf_base64) > 0 THEN 1 ELSE 0 END AS has_label_pdf
        FROM shipstation_order_map
@@ -250,9 +254,10 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, digit
       .prepare(
         `INSERT INTO shipstation_order_map
            (connection_id, organization_id, digit_order_id, ss_shipment_id, ss_label_id,
-            digit_shipment_id, source, push_status, last_error, tracking_number, carrier_name,
-            ship_date, shipment_cost_amount, shipment_cost_currency, label_pdf_base64)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            digit_shipment_id, source, push_status, last_error, tracking_number, tracking_status,
+            carrier_name, service_code, service_name, ship_date, shipment_cost_amount,
+            shipment_cost_currency, label_pdf_base64, channels_notified)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .bind(
         connectionId,
@@ -265,11 +270,15 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, digit
         fields.pushStatus ?? 'pending',
         fields.lastError ?? null,
         fields.trackingNumber ?? null,
+        fields.trackingStatus ?? null,
         fields.carrierName ?? null,
+        fields.serviceCode ?? null,
+        fields.serviceName ?? null,
         fields.shipDate ?? null,
         fields.shipmentCostAmount ?? null,
         fields.shipmentCostCurrency ?? null,
         fields.labelPdfBase64 ?? null,
+        fields.channelsNotified ?? 0,
       )
       .run();
     return;
@@ -285,11 +294,15 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, digit
          push_status = COALESCE(?, push_status),
          last_error = ?,
          tracking_number = COALESCE(?, tracking_number),
+         tracking_status = COALESCE(?, tracking_status),
          carrier_name = COALESCE(?, carrier_name),
+         service_code = COALESCE(?, service_code),
+         service_name = COALESCE(?, service_name),
          ship_date = COALESCE(?, ship_date),
          shipment_cost_amount = COALESCE(?, shipment_cost_amount),
          shipment_cost_currency = COALESCE(?, shipment_cost_currency),
          label_pdf_base64 = COALESCE(?, label_pdf_base64),
+         channels_notified = COALESCE(?, channels_notified),
          updated_at = datetime('now')
        WHERE id = ?`,
     )
@@ -301,11 +314,15 @@ async function upsertMap({ db, connectionId, organizationId, digitOrderId, digit
       fields.pushStatus ?? null,
       fields.lastError === undefined ? null : fields.lastError,
       fields.trackingNumber ?? null,
+      fields.trackingStatus ?? null,
       fields.carrierName ?? null,
+      fields.serviceCode ?? null,
+      fields.serviceName ?? null,
       fields.shipDate ?? null,
       fields.shipmentCostAmount ?? null,
       fields.shipmentCostCurrency ?? null,
       fields.labelPdfBase64 ?? null,
+      fields.channelsNotified ?? null,
       existing.id,
     )
     .run();
@@ -335,16 +352,6 @@ function recordsFromSsPayload(data) {
 
 function firstCreatedShipment(data) {
   return recordsFromSsPayload(data)[0] ?? null;
-}
-
-function isInboundImportEvent(event) {
-  const value = String(event || '').toLowerCase();
-  return (
-    value.includes('shipment_created') ||
-    value.includes('sales_orders_imported') ||
-    value.includes('order_notify') ||
-    value.includes('ship_notify')
-  );
 }
 
 export async function fetchDigitOrder({ env, orderId }) {
@@ -387,15 +394,11 @@ export async function fetchDigitShipment({ env, shipmentId }) {
   return { ok: true, data: { shipment, organization } };
 }
 
-function pushMeaning({ skipped, reason, ssShipmentId, shipmentLabel, labelPurchased, labelError }) {
+function pushMeaning({ skipped, reason, ssShipmentId, shipmentLabel }) {
   if (skipped) {
     return `${reason} ${skipNextStep(reason)}`.trim();
   }
-  if (labelPurchased) {
-    return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel} and purchased a shipping label. Download it from the queue. This Digit shipment stays until it is marked shipped.`;
-  }
-  const extra = labelError ? ` The label was not purchased: ${labelError}` : '';
-  return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel}.${extra} Print the label in ShipStation or wait for a ShipStation label event, then download it from the queue.`;
+  return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel}. Choose the carrier and buy the label in ShipStation. Tracking and cost appear after Refresh or the next five-minute poll.`;
 }
 
 function shipmentLabel(shipment, shipmentId) {
@@ -470,7 +473,11 @@ export async function pushShipment({
       status: 400,
     };
   }
-  const orgSettings = await loadOrgSettings({ db, organizationId });
+  const orgSettings = await loadOrgSettings({
+    db,
+    organizationId,
+    includeLegacyDimensions: true,
+  });
   const existing = await db
     .prepare(
       `SELECT * FROM shipstation_order_map
@@ -507,6 +514,7 @@ export async function pushShipment({
     shipment,
     orgSettings,
     mapRow: existing ? publicMapRow(existing) : null,
+    apiVersion: secret.apiVersion,
   });
   if (reason) {
     if (orderId) {
@@ -530,7 +538,7 @@ export async function pushShipment({
         },
       });
     }
-    const meaning = pushMeaning({ skipped: true, reason, shipmentLabel: label });
+    const meaning = pushMeaning({ skipped: true, reason, ssShipmentId: existing?.ss_shipment_id ?? null, shipmentLabel: label });
     await recordPushActivity({
       db,
       organizationId,
@@ -549,7 +557,7 @@ export async function pushShipment({
     secret.apiVersion === 'v1'
       ? await createShipments({
           credentials,
-          order: digitShipmentToV1Order({ shipment }),
+          order: digitShipmentToV1Order({ shipment, orgSettings }),
         })
       : await createShipments({
           credentials,
@@ -636,63 +644,10 @@ export async function pushShipment({
     },
   });
 
-  const purchased = await purchaseLabelAfterCreate({
-    credentials,
-    db,
-    connectionId: secret.connectionId,
-    ssShipmentId,
-    shipment,
-    organization,
-    orgSettings,
-  });
-  let labelPurchased = false;
-  let labelError = null;
-  let ssLabelId = null;
-  if (purchased.ok) {
-    labelPurchased = true;
-    ssLabelId = purchased.data?.ssLabelId ?? null;
-    await upsertMap({
-      db,
-      connectionId: secret.connectionId,
-      organizationId,
-      digitOrderId: orderId,
-      digitShipmentId: shipmentId,
-      fields: {
-        ssLabelId,
-        trackingNumber: purchased.data?.trackingNumber ?? null,
-        carrierName: purchased.data?.carrierName ?? null,
-        shipDate: purchased.data?.shipDate ?? null,
-        shipmentCostAmount: purchased.data?.shipmentCostAmount ?? null,
-        shipmentCostCurrency: purchased.data?.shipmentCostCurrency ?? null,
-        labelPdfBase64: purchased.data?.labelPdfBase64 ?? null,
-        pushStatus: 'pushed',
-        lastError: null,
-        source: 'digit',
-      },
-    });
-    await applyDigitCarrierField({
-      env,
-      db,
-      organizationId,
-      connectionId: secret.connectionId,
-      digitShipmentId: shipmentId,
-      digitOrderId: orderId,
-      ssShipmentId,
-      carrierCode: purchased.data?.carrierName ?? null,
-      serviceCode: purchased.data?.serviceCode ?? null,
-      actor,
-      recordActivity,
-    });
-  } else {
-    labelError = purchased.message || 'Label purchase failed.';
-  }
-
   const meaning = pushMeaning({
     skipped: false,
     ssShipmentId,
     shipmentLabel: label,
-    labelPurchased,
-    labelError,
   });
   await recordPushActivity({
     db,
@@ -711,12 +666,8 @@ export async function pushShipment({
       shipmentId,
       orderId,
       ssShipmentId,
-      ssLabelId,
       skipped: false,
-      labelPurchased,
-      message: labelPurchased
-        ? `Created ShipStation shipment ${ssShipmentId} and purchased a label.`
-        : `Created ShipStation shipment ${ssShipmentId}.`,
+      message: `Created ShipStation shipment ${ssShipmentId}.`,
       meaning,
     },
   };
@@ -778,7 +729,7 @@ export async function downloadShipmentLabel({ env, db, organizationId, shipmentI
     ok: false,
     code: AppErrorCode.VALIDATION_ERROR,
     message:
-      'No shipping label is available yet. Push to purchase a label, or wait for a ShipStation label event, then try again.',
+      'No shipping label is available yet. Buy the label in ShipStation, then Refresh or wait for the five-minute poll.',
     status: 400,
   };
 }
@@ -846,12 +797,12 @@ const MAX_POLL_PAGES = 5;
 /** Keeps one scheduled run inside the Digit API rate limit. Remaining shipments wait for the next run. */
 const MAX_PUSHES_PER_RUN = 25;
 
-export async function pollOutboundPush({ env, db }) {
-  const { results } = await db
-    .prepare(
-      `SELECT organization_id FROM shipstation_connection WHERE deleted = 0`,
-    )
-    .all();
+export async function pollOutboundPush({ env, db, organizationId = null, source = 'schedule' }) {
+  const { results } = organizationId
+    ? { results: [{ organization_id: organizationId }] }
+    : await db
+        .prepare(`SELECT organization_id FROM shipstation_connection WHERE deleted = 0`)
+        .all();
 
   const pushed = [];
   for (const row of results ?? []) {
@@ -871,7 +822,7 @@ export async function pollOutboundPush({ env, db }) {
       continue;
     }
     const orgSettings = await loadOrgSettings({ db, organizationId });
-    if (orgSettings.syncMode !== 'digit_to_ss') continue;
+    if (source === 'schedule' && orgSettings.defaultFulfillmentMethod === 'manual') continue;
 
     let after = null;
     for (let page = 0; page < MAX_POLL_PAGES; page += 1) {
@@ -914,66 +865,6 @@ function notesForCarrierWriteback({ matched, carrierName, existingNotes }) {
   return undefined;
 }
 
-async function applyDigitCarrierField({
-  env,
-  db,
-  organizationId,
-  connectionId,
-  digitShipmentId,
-  digitOrderId,
-  ssShipmentId,
-  carrierCode,
-  carrierName,
-  serviceCode,
-  actor,
-  recordActivity = true,
-}) {
-  if (!digitShipmentId || (!carrierCode && !carrierName)) {
-    return { ok: true, data: { skipped: true } };
-  }
-  const resolved = await resolveDigitCarrier({
-    env,
-    db,
-    organizationId,
-    connectionId,
-    carrierCode,
-    carrierName,
-    serviceCode,
-    actor,
-    digitOrderId,
-    ssShipmentId,
-    recordActivity,
-  });
-  if (!resolved.ok) return resolved;
-  if (!resolved.data.digitOptionId) return resolved;
-  const updated = await digitGraphql({
-    env,
-    query: UPDATE_SHIPMENT_MUTATION,
-    variables: {
-      input: {
-        shipmentId: digitShipmentId,
-        shippingCarrierFieldId: resolved.data.digitOptionId,
-      },
-    },
-  });
-  if (!updated.ok) {
-    if (recordActivity) {
-      await appendActivity({
-        db,
-        organizationId,
-        actor,
-        action: 'carrier_writeback',
-        status: 'error',
-        digitOrderId,
-        ssShipmentId,
-        message: updated.message || 'Could not set the Digit shipping carrier.',
-      });
-    }
-    return updated;
-  }
-  return resolved;
-}
-
 async function applyDigitShipmentWriteback({
   env,
   db,
@@ -989,7 +880,9 @@ async function applyDigitShipmentWriteback({
   ssShipmentId,
   costAmount,
   costCurrency,
+  trackingStatus = null,
 }) {
+  const shippingStatus = digitShippingStatusFromTrackingStatus(trackingStatus) || 'shipped';
   const loaded = await fetchDigitOrder({ env, orderId: digitOrderId });
   if (!loaded.ok) return loaded;
   const { order } = loaded.data;
@@ -1009,7 +902,7 @@ async function applyDigitShipmentWriteback({
     carrierCode: carrierName,
     carrierName,
     serviceCode,
-    actor: 'webhook',
+    actor: 'schedule',
     digitOrderId,
     ssShipmentId,
     recordActivity: true,
@@ -1050,7 +943,7 @@ async function applyDigitShipmentWriteback({
         input: {
           packContainers: [packId],
           shipmentType: 'carrier',
-          shippingStatus: 'shipped',
+          shippingStatus,
           trackingNumber: trackingNumber || undefined,
           notes,
           ...(digitOptionId ? { shippingCarrierFieldId: digitOptionId } : {}),
@@ -1066,7 +959,7 @@ async function applyDigitShipmentWriteback({
       variables: {
         input: {
           shipmentId: digitShipmentId,
-          shippingStatus: 'shipped',
+          shippingStatus,
           trackingNumber: trackingNumber || undefined,
           ...(notes !== undefined ? { notes } : {}),
           dropOffDate: shipDate || undefined,
@@ -1090,10 +983,12 @@ async function applyDigitShipmentWriteback({
       pushStatus: 'shipped',
       lastError: null,
       trackingNumber,
+      trackingStatus,
       carrierName,
       shipDate,
       shipmentCostAmount: costAmount,
       shipmentCostCurrency: costCurrency,
+      channelsNotified: 1,
     },
   });
 
@@ -1131,7 +1026,6 @@ export async function processSsFulfillment({
   organizationId,
   ssShipmentId,
   labelId,
-  resourceUrl,
   record: preloaded = null,
 }) {
   const secret = await liveCredentials({ db, env, organizationId });
@@ -1144,10 +1038,6 @@ export async function processSsFulfillment({
   }
 
   let record = preloaded;
-  if (!record && resourceUrl) {
-    const fetched = await fetchResourceUrl({ credentials, resourceUrl });
-    if (fetched.ok) record = firstCreatedShipment(fetched.data);
-  }
   if (!record && labelId && credentials.apiVersion !== 'v1') {
     const fetched = await getLabel({ credentials, labelId });
     if (fetched.ok) record = fetched.data;
@@ -1185,24 +1075,6 @@ export async function processSsFulfillment({
       .bind(secret.connectionId, externalId)
       .first();
   }
-  if (!map && record) {
-    const orgSettings = await loadOrgSettings({ db, organizationId });
-    if (orgSettings.syncMode === 'ss_to_digit') {
-      const imported = await importSsShipment({
-        env,
-        db,
-        organizationId,
-        connectionId: secret.connectionId,
-        shipment: record,
-      });
-      if (!imported.ok) return imported;
-      map = await mapBySsShipment({
-        db,
-        connectionId: secret.connectionId,
-        ssShipmentId: shipmentId || imported.data?.ssShipmentId,
-      });
-    }
-  }
   if (!map?.digit_order_id) {
     return { ok: true, data: { skipped: true, reason: 'No Digit order mapped for this shipment.' } };
   }
@@ -1222,6 +1094,7 @@ export async function processSsFulfillment({
     ssShipmentId: shipmentId,
     costAmount: normalized.costAmount,
     costCurrency: normalized.costCurrency,
+    trackingStatus: normalized.trackingStatus,
   });
 }
 
@@ -1408,235 +1281,446 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
   return { ok: true, data: { digitOrderId, ssShipmentId, skipped: false } };
 }
 
-export async function pollInbound({ env, db }) {
-  const { results } = await db
-    .prepare(
-      `SELECT organization_id FROM shipstation_connection WHERE deleted = 0`,
-    )
-    .all();
+const MAX_LABEL_POLLS_PER_RUN = 25;
 
-  let imported = 0;
-  for (const row of results ?? []) {
-    const organizationId = row.organization_id;
-    const orgSettings = await loadOrgSettings({ db, organizationId });
-    if (orgSettings.syncMode !== 'ss_to_digit') continue;
-    const secret = await liveCredentials({ db, env, organizationId });
-    const credentials = credentialsForApi(secret);
-    if (!credentials) {
-      if (secret?.mismatch) {
-        await appendActivity({
-          db,
-          organizationId,
-          actor: 'schedule',
-          action: 'poll',
-          status: 'error',
-          message: secret.mismatch,
-        });
-      }
-      continue;
-    }
-    const listed = await listShipments({
-      credentials,
-      query: secret.apiVersion === 'v1' ? 'pageSize=25&page=1' : 'page=1&page_size=25',
-    });
-    if (!listed.ok) continue;
-    const shipments = listed.data?.shipments ?? listed.data?.orders ?? listed.data ?? [];
-    for (const shipment of Array.isArray(shipments) ? shipments : recordsFromSsPayload(shipments)) {
-      const result = await importSsShipment({
-        env,
-        db,
-        organizationId,
-        connectionId: secret.connectionId,
-        shipment,
-      });
-      if (result.ok && result.data && !result.data.skipped) {
-        imported += 1;
-        await appendActivity({
-          db,
-          organizationId,
-          actor: 'schedule',
-          action: 'poll',
-          status: 'success',
-          message: `Imported ShipStation shipment as Digit order ${result.data.digitOrderId}.`,
-          digitOrderId: result.data.digitOrderId,
-          ssShipmentId: result.data.ssShipmentId ?? null,
-        });
-      } else if (!result.ok) {
-        await appendActivity({
-          db,
-          organizationId,
-          actor: 'schedule',
-          action: 'poll',
-          status: 'error',
-          message: result.message || 'Inbound poll import failed.',
-          detail: { code: result.code ?? null },
-        });
-      }
-    }
-  }
-  return { imported };
+function firstUsableLabel(data) {
+  const labels = Array.isArray(data?.labels) ? data.labels : Array.isArray(data) ? data : [];
+  const usable = labels.filter((label) => {
+    const status = String(label?.status || '').toLowerCase();
+    if (status === 'voided' || status === 'error') return false;
+    return Boolean(
+      label?.tracking_number ||
+        label?.trackingNumber ||
+        label?.label_id ||
+        label?.labelId,
+    );
+  });
+  return (
+    usable.find((label) => String(label.status || '').toLowerCase() === 'completed') ||
+    usable[0] ||
+    null
+  );
 }
 
-async function recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result }) {
-  const detail = { event: event || null };
-  if (!result || result.skipped) {
-    await appendActivity({
+function fulfillmentReady(normalized) {
+  return Boolean(normalized?.trackingNumber || normalized?.labelId);
+}
+
+async function lookupSsFulfillmentRecord({ credentials, map }) {
+  let record = null;
+  let lookupError = null;
+  let lookupDetail = null;
+  let queried = null;
+  if (credentials.apiVersion === 'v1') {
+    queried = `GET /orders/${map.ss_shipment_id}`;
+    const fetched = await getShipment({ credentials, shipmentId: map.ss_shipment_id });
+    if (fetched.ok) record = firstCreatedShipment(fetched.data) || fetched.data;
+    else {
+      lookupError = fetched.message;
+      lookupDetail = fetched.detail ?? { code: fetched.code };
+    }
+    return { record, lookupError, lookupDetail, queried };
+  }
+
+  queried = `GET /v2/labels?shipment_id=${map.ss_shipment_id}`;
+  const listed = await listLabels({
+    credentials,
+    query: new URLSearchParams({
+      shipment_id: map.ss_shipment_id,
+      page_size: '25',
+    }).toString(),
+  });
+  if (!listed.ok) {
+    lookupError = listed.message;
+    lookupDetail = listed.detail ?? { code: listed.code };
+  }
+  let label = listed.ok ? firstUsableLabel(listed.data) : null;
+  if (!label && map.digit_shipment_id) {
+    queried = `${queried}, then external_shipment_id=${map.digit_shipment_id}`;
+    const fallback = await listLabels({
+      credentials,
+      query: new URLSearchParams({
+        external_shipment_id: map.digit_shipment_id,
+        page_size: '25',
+      }).toString(),
+    });
+    if (!fallback.ok) {
+      lookupError = fallback.message;
+      lookupDetail = fallback.detail ?? { code: fallback.code };
+    }
+    label = fallback.ok ? firstUsableLabel(fallback.data) : null;
+  }
+  return { record: label, lookupError, lookupDetail, queried };
+}
+
+/**
+ * Pull labels purchased in the ShipStation UI for Digit-pushed maps that still lack tracking.
+ */
+export async function pollPendingLabels({ env, db, organizationId = null, actor = 'schedule' }) {
+  const { results } = organizationId
+    ? { results: [{ organization_id: organizationId }] }
+    : await db
+        .prepare(`SELECT organization_id FROM shipstation_connection WHERE deleted = 0`)
+        .all();
+
+  let labelsPulled = 0;
+  let labelCandidates = 0;
+  // Surfaced in the Refresh banner so a failed lookup or writeback is not reported as "no labels".
+  const labelIssues = [];
+  for (const row of results ?? []) {
+    const orgId = row.organization_id;
+    const secret = await liveCredentials({ db, env, organizationId: orgId });
+    const credentials = credentialsForApi(secret);
+    if (!credentials) continue;
+
+    const { results: maps } = await db
+      .prepare(
+        `SELECT digit_order_id, digit_shipment_id, ss_shipment_id
+         FROM shipstation_order_map
+         WHERE connection_id = ? AND deleted = 0
+           AND ss_shipment_id IS NOT NULL AND ss_shipment_id != ''
+           AND (ss_label_id IS NULL OR ss_label_id = '')
+           AND (tracking_number IS NULL OR tracking_number = '')
+           AND IFNULL(push_status, '') NOT IN ('shipped', 'imported')
+         ORDER BY id
+         LIMIT ?`,
+      )
+      .bind(secret.connectionId, MAX_LABEL_POLLS_PER_RUN)
+      .all();
+    labelCandidates += (maps ?? []).length;
+
+    for (const map of maps ?? []) {
+      const { record, lookupError, lookupDetail, queried } = await lookupSsFulfillmentRecord({
+        credentials,
+        map,
+      });
+
+      if (lookupError) {
+        const message = `Could not read ShipStation labels for ${map.ss_shipment_id}: ${lookupError}`;
+        labelIssues.push({ status: 'error', ssShipmentId: map.ss_shipment_id, message });
+        await appendActivity({
+          db,
+          organizationId: orgId,
+          actor,
+          action: 'poll',
+          status: 'error',
+          message,
+          digitOrderId: map.digit_order_id,
+          ssShipmentId: map.ss_shipment_id,
+          detail: { queried, ...(lookupDetail ?? {}) },
+        });
+        continue;
+      }
+      // No label yet is the normal case between push and label purchase, so the five-minute poll
+      // stays quiet. A manual Refresh is a debugging action, so record what was actually queried.
+      if (!record) {
+        if (actor === 'user') {
+          await appendActivity({
+            db,
+            organizationId: orgId,
+            actor,
+            action: 'poll',
+            status: 'skipped',
+            message: `No ShipStation label yet for ${map.ss_shipment_id}.`,
+            digitOrderId: map.digit_order_id,
+            ssShipmentId: map.ss_shipment_id,
+            detail: { queried },
+          });
+        }
+        continue;
+      }
+      const normalized = normalizeSsRecord(record);
+      if (!fulfillmentReady(normalized)) continue;
+
+      // The Worker's API token cannot write shipments: Digit offers READ_SHIPMENT to API tokens
+      // but not UPDATE_SHIPMENT, so stage the label here and let the frontend apply it with the
+      // operator's session, which carries the app's UPDATE_SHIPMENT permission.
+      let result;
+      try {
+        result = await stageLabelWriteback({
+          env,
+          db,
+          organizationId: orgId,
+          connectionId: secret.connectionId,
+          map,
+          normalized,
+        });
+      } catch (error) {
+        result = {
+          ok: false,
+          message: error?.message || 'Staging the label threw before it could finish.',
+          code: error?.code ?? null,
+        };
+      }
+      if (result.ok) {
+        labelsPulled += 1;
+        continue;
+      }
+      const message = `Staging ShipStation label ${normalized.labelId} failed: ${result.message}`;
+      labelIssues.push({ status: 'error', ssShipmentId: map.ss_shipment_id, message });
+      await appendActivity({
+        db,
+        organizationId: orgId,
+        actor,
+        action: 'poll',
+        status: 'error',
+        message,
+        digitOrderId: map.digit_order_id,
+        ssShipmentId: map.ss_shipment_id,
+        detail: { code: result.code },
+      });
+    }
+
+    const trackingBudget = MAX_LABEL_POLLS_PER_RUN - (maps ?? []).length;
+    if (trackingBudget > 0) {
+      const { results: trackingMaps } = await db
+        .prepare(
+          `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, tracking_status
+           FROM shipstation_order_map
+           WHERE connection_id = ? AND deleted = 0
+             AND ss_shipment_id IS NOT NULL AND ss_shipment_id != ''
+             AND (ss_label_id IS NOT NULL AND ss_label_id != ''
+               OR tracking_number IS NOT NULL AND tracking_number != '')
+             AND IFNULL(tracking_status, '') NOT IN ('delivered', 'voided')
+             AND IFNULL(push_status, '') NOT IN ('imported')
+           ORDER BY id
+           LIMIT ?`,
+        )
+        .bind(secret.connectionId, trackingBudget)
+        .all();
+
+      for (const map of trackingMaps ?? []) {
+        const { record, lookupError } = await lookupSsFulfillmentRecord({ credentials, map });
+        if (lookupError || !record) continue;
+        const normalized = normalizeSsRecord(record);
+        const nextStatus = String(normalized.trackingStatus || '').toLowerCase();
+        const previousStatus = String(map.tracking_status || '').toLowerCase();
+        if (!nextStatus || nextStatus === previousStatus) continue;
+        const nextDigit = digitShippingStatusFromSs(normalized);
+        const previousDigit = digitShippingStatusFromTrackingStatus(previousStatus);
+        await upsertMap({
+          db,
+          connectionId: secret.connectionId,
+          organizationId: orgId,
+          digitOrderId: map.digit_order_id,
+          digitShipmentId: map.digit_shipment_id,
+          fields: {
+            trackingStatus: nextStatus,
+            trackingNumber: normalized.trackingNumber,
+            ...(nextDigit && nextDigit !== previousDigit ? { pushStatus: 'label_ready' } : {}),
+          },
+        });
+        if (nextDigit && nextDigit !== previousDigit) labelsPulled += 1;
+      }
+    }
+  }
+  return { labelsPulled, labelCandidates, labelIssues: labelIssues.slice(0, 10) };
+}
+
+/**
+ * Persist a purchased ShipStation label against the map row and mark it `label_ready`.
+ * The Digit shipment itself is updated by the frontend (see `pendingShipmentWritebacks`).
+ */
+async function stageLabelWriteback({ env, db, organizationId, connectionId, map, normalized }) {
+  const resolved = await resolveDigitCarrier({
+    env,
+    db,
+    organizationId,
+    connectionId,
+    carrierCode: normalized.carrierCode,
+    carrierName: normalized.carrierCode,
+    serviceCode: normalized.serviceCode,
+    actor: 'schedule',
+    digitOrderId: map.digit_order_id,
+    ssShipmentId: map.ss_shipment_id,
+    recordActivity: true,
+  });
+
+  await upsertMap({
+    db,
+    connectionId,
+    organizationId,
+    digitOrderId: map.digit_order_id,
+    digitShipmentId: map.digit_shipment_id,
+    fields: {
+      ssShipmentId: map.ss_shipment_id,
+      ssLabelId: normalized.labelId,
+      pushStatus: 'label_ready',
+      lastError: null,
+      trackingNumber: normalized.trackingNumber,
+      trackingStatus: normalized.trackingStatus,
+      carrierName: normalized.carrierCode,
+      serviceCode: normalized.serviceCode,
+      serviceName: resolved.ok ? resolved.data.serviceName : normalized.serviceCode,
+      shipDate: normalized.shipDate,
+      shipmentCostAmount: normalized.costAmount,
+      shipmentCostCurrency: normalized.costCurrency,
+    },
+  });
+
+  return {
+    ok: true,
+    data: { digitShipmentId: map.digit_shipment_id, labelId: normalized.labelId },
+  };
+}
+
+/**
+ * Digit shipment updates the frontend still owes, newest staged label first. Returned by
+ * `POST /sync/poll` so Refresh can run `updateShipment` with the operator's session.
+ */
+export async function pendingShipmentWritebacks({ env, db, organizationId }) {
+  const secret = await liveCredentials({ db, env, organizationId });
+  if (!secret?.connectionId) return [];
+
+  const { results } = await db
+    .prepare(
+      `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id,
+              tracking_number, tracking_status, carrier_name, service_code, service_name, ship_date
+       FROM shipstation_order_map
+       WHERE connection_id = ? AND deleted = 0
+         AND push_status = 'label_ready'
+         AND digit_shipment_id IS NOT NULL AND digit_shipment_id != ''
+       ORDER BY id
+       LIMIT ?`,
+    )
+    .bind(secret.connectionId, MAX_LABEL_POLLS_PER_RUN)
+    .all();
+
+  const pending = [];
+  for (const row of results ?? []) {
+    const resolved = await resolveDigitCarrier({
+      env,
       db,
       organizationId,
-      actor: 'webhook',
-      action: 'webhook',
-      status: 'skipped',
-      message: 'ShipStation webhook had no organization or connection to apply.',
-      ssShipmentId: ssShipmentId || null,
-      detail,
+      connectionId: secret.connectionId,
+      carrierCode: row.carrier_name,
+      carrierName: row.carrier_name,
+      serviceCode: row.service_code,
+      serviceName: row.service_name,
+      actor: 'user',
+      digitOrderId: row.digit_order_id,
+      ssShipmentId: row.ss_shipment_id,
+      recordActivity: false,
     });
-    return;
-  }
-  if (result.ok === false) {
-    await appendActivity({
-      db,
-      organizationId,
-      actor: 'webhook',
-      action: 'writeback',
-      status: 'error',
-      message: result.message || 'Webhook writeback failed.',
-      digitOrderId: result.data?.digitOrderId ?? null,
-      ssShipmentId: ssShipmentId || null,
-      detail: { ...detail, code: result.code ?? null },
+    const digitOptionId = resolved.ok ? resolved.data.digitOptionId : null;
+    const shippingStatus =
+      digitShippingStatusFromTrackingStatus(row.tracking_status) || 'shipped';
+    const trackingNote =
+      String(row.tracking_status || '').toLowerCase() === 'error'
+        ? 'ShipStation tracking status: error.'
+        : null;
+    const carrierNote =
+      notesForCarrierWriteback({
+        matched: Boolean(digitOptionId),
+        carrierName: row.carrier_name,
+        existingNotes: null,
+      }) ?? null;
+    pending.push({
+      digitShipmentId: row.digit_shipment_id,
+      digitOrderId: row.digit_order_id,
+      ssShipmentId: row.ss_shipment_id,
+      labelId: row.ss_label_id,
+      trackingNumber: row.tracking_number,
+      trackingStatus: row.tracking_status ?? null,
+      carrierName: row.carrier_name,
+      shipDate: row.ship_date,
+      shippingStatus,
+      shippingCarrierFieldId: digitOptionId,
+      notes: [carrierNote, trackingNote].filter(Boolean).join(' ') || null,
     });
-    return;
   }
-  if (result.data?.skipped) {
-    await appendActivity({
-      db,
-      organizationId,
-      actor: 'webhook',
-      action: 'webhook',
-      status: 'skipped',
-      message: result.data.reason || 'Webhook skipped; no Digit order was updated.',
-      ssShipmentId: ssShipmentId || null,
-      detail,
-    });
-    return;
+  return pending;
+}
+
+/**
+ * Called by the frontend once it has updated the Digit shipment, so the map row stops being
+ * offered for writeback and downstream channels get their tracking notification.
+ */
+export async function completeShipmentWriteback({ env, db, organizationId, digitShipmentId }) {
+  const secret = await liveCredentials({ db, env, organizationId });
+  if (!secret?.connectionId) {
+    return {
+      ok: false,
+      code: AppErrorCode.VALIDATION_ERROR,
+      message: reconnectMessage(secret),
+      status: 400,
+    };
   }
+
+  const map = await db
+    .prepare(
+      `SELECT * FROM shipstation_order_map
+       WHERE connection_id = ? AND digit_shipment_id = ? AND deleted = 0
+       LIMIT 1`,
+    )
+    .bind(secret.connectionId, digitShipmentId)
+    .first();
+  if (!map) {
+    return {
+      ok: false,
+      code: AppErrorCode.VALIDATION_ERROR,
+      message: 'No ShipStation mapping for that Digit shipment.',
+      status: 400,
+    };
+  }
+
+  const alreadyNotified = Number(map.channels_notified) === 1;
+  const digitStatus = digitShippingStatusFromTrackingStatus(map.tracking_status);
+  const notifyChannels = !alreadyNotified && digitStatus === 'shipped';
+
+  await upsertMap({
+    db,
+    connectionId: secret.connectionId,
+    organizationId,
+    digitOrderId: map.digit_order_id,
+    digitShipmentId,
+    fields: {
+      pushStatus: 'shipped',
+      lastError: null,
+      ...(notifyChannels ? { channelsNotified: 1 } : {}),
+    },
+  });
+
+  if (notifyChannels) {
+    const live = await db
+      .prepare(`SELECT id FROM shipstation_carrier WHERE connection_id = ? AND deleted = 0 LIMIT 1`)
+      .bind(secret.connectionId)
+      .first();
+    await db
+      .prepare(`INSERT INTO shipment_label (connection_id, carrier_id) VALUES (?, ?)`)
+      .bind(secret.connectionId, live?.id ?? null)
+      .run();
+  }
+
   await appendActivity({
     db,
     organizationId,
-    actor: 'webhook',
-    action: 'writeback',
+    actor: 'user',
+    action: 'poll',
     status: 'success',
-    message:
-      'ShipStation fulfillment event applied. Tracking was written to the Digit shipment (not stored in this log).',
-    digitOrderId: result.data?.digitOrderId ?? null,
-    ssShipmentId: ssShipmentId || result.data?.ssShipmentId || null,
-    detail,
+    message: `Wrote ShipStation tracking ${map.tracking_status || 'unknown'} for label ${map.ss_label_id} to Digit (tracking ${map.tracking_number}).`,
+    digitOrderId: map.digit_order_id,
+    ssShipmentId: map.ss_shipment_id,
   });
-}
 
-export async function processWebhookJob({ env, payload }) {
-  const db = requireEnv({ env, key: 'SHIPSTATION_DB' });
-  const organizationId = payload?.organizationId;
-  const resourceUrl = payload?.resourceUrl;
-  const ssShipmentId = payload?.ssShipmentId != null ? String(payload.ssShipmentId) : null;
-  const labelId = payload?.labelId;
-  const event = payload?.event || '';
-
-  if (!organizationId) {
-    return { skipped: true };
-  }
-
-  const secret = await liveCredentials({ db, env, organizationId });
-  const credentials = credentialsForApi(secret);
-  if (!credentials) {
-    const skipped = { skipped: true, reason: reconnectMessage(secret) };
-    await recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result: skipped });
-    return skipped;
-  }
-
-  let records = payload?.shipment ? [payload.shipment] : [];
-  if (records.length === 0 && resourceUrl) {
-    const fetched = await fetchResourceUrl({ credentials, resourceUrl });
-    if (fetched.ok) records = recordsFromSsPayload(fetched.data);
-  }
-  if (records.length === 0 && ssShipmentId) {
-    const fetched = await getShipment({ credentials, shipmentId: ssShipmentId });
-    if (fetched.ok) records = recordsFromSsPayload(fetched.data);
-  }
-  if (records.length > 25) records = records.slice(0, 25);
-
-  if (isInboundImportEvent(event)) {
-    const orgSettings = await loadOrgSettings({ db, organizationId });
-    if (orgSettings.syncMode === 'ss_to_digit') {
-      for (const shipment of records) {
-        const imported = await importSsShipment({
-          env,
-          db,
-          organizationId,
-          connectionId: secret.connectionId,
-          shipment,
-        });
-        if (imported.ok && imported.data && !imported.data.skipped) {
-          await appendActivity({
-            db,
-            organizationId,
-            actor: 'webhook',
-            action: 'webhook',
-            status: 'success',
-            message: `Imported ShipStation shipment as Digit order ${imported.data.digitOrderId}.`,
-            digitOrderId: imported.data.digitOrderId,
-            ssShipmentId: imported.data.ssShipmentId ?? ssShipmentId ?? null,
-            detail: { event },
-          });
-        } else if (!imported.ok) {
-          await appendActivity({
-            db,
-            organizationId,
-            actor: 'webhook',
-            action: 'webhook',
-            status: 'error',
-            message: imported.message || 'Inbound import failed.',
-            ssShipmentId: ssShipmentId || null,
-            detail: { event, code: imported.code ?? null },
-          });
-        }
-      }
+  if (notifyChannels) {
+    const loaded = await fetchDigitOrder({ env, orderId: map.digit_order_id });
+    if (loaded.ok) {
+      await afterDigitShipped({
+        env,
+        organizationId,
+        order: loaded.data.order,
+        shipment: {
+          trackingNumber: map.tracking_number,
+          carrierName: map.carrier_name,
+          shipDate: map.ship_date,
+          digitShipmentId,
+        },
+      });
     }
   }
 
-  if (records.length === 0) {
-    const result = await processSsFulfillment({
-      env,
-      db,
-      organizationId,
-      ssShipmentId,
-      labelId,
-      resourceUrl,
-    });
-    await recordWebhookOutcome({ db, organizationId, event, ssShipmentId, result });
-    return result;
-  }
-
-  let lastResult = { ok: true, data: { skipped: true, reason: 'No Digit order mapped for this shipment.' } };
-  for (const record of records) {
-    const normalized = normalizeSsRecord(record);
-    lastResult = await processSsFulfillment({
-      env,
-      db,
-      organizationId,
-      ssShipmentId: normalized.ssShipmentId || ssShipmentId,
-      labelId: normalized.labelId || labelId,
-      resourceUrl: null,
-      record,
-    });
-    await recordWebhookOutcome({
-      db,
-      organizationId,
-      event,
-      ssShipmentId: normalized.ssShipmentId || ssShipmentId,
-      result: lastResult,
-    });
-  }
-  return lastResult;
+  return { ok: true, data: { digitShipmentId, trackingNumber: map.tracking_number } };
 }
 
 export async function resolveShipmentByExternalId({ env, db, organizationId, externalShipmentId }) {

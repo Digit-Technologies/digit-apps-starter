@@ -3,10 +3,12 @@ import { err, ok, requireEnv } from '@digit/lib-backend';
 
 import { appendActivity, listActivity } from './activity.js';
 import {
+  completeShipmentWriteback,
   liveConnection,
   mapsForShipments,
-  pollInbound,
+  pendingShipmentWritebacks,
   pollOutboundPush,
+  pollPendingLabels,
   pushShipment,
   downloadPackingSlip,
   downloadShipmentLabel,
@@ -35,7 +37,6 @@ function pushResultRow(shipmentId, result) {
       skipped: Boolean(result.data?.skipped),
       ssShipmentId: result.data?.ssShipmentId ?? null,
       ssLabelId: result.data?.ssLabelId ?? null,
-      labelPurchased: Boolean(result.data?.labelPurchased),
       message: result.data?.message ?? result.data?.reason ?? null,
       meaning: result.data?.meaning ?? result.data?.reason ?? null,
     };
@@ -48,8 +49,7 @@ function pushResultRow(shipmentId, result) {
     skipped: false,
     ssShipmentId: null,
     ssLabelId: null,
-    labelPurchased: false,
-      message,
+    message,
     meaning: `${message} The shipment was not created in ShipStation. Fix the error and try again.`,
   };
 }
@@ -232,9 +232,55 @@ export async function handleSync({ request, env, path, method }) {
   }
 
   if (method === 'POST' && path === '/sync/poll') {
-    const outbound = await pollOutboundPush({ env, db });
-    const inbound = await pollInbound({ env, db });
-    return ok({ data: { ...outbound, ...inbound } });
+    let organizationId = null;
+    const parsed = await parseJsonResponse({ value: request.json() });
+    if (parsed.ok) {
+      const value = String(parsed.value?.organizationId || '').trim();
+      if (value) organizationId = value;
+    }
+    const outbound = await pollOutboundPush({ env, db, organizationId, source: 'refresh' });
+    const labels = await pollPendingLabels({
+      env,
+      db,
+      organizationId,
+      actor: organizationId ? 'user' : 'schedule',
+    });
+    const pendingWritebacks = organizationId
+      ? await pendingShipmentWritebacks({ env, db, organizationId })
+      : [];
+    if (organizationId) {
+      const pulled = Number(labels.labelsPulled || 0);
+      const candidates = Number(labels.labelCandidates || 0);
+      await appendActivity({
+        db,
+        organizationId,
+        actor: 'user',
+        action: 'poll',
+        status: 'success',
+        message:
+          pulled > 0
+            ? `Refresh pulled ${pulled} label(s) from ShipStation.`
+            : `Refresh checked ${candidates} pushed shipment(s) and found no new ShipStation labels. Buy the label in ShipStation, then try again.`,
+      });
+    }
+    return ok({ data: { ...outbound, ...labels, pendingWritebacks } });
+  }
+
+  if (method === 'POST' && path === '/sync/writeback-complete') {
+    const parsed = await parseJsonResponse({ value: request.json() });
+    if (!parsed.ok) return parsed.response;
+    const organizationId = String(parsed.value?.organizationId || '').trim();
+    const digitShipmentId = String(parsed.value?.digitShipmentId || '').trim();
+    if (!organizationId || !digitShipmentId) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'organizationId and digitShipmentId are required.',
+        status: 400,
+      });
+    }
+    const result = await completeShipmentWriteback({ env, db, organizationId, digitShipmentId });
+    if (!result.ok) return err(result);
+    return ok({ data: result.data });
   }
 
   return err({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });

@@ -12,7 +12,6 @@ export const faireAdapter = {
   id: 'faire',
   label: 'Faire',
   secretKeys: ['FAIRE_API_KEY'],
-  webhookPath: null,
 
   async isConfigured({ env }) {
     const db = shipstationDb({ env });

@@ -29,9 +29,10 @@ MCP config or the frontend.
 - **Credential rule:** `SHIPSTATION_API_KEY` alone → V2 (`api.shipstation.com`);
   key + `SHIPSTATION_API_SECRET` → V1 (`ssapi.shipstation.com` Basic auth). Persist
   `api_version` on connect. Switching versions requires disconnect and reconnect.
-- V1 + `PUBLIC_WEBHOOK_URL` requires `SHIPSTATION_WEBHOOK_TOKEN` (query `token=`).
-- Declare webhook paths in `manifest.json`; verify inbound bodies before acting
-  (V2 RSA-SHA256, else V1 token).
+- `JWT_TOKEN` is a Clerk JWT. **Digit staff generate this token and place it in the
+  organization’s app secrets.** Do not use a Settings → API Tokens `da_` key.
+- Connect does **not** use ShipStation webhooks. Tracking is polled every 300s
+  and via **Refresh** (`POST /sync/poll`).
 - Add D1 changes as a new migration file.
 - Update `SPEC.md` with verbatim prompts.
 - Follow [error-handling.md](.agents/skills/extend-shipstation-app/reference/error-handling.md)
@@ -41,6 +42,5 @@ MCP config or the frontend.
 
 - Call `api.shipstation.com` or `ssapi.shipstation.com` from the browser.
 - Log or return API keys, secrets, or `api_key_encrypted`.
-- Guess webhook HMAC schemes (V2 is RSA-SHA256; V1 is the webhook token, not HMAC).
 - Mix V1 and V2 on one live connection without disconnect/reconnect.
 - Treat `requirements.md` as the implementation spec if it is present.

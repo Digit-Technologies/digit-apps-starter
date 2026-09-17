@@ -12,24 +12,20 @@ import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import ApiModeToggle, { type ApiModeChoice } from './components/ApiModeToggle';
 import type { SetupItem } from './setupTypes';
 
-const TOKEN_KEY = 'API_TOKEN_DIGIT';
-const WEBHOOK_KEY = 'PUBLIC_WEBHOOK_URL';
+const TOKEN_KEY = 'JWT_TOKEN';
 const SHIPSTATION_KEY = 'SHIPSTATION_API_KEY';
 const SHIPSTATION_SECRET = 'SHIPSTATION_API_SECRET';
-const SHIPSTATION_WEBHOOK_TOKEN = 'SHIPSTATION_WEBHOOK_TOKEN';
 
-const SHARED_KEYS = new Set([SHIPSTATION_KEY, TOKEN_KEY, WEBHOOK_KEY]);
+const SHARED_KEYS = new Set([SHIPSTATION_KEY, TOKEN_KEY]);
 
 type SetupNeededProps = {
   items: SetupItem[];
 };
 
 function fieldLabel(item: SetupItem) {
-  if (item.key === TOKEN_KEY) return 'Digit API token';
-  if (item.key === WEBHOOK_KEY) return 'Webhook URL';
+  if (item.key === TOKEN_KEY) return 'Digit JWT (staff-generated)';
   if (item.key === SHIPSTATION_KEY) return 'ShipStation API key';
   if (item.key === SHIPSTATION_SECRET) return 'ShipStation API secret (V1)';
-  if (item.key === SHIPSTATION_WEBHOOK_TOKEN) return 'ShipStation webhook token (V1)';
   return item.key;
 }
 
@@ -137,20 +133,17 @@ function ItemList({
 
 export default function SetupNeeded({ items }: SetupNeededProps) {
   const v1Secret = items.find((item) => item.key === SHIPSTATION_SECRET);
-  const v1WebhookToken = items.find((item) => item.key === SHIPSTATION_WEBHOOK_TOKEN);
   const keyPresent = Boolean(items.find((item) => item.key === SHIPSTATION_KEY)?.present);
   const choosingV1 = Boolean(v1Secret?.present);
 
   const [viewedMode, setViewedMode] = useState<ApiModeChoice>(choosingV1 ? 'v1' : 'v2');
 
   const sharedItems = items.filter((item) => SHARED_KEYS.has(item.key));
-  const v1OnlyItems = [v1Secret, v1WebhookToken].filter(Boolean) as SetupItem[];
-  const visibleItems = viewedMode === 'v1' ? [...sharedItems, ...v1OnlyItems] : sharedItems;
+  const v1OnlyItems = [v1Secret].filter(Boolean) as SetupItem[];
+  const visibleItems =
+    viewedMode === 'v1' ? [...sharedItems, ...v1OnlyItems] : [...sharedItems];
 
-  const progressRequired =
-    viewedMode === 'v1'
-      ? items.filter((item) => item.required)
-      : items.filter((item) => item.required && item.key !== SHIPSTATION_WEBHOOK_TOKEN);
+  const progressRequired = items.filter((item) => item.required);
   const presentCount = progressRequired.filter((item) => item.present).length;
 
   return (
@@ -168,7 +161,15 @@ export default function SetupNeeded({ items }: SetupNeededProps) {
         <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace' }}>
           SHIPSTATION_API_SECRET
         </Typography>
-        , etc.), Save, reload. If it still shows set after a delete, republish the app so Digit
+        ,{' '}
+        <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace' }}>
+          JWT_TOKEN
+        </Typography>
+        ). Digit staff generate JWT_TOKEN and place it on this account — do not use a
+        Settings → API Tokens <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace' }}>
+          da_
+        </Typography>{' '}
+        token. Save, reload. If it still shows set after a delete, republish the app so Digit
         rebinds Worker env.
       </Alert>
 
@@ -209,10 +210,6 @@ export default function SetupNeeded({ items }: SetupNeededProps) {
             SHIPSTATION_API_SECRET
           </Typography>{' '}
           unset.
-        </Typography>
-      ) : v1WebhookToken?.required ? (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          V1 needs the API secret, plus the webhook token when a public URL is set.
         </Typography>
       ) : (
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>

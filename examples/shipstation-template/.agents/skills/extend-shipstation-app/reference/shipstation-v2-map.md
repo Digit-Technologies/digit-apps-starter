@@ -13,26 +13,19 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 | --- | --- | --- |
 | `GET` | `/v2/carriers` | Validate API key; carrier sync |
 | `GET` | `/v2/carriers/{id}/services` | Services when the carrier list has none |
-| `POST` | `/v2/environment/webhooks` | Register inbound URL |
-| `DELETE` | `/v2/environment/webhooks/{id}` | Disconnect |
 | `POST` | `/v2/shipments` | Push Digit shipment (`create_sales_order: true`) |
-| `GET` | `/v2/shipments/{id}` | Writeback / inbound |
+| `GET` | `/v2/shipments/{id}` | Writeback |
 | `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Digit shipment id |
-| `GET` | `/v2/shipments` | Inbound poll |
-| `GET` | `/v2/labels/{id}` | Label created webhook; queue download (`label_download_type=inline`) |
-| `GET` | resource_url | Thin webhook payloads (SSRF: `api.shipstation.com` / `api.shipengine.com` / `ssapi.shipstation.com`) |
-| `POST` | `/v2/rates` | Rate shop after push (`shipment_id` + synced `carrier_ids`) |
-| `POST` | `/v2/labels/rates/{rate_id}` | Purchase label from chosen rate (PDF inline) |
+| `GET` | `/v2/labels` | Poll unlabeled maps (`shipment_id` / `external_shipment_id`); `tracking_status` drives Digit `shippingStatus` |
+| `GET` | `/v2/labels/{id}` | Queue PDF download (`label_download_type=inline`) |
 
-Inbound import normalizes `items[].unit_price` as Digit unit cost and `carrier_id` for
-carrier matching. Missing line prices fall back to Digit item defaults.
-
-## Webhook events registered on connect
-
-`label_created_v2`, `track`, `fulfillment_shipped_v2`, `shipment_created_v2`, `sales_orders_imported`.
-
-Inbound verify: RSA-SHA256 headers `x-shipengine-rsa-sha256-*` + `x-shipengine-timestamp` against JWKS (`/jwks` on those hosts). Not HMAC `verifyWebhookSignature`.
+`POST /v2/shipments` keeps one ShipStation shipment per Digit shipment and sends one
+`packages[]` entry per Digit pack container. Each package uses the container's gross
+weight and complete dimensions when available, org defaults otherwise, and the Digit
+pack-container id as `external_package_id`. Shipment `items[]` remain shipment-level;
+do not misuse customs-only `packages[].products[]` as item-to-package allocation.
 
 ## Later (not wrapped)
 
-Address validation, return labels, Rate Shopper one-shot (`POST /v2/labels/rate_shopper_id/{id}`). Rate shop + label purchase from a rate **are** wrapped.
+Address validation, return labels, rate shop (`POST /v2/rates`), purchase from rate
+(`POST /v2/labels/rates/{id}`), Rate Shopper one-shot.

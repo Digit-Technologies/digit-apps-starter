@@ -15,7 +15,8 @@ Checklists only. Look up shapes on Digit MCP / ShipStation docs MCP.
 ## New Digit write
 
 1. `graphql-schema://search/…` + `type/…`.
-2. `appPermissions` → add `key`s to `manifest.json` (and the Digit API token used as `API_TOKEN_DIGIT`).
+2. `appPermissions` → add `key`s to `manifest.json`. Worker GraphQL uses `JWT_TOKEN`
+   (staff-generated Clerk JWT), not a `da_` API token.
 3. Frontend: `useDigitApiQuery` / `useDigitApiMutation`. Worker: `digitGraphql.js`.
 4. Pair hook `error` with `AppErrorAlert`.
 5. `appendActivity` on Worker writes; show outcome + meaning in the UI ([error-handling.md](error-handling.md)).
@@ -34,33 +35,17 @@ Set secret `FAIRE_API_KEY`. Implement fulfillment POST in `src/backend/channels/
 See [channel-recipes.md](channel-recipes.md) and [channels.md](channels.md). Copy
 `_scaffold.js`, register in `registry.js`, add secrets to `CHANNEL_SECRETS`.
 
-## Inbound / ShipStation-first (drop-ship)
-
-Settings → Sync mode → ShipStation to Digit. Mapper: `shipStationToDigit.js` (bill-to company = Digit customer; ship-to = drop-ship location). Import line prices from V1 `unitPrice` / V2 `unit_price`; when absent, use the matched Digit item's non-null `defaultSalesPrice`, then zero. Resolve V1 `carrierCode` or V2 `carrier_id` through `matchDigitCarrier.js` and set `shippingCarrierFieldId` before `createOrder`. ShipStation has no faithful shipping/payment terms source, so leave both unset unless an explicit org-level default is added later. Do not re-push rows with `source=shipstation`.
-
 ## Digit carrier from ShipStation
 
-Writeback sets `shippingCarrierFieldId` via `matchDigitCarrier.js` (manual D1 map, aliases, conservative fuzzy). Unmatched carriers stay unset and log `carrier_unmapped`. Operators correct maps in Settings. Do not create Digit carrier options. Do not map SS service codes to Digit shipping class unless asked.
-
-## Lane filter
-
-Settings → Lane tag ID = Digit `Order.tags[].id`. Orders without that tag are skipped. Default fulfillment method **Manual** skips all pushes.
+Writeback sets `shippingCarrierFieldId` via `matchDigitCarrier.js` (service map, then carrier default, then service-string auto-match gated by brand). Unmatched services stay unset, log `carrier_unmapped`, and appear in `unmappedCarriers` plus a main-page alert. Operators correct maps in the carrier settings modal. Do not create Digit carrier options. Do not map SS service codes to Digit shipping class unless asked.
 
 ## Phase 2 leftovers on `0001`
 
-`shipstation_connection` still has `rate_timing`, `rate_mode`, `best_rate_strategy`, `defaults`, `add_cost_to_shipping_fees`, `auto_send_return_email`, `block_on_invalid_address`. Do not re-add GET/PATCH `/connection/settings`. In-app rate shop + label purchase use `org_settings` (`0009_label_rates.sql`) instead of those unused connection columns.
+`shipstation_connection` still has `rate_timing`, `rate_mode`, `best_rate_strategy`, `defaults`, `add_cost_to_shipping_fees`, `auto_send_return_email`, `block_on_invalid_address`. Do not re-add GET/PATCH `/connection/settings`. Default package weight lives on `org_settings`. Do not re-add in-app rate shop.
 
 ## Phase 2: scan verification / multi-account
 
 Scan: Digit `pickItem` + item `scanCodeSerialNumber` in a clone UI — not this template’s queue. Multi-account: drop `idx_shipstation_connection_one_live` in a new migration; do not drop it in Phase 1.
-
-## New inbound webhook event
-
-1. Confirm event name and verify scheme on docs MCP (V2 RSA-SHA256 vs V1 unsigned + token).
-2. Add to `WEBHOOK_EVENTS_V2` or `WEBHOOK_EVENTS_V1` in `connection.js`; disconnect must `deleteWebhook`.
-3. Handle on path `shipstation`; verify raw bytes (and query token for V1) → `digitJobs.submit` → 200.
-4. `appendActivity` after the job (ids + outcome only). Activity copy should say “ShipStation”
-   generically; mention V1/V2 only in connect/setup errors.
 
 ## New D1 table or column
 

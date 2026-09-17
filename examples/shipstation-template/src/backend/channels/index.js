@@ -8,9 +8,6 @@ export {
   runAfterDigitShipped,
   listAdapters,
   getAdapter,
-  channelWebhookHandlers,
-  channelJobHandlers,
-  processChannelWebhook,
   channelSetupEntries,
   channelStatusForOrg,
 } from './registry.js';

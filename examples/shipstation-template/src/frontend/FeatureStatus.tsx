@@ -28,20 +28,16 @@ type Feature = {
 export type FeatureStatusProps = {
   connected: boolean;
   apiTokenPresent: boolean;
-  webhookUrlPresent: boolean;
   shipStationKeyPresent: boolean;
   shipStationApiMode?: 'v1' | 'v2' | 'missing';
-  shipStationWebhookTokenPresent?: boolean;
   shipStationSecretPresent?: boolean;
   channels?: ChannelSetupEntry[];
 };
 
 const CONNECTION = 'a connected ShipStation account';
-const TOKEN = 'the Digit API token';
-const WEBHOOK = 'the webhook URL';
+const TOKEN = 'the Digit JWT (JWT_TOKEN)';
 const SS_KEY = 'the ShipStation API key';
 const SS_SECRET = 'SHIPSTATION_API_SECRET';
-const SS_WEBHOOK_TOKEN = 'SHIPSTATION_WEBHOOK_TOKEN';
 
 function gate({
   title,
@@ -65,10 +61,6 @@ function markInactive(features: Feature[], reason: string): Feature[] {
   }));
 }
 
-function anyInboundChannel(channels: ChannelSetupEntry[]) {
-  return channels.some((channel) => channel.webhookPath && channel.configured);
-}
-
 function anyOutboundChannel(channels: ChannelSetupEntry[]) {
   return channels.some((channel) => channel.configured);
 }
@@ -76,20 +68,8 @@ function anyOutboundChannel(channels: ChannelSetupEntry[]) {
 function v2Features({
   connected,
   apiTokenPresent,
-  webhookUrlPresent,
   shipStationKeyPresent,
 }: FeatureStatusProps): Feature[] {
-  const inbound = gate({
-    title: 'Inbound ShipStation orders',
-    detail:
-      'With sync mode set to ShipStation to Digit, V2 shipments become Digit sales orders.',
-    requires: [
-      [shipStationKeyPresent, SS_KEY],
-      [connected, CONNECTION],
-      [apiTokenPresent, TOKEN],
-    ],
-  });
-
   return [
     gate({
       title: 'Connect and sync carriers',
@@ -102,7 +82,7 @@ function v2Features({
     gate({
       title: 'Push orders to ShipStation',
       detail:
-        'Eligible Digit sales orders become V2 shipments (create_sales_order) when packed or inventory-ready.',
+        'Eligible Digit sales orders become V2 shipments (create_sales_order) from the queue. Scheduled push runs every five minutes; Manual push waits for Refresh.',
       requires: [
         [shipStationKeyPresent, SS_KEY],
         [connected, CONNECTION],
@@ -110,53 +90,31 @@ function v2Features({
       ],
     }),
     gate({
-      title: 'Buy shipping labels',
+      title: 'Print labels in ShipStation',
       detail:
-        'Push rate-shops carriers and purchases a PDF label. Download it from the shipping queue.',
+        'Push creates the V2 shipment only. Choose carrier and buy the label in ShipStation, then Refresh or wait for the five-minute poll.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
       title: 'Write tracking back to Digit',
       detail:
-        'V2 label and track webhooks (RSA-SHA256) write tracking onto the Digit shipment.',
+        'The five-minute poll (and Refresh) reads V2 labels and writes carrier, tracking, and cost onto the Digit shipment.',
       requires: [
         [shipStationKeyPresent, SS_KEY],
         [connected, CONNECTION],
         [apiTokenPresent, TOKEN],
-        [webhookUrlPresent, WEBHOOK],
       ],
     }),
-    inbound.state === 'working' && !webhookUrlPresent
-      ? {
-          ...inbound,
-          state: 'partial',
-          detail: `${inbound.detail} Without the webhook URL, imports only run on the five-minute schedule.`,
-        }
-      : inbound,
   ];
 }
 
 function v1Features({
   connected,
   apiTokenPresent,
-  webhookUrlPresent,
   shipStationKeyPresent,
   shipStationSecretPresent = false,
-  shipStationWebhookTokenPresent = false,
 }: FeatureStatusProps): Feature[] {
   const hasV1Creds = shipStationKeyPresent && shipStationSecretPresent;
-  const v1NeedsWebhookToken = webhookUrlPresent && !shipStationWebhookTokenPresent;
-
-  const inbound = gate({
-    title: 'Inbound ShipStation orders',
-    detail:
-      'With sync mode set to ShipStation to Digit, V1 orders become Digit sales orders.',
-    requires: [
-      [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
-      [connected, CONNECTION],
-      [apiTokenPresent, TOKEN],
-    ],
-  });
 
   return [
     gate({
@@ -169,7 +127,7 @@ function v1Features({
     }),
     gate({
       title: 'Push orders to ShipStation',
-      detail: 'Eligible Digit sales orders become V1 orders via createorder when packed or inventory-ready.',
+      detail: 'Eligible Digit sales orders become V1 orders via createorder from the queue. Scheduled push runs every five minutes; Manual push waits for Refresh.',
       requires: [
         [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
         [connected, CONNECTION],
@@ -177,32 +135,21 @@ function v1Features({
       ],
     }),
     gate({
-      title: 'Buy shipping labels',
+      title: 'Print labels in ShipStation',
       detail:
-        'Push rate-shops V1 carriers and purchases a PDF label. Download it from the shipping queue.',
+        'Push creates the V1 order only. Choose carrier and buy the label in ShipStation, then Refresh or wait for the five-minute poll.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
       title: 'Write tracking back to Digit',
       detail:
-        'V1 ship/order notify webhooks use a query token (not RSA). Tracking lands on the Digit shipment.',
+        'The five-minute poll (and Refresh) reads V1 orders and writes carrier, tracking, and cost onto the Digit shipment.',
       requires: [
         [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
         [connected, CONNECTION],
         [apiTokenPresent, TOKEN],
-        [webhookUrlPresent, WEBHOOK],
-        [!v1NeedsWebhookToken, SS_WEBHOOK_TOKEN],
       ],
     }),
-    inbound.state === 'working' && (!webhookUrlPresent || v1NeedsWebhookToken)
-      ? {
-          ...inbound,
-          state: 'partial',
-          detail: v1NeedsWebhookToken
-            ? `${inbound.detail} V1 webhooks need ${SS_WEBHOOK_TOKEN}; imports still run on the five-minute schedule.`
-            : `${inbound.detail} Without the webhook URL, imports only run on the five-minute schedule.`,
-        }
-      : inbound,
   ];
 }
 
@@ -217,13 +164,13 @@ function digitFeatures({ connected }: FeatureStatusProps): Feature[] {
     },
     gate({
       title: 'Shipping queue',
-      detail: 'Digit shipments awaiting a carrier, batch push (rate-shop + label), and packing-slip PDFs.',
+      detail: 'Digit shipment status and ShipStation tracking status, batch push, and packing-slip PDFs.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
       title: 'Hold shipments that should not ship yet',
       detail:
-        'Inbound-only mode, Manual fulfillment, and imported ShipStation rows stay in Digit. The queue lists awaiting-carrier shipments only.',
+        'Imported ShipStation rows stay in Digit. The queue lists awaiting-carrier, unknown, and in-transit/delivered shipments.',
       requires: [[connected, CONNECTION]],
     }),
   ];
@@ -232,29 +179,19 @@ function digitFeatures({ connected }: FeatureStatusProps): Feature[] {
 function channelFeatures({
   connected,
   apiTokenPresent,
-  webhookUrlPresent,
   channels = [],
 }: FeatureStatusProps): Feature[] {
-  const storeImportConfigured = anyInboundChannel(channels);
   const storeFulfillmentConfigured = anyOutboundChannel(channels);
 
   return [
-    storeImportConfigured
-      ? {
-          title: 'Store order import (direct channel)',
-          detail:
-            'A configured commerce channel adapter can import store orders into Digit when you declare its webhook path in manifest.json.',
-          state: 'partial' as const,
-          needs: ['manifest webhook path and adapter implementation in your clone'],
-        }
-      : {
-          title: 'Store order import',
-          detail:
-            'Connect a store via Digit Rutter, or add channel secrets and a webhook adapter (Shopify, WooCommerce) in a clone of this template.',
-          state: 'off' as const,
-          needs: ['Digit Rutter store connection or channel adapter secrets'],
-        },
-    storeFulfillmentConfigured || (connected && apiTokenPresent && webhookUrlPresent)
+    {
+      title: 'Store order import',
+      detail:
+        'Connect a store via Digit Rutter, or add channel secrets and implement a direct adapter in a clone of this template.',
+      state: 'off' as const,
+      needs: ['Digit Rutter store connection or channel adapter secrets'],
+    },
+    storeFulfillmentConfigured || (connected && apiTokenPresent)
       ? {
           title: 'Tracking to sales channel',
           detail: storeFulfillmentConfigured
@@ -270,7 +207,7 @@ function channelFeatures({
           detail:
             'Finish ShipStation writeback first, then use Digit Rutter or a direct channel adapter to notify the store.',
           state: 'off' as const,
-          needs: [CONNECTION, TOKEN, WEBHOOK],
+          needs: [CONNECTION, TOKEN],
         },
   ];
 }
@@ -477,14 +414,14 @@ export default function FeatureStatus(props: FeatureStatusProps) {
         {viewingV2 ? (
           <ModePanel
             title="ShipStation V2"
-            subtitle="SHIPSTATION_API_KEY only → api.shipstation.com. Webhooks use RSA-SHA256."
+            subtitle="SHIPSTATION_API_KEY only → api.shipstation.com. Labels are purchased in ShipStation; this app polls for tracking."
             selected={panelSelected}
             features={v2List}
           />
         ) : (
           <ModePanel
             title="ShipStation V1"
-            subtitle="Key + SHIPSTATION_API_SECRET → ssapi.shipstation.com Basic auth. Webhooks need SHIPSTATION_WEBHOOK_TOKEN when a public URL is set."
+            subtitle="Key + SHIPSTATION_API_SECRET → ssapi.shipstation.com Basic auth. Labels are purchased in ShipStation; this app polls for tracking."
             selected={panelSelected}
             features={v1List}
           />

@@ -1,9 +1,13 @@
-const SYNC_MODES = new Set(['digit_to_ss', 'ss_to_digit']);
-const PUSH_WHENS = new Set(['fully_packed', 'inventory_available']);
-const FULFILLMENT_METHODS = new Set(['unspecified', 'shipstation', 'manual']);
-const RATE_STRATEGIES = new Set(['cheapest', 'fastest']);
+const FULFILLMENT_METHODS = new Set(['scheduled', 'manual']);
+export { FULFILLMENT_METHODS };
 
-export { SYNC_MODES, PUSH_WHENS, FULFILLMENT_METHODS, RATE_STRATEGIES };
+export const V1_MULTI_CONTAINER_REASON =
+  'ShipStation V1 supports only one package per order, but this Digit shipment has multiple pack containers.';
+
+/** Legacy unspecified/shipstation → scheduled; leftover unknown values → scheduled. */
+export function normalizeFulfillmentMethod(value) {
+  return value === 'manual' ? 'manual' : 'scheduled';
+}
 
 export function packedLineCount(shipment) {
   let count = 0;
@@ -18,18 +22,19 @@ export function packedLineCount(shipment) {
 /**
  * Why a Digit shipment is not pushed. Null means eligible.
  */
-export function ineligibilityReason({ shipment, orgSettings, mapRow }) {
-  if ((orgSettings?.syncMode ?? 'digit_to_ss') === 'ss_to_digit') {
-    return 'Inbound-only mode does not push Digit shipments to ShipStation.';
-  }
-  if ((orgSettings?.defaultFulfillmentMethod ?? 'unspecified') === 'manual') {
-    return 'Default fulfillment method is Manual — shipments are not pushed to ShipStation.';
-  }
+export function ineligibilityReason({ shipment, orgSettings, mapRow, apiVersion = null }) {
+  void orgSettings;
   if (mapRow?.source === 'shipstation') {
     return 'This shipment was imported from ShipStation and will not be re-pushed.';
   }
-  // A ShipStation resource id is the durable guard: re-pushing would buy a second label.
-  if (mapRow && (mapRow.ssShipmentId || ['pushed', 'shipped'].includes(mapRow.pushStatus))) {
+  if (shipment?.shippingStatus === 'shipped') {
+    return 'Already shipped in Digit.';
+  }
+  // A ShipStation resource id is the durable guard: re-pushing would duplicate the SS shipment.
+  if (
+    mapRow &&
+    (mapRow.ssShipmentId || ['pushed', 'label_ready', 'shipped'].includes(mapRow.pushStatus))
+  ) {
     return mapRow.pushStatus === 'shipped'
       ? 'Already shipped in ShipStation.'
       : 'Already pushed to ShipStation.';
@@ -40,32 +45,32 @@ export function ineligibilityReason({ shipment, orgSettings, mapRow }) {
   if (packedLineCount(shipment) === 0) {
     return 'Shipment has no packed items.';
   }
+  if (apiVersion === 'v1' && (shipment?.packContainers?.length ?? 0) > 1) {
+    return V1_MULTI_CONTAINER_REASON;
+  }
   return null;
 }
 
 /** Keep in sync with src/frontend/eligibility.ts */
 export function skipNextStep(reason) {
   if (!reason) return 'Fix the issue, then try again.';
-  if (reason.includes('Inbound-only')) {
-    return 'Switch sync mode to Digit to ShipStation in Settings if you need to push.';
-  }
-  if (reason.includes('Manual')) {
-    return 'Change default fulfillment method to Unspecified or ShipStation, or leave this shipment in Digit.';
-  }
   if (reason.includes('imported from ShipStation')) {
     return 'Fulfill it in ShipStation; this app will not create a second shipment.';
   }
   if (reason.includes('Already shipped')) {
-    return 'Tracking should already be on the Digit shipment.';
+    return 'Download the label from this queue if you need it again. Tracking should already be on the Digit shipment.';
   }
   if (reason.includes('Already pushed')) {
-    return 'Download the shipping label from the queue. This Digit shipment stays until it is marked shipped.';
+    return 'Buy the label in ShipStation, then Refresh or wait for the five-minute poll. This Digit shipment stays until it is marked shipped.';
   }
   if (reason.includes('not linked to a sales order')) {
     return 'Multi-order or unlinked shipments are not pushed from this queue.';
   }
   if (reason.includes('no packed items')) {
     return 'Pack items onto this Digit shipment, then try again.';
+  }
+  if (reason.includes('V1 supports only one package')) {
+    return 'Create one Digit shipment per pack container, or disconnect ShipStation and reconnect with V2 credentials.';
   }
   return 'Fix the issue above, then try again.';
 }

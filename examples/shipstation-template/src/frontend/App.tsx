@@ -28,7 +28,17 @@ import {
 } from '@digit/lib-frontend';
 
 import ActivityLog, { useActivityQuery } from './ActivityLog';
+import type {
+  CarrierDraft,
+  OrgSettingsData,
+} from './carrierTypes';
+import {
+  draftFromOrgSettings,
+  mappingsFromDraft,
+  unmatchedServicesFrom,
+} from './carrierTypes';
 import AppShell from './components/AppShell';
+import CarrierSettingsDialog from './components/CarrierSettingsDialog';
 import ConnectionBar, { ConnectPanel, NonAdminNotice } from './components/ConnectionBar';
 import SectionHeader from './components/SectionHeader';
 import SetupCapabilitiesDialog from './components/SetupCapabilitiesDialog';
@@ -53,21 +63,9 @@ const ADMIN_PERMISSION = 'UPDATE_ORGANIZATION';
 
 const SETTING_HINTS = {
   defaultFulfillmentMethod:
-    'ShipStation pushes parcel orders to the connected account. Manual skips the push so those orders stay in Digit (for example LTL or another 3PL).',
-  syncMode:
-    'Digit to ShipStation creates ShipStation orders from Digit sales orders. ShipStation to Digit imports ShipStation shipments as Digit sales orders (for inbound or drop-ship workflows).',
-  pushWhen:
-    'Fully packed waits until Digit packing is complete. Inventory available pushes as soon as stock can fill the order. Push rate-shops and purchases a label.',
-  laneTagId:
-    'Optional Digit sales-order tag option UUID. When set, only tagged orders are pushed. Leave blank to include every eligible order.',
+    'Scheduled push sends eligible awaiting-carrier shipments to ShipStation every five minutes. Manual push only sends them when you click Refresh in the shipping queue.',
   defaultWeightOz:
-    'Package weight used to rate-shop and buy a label. Digit shipments have no weight field, so this default applies to every push.',
-  defaultDims:
-    'Optional package size in inches. Leave blank to rate by weight only. Length, width, and height must all be set together.',
-  rateStrategy:
-    'Cheapest buys the lowest-cost rate. Fastest prefers the shortest transit time, then cost.',
-  carrierMap:
-    'ShipStation carrier codes are matched to Digit shipping-carrier options. Confirm or correct the mapping here when a label used a carrier Digit does not recognize.',
+    'Package weight sent to ShipStation on push. Digit shipments have no weight field, so this default applies to every push.',
 } as const;
 
 const settingTooltipSlotProps = {
@@ -126,77 +124,15 @@ type ConnectionData = {
   staleConnection?: boolean;
 };
 
-type DigitCarrierOption = { id: string; value: string };
-type SsCarrierRow = { carrierCode: string; name: string };
-type CarrierMappingRow = {
-  ssCarrierCode: string;
-  digitOptionId: string | null;
-  source: string;
-};
-type UnmappedCarrierRow = {
-  carrierCode: string | null;
-  carrierName: string | null;
-  inCatalog?: boolean;
-};
-
-type OrgSettingsData = {
-  organizationId: string;
-  defaultFulfillmentMethod: string;
-  syncMode: string;
-  pushWhen: string;
-  laneTagId: string | null;
-  defaultWeightOz?: number;
-  defaultLengthIn?: number | null;
-  defaultWidthIn?: number | null;
-  defaultHeightIn?: number | null;
-  rateStrategy?: string;
-  digitCarriers?: DigitCarrierOption[];
-  ssCarriers?: SsCarrierRow[];
-  carrierMappings?: CarrierMappingRow[];
-  unmappedCarriers?: UnmappedCarrierRow[];
-  digitCarriersError?: string | null;
-};
-
 type SettingsDraft = {
   defaultFulfillmentMethod: string;
-  syncMode: string;
-  pushWhen: string;
-  laneTagId: string;
   defaultWeightOz: string;
-  defaultLengthIn: string;
-  defaultWidthIn: string;
-  defaultHeightIn: string;
-  rateStrategy: string;
-  carrierByCode: Record<string, string>;
 };
-
-function carrierDraftFromOrg(orgSettings: OrgSettingsData | undefined): Record<string, string> {
-  const next: Record<string, string> = {};
-  const mapped = new Map(
-    (orgSettings?.carrierMappings ?? []).map((row) => [row.ssCarrierCode, row.digitOptionId || '']),
-  );
-  for (const row of orgSettings?.ssCarriers ?? []) {
-    next[row.carrierCode] = mapped.get(row.carrierCode) ?? '';
-  }
-  for (const row of orgSettings?.unmappedCarriers ?? []) {
-    if (!row.carrierCode || next[row.carrierCode] !== undefined) continue;
-    next[row.carrierCode] = mapped.get(row.carrierCode) ?? '';
-  }
-  return next;
-}
 
 function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
   return {
-    defaultFulfillmentMethod: orgSettings?.defaultFulfillmentMethod ?? 'unspecified',
-    syncMode: orgSettings?.syncMode ?? 'digit_to_ss',
-    pushWhen: orgSettings?.pushWhen ?? 'fully_packed',
-    laneTagId: orgSettings?.laneTagId ?? '',
+    defaultFulfillmentMethod: orgSettings?.defaultFulfillmentMethod === 'manual' ? 'manual' : 'scheduled',
     defaultWeightOz: String(orgSettings?.defaultWeightOz ?? 16),
-    defaultLengthIn: orgSettings?.defaultLengthIn != null ? String(orgSettings.defaultLengthIn) : '',
-    defaultWidthIn: orgSettings?.defaultWidthIn != null ? String(orgSettings.defaultWidthIn) : '',
-    defaultHeightIn: orgSettings?.defaultHeightIn != null ? String(orgSettings.defaultHeightIn) : '',
-    rateStrategy: orgSettings?.rateStrategy === 'fastest' ? 'fastest' : 'cheapest',
-    carrierByCode: carrierDraftFromOrg(orgSettings),
   };
 }
 
@@ -211,7 +147,6 @@ export default function App() {
   const setupQuery = useBackendQuery<SetupData>({ path: '/setup' });
   const setupData = setupQuery.data;
   const apiTokenPresent = Boolean(setupData?.apiTokenPresent);
-  const webhookUrlPresent = Boolean(setupData?.webhookUrlPresent);
   const shipStationKeyPresent = Boolean(setupData?.shipStationKeyPresent);
   const setupIncomplete = setupData != null && !setupData.ready;
   const notPublished = setupData != null && !setupData.usable;
@@ -245,9 +180,11 @@ export default function App() {
   const [checkSetup] = useBackendMutation<SetupData>();
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [carrierSettingsOpen, setCarrierSettingsOpen] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [setupCapabilitiesOpen, setSetupCapabilitiesOpen] = useState(false);
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
+  const [carrierDraft, setCarrierDraft] = useState<CarrierDraft | null>(null);
   const [successNotice, setSuccessNotice] = useState<string | null>(null);
   const [connectBlocker, setConnectBlocker] = useState<string | null>(null);
 
@@ -300,6 +237,14 @@ export default function App() {
     setSettingsOpen(true);
   };
 
+  const openCarrierSettings = () => {
+    if (!operable || !isAdmin) return;
+    resetMutation();
+    setSuccessNotice(null);
+    setCarrierDraft(draftFromOrgSettings(orgSettingsQuery.data));
+    setCarrierSettingsOpen(true);
+  };
+
   const saveSettings = async () => {
     if (!organizationId || !draft) return;
     resetMutation();
@@ -309,28 +254,33 @@ export default function App() {
       body: {
         organizationId,
         defaultFulfillmentMethod: draft.defaultFulfillmentMethod,
-        syncMode: draft.syncMode,
-        pushWhen: draft.pushWhen,
-        laneTagId: draft.laneTagId.trim() === '' ? null : draft.laneTagId.trim(),
         defaultWeightOz: Number(draft.defaultWeightOz),
-        defaultLengthIn: draft.defaultLengthIn.trim() === '' ? null : Number(draft.defaultLengthIn),
-        defaultWidthIn: draft.defaultWidthIn.trim() === '' ? null : Number(draft.defaultWidthIn),
-        defaultHeightIn: draft.defaultHeightIn.trim() === '' ? null : Number(draft.defaultHeightIn),
-        rateStrategy: draft.rateStrategy,
-        ...(orgSettingsQuery.data?.digitCarriersError
-          ? {}
-          : {
-              mappings: Object.entries(draft.carrierByCode).map(([ssCarrierCode, digitOptionId]) => ({
-                ssCarrierCode,
-                digitOptionId: digitOptionId ? digitOptionId : null,
-              })),
-            }),
       },
     });
     if (!orgResult.ok) return;
     setSettingsOpen(false);
     setSuccessNotice(
       'Settings saved. New pushes use these rules; orders already in ShipStation are unchanged.',
+    );
+    await orgSettingsQuery.refetch();
+  };
+
+  const saveCarrierMappings = async () => {
+    if (!organizationId || !carrierDraft) return;
+    resetMutation();
+    if (orgSettingsQuery.data?.digitCarriersError) return;
+    const orgResult = await mutate({
+      path: '/org-settings',
+      method: 'PATCH',
+      body: {
+        organizationId,
+        mappings: mappingsFromDraft(carrierDraft),
+      },
+    });
+    if (!orgResult.ok) return;
+    setCarrierSettingsOpen(false);
+    setSuccessNotice(
+      'Carrier mapping saved. The next label writeback uses these Digit shipping carriers.',
     );
     await orgSettingsQuery.refetch();
   };
@@ -346,6 +296,7 @@ export default function App() {
     if (!result.ok) return;
     setDisconnectOpen(false);
     setSettingsOpen(false);
+    setCarrierSettingsOpen(false);
     setSuccessNotice(
       'Disconnected ShipStation. The shipping queue cannot push until you connect again. Shipment maps stay for audit.',
     );
@@ -365,14 +316,23 @@ export default function App() {
     orgSettingsQuery.error?.code === 'BACKEND_UNAVAILABLE' ||
     mutationError?.code === 'BACKEND_UNAVAILABLE';
   const canOfferConnect = !backendUnavailable && !connectionQuery.error;
+  const digitCarriersError = orgSettingsQuery.data?.digitCarriersError ?? null;
+  const unmatchedServices = digitCarriersError ? [] : unmatchedServicesFrom(orgSettingsQuery.data);
+  const unmatchedCarrierCount = unmatchedServices.length;
+  const unmatchedCarrierLabel = unmatchedServices
+    .map((row) => row.name || row.serviceCode)
+    .filter(Boolean)
+    .join(', ');
+  /** A purchased label already used one of these, so a shipment is missing its Digit carrier. */
+  const unmatchedOnLabel = digitCarriersError
+    ? []
+    : (orgSettingsQuery.data?.unmappedCarriers ?? []);
   const featureStatusProps = {
     connected: operable,
     apiTokenPresent,
-    webhookUrlPresent,
     shipStationKeyPresent,
     shipStationApiMode: setupData?.shipStationApiMode,
     shipStationSecretPresent: Boolean(setupData?.shipStationSecretPresent),
-    shipStationWebhookTokenPresent: Boolean(setupData?.shipStationWebhookTokenPresent),
     channels: setupData?.channels ?? [],
   };
 
@@ -385,6 +345,7 @@ export default function App() {
           credentialsMissing={credentialsMissing}
           apiVersion={connectionQuery.data?.apiVersion}
           carrierCount={connectionQuery.data?.carrierCount}
+          unmatchedCarrierCount={unmatchedCarrierCount}
           loading={loading}
           isAdmin={isAdmin}
           shipStationKeyPresent={shipStationKeyPresent}
@@ -394,6 +355,7 @@ export default function App() {
           mutating={mutating}
           onConnect={() => void connect()}
           onOpenSettings={openSettings}
+          onOpenCarrierSettings={openCarrierSettings}
           onOpenDisconnect={() => {
             resetMutation();
             setSuccessNotice(null);
@@ -441,15 +403,45 @@ export default function App() {
           {successNotice}
         </Alert>
       ) : null}
+      {operable && digitCarriersError ? (
+        <Alert severity="warning">{digitCarriersError}</Alert>
+      ) : null}
+      {operable && unmatchedCarrierCount > 0 ? (
+        <Alert
+          severity={unmatchedOnLabel.length > 0 ? 'error' : 'warning'}
+          action={
+            isAdmin ? (
+              <Button color="inherit" size="small" onClick={openCarrierSettings}>
+                Map carriers
+              </Button>
+            ) : null
+          }
+        >
+          {unmatchedOnLabel.length > 0
+            ? `A purchased label used a ShipStation service that is not mapped to Digit (${unmatchedOnLabel
+                .map((row) => row.serviceName || row.serviceCode || row.carrierName || row.carrierCode)
+                .filter(Boolean)
+                .join(', ')}), so those shipments have no Digit carrier. `
+            : `${unmatchedCarrierCount} ShipStation service${
+                unmatchedCarrierCount === 1 ? ' is' : 's are'
+              } not mapped to a Digit shipping carrier (${unmatchedCarrierLabel}). Digit’s carrier stays empty when a label uses ${
+                unmatchedCarrierCount === 1 ? 'it' : 'one of them'
+              }. `}
+          {isAdmin
+            ? 'Open carrier mapping to choose a Digit shipping carrier for each service, or set a carrier default.'
+            : 'An org admin must map it in carrier settings.'}
+        </Alert>
+      ) : null}
 
       {showContent && operable && organizationId ? (
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <FulfillmentQueue
             organizationId={organizationId}
             canPush
+            apiVersion={connectionQuery.data?.apiVersion ?? null}
             orgSettings={orgSettingsQuery.data ?? null}
             pushDisabledReason={
-              apiTokenPresent ? null : 'Add the Digit API token to push shipments to ShipStation.'
+              apiTokenPresent ? null : 'Ask Digit staff to generate JWT_TOKEN and place it in this organization’s app secrets.'
             }
             onPushComplete={() => activityQuery.refetch()}
           />
@@ -464,7 +456,7 @@ export default function App() {
             description={
               credentialsMissing
                 ? 'Secrets are missing. Clear the leftover connection, or restore the ShipStation API key and reload.'
-                : 'Validate credentials (V2 key, or V1 key plus secret) and register webhooks before pushing shipments.'
+                : 'Validate credentials (V2 key, or V1 key plus secret) and sync carriers before pushing shipments.'
             }
           />
           <Box sx={{ mt: 2 }}>
@@ -541,48 +533,10 @@ export default function App() {
                       setDraft({ ...draft, defaultFulfillmentMethod: event.target.value })
                     }
                   >
-                    <MenuItem value="unspecified">Unspecified</MenuItem>
-                    <MenuItem value="shipstation">ShipStation</MenuItem>
-                    <MenuItem value="manual">Manual</MenuItem>
+                    <MenuItem value="scheduled">Scheduled push</MenuItem>
+                    <MenuItem value="manual">Manual push</MenuItem>
                   </Select>
                 </FormControl>
-              </SettingField>
-              <SettingField title={SETTING_HINTS.syncMode} label="Sync mode">
-                <FormControl fullWidth>
-                  <InputLabel id="sync-label">Sync mode</InputLabel>
-                  <Select
-                    labelId="sync-label"
-                    label="Sync mode"
-                    value={draft.syncMode}
-                    onChange={(event) => setDraft({ ...draft, syncMode: event.target.value })}
-                  >
-                    <MenuItem value="digit_to_ss">Digit to ShipStation</MenuItem>
-                    <MenuItem value="ss_to_digit">ShipStation to Digit</MenuItem>
-                  </Select>
-                </FormControl>
-              </SettingField>
-              <SettingField title={SETTING_HINTS.pushWhen} label="Push when">
-                <FormControl fullWidth>
-                  <InputLabel id="push-when-label">Push when</InputLabel>
-                  <Select
-                    labelId="push-when-label"
-                    label="Push when"
-                    value={draft.pushWhen}
-                    onChange={(event) => setDraft({ ...draft, pushWhen: event.target.value })}
-                  >
-                    <MenuItem value="fully_packed">Fully packed</MenuItem>
-                    <MenuItem value="inventory_available">Inventory available</MenuItem>
-                  </Select>
-                </FormControl>
-              </SettingField>
-              <SettingField title={SETTING_HINTS.laneTagId} label="Lane tag">
-                <TextField
-                  label="Lane tag ID (optional)"
-                  value={draft.laneTagId}
-                  onChange={(event) => setDraft({ ...draft, laneTagId: event.target.value })}
-                  fullWidth
-                  helperText="Digit tag option UUID. Blank = all eligible orders."
-                />
               </SettingField>
               <SettingField title={SETTING_HINTS.defaultWeightOz} label="Default package weight">
                 <TextField
@@ -593,137 +547,6 @@ export default function App() {
                   fullWidth
                   inputProps={{ min: 0.1, step: 0.1 }}
                 />
-              </SettingField>
-              <SettingField title={SETTING_HINTS.defaultDims} label="Default package dimensions">
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                  <TextField
-                    label="Length (in)"
-                    type="number"
-                    value={draft.defaultLengthIn}
-                    onChange={(event) => setDraft({ ...draft, defaultLengthIn: event.target.value })}
-                    fullWidth
-                    inputProps={{ min: 0, step: 0.1 }}
-                  />
-                  <TextField
-                    label="Width (in)"
-                    type="number"
-                    value={draft.defaultWidthIn}
-                    onChange={(event) => setDraft({ ...draft, defaultWidthIn: event.target.value })}
-                    fullWidth
-                    inputProps={{ min: 0, step: 0.1 }}
-                  />
-                  <TextField
-                    label="Height (in)"
-                    type="number"
-                    value={draft.defaultHeightIn}
-                    onChange={(event) => setDraft({ ...draft, defaultHeightIn: event.target.value })}
-                    fullWidth
-                    inputProps={{ min: 0, step: 0.1 }}
-                  />
-                </Stack>
-              </SettingField>
-              <SettingField title={SETTING_HINTS.rateStrategy} label="Rate strategy">
-                <FormControl fullWidth>
-                  <InputLabel id="rate-strategy-label">Rate strategy</InputLabel>
-                  <Select
-                    labelId="rate-strategy-label"
-                    label="Rate strategy"
-                    value={draft.rateStrategy}
-                    onChange={(event) => setDraft({ ...draft, rateStrategy: event.target.value })}
-                  >
-                    <MenuItem value="cheapest">Cheapest</MenuItem>
-                    <MenuItem value="fastest">Fastest</MenuItem>
-                  </Select>
-                </FormControl>
-              </SettingField>
-              <SettingField title={SETTING_HINTS.carrierMap} label="Digit shipping carriers">
-                <Stack spacing={1.5}>
-                  {orgSettingsQuery.data?.digitCarriersError ? (
-                    <Alert severity="warning">{orgSettingsQuery.data.digitCarriersError}</Alert>
-                  ) : null}
-                  {(orgSettingsQuery.data?.ssCarriers ?? []).length === 0 &&
-                  (orgSettingsQuery.data?.unmappedCarriers ?? []).length === 0 ? (
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                      Connect ShipStation to load carriers, then map each one to a Digit shipping
-                      carrier.
-                    </Typography>
-                  ) : (
-                    (orgSettingsQuery.data?.ssCarriers ?? []).map((carrier) => (
-                      <FormControl fullWidth key={carrier.carrierCode}>
-                        <InputLabel id={`carrier-map-${carrier.carrierCode}`}>
-                          {carrier.name} ({carrier.carrierCode})
-                        </InputLabel>
-                        <Select
-                          labelId={`carrier-map-${carrier.carrierCode}`}
-                          label={`${carrier.name} (${carrier.carrierCode})`}
-                          value={draft.carrierByCode[carrier.carrierCode] ?? ''}
-                          onChange={(event) =>
-                            setDraft({
-                              ...draft,
-                              carrierByCode: {
-                                ...draft.carrierByCode,
-                                [carrier.carrierCode]: event.target.value,
-                              },
-                            })
-                          }
-                        >
-                          <MenuItem value="">Not mapped</MenuItem>
-                          {(orgSettingsQuery.data?.digitCarriers ?? []).map((option) => (
-                            <MenuItem key={option.id} value={option.id}>
-                              {option.value}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    ))
-                  )}
-                  {(orgSettingsQuery.data?.unmappedCarriers ?? [])
-                    .filter(
-                      (row) =>
-                        row.carrierCode &&
-                        !(orgSettingsQuery.data?.ssCarriers ?? []).some(
-                          (carrier) => carrier.carrierCode === row.carrierCode,
-                        ),
-                    )
-                    .map((row) => (
-                      <FormControl fullWidth key={row.carrierCode || row.carrierName || 'unknown'}>
-                        <InputLabel id={`unmapped-${row.carrierCode}`}>
-                          Unmapped: {row.carrierName || row.carrierCode}
-                        </InputLabel>
-                        <Select
-                          labelId={`unmapped-${row.carrierCode}`}
-                          label={`Unmapped: ${row.carrierName || row.carrierCode}`}
-                          value={draft.carrierByCode[row.carrierCode || ''] ?? ''}
-                          onChange={(event) =>
-                            setDraft({
-                              ...draft,
-                              carrierByCode: {
-                                ...draft.carrierByCode,
-                                [row.carrierCode || '']: event.target.value,
-                              },
-                            })
-                          }
-                        >
-                          <MenuItem value="">Not mapped</MenuItem>
-                          {(orgSettingsQuery.data?.digitCarriers ?? []).map((option) => (
-                            <MenuItem key={option.id} value={option.id}>
-                              {option.value}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    ))}
-                  {(orgSettingsQuery.data?.unmappedCarriers ?? []).some(
-                    (row) =>
-                      row.carrierCode &&
-                      !(draft.carrierByCode[row.carrierCode] || '').trim(),
-                  ) ? (
-                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      Recent labels used a ShipStation carrier that is not mapped to Digit. Choose a
-                      Digit carrier above so the next shipment writes it back.
-                    </Typography>
-                  ) : null}
-                </Stack>
               </SettingField>
               {mutationError && <AppErrorAlert error={mutationError} />}
             </Stack>
@@ -737,11 +560,36 @@ export default function App() {
         </DialogActions>
       </Dialog>
 
+      <CarrierSettingsDialog
+        open={carrierSettingsOpen}
+        orgSettings={orgSettingsQuery.data}
+        draft={carrierDraft ?? { defaults: {}, services: {} }}
+        mutating={mutating}
+        mutationError={mutationError}
+        onChangeDefault={(ssCarrierCode, digitOptionId) =>
+          setCarrierDraft((current) => ({
+            defaults: { ...(current?.defaults ?? {}), [ssCarrierCode]: digitOptionId },
+            services: current?.services ?? {},
+          }))
+        }
+        onChangeService={(ssCarrierCode, ssServiceCode, digitOptionId) =>
+          setCarrierDraft((current) => ({
+            defaults: current?.defaults ?? {},
+            services: {
+              ...(current?.services ?? {}),
+              [ssCarrierCode + '::' + ssServiceCode]: digitOptionId,
+            },
+          }))
+        }
+        onClose={() => setCarrierSettingsOpen(false)}
+        onSave={() => void saveCarrierMappings()}
+      />
+
       <Dialog open={disconnectOpen} onClose={() => setDisconnectOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Disconnect ShipStation?</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            This disables ShipStation actions, deregisters webhooks, and soft-deletes the connection
+            This disables ShipStation actions and soft-deletes the connection
             and carrier catalog. Existing label and order-map records stay for audit. Reconnect
             creates a new connection and re-syncs carriers.
           </Typography>

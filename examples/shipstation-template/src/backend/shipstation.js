@@ -43,45 +43,6 @@ export async function listCarrierServices({ credentials, carrierId, carrierCode 
   });
 }
 
-export async function createWebhook({ credentials, name, event, url }) {
-  const creds = requireCredentials(credentials);
-  if (creds.apiVersion === 'v1') {
-    return ssFetch({
-      credentials: creds,
-      method: 'POST',
-      path: '/webhooks/subscribe',
-      body: {
-        target_url: url,
-        event,
-        friendly_name: name,
-        store_id: null,
-      },
-    });
-  }
-  return ssFetch({
-    credentials: creds,
-    method: 'POST',
-    path: '/v2/environment/webhooks',
-    body: { name, event, url },
-  });
-}
-
-export async function deleteWebhook({ credentials, webhookId }) {
-  const creds = requireCredentials(credentials);
-  if (creds.apiVersion === 'v1') {
-    return ssFetch({
-      credentials: creds,
-      method: 'DELETE',
-      path: `/webhooks/${encodeURIComponent(webhookId)}`,
-    });
-  }
-  return ssFetch({
-    credentials: creds,
-    method: 'DELETE',
-    path: `/v2/environment/webhooks/${encodeURIComponent(webhookId)}`,
-  });
-}
-
 /**
  * V2: POST /v2/shipments. V1: POST /orders/createorder (one order).
  * Returns a V2-shaped envelope `{ shipments: [{ shipment_id, ... }] }` so callers
@@ -187,103 +148,20 @@ export async function getLabel({ credentials, labelId, downloadType = 'url', for
 }
 
 /**
- * V2: POST /v2/rates. V1 callers should use getRates.
+ * V2: GET /v2/labels. V1 has no standalone label list — use getShipment.
  */
-export async function calculateRates({ credentials, shipmentId, shipment, carrierIds }) {
+export async function listLabels({ credentials, query = '' }) {
   const creds = requireCredentials(credentials);
   if (creds.apiVersion === 'v1') {
     return {
       ok: false,
       code: 'VALIDATION_ERROR',
-      message: 'V1 rate shopping uses getRates, not calculateRates.',
+      message: 'V1 has no label list. Use getShipment for the V1 order.',
       status: 400,
     };
   }
-  const ids = (carrierIds ?? []).map(String).filter(Boolean);
-  if (ids.length === 0) {
-    return {
-      ok: false,
-      code: 'VALIDATION_ERROR',
-      message: 'Rate shopping needs at least one ShipStation carrier id.',
-      status: 400,
-    };
-  }
-  const body = shipmentId
-    ? { shipment_id: shipmentId, rate_options: { carrier_ids: ids } }
-    : { shipment, rate_options: { carrier_ids: ids } };
-  return ssFetch({
-    credentials: creds,
-    method: 'POST',
-    path: '/v2/rates',
-    body,
-  });
-}
-
-/**
- * V2: POST /v2/labels/rates/{rate_id}
- */
-export async function createLabelFromRate({ credentials, rateId, labelFormat = 'pdf', labelLayout = '4x6' }) {
-  const creds = requireCredentials(credentials);
-  if (creds.apiVersion === 'v1') {
-    return {
-      ok: false,
-      code: 'VALIDATION_ERROR',
-      message: 'V1 label purchase uses createLabelForOrder, not createLabelFromRate.',
-      status: 400,
-    };
-  }
-  return ssFetch({
-    credentials: creds,
-    method: 'POST',
-    path: `/v2/labels/rates/${encodeURIComponent(rateId)}`,
-    body: {
-      label_format: labelFormat,
-      label_layout: labelLayout,
-      label_download_type: 'inline',
-    },
-  });
-}
-
-/**
- * V1: POST /shipments/getrates
- */
-export async function getRates({ credentials, rateRequest }) {
-  const creds = requireCredentials(credentials);
-  if (creds.apiVersion !== 'v1') {
-    return {
-      ok: false,
-      code: 'VALIDATION_ERROR',
-      message: 'V2 rate shopping uses calculateRates, not getRates.',
-      status: 400,
-    };
-  }
-  return ssFetch({
-    credentials: creds,
-    method: 'POST',
-    path: '/shipments/getrates',
-    body: rateRequest,
-  });
-}
-
-/**
- * V1: POST /orders/createlabelfororder — response includes labelData (base64 PDF).
- */
-export async function createLabelForOrder({ credentials, labelRequest }) {
-  const creds = requireCredentials(credentials);
-  if (creds.apiVersion !== 'v1') {
-    return {
-      ok: false,
-      code: 'VALIDATION_ERROR',
-      message: 'V2 label purchase uses createLabelFromRate, not createLabelForOrder.',
-      status: 400,
-    };
-  }
-  return ssFetch({
-    credentials: creds,
-    method: 'POST',
-    path: '/orders/createlabelfororder',
-    body: labelRequest,
-  });
+  const path = query ? `/v2/labels?${query}` : '/v2/labels';
+  return ssFetch({ credentials: creds, method: 'GET', path });
 }
 
 export async function fetchLabelPdfBytes({ credentials, url }) {
@@ -295,24 +173,3 @@ export async function fetchLabelPdfBytes({ credentials, url }) {
   });
 }
 
-export async function listShipments({ credentials, query = '' }) {
-  const creds = requireCredentials(credentials);
-  if (creds.apiVersion === 'v1') {
-    const path = query ? `/orders?${query}` : '/orders?pageSize=25&page=1';
-    const listed = await ssFetch({ credentials: creds, method: 'GET', path });
-    if (!listed.ok) return listed;
-    const orders = Array.isArray(listed.data?.orders) ? listed.data.orders : [];
-    return { ok: true, data: { shipments: orders, orders } };
-  }
-  const path = query ? `/v2/shipments?${query}` : '/v2/shipments';
-  return ssFetch({ credentials: creds, method: 'GET', path });
-}
-
-export async function fetchResourceUrl({ credentials, resourceUrl }) {
-  return ssFetch({
-    credentials: requireCredentials(credentials),
-    method: 'GET',
-    path: '/',
-    url: resourceUrl,
-  });
-}

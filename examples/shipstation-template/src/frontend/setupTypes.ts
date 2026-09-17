@@ -22,7 +22,6 @@ export type ChannelSecretStatus = {
 export type ChannelSetupEntry = {
   id: string;
   label: string;
-  webhookPath: string | null;
   configured: boolean;
   secrets: ChannelSecretStatus[];
 };
@@ -33,10 +32,8 @@ export type SetupData = {
   /** The publish binding exists, so the app can run at all. */
   usable: boolean;
   apiTokenPresent: boolean;
-  webhookUrlPresent: boolean;
   shipStationKeyPresent: boolean;
   shipStationSecretPresent: boolean;
-  shipStationWebhookTokenPresent: boolean;
   shipStationApiMode: 'v1' | 'v2' | 'missing';
   anyChannelConfigured: boolean;
   items: SetupItem[];
