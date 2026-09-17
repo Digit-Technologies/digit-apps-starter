@@ -10,9 +10,9 @@ export { DigitThemeProvider } from "./theme";
 export type {
   DigitHost,
   DigitHostDownloadOptions,
-  DigitHostInvokeParams,
   DigitHostPrintOptions,
   DigitHostSettings,
+  HostInvokeParams,
 } from "./globals";
 import "./globals";
 
