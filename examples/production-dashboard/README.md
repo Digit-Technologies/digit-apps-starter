@@ -1,6 +1,6 @@
 # Production Dashboard — source export
 
-This is the app source for the "Production Dashboard" Digit app, exported from
+This is the app source for the "Production Dashboard" Sutton app, exported from
 `apps/production-dashboard` in a local clone of
 [`digit-apps-starter`](https://github.com/Digit-Technologies/digit-apps-starter).
 
@@ -13,7 +13,7 @@ link, so it can't be built standalone — it needs to live inside the starter mo
 2. Copy this folder to `apps/production-dashboard` in that clone.
 3. From the repo root: `npm install` again (links the app into the workspace), then
    `npm run pack -w apps/production-dashboard` to produce `app.zip`.
-4. Publish via Digit MCP: `generateAppUploadLink` → POST the zip to `uploadUrl` →
+4. Publish via Sutton MCP: `generateAppUploadLink` → POST the zip to `uploadUrl` →
    `publishApp` → poll `appPublish`.
 
 See `SPEC.md` for what the app does, why each manifest permission exists, gotchas found
@@ -25,7 +25,7 @@ starter prompt.
 - `manifest.json` — declares `READ_ORGANIZATION_DETAIL_AND_METRICS` (required by
   `dailyMetrics`); no `backend` block.
 - `src/frontend/` — React + MUI + `@digit/lib-frontend` UI:
-  - `main.tsx` — mounts `<App />` inside `DigitThemeProvider`.
+  - `main.tsx` — mounts `<App />` inside `SuttonThemeProvider`.
   - `App.tsx` — page layout (KPI row + charts row) and the "Preview data" toggle.
   - `useDailyMetrics.ts` — fetches `dailyMetrics`, normalizes the response (including the
     unit-aware handling for `inventoryQuantityProduced`) into per-day series. Accepts a

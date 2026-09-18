@@ -1,6 +1,6 @@
 # `@digit/lib-backend`
 
-Helpers for Digit app Cloudflare Workers (bundled into `backend/index.js`).
+Helpers for Sutton app Cloudflare Workers (bundled into `backend/index.js`).
 
 Depends on [`@digit/lib-common`](../lib-common) internally. Apps should also depend on
 `@digit/lib-common` and import codes / validation from there — this package does **not**
@@ -16,9 +16,13 @@ Import from the package root only. Helpers take named arguments.
 | `backendPath` | Strip `/proxy/backend` from the request path |
 | `ok` / `err` | Success / error `Response` helpers |
 | `requireEnv` / `optionalEnv` | Read env vars, secrets, and bindings |
-| `digitJobs` | The platform `__JOBS` binding, typed — submit/inspect background jobs |
+| `suttonJobs` | The platform `__JOBS` binding, typed — submit/inspect background jobs |
 | `verifyWebhookSignature` | Timing-safe HMAC check for inbound webhook payloads |
 | `HandlerError` | Thrown by `requireEnv`; mapped by `createHandler` (apps rarely throw it) |
+
+`digitJobs` and `DigitJobs*` types are **deprecated aliases** of `suttonJobs` / `SuttonJobs*`.
+They still work; they will be removed in a later release. The platform binding remains
+`DIGIT_JOBS`.
 
 Wrap the Worker with `createHandler`. Use `backendPath(request)`, then match with normal
 `method` + `path` checks:
@@ -93,18 +97,18 @@ and never put secret values or raw upstream bodies into `error.message` / `data`
 ## Jobs & schedules
 
 Pass `jobs` to `createHandler` to handle background runs (manifest `backend.schedules`
-ticks and jobs submitted via `digitJobs({ env }).submit(...)`); the platform invokes them
+ticks and jobs submitted via `suttonJobs({ env }).submit(...)`); the platform invokes them
 over RPC via the `triggerJob` method on the WorkerEntrypoint class `createHandler` returns:
 
 ```js
-import { createHandler, digitJobs, ok } from '@digit/lib-backend';
+import { createHandler, suttonJobs, ok } from '@digit/lib-backend';
 
 export default createHandler({
   jobs: {
     'note-stats': async ({ payload, env }) => ({ count: await countNotes(env) }),
   },
   fetch: async ({ request, env }) => {
-    const { runId } = await digitJobs({ env }).submit({ name: 'note-stats' });
+    const { runId } = await suttonJobs({ env }).submit({ name: 'note-stats' });
     return ok({ data: { runId }, status: 202 });
   },
 });
@@ -132,7 +136,7 @@ export default createHandler({
         signature: headers['x-webhook-signature'] ?? '',
       });
       if (!valid) return { status: 401 };
-      // …verify passed: act, or digitJobs({ env }).submit(...) for heavy work…
+      // …verify passed: act, or suttonJobs({ env }).submit(...) for heavy work…
       return { status: 200 };
     },
   },

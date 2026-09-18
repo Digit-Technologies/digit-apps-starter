@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography';
 import {
   AppErrorAlert,
   useBackendMutation,
-  useDigitApiMutation,
+  useSuttonApiMutation,
   type AppError,
 } from '@digit/lib-frontend';
 
@@ -47,14 +47,14 @@ const FIXTURES: Record<string, AppError> = {
   backend_config: {
     kind: 'backend',
     code: 'MISSING_CONFIG',
-    message: 'Set WELCOME_MESSAGE on the Digit app (env var or secret), then republish.',
+    message: 'Set WELCOME_MESSAGE on the Sutton app (env var or secret), then republish.',
     requestId: null,
     status: 500,
   },
   unavailable: {
     kind: 'unavailable',
     code: 'CLIENT_UNAVAILABLE',
-    message: 'DigitProxyClient is unavailable. This page only works inside the Digit app harness.',
+    message: 'DigitProxyClient is unavailable. This page only works inside the Sutton app harness.',
     requestId: null,
     status: null,
   },
@@ -73,7 +73,7 @@ export default function ErrorLabPanel() {
   const fixture = useMemo(() => FIXTURES[fixtureKey]!, [fixtureKey]);
   const [live, setLive] = useState<LiveState>({ status: 'idle' });
 
-  const [runGraphql] = useDigitApiMutation({ mutation: BAD_GRAPHQL });
+  const [runGraphql] = useSuttonApiMutation({ mutation: BAD_GRAPHQL });
   const [runBackend] = useBackendMutation();
 
   const runLive = async (kind: 'graphql' | 'validation' | 'server') => {
@@ -131,7 +131,7 @@ export default function ErrorLabPanel() {
           Live triggers
         </Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          These call the real Digit API / Worker. Outside the Digit harness they will show the
+          These call the real Sutton API / Worker. Outside the Sutton harness they will show the
           unavailable client error.
         </Typography>
         <Stack direction="row" spacing={1} useFlexGap sx={{

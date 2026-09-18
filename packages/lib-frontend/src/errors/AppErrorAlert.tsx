@@ -41,7 +41,7 @@ function supportInfo(error: AppError, presentedMessage: string): string | null {
 }
 
 /**
- * Shared error surface for Digit apps. Maps known platform / backend codes to a
+ * Shared error surface for Sutton apps. Maps known platform / backend codes to a
  * title, safe message, optional next-step guidance, visible support info for
  * debugging, and Retry when the error looks transient. Apps should render this
  * instead of branching on `AppErrorCode` in UI.
@@ -78,11 +78,11 @@ function supportInfo(error: AppError, presentedMessage: string): string | null {
  *   );
  * }
  *
- * @example Digit GraphQL query + custom title
- * import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
+ * @example Sutton GraphQL query + custom title
+ * import { AppErrorAlert, useSuttonApiQuery } from '@digit/lib-frontend';
  *
  * function Items() {
- *   const { error, refetch } = useDigitApiQuery({
+ *   const { error, refetch } = useSuttonApiQuery({
  *     query: `query Items { items(connection: { first: 10 }) { nodes { id } } }`,
  *   });
  *

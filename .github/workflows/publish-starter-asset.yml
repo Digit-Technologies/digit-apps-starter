@@ -53,8 +53,8 @@ jobs:
             --exclude node_modules \
             --exclude .DS_Store \
             --exclude .vite \
-            .agents/skills/create-digit-app/ \
-            "$STAGE/.agents/skills/create-digit-app/"
+            .agents/skills/create-sutton-app/ \
+            "$STAGE/.agents/skills/create-sutton-app/"
 
           rsync -a \
             --exclude node_modules \
@@ -135,7 +135,7 @@ jobs:
 
           # Read by digit-api (readSkillReleaseTag): stamps this release's tag into the skill's own
           # frontmatter so a rebuilt builder session can detect a stale cached copy of the skill.
-          SKILL_MD="$STAGE/.agents/skills/create-digit-app/SKILL.md"
+          SKILL_MD="$STAGE/.agents/skills/create-sutton-app/SKILL.md"
           awk -v tag="$DATE_TAG" '
             NR==1 && $0=="---" { print; infm=1; next }
             infm==1 && $0=="---" { print "metadata:"; print "  releaseTag: " tag; print; infm=0; next }
@@ -176,7 +176,7 @@ jobs:
           - Source commit: \`${GITHUB_SHA}\`
 
           ### Contents
-          - \`.agents/skills/create-digit-app\`
+          - \`.agents/skills/create-sutton-app\`
           - Pre-scaffolded, frontend-only, packable \`apps/app/\`
           - \`examples/\`, \`packages/\`, \`scripts/\`
           - Root \`package.json\`, \`package-lock.json\`, \`README.md\`, \`LICENSE\`, \`.gitignore\`

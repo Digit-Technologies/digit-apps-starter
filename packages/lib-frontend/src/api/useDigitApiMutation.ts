@@ -3,24 +3,34 @@ import { useCallback, useState } from 'react';
 import type { AppError } from '../errors/types';
 
 import { digitRequest } from './digitRequest';
-import type { DigitResult, MutationHookResult } from './types';
+import type { SuttonResult, MutationHookResult } from './types';
 
-export type UseDigitApiMutationArgs = {
+export type UseSuttonApiMutationArgs = {
   mutation: string;
 };
 
-export type DigitApiMutateArgs = {
+export type SuttonApiMutateArgs = {
   variables?: Record<string, unknown>;
 };
 
 /**
- * Mutate via the Digit GraphQL API on demand.
+ * @deprecated Use {@link UseSuttonApiMutationArgs}. Will be removed in a later release.
+ */
+export type UseDigitApiMutationArgs = UseSuttonApiMutationArgs;
+
+/**
+ * @deprecated Use {@link SuttonApiMutateArgs}. Will be removed in a later release.
+ */
+export type DigitApiMutateArgs = SuttonApiMutateArgs;
+
+/**
+ * Mutate via the Sutton GraphQL API on demand.
  * Returns `[mutate, { data, error, loading, reset }]`.
  */
-export function useDigitApiMutation<T = unknown>({
+export function useSuttonApiMutation<T = unknown>({
   mutation,
-}: UseDigitApiMutationArgs): [
-  (args?: DigitApiMutateArgs) => Promise<DigitResult<T>>,
+}: UseSuttonApiMutationArgs): [
+  (args?: SuttonApiMutateArgs) => Promise<SuttonResult<T>>,
   MutationHookResult<T>,
 ] {
   const [data, setData] = useState<T | undefined>(undefined);
@@ -34,7 +44,7 @@ export function useDigitApiMutation<T = unknown>({
   }, []);
 
   const mutate = useCallback(
-    async (args: DigitApiMutateArgs = {}) => {
+    async (args: SuttonApiMutateArgs = {}) => {
       setLoading(true);
       setError(null);
       const result = await digitRequest<T>({ query: mutation, variables: args.variables });
@@ -52,3 +62,8 @@ export function useDigitApiMutation<T = unknown>({
 
   return [mutate, { data, error, loading, reset }];
 }
+
+/**
+ * @deprecated Use {@link useSuttonApiMutation}. Same hook; will be removed in a later release.
+ */
+export const useDigitApiMutation = useSuttonApiMutation;

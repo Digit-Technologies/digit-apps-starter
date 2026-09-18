@@ -1,5 +1,5 @@
 /**
- * Pathname for Digit app Worker handlers: strips the platform `/proxy/backend` prefix.
+ * Pathname for Sutton app Worker handlers: strips the platform `/proxy/backend` prefix.
  *
  * @example
  * const path = backendPath(request); // '/notes/1' from '.../proxy/backend/notes/1'

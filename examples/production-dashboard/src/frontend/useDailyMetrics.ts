@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import { useDigitApiQuery, type AppError } from '@digit/lib-frontend';
+import { useSuttonApiQuery, type AppError } from '@digit/lib-frontend';
 
 import { buildDayWindow, localDayKey, type DayBucket } from './dateWindow';
 import { getPreviewStubData } from './previewStubData';
@@ -137,7 +137,7 @@ export type DailyMetricsResult = {
   /** Unit-of-measure symbol (e.g. "ea", "kg") backing `inventoryQuantityProduced`, or null if no data. */
   inventoryQuantityProducedUnit: string | null;
   loading: boolean;
-  error: ReturnType<typeof useDigitApiQuery<DailyMetricsData>>['error'];
+  error: ReturnType<typeof useSuttonApiQuery<DailyMetricsData>>['error'];
   refetch: () => Promise<void>;
 };
 
@@ -146,7 +146,7 @@ const DAYS_BACK = 7; // + today = 8 days total
 export function useDailyMetrics(previewMode: boolean = false): DailyMetricsResult {
   const { days, startDate, endDate } = useMemo(() => buildDayWindow(DAYS_BACK), []);
 
-  const { data, error, loading, refetch } = useDigitApiQuery<DailyMetricsData>({
+  const { data, error, loading, refetch } = useSuttonApiQuery<DailyMetricsData>({
     query: DAILY_METRICS_QUERY,
     variables: { startDate, endDate },
     // Preview mode never needs the real dailyMetrics call.

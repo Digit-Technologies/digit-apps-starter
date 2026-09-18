@@ -19,16 +19,16 @@ Key behaviors:
 - Today's elapsed total = sum of `duration_seconds` for completed shifts whose
   `clock_in_time` falls in the local-day window, plus the live elapsed time of an open
   shift if *that* shift also started today.
-- Shifts are keyed by `user_id` = Digit `currentUser.id`, so a page refresh mid-shift
+- Shifts are keyed by `user_id` = Sutton `currentUser.id`, so a page refresh mid-shift
   never loses the open clock-in, and each user only ever sees their own shifts.
 
 ## Data & permissions
 
-- `manifest.permissions`: `[]`. The only Digit GraphQL field used is
+- `manifest.permissions`: `[]`. The only Sutton GraphQL field used is
   `currentUser { id }` (type `CurrentUser`), which the schema does not gate behind any
   `apiPermissions` entry — confirmed via `graphql-schema://type/CurrentUser` before
   building. All other reads/writes go through the app's own D1-backed Worker, not the
-  Digit API.
+  Sutton API.
 - `manifest.backend`: Cloudflare Worker + one D1 binding, `TIMECARD_DB`.
 - `shifts` table (`src/backend/migrations/0001_init.sql`): `id`, `user_id`,
   `clock_in_time` / `clock_out_time` (ISO 8601 UTC instants written by the Worker,
@@ -101,9 +101,9 @@ Behavior:
 ## Context supplied
 
 Scaffolded from `examples/full-featured` via `npm run new-app -- timecard`. Built by
-reading the `create-digit-app` skill end-to-end (manifest, permissions, proxy-and-api,
+reading the `create-sutton-app` skill end-to-end (manifest, permissions, proxy-and-api,
 backend-env-secrets, publish, spec references) plus the full-featured example's
 `NotesPanel.tsx` / `DigitApiPanel.tsx` / `src/backend/{index.js,notes.js}` as the D1 CRUD
-and Digit-GraphQL-hook reference patterns. Confirmed `CurrentUser.id` needs no permission
+and Sutton-GraphQL-hook reference patterns. Confirmed `CurrentUser.id` needs no permission
 via `graphql-schema://type/CurrentUser` on the "Digit Staging - Digit Org" MCP connector
 before writing any GraphQL.

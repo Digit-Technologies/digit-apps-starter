@@ -2,7 +2,7 @@
  * Shift (clock in / clock out) D1 routes for the Timecard Worker.
  * Returns a Response when the request matches a shifts route; otherwise null.
  *
- * Shifts are keyed by `user_id` (Digit `currentUser.id`), so a refresh never loses
+ * Shifts are keyed by `user_id` (Sutton `currentUser.id`), so a refresh never loses
  * an open clock-in and one user never sees another user's shifts.
  */
 

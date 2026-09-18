@@ -18,7 +18,7 @@ import {
   AppErrorAlert,
   useBackendMutation,
   useBackendQuery,
-  useDigitApiQuery,
+  useSuttonApiQuery,
 } from '@digit/lib-frontend';
 
 import {
@@ -145,7 +145,7 @@ export default function App() {
   const previewData = useMemo(buildPreviewData, []);
 
   const { data: userData, error: userError, loading: userLoading } =
-    useDigitApiQuery<CurrentUserData>({ query: CURRENT_USER_QUERY });
+    useSuttonApiQuery<CurrentUserData>({ query: CURRENT_USER_QUERY });
   const userId = userData?.currentUser?.id;
   const userName = previewMode ? previewData.userName : userData?.currentUser?.username ?? null;
   const userEmail = previewMode ? previewData.userEmail : userData?.currentUser?.email ?? null;
@@ -249,7 +249,7 @@ export default function App() {
           }}>
           <Box>
             <Typography variant="overline" component="p" sx={{ color: 'primary.main', mb: 0.5 }}>
-              Digit App
+              Sutton App
             </Typography>
             <Typography variant="h1" component="h1">
               Time card

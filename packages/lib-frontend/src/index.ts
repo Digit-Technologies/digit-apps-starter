@@ -1,13 +1,18 @@
 /**
- * Public API for Digit custom apps.
+ * Public API for Sutton custom apps.
  * Only import from this package root — other files are implementation details.
  */
 
 // Theme
-export { DigitThemeProvider } from "./theme";
+export { SuttonThemeProvider, DigitThemeProvider } from "./theme";
 
 // Host / proxy types (importing this package augments Window)
 export type {
+  SuttonHost,
+  SuttonHostDownloadOptions,
+  SuttonHostPrintOptions,
+  SuttonHostSettings,
+  SuttonProxyClient,
   DigitHost,
   DigitHostDownloadOptions,
   DigitHostPrintOptions,
@@ -19,11 +24,13 @@ import "./globals";
 export { AppErrorAlert } from "./errors";
 export type { AppError } from "./errors";
 
-// Digit API + app backend (hooks only — imperative fetch helpers are internal)
+// Sutton API + app backend (hooks only — imperative fetch helpers are internal)
 export {
+  useSuttonApiQuery,
+  useSuttonApiMutation,
   useDigitApiQuery,
   useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
 } from "./api";
-export type { DigitResult } from "./api";
+export type { SuttonResult, DigitResult } from "./api";

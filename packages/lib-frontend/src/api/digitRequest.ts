@@ -1,6 +1,6 @@
 import { fromThrown, parseProxyBody, unavailableClient } from '../errors/parse';
 
-import type { DigitResult } from './types';
+import type { SuttonResult } from './types';
 
 import '../globals';
 
@@ -14,15 +14,15 @@ export type DigitRequestArgs = {
 };
 
 /**
- * Call Digit GraphQL through the harness (`DigitProxyClient.callProxy`) and
+ * Call Sutton GraphQL through the harness (`DigitProxyClient.callProxy`) and
  * normalize platform / GraphQL errors.
  *
- * Used internally by `useDigitApiQuery` / `useDigitApiMutation`.
+ * Used internally by `useSuttonApiQuery` / `useSuttonApiMutation`.
  */
 export async function digitRequest<T = unknown>({
   query,
   variables,
-}: DigitRequestArgs): Promise<DigitResult<T>> {
+}: DigitRequestArgs): Promise<SuttonResult<T>> {
   const client = window.DigitProxyClient;
   if (!client?.callProxy) {
     return { ok: false, error: unavailableClient() };

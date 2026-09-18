@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react';
 import type { AppError } from '../errors/types';
 
 import { backendFetch, type BackendFetchArgs } from './backendFetch';
-import type { DigitResult, MutationHookResult } from './types';
+import type { SuttonResult, MutationHookResult } from './types';
 
 /**
  * Call the app Worker on demand (POST/PUT/DELETE/…).
@@ -12,7 +12,7 @@ import type { DigitResult, MutationHookResult } from './types';
  * `mutate({ path, method?, body? })` — path is required per call so CRUD can target `/notes/:id`.
  */
 export function useBackendMutation<T = unknown>(): [
-  (args: BackendFetchArgs) => Promise<DigitResult<T>>,
+  (args: BackendFetchArgs) => Promise<SuttonResult<T>>,
   MutationHookResult<T>,
 ] {
   const [data, setData] = useState<T | undefined>(undefined);

@@ -162,7 +162,7 @@ export function unavailableClient(message?: string): AppError {
     code: 'CLIENT_UNAVAILABLE',
     message:
       message ??
-      'DigitProxyClient is unavailable. This page only works inside the Digit app harness.',
+      'DigitProxyClient is unavailable. This page only works inside the Sutton app harness.',
     requestId: null,
     status: null,
   };

@@ -41,7 +41,7 @@ add a one-line note before it, but keep the prompt text unedited.
 ### Context supplied
 
 Anything beyond the prompts that shaped the result: example app copied from, screenshots
-or mockups, tickets/docs, an existing Digit object used as a model, schema notes, product
+or mockups, tickets/docs, an existing Sutton object used as a model, schema notes, product
 decisions the user made mid-build.
 
 ## Example
@@ -49,12 +49,12 @@ decisions the user made mid-build.
 See [`examples/full-featured/SPEC.md`](../../../../examples/full-featured/SPEC.md) for a
 realistic builder-perspective SPEC.
 
-## Local workspace vs Digit zip
+## Local workspace vs Sutton zip
 
 | Where | How the app is preserved |
 | --- | --- |
 | Local clone / agent workspace | Keep **source** under `apps/<name>` on disk (not build outputs) so later sessions can iterate. Local git commits are optional. Do not push or open PRs against this upstream starter. |
-| Published Digit app | `npm run pack` → `app.zip` (includes required `project/` source tree) |
+| Published Sutton app | `npm run pack` → `app.zip` (includes required `project/` source tree) |
 
 ### Keep in the workspace
 
@@ -70,7 +70,7 @@ realistic builder-perspective SPEC.
 - Per-app Vite configs or `scripts/pack.sh` — owned by `@digit/lib-build`
 - `node_modules/`
 - `.vite/`
-- `*.zip` (`npm run pack` creates `app.zip` for Digit upload only)
+- `*.zip` (`npm run pack` creates `app.zip` for Sutton upload only)
 
 ### Workflow
 

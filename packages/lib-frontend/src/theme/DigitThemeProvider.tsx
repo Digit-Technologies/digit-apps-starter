@@ -18,7 +18,7 @@ function resolveDarkMode(): boolean {
   return window.matchMedia("(prefers-color-scheme: dark)").matches
 }
 
-export function DigitThemeProvider({
+export function SuttonThemeProvider({
   children,
 }: {
   children: React.ReactNode
@@ -59,3 +59,8 @@ export function DigitThemeProvider({
     </ThemeProvider>
   )
 }
+
+/**
+ * @deprecated Use {@link SuttonThemeProvider}. Same component; will be removed in a later release.
+ */
+export const DigitThemeProvider = SuttonThemeProvider

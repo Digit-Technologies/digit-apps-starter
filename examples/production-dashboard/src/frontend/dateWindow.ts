@@ -1,5 +1,5 @@
 /**
- * Day-boundary helpers. Digit apps have no org timezone field to read, so "today" and
+ * Day-boundary helpers. Sutton apps have no org timezone field to read, so "today" and
  * day boundaries are computed in the viewer's browser/device local timezone.
  */
 

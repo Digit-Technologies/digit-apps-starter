@@ -2,12 +2,12 @@
 
 ## What it does
 
-A minimal frontend-only Digit app. It greets the signed-in user when Digit returns a
+A minimal frontend-only Sutton app. It greets the signed-in user when Sutton returns a
 username or email, otherwise “Hello, world!”. It still has no backend Worker.
 
 ## Data & permissions
 
-- `manifest.permissions`: `[]`. The only Digit GraphQL field used is
+- `manifest.permissions`: `[]`. The only Sutton GraphQL field used is
   `currentUser { username email }` (type `CurrentUser`), which is not gated behind an
   `apiPermissions` entry — same pattern as `examples/timecard`.
 - No environment variables, secrets, or backend Worker.
@@ -20,6 +20,6 @@ and can serve as the pre-scaffolded `apps/app` in the curated starter archive.
 ## Context supplied
 
 This intentionally small example is a clean starting point for agents. Add permissions
-only when introducing Digit API calls, and add `src/backend/` plus a manifest `backend`
+only when introducing Sutton API calls, and add `src/backend/` plus a manifest `backend`
 block only when server-side logic, environment variables, secrets, D1, or third-party
 HTTP calls are required.

@@ -10,7 +10,7 @@ MOs open & late as a tinted alert tile) plus two 8-day charts (line/area of unit
 grouped bar of MOs completed vs. MOs open late). UI-only — no backend/Worker/D1.
 
 "Today" and day boundaries are computed in the viewer's browser/device local timezone
-(Digit apps have no org timezone field to read), and the resolved timezone abbreviation is
+(Sutton apps have no org timezone field to read), and the resolved timezone abbreviation is
 shown in the page header so the basis is obvious. Missing days or null values are rendered
 as an explicit "No data" state, never faked as zero.
 
@@ -51,7 +51,7 @@ as an explicit "No data" state, never faked as zero.
   first. It's toggled at runtime via a "Preview data" switch in the header (state lives in
   `App.tsx`, passed into `useDailyMetrics(previewMode)`), defaulting to **off** — real
   `dailyMetrics` data is the default experience. When on, the real query is skipped
-  entirely (`useDigitApiQuery({ ..., skip: previewMode })`) and a small "Preview data" chip
+  entirely (`useSuttonApiQuery({ ..., skip: previewMode })`) and a small "Preview data" chip
   renders next to the header so the fake numbers are never mistaken for live output.
 - **Chart styling:** the units-produced area chart originally filled with
   `theme.palette.primary.main`, which in this theme is near-black (it's the button/text
@@ -110,8 +110,8 @@ Behavior:
 
 ## Context supplied
 
-- Started from `examples/full-featured` per the `create-digit-app` skill, then removed
-  `src/backend` and the example tabs/panels since this app is Digit-API-only.
+- Started from `examples/full-featured` per the `create-sutton-app` skill, then removed
+  `src/backend` and the example tabs/panels since this app is Sutton-API-only.
 - Schema/permission lookups done live via the Digit Staging MCP resources
   (`graphql-schema://search/dailyMetrics`, `graphql-schema://type/Query`,
   `graphql-schema://type/DailyMetric`, `graphql-schema://type/MetricType`,

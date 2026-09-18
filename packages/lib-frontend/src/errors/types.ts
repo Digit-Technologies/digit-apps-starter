@@ -1,6 +1,6 @@
 import type { ErrorResult, SuccessResult } from '@digit/lib-common';
 
-/** Kind of failure after normalizing a Digit proxy / backend / GraphQL result. */
+/** Kind of failure after normalizing a Sutton proxy / backend / GraphQL result. */
 export type AppErrorKind = 'platform' | 'graphql' | 'backend' | 'unavailable' | 'unknown';
 
 export type AppError = {

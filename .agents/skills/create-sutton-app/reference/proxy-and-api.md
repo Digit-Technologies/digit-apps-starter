@@ -1,7 +1,7 @@
-# Proxy and Digit API
+# Proxy and Sutton API
 
 Apps run on a per-app origin. The only egress the frontend CSP allows is same-origin, so
-Digit data and app backends are reached through Digit-hosted proxies.
+Sutton data and app backends are reached through Sutton-hosted proxies.
 
 Prefer the React hooks from `@digit/lib-frontend` — they wrap the harness client and
 normalize errors for `AppErrorAlert`. The package’s public data API is **hooks only**
@@ -9,7 +9,7 @@ normalize errors for `AppErrorAlert`. The package’s public data API is **hooks
 
 ## Look up the GraphQL schema (required)
 
-Digit MCP is required. When writing or changing Digit GraphQL operations, use these MCP
+Sutton MCP is required. When writing or changing Sutton GraphQL operations, use these MCP
 **resources** — do **not** invent field or type names, and do **not** load the full schema
 into context:
 
@@ -27,12 +27,12 @@ see [permissions.md](permissions.md).
 ```ts
 import {
   AppErrorAlert,
-  useDigitApiQuery,
+  useSuttonApiQuery,
   useBackendQuery,
   useBackendMutation,
 } from '@digit/lib-frontend';
 
-const { data, error, loading, refetch } = useDigitApiQuery({
+const { data, error, loading, refetch } = useSuttonApiQuery({
   query: `
     query Items($connection: ConnectionInput) {
       items(connection: $connection) {
@@ -53,8 +53,9 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 Confirm root fields and selection sets against `graphql-schema://…` before shipping.
-Types for `window.DigitHost` are exported from `@digit/lib-frontend` (`DigitHost`,
-`DigitHostSettings`). Prefer the hooks over calling `window.DigitProxyClient` yourself.
+Types for `window.SuttonHost` are exported from `@digit/lib-frontend` (`SuttonHost`,
+`SuttonHostSettings`). Prefer the hooks over calling `window.SuttonProxyClient` yourself.
+`DigitHost` / `DigitProxyClient` are deprecated aliases and still work.
 
 ## Sort, filter, and pagination
 
@@ -67,14 +68,14 @@ When the UI is a table (or any multi-row list that can grow), paginate it: pass
 next/previous (or equivalent) controls. Unbounded `nodes` dumps are not acceptable for
 tables.
 
-## Digit GraphQL API
+## Sutton GraphQL API
 
-`useDigitApiQuery` / `useDigitApiMutation` POST `/proxy/digit` with
+`useSuttonApiQuery` / `useSuttonApiMutation` POST `/proxy/digit` with
 `credentials: 'include'` and `X-Digit-Proxy-Client: 1`.
 
 - Credentials stay server-side (HttpOnly session cookie + scoped token in Redis)
 - Your query must be covered by `manifest.permissions` ∩ the user's live permissions
-- Do **not** call Digit GraphQL with a bearer token from app JS
+- Do **not** call Sutton GraphQL with a bearer token from app JS
 - Do **not** invent a different proxy URL
 
 ## App backend
@@ -114,11 +115,11 @@ Import codes / validation from `@digit/lib-common`; Worker Response helpers from
 ## Host display settings
 
 ```ts
-import type { DigitHostSettings } from '@digit/lib-frontend';
+import type { SuttonHostSettings } from '@digit/lib-frontend';
 
-window.DigitHost?.getSettings(); // DigitHostSettings | null
-window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
+window.SuttonHost?.getSettings(); // SuttonHostSettings | null
+window.SuttonHost?.onSettingsChange((settings) => { /* ... */ });
 ```
 
 `data-theme` and `lang` are also set on `<html>`. Apps using `@digit/lib-frontend` get
-light/dark sync automatically via `DigitThemeProvider` — see [theming.md](theming.md).
+light/dark sync automatically via `SuttonThemeProvider` — see [theming.md](theming.md).

@@ -5,7 +5,7 @@ import type { AppError } from '../errors/types';
 import { digitRequest } from './digitRequest';
 import type { QueryHookResult } from './types';
 
-export type UseDigitApiQueryArgs = {
+export type UseSuttonApiQueryArgs = {
   query: string;
   variables?: Record<string, unknown>;
   /** When true, do not fetch until `refetch()` is called. */
@@ -13,13 +13,18 @@ export type UseDigitApiQueryArgs = {
 };
 
 /**
- * Query the Digit GraphQL API. Returns `{ data, error, loading, refetch }`.
+ * @deprecated Use {@link UseSuttonApiQueryArgs}. Will be removed in a later release.
  */
-export function useDigitApiQuery<T = unknown>({
+export type UseDigitApiQueryArgs = UseSuttonApiQueryArgs;
+
+/**
+ * Query the Sutton GraphQL API. Returns `{ data, error, loading, refetch }`.
+ */
+export function useSuttonApiQuery<T = unknown>({
   query,
   variables,
   skip = false,
-}: UseDigitApiQueryArgs): QueryHookResult<T> {
+}: UseSuttonApiQueryArgs): QueryHookResult<T> {
   const variablesKey = JSON.stringify(variables ?? null);
   const variablesRef = useRef(variables);
   variablesRef.current = variables;
@@ -56,3 +61,8 @@ export function useDigitApiQuery<T = unknown>({
 
   return { data, error, loading, refetch };
 }
+
+/**
+ * @deprecated Use {@link useSuttonApiQuery}. Same hook; will be removed in a later release.
+ */
+export const useDigitApiQuery = useSuttonApiQuery;
