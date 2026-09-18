@@ -108,6 +108,10 @@ const html = `
 window.DigitHost?.print({ title: "Packing Slip 1042", html });
 ```
 
+For labels designed in Digit, prefer `printLabel` / `renderLabelPrintHtml` from
+`@digit/lib-frontend` instead of hand-building the layout. Those helpers turn API
+`layoutJson` plus the record into this same kind of snapshot.
+
 Do not use `window.open`, `target="_blank"`, blob navigation, or print-window patterns.
 Never ask for more sandbox flags. For PDF bytes, call `DigitHost.download` with
 `application/pdf`; `DigitHost.print` accepts HTML only.
