@@ -45,7 +45,7 @@ project/                  # Required in the zip — source, SPEC, tooling (not d
 1. Create the app in Sutton
 2. Add env var `WELCOME_MESSAGE`
 3. Add env var `API_BASE_URL` (e.g. `https://httpbin.org`) and secret `THIRD_PARTY_API_KEY`
-4. `npm run pack` and publish via MCP (see the create-digit-app skill)
+4. `npm run pack` and publish via MCP (see the create-sutton-app skill)
 
 D1 migrations in `src/backend/migrations/` run during **publish** (before the Worker goes
 live) when the manifest declares a `database` binding — no manual apply step.

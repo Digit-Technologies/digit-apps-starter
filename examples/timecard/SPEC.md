@@ -101,7 +101,7 @@ Behavior:
 ## Context supplied
 
 Scaffolded from `examples/full-featured` via `npm run new-app -- timecard`. Built by
-reading the `create-digit-app` skill end-to-end (manifest, permissions, proxy-and-api,
+reading the `create-sutton-app` skill end-to-end (manifest, permissions, proxy-and-api,
 backend-env-secrets, publish, spec references) plus the full-featured example's
 `NotesPanel.tsx` / `DigitApiPanel.tsx` / `src/backend/{index.js,notes.js}` as the D1 CRUD
 and Sutton-GraphQL-hook reference patterns. Confirmed `CurrentUser.id` needs no permission

@@ -27,7 +27,7 @@ include a backend or compiled build directories. In that downloaded archive, wor
 
 Agents should follow:
 
-[`.agents/skills/create-digit-app/SKILL.md`](.agents/skills/create-digit-app/SKILL.md)
+[`.agents/skills/create-sutton-app/SKILL.md`](.agents/skills/create-sutton-app/SKILL.md)
 
 That skill covers:
 
@@ -87,7 +87,7 @@ curl -fsSL -o digit-apps-starter.zip \
 unzip digit-apps-starter.zip
 ```
 
-The archive includes the create-digit-app skill, `examples/`, `packages/`, `scripts/`,
+The archive includes the create-sutton-app skill, `examples/`, `packages/`, `scripts/`,
 the packable source tree at `apps/app/`, and root install metadata — not `node_modules`
 or build outputs. A consumer restoring a retained publish can replace `apps/app/`
 entirely with that publish archive's `project/` tree while keeping the starter shell.

@@ -110,7 +110,7 @@ Behavior:
 
 ## Context supplied
 
-- Started from `examples/full-featured` per the `create-digit-app` skill, then removed
+- Started from `examples/full-featured` per the `create-sutton-app` skill, then removed
   `src/backend` and the example tabs/panels since this app is Sutton-API-only.
 - Schema/permission lookups done live via the Digit Staging MCP resources
   (`graphql-schema://search/dailyMetrics`, `graphql-schema://type/Query`,
