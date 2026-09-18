@@ -7,8 +7,9 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 ## Public API
 
 Import from the package root only. Theme tokens, error parsers, and other modules
-under `src/` are implementation details — use `DigitThemeProvider`, the hooks, and
-`AppErrorAlert`.
+under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
+`AppErrorAlert`, and the label print helpers (`printLabel`, `renderLabelPrintHtml`,
+`LabelPreview`).
 
 ## Why a copy (not an import from digit-web)
 
@@ -66,6 +67,33 @@ window.DigitHost?.print({ title: "Packing Slip 1042", html });
 The print document runs no JavaScript. Inline CSS and convert images or canvases to
 `data:image/...` before calling `print`; remote `http(s)` assets do not load (print CSP
 is `img-src data:`). Keep the result under 10MB. Use `DigitHost.download` for PDF bytes.
+
+For inventory / item / container labels designed in Digit, do not rebuild the layout
+in the app. Load the configuration from the API and pass it through
+`renderLabelPrintHtml` / `printLabel`:
+
+```ts
+import { printLabel, renderLabelPrintHtml } from "@digit/lib-frontend";
+
+await printLabel({
+  title: "Inventory Label",
+  config: labelConfiguration, // includes layoutJson from the API
+  record: { item, ...inventory },
+});
+
+// Or build the snapshot yourself:
+const html = await renderLabelPrintHtml({
+  config: labelConfiguration,
+  record: { item, ...inventory },
+});
+window.DigitHost?.print({ title: "Inventory Label", html });
+```
+
+`layoutJson` is the composer canvas blob Digit already stores. This helper binds
+`bindingKey`s onto that layout and emits `@page`-sized HTML with Code 128 / GS1-128 /
+QR as inline SVG. Native digit-web print stays on its own renderer; this is the
+studio-safe path. Look up the configuration query and permissions via Digit MCP
+before shipping.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.

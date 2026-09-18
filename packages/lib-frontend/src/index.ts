@@ -27,3 +27,22 @@ export {
   useBackendMutation,
 } from "./api";
 export type { DigitResult } from "./api";
+
+// Label print HTML for DigitHost.print (composer layoutJson + record → snapshot)
+export {
+  renderLabelPrintHtml,
+  printLabel,
+  labelPrintTitle,
+  parseLabelLayout,
+  bindRecordValue,
+  LabelPreview,
+} from "./labels";
+export type {
+  LabelPrintConfig,
+  LabelPrintRecord,
+  LabelLayoutObject,
+  ParsedLabelLayout,
+  RenderLabelPrintHtmlArgs,
+  PrintLabelArgs,
+  LabelPreviewProps,
+} from "./labels";

@@ -176,7 +176,8 @@ only; still upload the zip **unchanged**. Details:
   paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
   unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `AppErrorAlert` only. Pair hook `error` with
+- **Public surface:** hooks + theme + `AppErrorAlert` + label print helpers
+  (`printLabel` / `renderLabelPrintHtml`). Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -213,6 +214,25 @@ rel="stylesheet">`, and the print CSP blocks network CSS.
 Do not send PDF bytes to `DigitHost.print`. Download a PDF with
 `DigitHost.download({ filename, contentType: 'application/pdf', data })`. Printing only
 accepts HTML and opens the browser print dialog.
+
+**Digit labels (inventory / item / container):** do not rebuild the native designer
+in the app. Load the label configuration from the Digit API (`layoutJson` plus the
+inventory/item record), then:
+
+```ts
+import { printLabel } from '@digit/lib-frontend';
+
+await printLabel({
+  title: 'Inventory Label',
+  config: labelConfiguration,
+  record: { item, ...inventory },
+});
+```
+
+`printLabel` calls `renderLabelPrintHtml` (composer layout → `@page`-sized HTML with
+inline SVG barcodes/QR) then `DigitHost.print`. Look up the configuration query and
+`appPermissions` keys via Digit MCP; do not invent field names. Keep the designer
+itself native-only.
 
 ### 5. `manifest.json`
 
@@ -301,7 +321,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`              |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, label print HTML |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
