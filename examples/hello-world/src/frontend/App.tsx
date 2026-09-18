@@ -31,7 +31,7 @@ export default function App() {
       <Paper sx={{ width: '100%', maxWidth: 560, p: { xs: 3, sm: 5 } }}>
         <Stack spacing={1.5}>
           <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
-            Digit App
+            Sutton App
           </Typography>
           {loading ? (
             <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>

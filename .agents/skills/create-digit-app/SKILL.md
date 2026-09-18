@@ -1,19 +1,19 @@
 ---
 name: create-digit-app
 description: >-
-  Build and publish Digit custom apps (React + MUI + Digit theme via
+  Build and publish Sutton custom apps (React + MUI + Sutton theme via
   @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
-  Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
+  Vite IIFE bundles, manifest.json, Sutton API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
-  or device APIs). Use when creating a Digit app, editing an app in a local clone
-  of this starter, publishing via MCP, or when the user mentions Digit apps,
-  manifest.json, DigitProxyClient, DigitThemeProvider, /proxy/digit, or
-  /proxy/backend.
+  or device APIs). Use when creating a Sutton app, editing an app in a local clone
+  of this starter, publishing via MCP, or when the user mentions Sutton apps,
+  Digit apps, manifest.json, DigitProxyClient, DigitThemeProvider, /proxy/digit,
+  or /proxy/backend.
 ---
 
-# Create Digit App
+# Create Sutton App
 
-Build Digit custom apps that run inside Digit as **sandboxed iframes** with a locked-down
+Build Sutton custom apps that run inside Sutton as **sandboxed iframes** with a locked-down
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
 support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
@@ -23,22 +23,22 @@ See [reference/iframe-constraints.md](reference/iframe-constraints.md).
 **Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
 package. Users are often non-developers — one path keeps apps looking and behaving
-like Digit.
+like Sutton.
 
-**Digit MCP is required.** Use it for schema lookup, permissions, listing apps, and
-publish. If MCP is not connected, stop and ask the user to connect Digit MCP before
+**Sutton MCP is required.** Use it for schema lookup, permissions, listing apps, and
+publish. If MCP is not connected, stop and ask the user to connect Sutton MCP before
 continuing.
 
 ## When to use
 
-- Creating a new Digit app from scratch
+- Creating a new Sutton app from scratch
 - Adapting one of the `examples/` templates
 - Declaring `manifest.json` permissions / backend
-- Calling the Digit GraphQL API from an app
+- Calling the Sutton GraphQL API from an app
 - Using app env vars or secrets (backend only)
-- Publishing via Digit MCP tools
+- Publishing via Sutton MCP tools
 
-## Digit MCP (apps)
+## Sutton MCP (apps)
 
 | Need                      | Use                                                                                                           |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------- |
@@ -48,10 +48,10 @@ continuing.
 | Publish                   | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** → poll **`appPublish`**                        |
 
 There are **no** MCP tools to create, update, or delete apps, or to manage env/secrets —
-those stay in the Digit UI. Do not invent them.
+those stay in the Sutton UI. Do not invent them.
 
 Do **not** load the full GraphQL schema into context. Use the schema resources above when
-writing or changing Digit API operations. Details:
+writing or changing Sutton API operations. Details:
 [reference/proxy-and-api.md](reference/proxy-and-api.md),
 [reference/permissions.md](reference/permissions.md).
 
@@ -60,14 +60,14 @@ writing or changing Digit API operations. Details:
 Copy this checklist and track progress:
 
 ```
-Digit app progress:
+Sutton app progress:
 - [ ] 1. Use the starter's apps/app, or scaffold apps/<name> for an additional app
-- [ ] 2. Confirm the user created the app in Digit (get appId via apps)
+- [ ] 2. Confirm the user created the app in Sutton (get appId via apps)
 - [ ] 3. Implement frontend (React + MUI + DigitThemeProvider → #root)
 - [ ] 4. Add src/backend/ only if env/secrets or server logic needed
 - [ ] 5. Look up GraphQL via graphql-schema://… and permissions via appPermissions
 - [ ] 6. Write root manifest.json (permissions[].key from appPermissions)
-- [ ] 7. Check manifest.permissions against appPermissions — confirm it covers every Digit API call the app makes
+- [ ] 7. Check manifest.permissions against appPermissions — confirm it covers every Sutton API call the app makes
 - [ ] 8. Write/update SPEC.md
 - [ ] 9. npm run pack -w apps/<name> → app.zip
 - [ ] 10. Publish via MCP (upload zip out-of-band)
@@ -75,8 +75,8 @@ Digit app progress:
 ```
 
 Schema and permission lookup (steps 5–7) must happen **before publish**. Do them as soon
-as you know which Digit API calls the app makes — inventing fields or permission strings
-fails at runtime or publish validation. Re-check step 7 whenever you add or change a Digit
+as you know which Sutton API calls the app makes — inventing fields or permission strings
+fails at runtime or publish validation. Re-check step 7 whenever you add or change a Sutton
 API call.
 
 ### 1. Scaffold the app
@@ -99,7 +99,7 @@ npm run new-app -- my-app       # copies examples/full-featured → apps/my-app
 `npm install` so the workspace links the new app. Trim what you don't need from the copy —
 do not invent a new project shape.
 
-The template covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API, secrets,
+The template covers theme, errors, Sutton GraphQL (`useDigitApiQuery`), public API, secrets,
 D1 via the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Keep the
 `@digit/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
 configs, a local pack script, or a per-app `npm install`.
@@ -109,19 +109,19 @@ its build toolchain (Vite) in the root `node_modules`, not the app's. Running `n
 only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
 All apps share React + MUI + `@digit/lib-frontend` and the same folder conventions.
-There is no local Digit preview (Worker / env / D1 are platform-injected) — pack + publish
+There is no local Sutton preview (Worker / env / D1 are platform-injected) — pack + publish
 is the path.
 
 **Debugging a published app.** The harness forwards uncaught errors, unhandled rejections,
-`console.error` / `console.warn`, bundle load failures and failed Digit API / backend calls
-to the Digit host. In Digit Studio they appear in the preview's Console tab and are attached
+`console.error` / `console.warn`, bundle load failures and failed Sutton API / backend calls
+to the Sutton host. In Sutton Studio they appear in the preview's Console tab and are attached
 to the next chat message automatically; elsewhere ask the user to copy them from the Console
 tab. Report unexpected states with `console.error` (not `console.log`) so they get there, and
 never replace `console.error` or `window.onerror` — wrapping them breaks forwarding.
 
-### 2. App must already exist in Digit
+### 2. App must already exist in Sutton
 
-Publishing **never creates** an app. Ask the user to create the app in the Digit UI first,
+Publishing **never creates** an app. Ask the user to create the app in the Sutton UI first,
 then resolve its `id` with MCP **`apps`** (or have the user paste it).
 
 ### 3. Project layout
@@ -145,7 +145,7 @@ npm run pack -w apps/my-app     # from repo root → app.zip
 ```
 
 `app.zip` has root `manifest.json`, `frontend/` (+ `backend/` when declared), and
-`project/` (source + vendored `@digit/lib-*`). Digit deploys `frontend/` / `backend/`
+`project/` (source + vendored `@digit/lib-*`). Sutton deploys `frontend/` / `backend/`
 only; still upload the zip **unchanged**. Details:
 [reference/manifest.md](reference/manifest.md), [reference/publish.md](reference/publish.md).
 
@@ -166,8 +166,8 @@ only; still upload the zip **unchanged**. Details:
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
-- **Digit API:** `useDigitApiQuery` / `useDigitApiMutation`. Look up operations via
-  `graphql-schema://…` first. Never call Digit GraphQL with a bearer token from the browser.
+- **Sutton API:** `useDigitApiQuery` / `useDigitApiMutation`. Look up operations via
+  `graphql-schema://…` first. Never call Sutton GraphQL with a bearer token from the browser.
 - **Sort / filter / page via the API:** When the GraphQL field (or backend route) accepts
   sort, filter, or connection/page inputs, use those — do not fetch a full list and
   sort/filter client-side when the API can do it. Confirm arg names via
@@ -219,7 +219,7 @@ accepts HTML and opens the browser print dialog.
 Keep it at the **project root**. Pack stages it at the zip root.
 
 No `name`, no `entryFile`, no `compatibilityFlags` — display name lives on the app in
-Digit; entries are conventions (`frontend/index.js`, `backend/index.js`).
+Sutton; entries are conventions (`frontend/index.js`, `backend/index.js`).
 
 ```json
 {
@@ -231,7 +231,7 @@ Digit; entries are conventions (`frontend/index.js`, `backend/index.js`).
 }
 ```
 
-Omit `backend` when the app is UI-only / Digit API only. `bindings` maps
+Omit `backend` when the app is UI-only / Sutton API only. `bindings` maps
 `BINDING_NAME` → `"database"` (one D1 per app) or `"bucket"` (an R2 bucket for
 file/blob storage, max 10). Names are `UPPER_SNAKE_CASE` and must not start with
 `DIGIT_`.
@@ -245,14 +245,14 @@ Full schema: [reference/manifest.md](reference/manifest.md).
 
 ### 6. Permissions
 
-`permissions` is the **ceiling** for `/proxy/digit`. Digit intersects it with the viewing
+`permissions` is the **ceiling** for `/proxy/digit`. Sutton intersects it with the viewing
 user’s live permissions at runtime.
 
 1. Call MCP **`appPermissions`**
 2. Put each needed permission’s **`key`** into `manifest.permissions`
 3. Never invent strings — unknown keys fail publish
 4. Before pack/publish (checklist step 7), re-read `manifest.permissions` against
-   **`appPermissions`** and the app’s Digit API calls — add any missing keys; drop unused
+   **`appPermissions`** and the app’s Sutton API calls — add any missing keys; drop unused
    ones only when you are sure nothing still needs them
 
 Look up GraphQL fields with `graphql-schema://…`, then declare only the permissions those
@@ -260,7 +260,7 @@ operations need. Details: [reference/permissions.md](reference/permissions.md).
 
 ### 7. Env vars and secrets
 
-Configured on the app in the Digit UI. Injected only into the Worker as `env.KEY`. Read
+Configured on the app in the Sutton UI. Injected only into the Worker as `env.KEY`. Read
 with `requireEnv` / `optionalEnv` inside `createHandler`. Frontend never embeds secrets —
 read env-backed data via backend hooks.
 [reference/backend-env-secrets.md](reference/backend-env-secrets.md).
@@ -290,7 +290,7 @@ upstream starter.
 | Need                                  | Path                                                            |
 | ------------------------------------- | --------------------------------------------------------------- |
 | Any new app                           | Copy `full-featured`, delete unused tabs/routes                 |
-| Digit GraphQL                         | Schema resources → hooks + `appPermissions` → `key` in manifest |
+| Sutton GraphQL                         | Schema resources → hooks + `appPermissions` → `key` in manifest |
 | Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
 | Codes / JSON validation               | `@digit/lib-common`                                             |
 

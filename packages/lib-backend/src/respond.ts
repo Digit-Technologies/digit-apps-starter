@@ -7,7 +7,7 @@ import {
 export type OkArgs = { data: unknown } & ResponseInit;
 
 /**
- * JSON success Response for Digit app Workers.
+ * JSON success Response for Sutton app Workers.
  * Result shape comes from `@digit/lib-common`.
  */
 export function ok({ data, ...init }: OkArgs): Response {
@@ -23,7 +23,7 @@ export type ErrArgs = {
 } & ResponseInit;
 
 /**
- * JSON error Response for Digit app Workers (`{ ok: false, error }`).
+ * JSON error Response for Sutton app Workers (`{ ok: false, error }`).
  */
 export function err({ code, message, status = 400, ...init }: ErrArgs): Response {
   const body = { ok: false, error: { code, message } } satisfies ErrorResult;

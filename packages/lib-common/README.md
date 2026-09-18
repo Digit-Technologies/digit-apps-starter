@@ -1,6 +1,6 @@
 # `@digit/lib-common`
 
-Zero-dependency types and helpers shared by Digit app **frontend** and **backend**:
+Zero-dependency types and helpers shared by Sutton app **frontend** and **backend**:
 
 - App error codes (`VALIDATION_ERROR`, `MISSING_CONFIG`, …)
 - JSON result **types** `{ ok: true, data }` / `{ ok: false, error: { code, message } }`

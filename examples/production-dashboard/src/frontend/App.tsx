@@ -47,7 +47,7 @@ export default function App() {
               mb: 0.5
             }}>
             <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
-              Digit App
+              Sutton App
             </Typography>
             {previewMode && (
               <Chip

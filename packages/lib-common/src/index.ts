@@ -1,5 +1,5 @@
 /**
- * Public API shared by Digit app frontend and backend.
+ * Public API shared by Sutton app frontend and backend.
  * Only import from this package root — other files are implementation details.
  */
 

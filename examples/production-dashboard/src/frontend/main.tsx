@@ -5,7 +5,7 @@ import { DigitThemeProvider } from '@digit/lib-frontend';
 import App from './App';
 
 const rootEl = document.getElementById('root');
-if (!rootEl) throw new Error('Digit apps must mount to #root');
+if (!rootEl) throw new Error('Sutton apps must mount to #root');
 
 createRoot(rootEl).render(
   <DigitThemeProvider>

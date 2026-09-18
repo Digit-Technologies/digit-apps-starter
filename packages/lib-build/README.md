@@ -1,8 +1,8 @@
 # `@digit/lib-build`
 
-Shared Digit app tooling. **v1 public CLI:** `digit-app pack` only.
+Shared Sutton app tooling. **v1 public CLI:** `digit-app pack` only.
 
-Local Digit preview is not supported yet (Worker, env/secrets, and D1 are injected on
+Local Sutton preview is not supported yet (Worker, env/secrets, and D1 are injected on
 the platform). Pack builds deploy assets and writes `app.zip` for MCP publish.
 
 ## Install (app)
@@ -32,8 +32,8 @@ that toolchain into the **workspace root** `node_modules`, not the app's — so 
 | Root `manifest.json` | `manifest.json` at the zip root |
 | `SPEC.md` + source/tooling | `project/` inside `app.zip` (vendored `@digit/lib-*`) |
 
-Zip root: `manifest.json` + `frontend/` (+ `backend/`) for Digit deploy, plus required
-`project/` (source, SPEC, vendored libs — not what Digit deploys).
+Zip root: `manifest.json` + `frontend/` (+ `backend/`) for Sutton deploy, plus required
+`project/` (source, SPEC, vendored libs — not what Sutton deploys).
 
 ## Commands
 

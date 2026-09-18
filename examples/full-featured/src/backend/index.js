@@ -1,7 +1,7 @@
 /**
  * Full Featured example Worker.
  *
- * Env (Digit app settings):
+ * Env (Sutton app settings):
  *   WELCOME_MESSAGE       — Config tab
  *   API_BASE_URL          — Secrets tab (e.g. https://httpbin.org)
  *   THIRD_PARTY_API_KEY   — Secrets tab (secret; never returned to the UI)

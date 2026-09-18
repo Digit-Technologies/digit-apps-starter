@@ -13,7 +13,7 @@ export type UseDigitApiQueryArgs = {
 };
 
 /**
- * Query the Digit GraphQL API. Returns `{ data, error, loading, refetch }`.
+ * Query the Sutton GraphQL API. Returns `{ data, error, loading, refetch }`.
  */
 export function useDigitApiQuery<T = unknown>({
   query,

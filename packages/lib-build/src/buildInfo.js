@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { pathExists } from './fsutils.js';
 
-// Libs are not stamped — the vendored project/packages/* copies are the record (once libs come from npm, ship the lockfile instead; Digit scans both).
+// Libs are not stamped — the vendored project/packages/* copies are the record (once libs come from npm, ship the lockfile instead; Sutton scans both).
 export async function buildInfo({ packagesDir }) {
   const starterRoot = path.dirname(packagesDir);
 

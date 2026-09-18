@@ -14,7 +14,7 @@ export type DigitApiMutateArgs = {
 };
 
 /**
- * Mutate via the Digit GraphQL API on demand.
+ * Mutate via the Sutton GraphQL API on demand.
  * Returns `[mutate, { data, error, loading, reset }]`.
  */
 export function useDigitApiMutation<T = unknown>({

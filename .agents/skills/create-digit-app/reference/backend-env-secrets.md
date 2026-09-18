@@ -1,6 +1,6 @@
 # Backend env vars and secrets
 
-Env vars and secrets are configured on the **app record in Digit** (UI only — there are no
+Env vars and secrets are configured on the **app record in Sutton** (UI only — there are no
 MCP tools to manage them). They are **injected into the app's Cloudflare Worker**, not
 into the frontend bundle.
 
@@ -86,15 +86,15 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 | Situation | Backend required? |
 | --- | --- |
 | Pure UI | No |
-| Digit GraphQL via `useDigitApiQuery` / `DigitProxyClient` | No |
-| Read non-secret config from Digit app settings | Yes |
+| Sutton GraphQL via `useDigitApiQuery` / `DigitProxyClient` | No |
+| Read non-secret config from Sutton app settings | Yes |
 | Call third-party APIs with secrets | Yes |
 | App-own persistence (D1) | Yes (`backend.d1`) |
 | App-own file/blob storage (R2) | Yes (a `"bucket"` binding) |
 
 ## Setup for users
 
-1. Create the app in Digit
-2. Set env vars / secrets on the app in Digit
+1. Create the app in Sutton
+2. Set env vars / secrets on the app in Sutton
 3. Publish a bundle whose manifest declares `backend.kind: "cloudflare-worker"`
 4. Ship `backend/index.js` that reads those keys via `requireEnv` inside `createHandler`

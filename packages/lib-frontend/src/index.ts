@@ -1,5 +1,5 @@
 /**
- * Public API for Digit custom apps.
+ * Public API for Sutton custom apps.
  * Only import from this package root — other files are implementation details.
  */
 
@@ -19,7 +19,7 @@ import "./globals";
 export { AppErrorAlert } from "./errors";
 export type { AppError } from "./errors";
 
-// Digit API + app backend (hooks only — imperative fetch helpers are internal)
+// Sutton API + app backend (hooks only — imperative fetch helpers are internal)
 export {
   useDigitApiQuery,
   useDigitApiMutation,

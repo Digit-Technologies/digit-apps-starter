@@ -153,7 +153,7 @@ export async function pack({ root = process.cwd() } = {}) {
   const staging = await fs.mkdtemp(path.join(os.tmpdir(), 'digit-app-pack-'));
 
   try {
-    // Digit expects manifest.json at the zip root; the staged copy gains "build" — the author's file is untouched.
+    // Sutton expects manifest.json at the zip root; the staged copy gains "build" — the author's file is untouched.
     const manifest = JSON.parse(await fs.readFile(path.join(appRoot, 'manifest.json'), 'utf8'));
     manifest.build = await buildInfo({ packagesDir });
     await fs.writeFile(

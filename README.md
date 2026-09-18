@@ -1,9 +1,9 @@
 # digit-apps-starter
 
-Skills, shared libraries, and example apps for building on the Digit Apps platform.
+Skills, shared libraries, and example apps for building on the Sutton Apps platform.
 
 Agents clone this into a **local workspace**, scaffold under `apps/`, pack, and publish to
-Digit. Keep app source under `apps/` in that workspace so later sessions can iterate.
+Sutton. Keep app source under `apps/` in that workspace so later sessions can iterate.
 This upstream repo does not accept contributions — do not open PRs or push here.
 
 ## Quick start
@@ -35,16 +35,16 @@ That skill covers:
 - `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
 - Mounting to `#root` with `DigitThemeProvider`
 - Root `manifest.json` (staged at the zip root by pack)
-- Digit API access via `useDigitApiQuery` / `/proxy/digit`
+- Sutton API access via `useDigitApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
-- Publishing with Digit MCP (`apps` → upload zip → `publishApp` → poll)
+- Publishing with Sutton MCP (`apps` → upload zip → `publishApp` → poll)
 
 ## Packages
 
 | Package | Role |
 | --- | --- |
 | [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
-| [`packages/lib-frontend`](packages/lib-frontend) (`@digit/lib-frontend`) | Theme, harness types, Digit/backend **hooks**, error UI |
+| [`packages/lib-frontend`](packages/lib-frontend) (`@digit/lib-frontend`) | Theme, harness types, Sutton API / backend **hooks**, error UI |
 | [`packages/lib-backend`](packages/lib-backend) (`@digit/lib-backend`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
 | [`packages/lib-build`](packages/lib-build) (`@digit/lib-build`) | `digit-app pack` — shared Vite build + `app.zip` |
 
@@ -60,15 +60,15 @@ Apps depend on them via `file:…` — not on private `digit-web`. With a Worker
 [`examples/hello-world`](examples/hello-world) is the minimal frontend-only app used for
 `apps/app` in the curated starter archive.
 
-[`examples/full-featured`](examples/full-featured) is the reference app: theme, errors, Digit
+[`examples/full-featured`](examples/full-featured) is the reference app: theme, errors, Sutton
 API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it into
 [`apps/`](apps) — trim what you don’t need from there.
 
 ## Publish reminder
 
-1. Create the app in the Digit UI first (MCP cannot create apps yet)
+1. Create the app in the Sutton UI first (MCP cannot create apps yet)
 2. Write/update `SPEC.md`, then `npm run pack -w apps/<name>`
-3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
+3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Sutton deploy, plus
    required `project/` (source, SPEC, tooling, vendored libs — not deployed)
 4. Use the MCP publish flow documented in the skill
 5. Keep `apps/<name>` source in the local workspace (not build outputs); do not push or

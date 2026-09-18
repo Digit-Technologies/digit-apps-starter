@@ -6,7 +6,7 @@ import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js';
 import { inlineBundleLicenses } from './inlineBundleLicenses.js';
 
 /**
- * Internal Vite config: Digit loads the entry as a classic <script> (no type="module"),
+ * Internal Vite config: Sutton loads the entry as a classic <script> (no type="module"),
  * so build IIFE → frontend/index.js (the platform entry convention). CSS is injected into
  * the JS bundle.
  */

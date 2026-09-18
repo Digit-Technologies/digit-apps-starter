@@ -1,11 +1,11 @@
-# Publish a Digit app (MCP)
+# Publish a Sutton app (MCP)
 
-Requires the org `CUSTOM_APPS` feature flag and `publish:app` permission. Digit MCP is
+Requires the org `CUSTOM_APPS` feature flag and `publish:app` permission. Sutton MCP is
 required for this workflow.
 
 ## Prerequisites
 
-1. User has **created the app in Digit** (UI). Publishing never creates apps — there are
+1. User has **created the app in Sutton** (UI). Publishing never creates apps — there are
    no MCP tools to create, update, or delete apps.
 2. You know the app `id` — resolve with MCP `apps`, or ask the user.
 3. GraphQL operations checked against `graphql-schema://…` and `manifest.permissions`
@@ -13,7 +13,7 @@ required for this workflow.
 4. `app.zip` ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`). Local
    `pack` only prepares the zip; MCP `publishApp` is what goes live.
 
-There is no local Digit preview — pack + publish is the workflow.
+There is no local Sutton preview — pack + publish is the workflow.
 
 ## Workflow
 
@@ -29,7 +29,7 @@ There is no local Digit preview — pack + publish is the workflow.
 
 Call MCP `apps`. Match by `name`. Use the returned `id` as `appId`.
 
-If the app does not exist, stop and ask the user to create it in Digit.
+If the app does not exist, stop and ask the user to create it in Sutton.
 
 ### 2. Generate upload link
 
@@ -71,7 +71,7 @@ app.zip
 └── project/                  # required — source, SPEC, vendored @digit/lib-*
 ```
 
-**Do not modify the zip after pack.** Digit deploys from `frontend/` / `backend/`;
+**Do not modify the zip after pack.** Sutton deploys from `frontend/` / `backend/`;
 `project/` must still be present in the published zip.
 
 ### 4. Publish
@@ -92,7 +92,7 @@ Call MCP `appPublish` with:
 - `appPublishId` — same id as `appUploadLinkId`
 
 Poll until `state` is `succeeded` or `failed`. Intermediate states include `queued`,
-`validating`, `deployingBackend`, `publishingBundle`. During `deployingBackend`, Digit
+`validating`, `deployingBackend`, `publishingBundle`. During `deployingBackend`, Sutton
 applies pending migrations — see [d1-migrations.md](d1-migrations.md). On failure, report
 `error`, fix the bundle, and restart at step 2.
 

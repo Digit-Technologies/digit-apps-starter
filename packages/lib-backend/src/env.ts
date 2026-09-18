@@ -20,7 +20,7 @@ export function requireEnv<T = string>({ env, key }: RequireEnvArgs): T {
   if (value === undefined || value === null || value === '') {
     throw new HandlerError({
       code: AppErrorCode.MISSING_CONFIG,
-      message: `Set ${key} on the Digit app, then republish.`,
+      message: `Set ${key} on the Sutton app, then republish.`,
       status: 500,
     });
   }

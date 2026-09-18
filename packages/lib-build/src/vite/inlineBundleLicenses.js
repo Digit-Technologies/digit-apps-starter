@@ -7,7 +7,7 @@ import path from 'node:path';
  * Why this exists:
  * - Oxc minify drops legal comments by default, and even when kept it only preserves
  *   `/*!` / `@license` banners already in source — not package LICENSE files.
- * - `build.license: true` writes notices to `.vite/license.md` only; Digit never serves
+ * - `build.license: true` writes notices to `.vite/license.md` only; Sutton never serves
  *   that file. The platform loads `frontend/index.js` / `backend/index.js` in an iframe.
  * - Inlining into the entry keeps MIT-style attribution with the code users actually get,
  *   without a separate licenses API or UI link.

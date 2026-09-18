@@ -14,7 +14,7 @@ export type DigitRequestArgs = {
 };
 
 /**
- * Call Digit GraphQL through the harness (`DigitProxyClient.callProxy`) and
+ * Call Sutton GraphQL through the harness (`DigitProxyClient.callProxy`) and
  * normalize platform / GraphQL errors.
  *
  * Used internally by `useDigitApiQuery` / `useDigitApiMutation`.

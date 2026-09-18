@@ -2,7 +2,7 @@
  * Timecard Worker.
  *
  * D1 binding: TIMECARD_DB (see manifest.json + migrations/) - one row per shift,
- * keyed by `user_id` (Digit `currentUser.id`, resolved on the frontend via
+ * keyed by `user_id` (Sutton `currentUser.id`, resolved on the frontend via
  * useDigitApiQuery so no manifest permission is required).
  */
 
