@@ -37,7 +37,8 @@ That skill covers:
 - Root `manifest.json` (staged at the zip root by pack)
 - Digit API access via `useDigitApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
-- Publishing with Digit MCP (`apps` → upload zip → `publishApp` → poll)
+- Deploying a preview or publishing live with Digit tools (`publishAppZip` in App Builder, or
+  MCP upload → `publishApp` with a channel → poll)
 
 ## Packages
 
@@ -66,11 +67,13 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 
 ## Publish reminder
 
-1. Create the app in the Digit UI first (MCP cannot create apps yet)
+1. Create the app in the Digit UI first (deployment does not create apps)
 2. Write/update `SPEC.md`, then `npm run pack -w apps/<name>`
 3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
    required `project/` (source, SPEC, tooling, vendored libs — not deployed)
-4. Use the MCP publish flow documented in the skill
+4. Deploy a preview first when using Digit App Builder; use the explicit Digit web Publish
+   action to promote it. Standalone MCP clients can choose `channel: "preview"` or
+   `channel: "live"`; see the skill for the full flow.
 5. Keep `apps/<name>` source in the local workspace (not build outputs); do not push or
    open PRs against this upstream repo
 
@@ -95,4 +98,3 @@ entirely with that publish archive's `project/` tree while keeping the starter s
 ## License
 
 See [LICENSE](LICENSE).
-

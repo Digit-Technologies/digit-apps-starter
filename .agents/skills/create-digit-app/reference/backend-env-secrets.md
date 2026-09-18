@@ -12,6 +12,20 @@ into the frontend bundle.
 - Secrets are write-only in the API (owners see keys, not values)
 - Frontend must never hard-code secret values
 
+## Preview configuration and side effects
+
+Preview has a separate Worker and separate app-owned storage, but its configuration is managed
+as a separate channel. When preview is first created, env vars and secrets may inherit the live
+ciphertext. An explicitly saved preview configuration is the one that can be copied to live when
+the preview is promoted; if no preview override was saved, promotion preserves the existing live
+configuration.
+
+This means a preview Worker can still hold real third-party credentials. Use test credentials
+and test endpoints whenever possible, and guard or disable external writes, email, payments,
+and other irreversible side effects in preview. Do not infer the channel from internal
+`X-Digit-*` headers: there is not yet a documented app-facing `isPreview()` helper. A supported
+runtime channel signal would be a platform/SDK change, not an app convention.
+
 ## Worker access
 
 Prefer `@digit/lib-backend`: wrap with `createHandler`, read bindings with `requireEnv`

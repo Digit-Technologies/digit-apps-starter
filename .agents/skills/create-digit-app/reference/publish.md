@@ -1,53 +1,62 @@
-# Publish a Digit app (MCP)
+# Deploy a Digit app
 
-Requires the org `CUSTOM_APPS` feature flag and `publish:app` permission. Digit MCP is
-required for this workflow.
+Packing is local; the Digit platform performs the deployment. There is no local Digit runtime
+preview because Workers, env/secrets, D1, and R2 are injected by the platform. The same
+channel-neutral `app.zip` can be deployed to preview and later promoted to live.
 
-## Prerequisites
+## Choose the workflow
 
-1. User has **created the app in Digit** (UI). Publishing never creates apps — there are
-   no MCP tools to create, update, or delete apps.
-2. You know the app `id` — resolve with MCP `apps`, or ask the user.
-3. GraphQL operations checked against `graphql-schema://…` and `manifest.permissions`
-   filled with **`key`** values from MCP **`appPermissions`**.
-4. `app.zip` ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`). Local
-   `pack` only prepares the zip; MCP `publishApp` is what goes live.
+### Digit App Builder
 
-There is no local Digit preview — pack + publish is the workflow.
+The builder's `publishAppZip` tool owns upload, preview deployment, and polling:
 
-## Workflow
-
+```text
+npm run pack -w apps/app
+publishAppZip({ zipPath: "apps/app/app.zip" })
 ```
+
+`publishAppZip` always deploys a preview. It waits for the preview deployment to reach a
+terminal state and reports failure details. A successful result means **the live app is
+unchanged**. The user promotes that exact preview build with the explicit Publish action in
+the Digit web app. The builder must not call a live publish or describe the preview as
+production.
+
+### Standalone MCP
+
+Standalone agents and scripts use the upload-link flow:
+
+```text
 1. apps                     → find appId
 2. generateAppUploadLink    → id, uploadUrl, uploadFields
 3. HTTP POST zip to uploadUrl (multipart; NOT via MCP)
-4. publishApp               → appId + appUploadLinkId
+4. publishApp               → appId + appUploadLinkId + channel
 5. appPublish               → poll until succeeded | failed
 ```
 
-### 1. Resolve app id
+`publishApp` accepts `channel: "preview" | "live"`. Use `channel: "preview"` when testing
+without changing production. If `channel` is omitted, it defaults to `live` for backwards
+compatibility with existing callers. Promotion is currently an explicit Digit web action;
+do not assume a preview is live just because its `appPublish` row succeeded.
 
-Call MCP `apps`. Match by `name`. Use the returned `id` as `appId`.
+## Prerequisites
 
-If the app does not exist, stop and ask the user to create it in Digit.
+1. The user has **created the app in Digit** (UI). Deployment never creates apps.
+2. You know the app `id` — resolve it with MCP `apps`, or use the builder's request context.
+3. GraphQL operations were checked against `graphql-schema://…`, and
+   `manifest.permissions` contains the `key` values returned by `appPermissions`.
+4. `app.zip` is ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`).
 
-### 2. Generate upload link
+## Standalone MCP upload
 
-Call MCP `generateAppUploadLink`. Save:
+Call MCP `generateAppUploadLink` and save:
 
-- `id` (this is both `appUploadLinkId` and later `appPublishId`)
+- `id` — both `appUploadLinkId` and the later `appPublishId`
 - `uploadUrl`
 - `uploadFields` — array of `{ key, value }`
 
-### 3. Upload the zip (out-of-band)
-
-MCP cannot carry binary bodies. POST multipart form-data:
-
-1. Every `uploadFields` entry as a form field **first**
-2. The zip as the final `file` field
-
-Max **10MB**. If you cannot perform this HTTP request, stop and tell the user — do not call
-`publishApp` against an empty upload.
+MCP cannot carry binary bodies. POST multipart form-data with every `uploadFields` entry first,
+then the zip as the final `file` field. The zip must be no larger than **10MB**. If the upload
+cannot be completed, stop; do not call `publishApp` against an empty upload.
 
 ```bash
 # Pseudocode — expand uploadFields into -F key=value pairs, then -F file=@app.zip
@@ -58,9 +67,9 @@ curl -X POST "$UPLOAD_URL" \
   -F "file=@app.zip"
 ```
 
-Build the zip with `npm run pack` and upload **`app.zip` as produced**:
+Upload **`app.zip` as produced**:
 
-```
+```text
 app.zip
 ├── manifest.json
 ├── frontend/
@@ -71,34 +80,28 @@ app.zip
 └── project/                  # required — source, SPEC, vendored @digit/lib-*
 ```
 
-**Do not modify the zip after pack.** Digit deploys from `frontend/` / `backend/`;
-`project/` must still be present in the published zip.
+Do not modify the zip after packing. Digit deploys `frontend/` and `backend/`; `project/`
+must remain in the published zip so the app can be restored for a later iteration.
 
-### 4. Publish
+## Polling and failures
 
-Call MCP `publishApp` with:
+Call `appPublish` with `appId` and `appPublishId` (the upload-link `id`) until the state is
+`succeeded` or `failed`. Intermediate states include `queued`, `validating`,
+`deployingBackend`, and `publishingBundle`.
 
-- `appId` — existing app id
-- `appUploadLinkId` — `id` from step 2
+For a preview, a succeeded row means the owner can open the preview environment; it does not
+mean the live pointer changed. For a live publish or a later promotion, the live app changes
+only after the platform has completed the live deployment.
 
-Returns `state: queued` (or similar in-progress). Each upload publishes **once**; to retry,
-start again at `generateAppUploadLink`.
-
-### 5. Poll
-
-Call MCP `appPublish` with:
-
-- `appId`
-- `appPublishId` — same id as `appUploadLinkId`
-
-Poll until `state` is `succeeded` or `failed`. Intermediate states include `queued`,
-`validating`, `deployingBackend`, `publishingBundle`. During `deployingBackend`, Digit
-applies pending migrations — see [d1-migrations.md](d1-migrations.md). On failure, report
-`error`, fix the bundle, and restart at step 2.
+On failure, report the returned `error`, fix the app, repack, and start a fresh upload. Each
+upload is single-use.
 
 ## Zip validation reminders
 
 - `manifest.json` at the zip root and `frontend/index.js`
 - When `manifest.backend` is set: `backend/index.js`
-- `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` (including `lib-build`)
-- `manifest.permissions` are **`key`** values from **`appPermissions`**
+- `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` including `lib-build`
+- `manifest.permissions` are **`key`** values from `appPermissions`
+
+See [preview-and-publish.md](preview-and-publish.md) for channel isolation, migrations,
+schedules, webhooks, configuration, and side-effect guidance.

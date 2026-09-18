@@ -33,6 +33,8 @@ type AppManifest = {
 
 ## Rules
 
+- Deployment channel is platform state, not manifest configuration. Do not add a `preview` or
+  `live` flag to the manifest; the same packed artifact can be previewed and later promoted.
 - `permissions` must be an array of known Digit permission **`key`** strings from MCP
   **`appPermissions`** — never invent strings (see [permissions.md](permissions.md))
 - `build` is stamped by `digit-app pack` so Digit can tell which starter release a published
