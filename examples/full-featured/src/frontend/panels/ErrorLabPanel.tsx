@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography';
 import {
   AppErrorAlert,
   useBackendMutation,
-  useDigitApiMutation,
+  useSuttonApiMutation,
   type AppError,
 } from '@digit/lib-frontend';
 
@@ -73,7 +73,7 @@ export default function ErrorLabPanel() {
   const fixture = useMemo(() => FIXTURES[fixtureKey]!, [fixtureKey]);
   const [live, setLive] = useState<LiveState>({ status: 'idle' });
 
-  const [runGraphql] = useDigitApiMutation({ mutation: BAD_GRAPHQL });
+  const [runGraphql] = useSuttonApiMutation({ mutation: BAD_GRAPHQL });
   const [runBackend] = useBackendMutation();
 
   const runLive = async (kind: 'graphql' | 'validation' | 'server') => {

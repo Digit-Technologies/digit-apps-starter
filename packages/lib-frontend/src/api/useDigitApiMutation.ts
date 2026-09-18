@@ -52,3 +52,8 @@ export function useDigitApiMutation<T = unknown>({
 
   return [mutate, { data, error, loading, reset }];
 }
+
+/** Preferred name; same hook as `useDigitApiMutation`. */
+export const useSuttonApiMutation = useDigitApiMutation;
+export type UseSuttonApiMutationArgs = UseDigitApiMutationArgs;
+export type SuttonApiMutateArgs = DigitApiMutateArgs;

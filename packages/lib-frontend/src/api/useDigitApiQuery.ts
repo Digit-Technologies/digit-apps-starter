@@ -56,3 +56,7 @@ export function useDigitApiQuery<T = unknown>({
 
   return { data, error, loading, refetch };
 }
+
+/** Preferred name; same hook as `useDigitApiQuery`. */
+export const useSuttonApiQuery = useDigitApiQuery;
+export type UseSuttonApiQueryArgs = UseDigitApiQueryArgs;

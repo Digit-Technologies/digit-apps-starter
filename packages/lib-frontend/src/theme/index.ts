@@ -1,8 +1,8 @@
 /**
- * Theme module. Public apps should import `DigitThemeProvider` from
- * `@digit/lib-frontend` only.
+ * Theme module. Public apps should import `SuttonThemeProvider` (or the
+ * `DigitThemeProvider` alias) from `@digit/lib-frontend` only.
  */
-export { DigitThemeProvider } from "./DigitThemeProvider"
+export { DigitThemeProvider, SuttonThemeProvider } from "./DigitThemeProvider"
 export { themeOptions, mobileScaleFactor } from "./themeOptions"
 export { palette } from "./palette"
 export { typography } from "./typography"

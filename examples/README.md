@@ -15,10 +15,10 @@ Shared conventions (also enforced by the skill):
 
 - Source lives under `src/frontend/` and (when needed) `src/backend/`
 - Build outputs are sibling `frontend/` and `backend/` — gitignored; only in `app.zip` via pack
-- Wrap UI in `DigitThemeProvider`; use MUI components
+- Wrap UI in `SuttonThemeProvider`; use MUI components
 - Mount to `#root`
 - Harness types come from `@digit/lib-frontend` — no local `digit.d.ts`
-- Prefer `useDigitApiQuery` / `useBackendQuery` (and mutations) from `@digit/lib-frontend`
+- Prefer `useSuttonApiQuery` / `useBackendQuery` (and mutations) from `@digit/lib-frontend`
   (hooks only — pair errors with `AppErrorAlert`)
 - Workers: `createHandler` + `backendPath` + `requireEnv` / `ok` / `err` from
   `lib-backend`; `AppErrorCode` / parsers from `lib-common`

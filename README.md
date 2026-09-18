@@ -33,9 +33,9 @@ That skill covers:
 
 - **React + MUI + `@digit/lib-frontend`** (required default stack)
 - `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
-- Mounting to `#root` with `DigitThemeProvider`
+- Mounting to `#root` with `SuttonThemeProvider`
 - Root `manifest.json` (staged at the zip root by pack)
-- Sutton API access via `useDigitApiQuery` / `/proxy/digit`
+- Sutton API access via `useSuttonApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
 - Publishing with Sutton MCP (`apps` → upload zip → `publishApp` → poll)
 

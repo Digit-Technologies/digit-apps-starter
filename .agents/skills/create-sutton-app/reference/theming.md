@@ -2,7 +2,7 @@
 
 Sutton apps should look like Sutton. Use **one stack only**:
 
-**React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`)**
+**React + MUI + `@digit/lib-frontend` (`SuttonThemeProvider`)**
 
 Do not invent a parallel design system, skip the frontend package, or ship vanilla
 HTML/CSS UI for new apps.
@@ -37,36 +37,37 @@ For Worker helpers (`createHandler`, `backendPath`, `ok`/`err`, `requireEnv`), d
 ## Provider
 
 ```tsx
-import { DigitThemeProvider } from '@digit/lib-frontend';
+import { SuttonThemeProvider } from '@digit/lib-frontend';
 
 createRoot(rootEl).render(
-  <DigitThemeProvider>
+  <SuttonThemeProvider>
     <App />
-  </DigitThemeProvider>,
+  </SuttonThemeProvider>,
 );
 ```
 
-`DigitThemeProvider`:
+`SuttonThemeProvider` (`DigitThemeProvider` is the same component):
 
-1. Reads light/dark from `window.DigitHost` (types: `DigitHost` / `DigitHostSettings`
-   exported from `@digit/lib-frontend`; importing the package augments `Window`)
+1. Reads light/dark from `window.SuttonHost` / `window.DigitHost` (types: `SuttonHost` /
+   `SuttonHostSettings` exported from `@digit/lib-frontend`; importing the package
+   augments `Window`)
 2. Falls back to `document.documentElement.dataset.theme`, then `prefers-color-scheme`
 3. Calls `createTheme(themeOptions(darkMode))` and renders MUI `CssBaseline`
 
-Do not add a local `digit.d.ts` for `DigitHost`. Prefer hooks over calling
-`window.DigitProxyClient` yourself.
+Do not add a local `digit.d.ts` for `SuttonHost`. Prefer hooks over calling
+`window.SuttonProxyClient` / `window.DigitProxyClient` yourself.
 
 ## Host settings
 
 ```ts
-import type { DigitHostSettings } from '@digit/lib-frontend';
+import type { SuttonHostSettings } from '@digit/lib-frontend';
 
-window.DigitHost?.getSettings(); // DigitHostSettings | null
-window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
+window.SuttonHost?.getSettings(); // SuttonHostSettings | null
+window.SuttonHost?.onSettingsChange((settings) => { /* ... */ });
 ```
 
 The harness also sets `data-theme` and `lang` on `<html>`, and may inject self-hosted
-Inter before the bundle loads. App look-and-feel comes from MUI + `DigitThemeProvider`,
+Inter before the bundle loads. App look-and-feel comes from MUI + `SuttonThemeProvider`,
 not a parallel CSS-variable theme.
 
 ## UI rules for agents
@@ -76,7 +77,7 @@ not a parallel CSS-variable theme.
 - Prefer `theme.palette.*` / typography variants over hard-coded hex colors
 - Do not reintroduce cream/teal “starter” palettes or IBM Plex / decorative
   gradients from older vanilla examples
-- Do not invent a CSS custom-property theme — use MUI + `DigitThemeProvider`
+- Do not invent a CSS custom-property theme — use MUI + `SuttonThemeProvider`
 - Stay inside the host iframe: no downloads, new tabs/popups, or
   `alert`/`confirm`/`prompt`. MUI Dialog/Drawer are fine. See
   [iframe-constraints.md](iframe-constraints.md).

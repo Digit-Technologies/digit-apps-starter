@@ -3,7 +3,7 @@
 ## What it does
 
 Kitchen-sink reference Sutton app used as the default template for new apps. It is a
-tabbed demo of platform surfaces — theme/MUI via `DigitThemeProvider`, shared error UI,
+tabbed demo of platform surfaces — theme/MUI via `SuttonThemeProvider`, shared error UI,
 Sutton GraphQL (`READ_ITEM` / items), Worker-backed public weather, secrets-backed third-party
 HTTP, D1 notes CRUD, an env-driven greeting, and platform jobs & schedules (an hourly
 `prune-notes` schedule plus an on-demand `note-stats` job) — not a production business app. Agents
@@ -23,7 +23,7 @@ wired to a real host).
 - Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets tab hits an external HTTP API
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
 - Schedule `prune-notes` (hourly, manifest `backend.schedules`) deletes notes older than
-  `payload.maxAgeDays`; job `note-stats` is submitted via `digitJobs` from
+  `payload.maxAgeDays`; job `note-stats` is submitted via `suttonJobs` from
   `POST /jobs/note-stats` — handlers in `src/backend/jobs.js`, UI in the Jobs tab
 
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code.

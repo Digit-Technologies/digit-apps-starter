@@ -4,7 +4,7 @@ import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
+import { AppErrorAlert, useSuttonApiQuery } from '@digit/lib-frontend';
 
 type CurrentUserData = {
   currentUser?: { username: string | null; email: string | null } | null;
@@ -20,7 +20,7 @@ const CURRENT_USER_QUERY = `
 `;
 
 export default function App() {
-  const { data, error, loading, refetch } = useDigitApiQuery<CurrentUserData>({
+  const { data, error, loading, refetch } = useSuttonApiQuery<CurrentUserData>({
     query: CURRENT_USER_QUERY,
   });
   const name =

@@ -18,7 +18,7 @@ import {
   AppErrorAlert,
   useBackendMutation,
   useBackendQuery,
-  useDigitApiQuery,
+  useSuttonApiQuery,
 } from '@digit/lib-frontend';
 
 import {
@@ -145,7 +145,7 @@ export default function App() {
   const previewData = useMemo(buildPreviewData, []);
 
   const { data: userData, error: userError, loading: userLoading } =
-    useDigitApiQuery<CurrentUserData>({ query: CURRENT_USER_QUERY });
+    useSuttonApiQuery<CurrentUserData>({ query: CURRENT_USER_QUERY });
   const userId = userData?.currentUser?.id;
   const userName = previewMode ? previewData.userName : userData?.currentUser?.username ?? null;
   const userEmail = previewMode ? previewData.userEmail : userData?.currentUser?.email ?? null;

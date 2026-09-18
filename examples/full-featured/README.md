@@ -4,13 +4,13 @@ Reference Sutton app that exercises the main platform surfaces in one place:
 
 | Tab | What it shows |
 | --- | --- |
-| Theme | Typography, buttons, fields, chips, alerts, table via `DigitThemeProvider` |
+| Theme | Typography, buttons, fields, chips, alerts, table via `SuttonThemeProvider` |
 | Error lab | Canned + live failures through `AppErrorAlert` / mutation hooks |
-| Sutton API | `useDigitApiQuery` items query (`READ_ITEM`) |
+| Sutton API | `useSuttonApiQuery` items query (`READ_ITEM`) |
 | Public API | Worker → Open-Meteo (no key) via `/proxy/backend/weather` |
 | Secrets | Worker → httpbin bearer using `API_BASE_URL` + `THIRD_PARTY_API_KEY` |
 | Notes | D1 CRUD (`FULL_FEATURED_DB`) |
-| Jobs | Submit `note-stats` via `digitJobs`, watch runs; hourly `prune-notes` schedule |
+| Jobs | Submit `note-stats` via `suttonJobs`, watch runs; hourly `prune-notes` schedule |
 | Config | Env `WELCOME_MESSAGE` via `/proxy/backend/greeting` |
 
 Uses `@digit/lib-frontend`, `@digit/lib-backend`, `@digit/lib-common`, and

@@ -1,14 +1,15 @@
 # `@digit/lib-frontend`
 
-Sutton frontend kit for custom apps: MUI theme (`DigitThemeProvider`), React data
+Sutton frontend kit for custom apps: MUI theme (`SuttonThemeProvider`), React data
 hooks for the Sutton API and app backend, and error normalization/display.
 Snapshot of Sutton web’s theme adapted for the public apps starter.
 
 ## Public API
 
 Import from the package root only. Theme tokens, error parsers, and other modules
-under `src/` are implementation details — use `DigitThemeProvider`, the hooks, and
-`AppErrorAlert`.
+under `src/` are implementation details — use `SuttonThemeProvider`, the hooks, and
+`AppErrorAlert`. `DigitThemeProvider`, `useDigitApiQuery` / `useDigitApiMutation`, and
+the `DigitHost*` types remain supported aliases.
 
 ## Why a copy (not an import from digit-web)
 
@@ -21,30 +22,31 @@ from the private repo) — do not reintroduce imports from private packages.
 
 ## Theme usage
 
-Every app template wraps its UI in `DigitThemeProvider`:
+Every app template wraps its UI in `SuttonThemeProvider`:
 
 ```tsx
 import { createRoot } from "react-dom/client";
-import { DigitThemeProvider } from "@digit/lib-frontend";
+import { SuttonThemeProvider } from "@digit/lib-frontend";
 import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
-  <DigitThemeProvider>
+  <SuttonThemeProvider>
     <App />
-  </DigitThemeProvider>,
+  </SuttonThemeProvider>,
 );
 ```
 
 The provider:
 
 - Builds MUI `createTheme(themeOptions(darkMode))`
-- Syncs light/dark from `window.DigitHost` (falls back to `data-theme` / `prefers-color-scheme`)
+- Syncs light/dark from `window.SuttonHost` (falls back to `data-theme` / `prefers-color-scheme`)
 - Applies Sutton-themed MUI `CssBaseline`
 
-Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`,
-`DigitHostDownloadOptions`, and `DigitHostPrintOptions`) are exported from this package.
-Importing `@digit/lib-frontend` also augments `Window`. Prefer the data hooks over calling
-`window.DigitProxyClient` yourself. Do not add a local `digit.d.ts` for the harness.
+Harness types for `window.SuttonHost` (`SuttonHost`, `SuttonHostSettings`,
+`SuttonHostDownloadOptions`, and `SuttonHostPrintOptions`) are exported from this package.
+Importing `@digit/lib-frontend` also augments `Window` (`SuttonHost` aliases the host-injected
+`DigitHost`). Prefer the data hooks over calling `window.SuttonProxyClient` yourself. Do not
+add a local `digit.d.ts` for the harness.
 
 Host-mediated printing takes a self-contained HTML snapshot:
 
@@ -60,36 +62,36 @@ const html = `
     <table><tr><th>Item</th><th>Qty</th></tr><tr><td>Widget</td><td>2</td></tr></table>
   </main>`;
 
-window.DigitHost?.print({ title: "Packing Slip 1042", html });
+window.SuttonHost?.print({ title: "Packing Slip 1042", html });
 ```
 
 The print document runs no JavaScript. Inline CSS and convert images or canvases to
 `data:image/...` before calling `print`; remote `http(s)` assets do not load (print CSP
-is `img-src data:`). Keep the result under 10MB. Use `DigitHost.download` for PDF bytes.
+is `img-src data:`). Keep the result under 10MB. Use `SuttonHost.download` for PDF bytes.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
 
 ## Sutton API & backend hooks
 
-Prefer the React hooks — they call the harness `DigitProxyClient` and normalize
+Prefer the React hooks — they call the harness `SuttonProxyClient` / `DigitProxyClient` and normalize
 platform / GraphQL / backend failures for `AppErrorAlert`:
 
 ```tsx
 import {
   AppErrorAlert,
-  useDigitApiQuery,
-  useDigitApiMutation,
+  useSuttonApiQuery,
+  useSuttonApiMutation,
   useBackendQuery,
   useBackendMutation,
 } from "@digit/lib-frontend";
 
 // Sutton GraphQL API
-const { data, error, loading, refetch } = useDigitApiQuery({
+const { data, error, loading, refetch } = useSuttonApiQuery({
   query: ITEMS_QUERY,
   variables: { connection: { first: 10 } },
 });
-const [createItem] = useDigitApiMutation({ mutation: CREATE_ITEM });
+const [createItem] = useSuttonApiMutation({ mutation: CREATE_ITEM });
 
 // App Worker (/proxy/backend)
 const notes = useBackendQuery<{ notes: Note[] }>({ path: "/notes" });
@@ -100,7 +102,7 @@ await mutateNote({ path: "/notes", method: "POST", body: { title: "Hi" } });
 
 | Hook                                       | Hits                             |
 | ------------------------------------------ | -------------------------------- |
-| `useDigitApiQuery` / `useDigitApiMutation` | Sutton GraphQL via `/proxy/digit` |
+| `useSuttonApiQuery` / `useSuttonApiMutation` | Sutton GraphQL via `/proxy/digit` |
 | `useBackendQuery` / `useBackendMutation`   | App Worker via `/proxy/backend`  |
 
 Error kinds:
@@ -137,5 +139,5 @@ so peers resolve from the app’s `node_modules` when the package is linked via 
 
 See also [`@digit/lib-backend`](../lib-backend) for Worker helpers.
 
-Styling is MUI + `DigitThemeProvider` only — do not add parallel CSS variable themes.
+Styling is MUI + `SuttonThemeProvider` only — do not add parallel CSS variable themes.
 The Sutton harness may inject Inter on the shell HTML.

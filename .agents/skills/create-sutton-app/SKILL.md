@@ -7,8 +7,9 @@ description: >-
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Sutton app, editing an app in a local clone
   of this starter, publishing via MCP, or when the user mentions Sutton apps,
-  Digit apps, manifest.json, DigitProxyClient, DigitThemeProvider, /proxy/digit,
-  or /proxy/backend.
+  Digit apps, manifest.json, DigitProxyClient, DigitThemeProvider,
+  SuttonThemeProvider, SuttonHost, useSuttonApiQuery, /proxy/digit, or
+  /proxy/backend.
 ---
 
 # Create Sutton App
@@ -17,13 +18,16 @@ Build Sutton custom apps that run inside Sutton as **sandboxed iframes** with a 
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
 support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
-Use `DigitHost.download` for files and `DigitHost.print` for printable HTML.
+Use `SuttonHost.download` for files and `SuttonHost.print` for printable HTML.
 See [reference/iframe-constraints.md](reference/iframe-constraints.md).
 
-**Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
+**Default stack (required):** React + MUI + `@digit/lib-frontend` (`SuttonThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
 package. Users are often non-developers — one path keeps apps looking and behaving
 like Sutton.
+
+`DigitThemeProvider`, `useDigitApiQuery` / `useDigitApiMutation`, `window.DigitHost`, and
+`digitJobs` remain supported aliases of the Sutton names.
 
 **Sutton MCP is required.** Use it for schema lookup, permissions, listing apps, and
 publish. If MCP is not connected, stop and ask the user to connect Sutton MCP before
@@ -63,7 +67,7 @@ Copy this checklist and track progress:
 Sutton app progress:
 - [ ] 1. Use the starter's apps/app, or scaffold apps/<name> for an additional app
 - [ ] 2. Confirm the user created the app in Sutton (get appId via apps)
-- [ ] 3. Implement frontend (React + MUI + DigitThemeProvider → #root)
+- [ ] 3. Implement frontend (React + MUI + SuttonThemeProvider → #root)
 - [ ] 4. Add src/backend/ only if env/secrets or server logic needed
 - [ ] 5. Look up GraphQL via graphql-schema://… and permissions via appPermissions
 - [ ] 6. Write root manifest.json (permissions[].key from appPermissions)
@@ -99,7 +103,7 @@ npm run new-app -- my-app       # copies examples/full-featured → apps/my-app
 `npm install` so the workspace links the new app. Trim what you don't need from the copy —
 do not invent a new project shape.
 
-The template covers theme, errors, Sutton GraphQL (`useDigitApiQuery`), public API, secrets,
+The template covers theme, errors, Sutton GraphQL (`useSuttonApiQuery`), public API, secrets,
 D1 via the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Keep the
 `@digit/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
 configs, a local pack script, or a per-app `npm install`.
@@ -131,14 +135,14 @@ apps/my-app/
 ├── package.json            # @digit/lib-* ; "pack": "digit-app pack"
 ├── manifest.json           # staged at zip root by digit-app pack
 ├── SPEC.md
-├── src/frontend/           # main.tsx → #root + DigitThemeProvider; App.tsx
+├── src/frontend/           # main.tsx → #root + SuttonThemeProvider; App.tsx
 ├── src/backend/            # optional Worker (index.js, migrations/)
 ├── frontend/               # BUILD — gitignored; frontend/index.js entry
 └── backend/                # BUILD when Worker present — gitignored
 ```
 
 Edit `src/frontend` and `src/backend` only. Harness types come from `@digit/lib-frontend`
-— no local `digit.d.ts`. Prefer data hooks over calling `window.DigitProxyClient`.
+— no local `digit.d.ts`. Prefer data hooks over calling `window.SuttonProxyClient`.
 
 ```bash
 npm run pack -w apps/my-app     # from repo root → app.zip
@@ -158,15 +162,15 @@ only; still upload the zip **unchanged**. Details:
   `target="_blank"`, browser `alert`/`confirm`/`prompt`, or device/clipboard-read/
   fullscreen APIs — they will not work. Copy buttons (`navigator.clipboard.writeText`
   in a click handler), form `onSubmit` + `preventDefault`, file exports via
-  `DigitHost.download`, and HTML printing via `DigitHost.print` DO work. In-page MUI
+  `SuttonHost.download`, and HTML printing via `SuttonHost.print` DO work. In-page MUI
   Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
-- **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
+- **Stack:** React + MUI + `SuttonThemeProvider`. Prefer theme palette / typography over
   hard-coded colors or custom CSS. See [reference/theming.md](reference/theming.md).
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
-- **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
+- **Wrap the tree** with `SuttonThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
-- **Sutton API:** `useDigitApiQuery` / `useDigitApiMutation`. Look up operations via
+- **Sutton API:** `useSuttonApiQuery` / `useSuttonApiMutation`. Look up operations via
   `graphql-schema://…` first. Never call Sutton GraphQL with a bearer token from the browser.
 - **Sort / filter / page via the API:** When the GraphQL field (or backend route) accepts
   sort, filter, or connection/page inputs, use those — do not fetch a full list and
@@ -182,7 +186,7 @@ only; still upload the zip **unchanged**. Details:
 #### Printing
 
 When the user wants invoices, labels, packing slips, or reports, call
-`window.DigitHost.print({ title, html })`. Do not use `window.open`, `target="_blank"`,
+`window.SuttonHost.print({ title, html })`. Do not use `window.open`, `target="_blank"`,
 blob navigation, or a new print window. Never request `allow-modals`, `allow-popups`, or
 `allow-downloads` on the app iframe.
 
@@ -210,8 +214,8 @@ rel="stylesheet">`, and the print CSP blocks network CSS.
 - Use a 1-119 character title made from ASCII letters or digits plus spaces, `.`, `_`, `-`,
   `(`, and `)`. It must start with a letter or digit. Accents and emoji are not allowed.
 
-Do not send PDF bytes to `DigitHost.print`. Download a PDF with
-`DigitHost.download({ filename, contentType: 'application/pdf', data })`. Printing only
+Do not send PDF bytes to `SuttonHost.print`. Download a PDF with
+`SuttonHost.download({ filename, contentType: 'application/pdf', data })`. Printing only
 accepts HTML and opens the browser print dialog.
 
 ### 5. `manifest.json`
@@ -310,7 +314,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 Always wrap with `createHandler`. Strip `/proxy/backend` via `backendPath`, match
 `method` + `path`, return `ok` / `err`. Prefer `requireEnv` over reading `env.KEY`.
-Jobs/schedules: `createHandler({ jobs })` + `digitJobs({ env })` —
+Jobs/schedules: `createHandler({ jobs })` + `suttonJobs({ env })` —
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md). Webhooks:
 `createHandler({ webhooks })`, verify with `verifyWebhookSignature` before acting —
 [reference/webhooks.md](reference/webhooks.md). SQL migrations:
@@ -322,7 +326,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 ## Additional resources
 
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
-- [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, DigitHost
+- [reference/theming.md](reference/theming.md) — SuttonThemeProvider, MUI theme, SuttonHost
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key

@@ -18,13 +18,18 @@ export { backendPath } from './backendPath';
 export { requireEnv, optionalEnv } from './env';
 
 // Jobs & schedules (platform scheduler)
-export { digitJobs } from './jobs';
+export { digitJobs, suttonJobs } from './jobs';
 export type {
   DigitJobs,
   DigitJobRun,
   DigitJobRunStatus,
   DigitJobKind,
   DigitSchedule,
+  SuttonJobs,
+  SuttonJobRun,
+  SuttonJobRunStatus,
+  SuttonJobKind,
+  SuttonSchedule,
   JobArgs,
   JobHandler,
   JobHandlers,

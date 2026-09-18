@@ -19,7 +19,7 @@ export default function ThemePanel() {
           Theme showcase
         </Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-          MUI components styled by <code>DigitThemeProvider</code> from{' '}
+          MUI components styled by <code>SuttonThemeProvider</code> from{' '}
           <code>@digit/lib-frontend</code>. Prefer palette / typography tokens over hard-coded
           colors.
         </Typography>

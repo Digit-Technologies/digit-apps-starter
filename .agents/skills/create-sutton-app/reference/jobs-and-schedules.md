@@ -67,16 +67,17 @@ export must be the `createHandler(...)` class (or your own WorkerEntrypoint with
 `triggerJob` method) — a plain `{ fetch }` object cannot receive jobs and every run fails
 `NO_HANDLER`.
 
-## Submit and inspect jobs: `digitJobs(env)`
+## Submit and inspect jobs: `suttonJobs(env)`
 
 Every published backend Worker gets a `DIGIT_JOBS` binding (platform-injected — never
-declare it; the `DIGIT_` prefix is reserved). `digitJobs({ env })` returns it typed:
+declare it; the `DIGIT_` prefix is reserved). `suttonJobs({ env })` (`digitJobs` is the
+same helper) returns it typed:
 
 ```js
-import { digitJobs, ok } from '@digit/lib-backend';
+import { suttonJobs, ok } from '@digit/lib-backend';
 
 // In a route: queue work and return immediately.
-const { runId } = await digitJobs({ env }).submit({
+const { runId } = await suttonJobs({ env }).submit({
   name: 'note-stats',
   payload: { requestedBy: 'ui' },
   idempotencyKey: 'stats-2026-08-06', // optional: same key → same run
@@ -108,7 +109,7 @@ Run shape: `{ runId, name, kind, status, createdAt, startedAt, endedAt, result, 
 
 ## Local dev
 
-There is no local scheduler: `digitJobs` throws MISSING_CONFIG under `wrangler dev` and
+There is no local scheduler: `suttonJobs` throws MISSING_CONFIG under `wrangler dev` and
 `triggerJob` is never invoked. Keep handlers as plain exported functions (see
 `examples/full-featured/src/backend/jobs.js`) so you can unit-test them directly.
 

@@ -59,3 +59,6 @@ export function DigitThemeProvider({
     </ThemeProvider>
   )
 }
+
+/** Preferred name; same component as `DigitThemeProvider`. */
+export const SuttonThemeProvider = DigitThemeProvider

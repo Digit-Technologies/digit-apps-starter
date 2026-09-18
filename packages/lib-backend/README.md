@@ -16,7 +16,7 @@ Import from the package root only. Helpers take named arguments.
 | `backendPath` | Strip `/proxy/backend` from the request path |
 | `ok` / `err` | Success / error `Response` helpers |
 | `requireEnv` / `optionalEnv` | Read env vars, secrets, and bindings |
-| `digitJobs` | The platform `__JOBS` binding, typed — submit/inspect background jobs |
+| `suttonJobs` | The platform `__JOBS` binding, typed — submit/inspect background jobs (`digitJobs` alias) |
 | `verifyWebhookSignature` | Timing-safe HMAC check for inbound webhook payloads |
 | `HandlerError` | Thrown by `requireEnv`; mapped by `createHandler` (apps rarely throw it) |
 
@@ -93,18 +93,18 @@ and never put secret values or raw upstream bodies into `error.message` / `data`
 ## Jobs & schedules
 
 Pass `jobs` to `createHandler` to handle background runs (manifest `backend.schedules`
-ticks and jobs submitted via `digitJobs({ env }).submit(...)`); the platform invokes them
+ticks and jobs submitted via `suttonJobs({ env }).submit(...)`); the platform invokes them
 over RPC via the `triggerJob` method on the WorkerEntrypoint class `createHandler` returns:
 
 ```js
-import { createHandler, digitJobs, ok } from '@digit/lib-backend';
+import { createHandler, suttonJobs, ok } from '@digit/lib-backend';
 
 export default createHandler({
   jobs: {
     'note-stats': async ({ payload, env }) => ({ count: await countNotes(env) }),
   },
   fetch: async ({ request, env }) => {
-    const { runId } = await digitJobs({ env }).submit({ name: 'note-stats' });
+    const { runId } = await suttonJobs({ env }).submit({ name: 'note-stats' });
     return ok({ data: { runId }, status: 202 });
   },
 });
@@ -132,7 +132,7 @@ export default createHandler({
         signature: headers['x-webhook-signature'] ?? '',
       });
       if (!valid) return { status: 401 };
-      // …verify passed: act, or digitJobs({ env }).submit(...) for heavy work…
+      // …verify passed: act, or suttonJobs({ env }).submit(...) for heavy work…
       return { status: 200 };
     },
   },

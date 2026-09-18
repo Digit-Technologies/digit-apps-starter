@@ -25,7 +25,7 @@ starter prompt.
 - `manifest.json` — declares `READ_ORGANIZATION_DETAIL_AND_METRICS` (required by
   `dailyMetrics`); no `backend` block.
 - `src/frontend/` — React + MUI + `@digit/lib-frontend` UI:
-  - `main.tsx` — mounts `<App />` inside `DigitThemeProvider`.
+  - `main.tsx` — mounts `<App />` inside `SuttonThemeProvider`.
   - `App.tsx` — page layout (KPI row + charts row) and the "Preview data" toggle.
   - `useDailyMetrics.ts` — fetches `dailyMetrics`, normalizes the response (including the
     unit-aware handling for `inventoryQuantityProduced`) into per-day series. Accepts a

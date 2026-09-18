@@ -50,11 +50,39 @@ export type DigitProxyClient = {
   ) => Promise<Response>;
 };
 
+/** App-facing aliases. The host still injects `window.DigitHost` / `window.DigitProxyClient`. */
+export type SuttonHostSettings = DigitHostSettings;
+export type SuttonHostDownloadOptions = DigitHostDownloadOptions;
+export type SuttonHostPrintOptions = DigitHostPrintOptions;
+export type SuttonHost = DigitHost;
+export type SuttonProxyClient = DigitProxyClient;
+
 declare global {
   interface Window {
     DigitHost?: DigitHost;
     DigitProxyClient?: DigitProxyClient;
+    SuttonHost?: DigitHost;
+    SuttonProxyClient?: DigitProxyClient;
   }
 }
 
-export {};
+function aliasWindowProp(
+  from: "DigitHost" | "DigitProxyClient",
+  to: "SuttonHost" | "SuttonProxyClient",
+) {
+  if (typeof window === "undefined") return;
+  if (Object.prototype.hasOwnProperty.call(window, to)) return;
+  Object.defineProperty(window, to, {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return window[from];
+    },
+    set(value) {
+      window[from] = value;
+    },
+  });
+}
+
+aliasWindowProp("DigitHost", "SuttonHost");
+aliasWindowProp("DigitProxyClient", "SuttonProxyClient");

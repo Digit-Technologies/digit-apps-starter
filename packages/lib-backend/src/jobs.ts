@@ -63,6 +63,14 @@ export function digitJobs({ env }: { env: unknown }): DigitJobs {
   return binding as DigitJobs;
 }
 
+/** Preferred name; same helper as `digitJobs`. */
+export const suttonJobs = digitJobs;
+export type SuttonJobKind = DigitJobKind;
+export type SuttonJobRunStatus = DigitJobRunStatus;
+export type SuttonJobRun = DigitJobRun;
+export type SuttonSchedule = DigitSchedule;
+export type SuttonJobs = DigitJobs;
+
 /** Argument of the platform's `triggerJob(invocation)` RPC call, plus the Worker env/ctx. */
 export type JobArgs = {
   name: string;

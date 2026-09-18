@@ -79,10 +79,10 @@ function supportInfo(error: AppError, presentedMessage: string): string | null {
  * }
  *
  * @example Sutton GraphQL query + custom title
- * import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
+ * import { AppErrorAlert, useSuttonApiQuery } from '@digit/lib-frontend';
  *
  * function Items() {
- *   const { error, refetch } = useDigitApiQuery({
+ *   const { error, refetch } = useSuttonApiQuery({
  *     query: `query Items { items(connection: { first: 10 }) { nodes { id } } }`,
  *   });
  *

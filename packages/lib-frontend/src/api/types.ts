@@ -4,6 +4,9 @@ export type DigitResult<T = unknown> =
   | { ok: true; data: T }
   | { ok: false; error: AppError };
 
+/** Preferred name; same shape as `DigitResult`. */
+export type SuttonResult<T = unknown> = DigitResult<T>;
+
 export type BackendFetchOptions = {
   method?: string;
   body?: unknown;

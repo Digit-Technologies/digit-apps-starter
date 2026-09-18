@@ -5,7 +5,7 @@ import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
+import { AppErrorAlert, useSuttonApiQuery } from '@digit/lib-frontend';
 
 type ItemNode = { id: string; name?: string | null; sku?: string | null };
 
@@ -26,7 +26,7 @@ const ITEMS_QUERY = `
 `;
 
 export default function DigitApiPanel() {
-  const { data, error, loading, refetch } = useDigitApiQuery<ItemsData>({
+  const { data, error, loading, refetch } = useSuttonApiQuery<ItemsData>({
     query: ITEMS_QUERY,
     variables: { connection: { first: 10 } },
   });
@@ -38,7 +38,7 @@ export default function DigitApiPanel() {
         Sutton API
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-        <code>useDigitApiQuery</code> from <code>@digit/lib-frontend</code> with{' '}
+        <code>useSuttonApiQuery</code> from <code>@digit/lib-frontend</code> with{' '}
         <code>READ_ITEM</code>. Platform vs GraphQL errors are normalized for{' '}
         <code>AppErrorAlert</code>.
       </Typography>

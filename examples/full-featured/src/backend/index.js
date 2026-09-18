@@ -13,7 +13,7 @@ import { AppErrorCode, parseJsonResponse } from '@digit/lib-common';
 import {
   backendPath,
   createHandler,
-  digitJobs,
+  suttonJobs,
   err,
   ok,
   requireEnv,
@@ -97,17 +97,17 @@ export default createHandler({
     }
 
     if (method === 'POST' && path === '/jobs/note-stats') {
-      const { runId } = await digitJobs({ env }).submit({ name: 'note-stats' });
+      const { runId } = await suttonJobs({ env }).submit({ name: 'note-stats' });
       return ok({ data: { runId }, status: 202 });
     }
 
     if (method === 'GET' && path === '/jobs/runs') {
-      const runs = await digitJobs({ env }).list({ limit: 20 });
+      const runs = await suttonJobs({ env }).list({ limit: 20 });
       return ok({ data: { runs } });
     }
 
     if (method === 'GET' && path === '/jobs/schedules') {
-      const schedules = await digitJobs({ env }).schedules();
+      const schedules = await suttonJobs({ env }).schedules();
       return ok({ data: { schedules } });
     }
 

@@ -86,7 +86,7 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 | Situation | Backend required? |
 | --- | --- |
 | Pure UI | No |
-| Sutton GraphQL via `useDigitApiQuery` / `DigitProxyClient` | No |
+| Sutton GraphQL via `useSuttonApiQuery` / `SuttonProxyClient` | No |
 | Read non-secret config from Sutton app settings | Yes |
 | Call third-party APIs with secrets | Yes |
 | App-own persistence (D1) | Yes (`backend.d1`) |

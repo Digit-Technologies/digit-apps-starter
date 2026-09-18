@@ -84,7 +84,7 @@ Store the secret via the app's Secrets tab (config vars) and read it with `requi
 Do not do slow work inside the delivery — verify, enqueue a job, and return 200:
 
 ```js
-const { runId } = await digitJobs({ env }).submit({
+const { runId } = await suttonJobs({ env }).submit({
   name: 'process-order',
   payload: { orderId },
   idempotencyKey: headers['x-delivery-id'], // provider redeliveries collapse to one run
