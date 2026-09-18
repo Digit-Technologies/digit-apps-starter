@@ -27,7 +27,9 @@ package. Users are often non-developers — one path keeps apps looking and beha
 like Sutton.
 
 `DigitThemeProvider`, `useDigitApiQuery` / `useDigitApiMutation`, `window.DigitHost`, and
-`digitJobs` remain supported aliases of the Sutton names.
+`digitJobs` are **deprecated aliases** of the Sutton names. They still work; they will be
+removed in a later release. Host injection, `/proxy/digit`, `X-Digit-*` headers, and
+`DIGIT_` bindings are unchanged.
 
 **Sutton MCP is required.** Use it for schema lookup, permissions, listing apps, and
 publish. If MCP is not connected, stop and ask the user to connect Sutton MCP before

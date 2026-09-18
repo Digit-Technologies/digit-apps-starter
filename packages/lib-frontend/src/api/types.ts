@@ -1,11 +1,13 @@
 import type { AppError } from '../errors/types';
 
-export type DigitResult<T = unknown> =
+export type SuttonResult<T = unknown> =
   | { ok: true; data: T }
   | { ok: false; error: AppError };
 
-/** Preferred name; same shape as `DigitResult`. */
-export type SuttonResult<T = unknown> = DigitResult<T>;
+/**
+ * @deprecated Use {@link SuttonResult}. Same shape; will be removed in a later release.
+ */
+export type DigitResult<T = unknown> = SuttonResult<T>;
 
 export type BackendFetchOptions = {
   method?: string;

@@ -4,19 +4,19 @@
  */
 
 // Theme
-export { DigitThemeProvider, SuttonThemeProvider } from "./theme";
+export { SuttonThemeProvider, DigitThemeProvider } from "./theme";
 
 // Host / proxy types (importing this package augments Window)
 export type {
-  DigitHost,
-  DigitHostDownloadOptions,
-  DigitHostPrintOptions,
-  DigitHostSettings,
   SuttonHost,
   SuttonHostDownloadOptions,
   SuttonHostPrintOptions,
   SuttonHostSettings,
   SuttonProxyClient,
+  DigitHost,
+  DigitHostDownloadOptions,
+  DigitHostPrintOptions,
+  DigitHostSettings,
 } from "./globals";
 import "./globals";
 
@@ -26,11 +26,11 @@ export type { AppError } from "./errors";
 
 // Sutton API + app backend (hooks only — imperative fetch helpers are internal)
 export {
-  useDigitApiQuery,
-  useDigitApiMutation,
   useSuttonApiQuery,
   useSuttonApiMutation,
+  useDigitApiQuery,
+  useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
 } from "./api";
-export type { DigitResult, SuttonResult } from "./api";
+export type { SuttonResult, DigitResult } from "./api";

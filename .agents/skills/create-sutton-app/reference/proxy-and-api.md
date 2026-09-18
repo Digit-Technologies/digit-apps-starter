@@ -55,7 +55,7 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 Confirm root fields and selection sets against `graphql-schema://…` before shipping.
 Types for `window.SuttonHost` are exported from `@digit/lib-frontend` (`SuttonHost`,
 `SuttonHostSettings`). Prefer the hooks over calling `window.SuttonProxyClient` yourself.
-`DigitHost` / `DigitProxyClient` remain supported aliases.
+`DigitHost` / `DigitProxyClient` are deprecated aliases and still work.
 
 ## Sort, filter, and pagination
 

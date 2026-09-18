@@ -46,7 +46,7 @@ createRoot(rootEl).render(
 );
 ```
 
-`SuttonThemeProvider` (`DigitThemeProvider` is the same component):
+`SuttonThemeProvider` (`DigitThemeProvider` is a deprecated alias of the same component):
 
 1. Reads light/dark from `window.SuttonHost` / `window.DigitHost` (types: `SuttonHost` /
    `SuttonHostSettings` exported from `@digit/lib-frontend`; importing the package

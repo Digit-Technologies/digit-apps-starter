@@ -5,16 +5,16 @@ import { AppErrorCode } from '@digit/lib-common';
 
 import { HandlerError } from './createHandler';
 
-export type DigitJobKind = 'job' | 'schedule';
+export type SuttonJobKind = 'job' | 'schedule';
 
-export type DigitJobRunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+export type SuttonJobRunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
 /** A run of a submitted job or a schedule tick, as reported by the platform scheduler. */
-export type DigitJobRun = {
+export type SuttonJobRun = {
   runId: string;
   name: string;
-  kind: DigitJobKind;
-  status: DigitJobRunStatus;
+  kind: SuttonJobKind;
+  status: SuttonJobRunStatus;
   /** Epoch ms. */
   createdAt: number;
   startedAt: number | null;
@@ -25,7 +25,7 @@ export type DigitJobRun = {
   error: string | null;
 };
 
-export type DigitSchedule = {
+export type SuttonSchedule = {
   name: string;
   everySeconds: number;
   /** Epoch ms of the next tick. */
@@ -38,20 +38,41 @@ export type DigitSchedule = {
 };
 
 /** The platform jobs RPC surface. All calls are scoped to this app; there is no cross-app access. */
-export type DigitJobs = {
+export type SuttonJobs = {
   submit(options: {
     name: string;
     payload?: unknown;
     idempotencyKey?: string;
   }): Promise<{ runId: string }>;
-  get(runId: string): Promise<DigitJobRun | null>;
-  list(options?: { limit?: number }): Promise<DigitJobRun[]>;
+  get(runId: string): Promise<SuttonJobRun | null>;
+  list(options?: { limit?: number }): Promise<SuttonJobRun[]>;
   cancel(runId: string): Promise<{ cancelled: boolean }>;
-  schedules(): Promise<DigitSchedule[]>;
+  schedules(): Promise<SuttonSchedule[]>;
 };
 
+/**
+ * @deprecated Use {@link SuttonJobKind}. Will be removed in a later release.
+ */
+export type DigitJobKind = SuttonJobKind;
+/**
+ * @deprecated Use {@link SuttonJobRunStatus}. Will be removed in a later release.
+ */
+export type DigitJobRunStatus = SuttonJobRunStatus;
+/**
+ * @deprecated Use {@link SuttonJobRun}. Will be removed in a later release.
+ */
+export type DigitJobRun = SuttonJobRun;
+/**
+ * @deprecated Use {@link SuttonSchedule}. Will be removed in a later release.
+ */
+export type DigitSchedule = SuttonSchedule;
+/**
+ * @deprecated Use {@link SuttonJobs}. Will be removed in a later release.
+ */
+export type DigitJobs = SuttonJobs;
+
 /** The platform's __JOBS binding, typed; throws MISSING_CONFIG when absent (frontend-only app, or local dev). */
-export function digitJobs({ env }: { env: unknown }): DigitJobs {
+export function suttonJobs({ env }: { env: unknown }): SuttonJobs {
   const binding = (env as Record<string, unknown>).__JOBS;
   if (!binding) {
     throw new HandlerError({
@@ -60,21 +81,18 @@ export function digitJobs({ env }: { env: unknown }): DigitJobs {
         '__JOBS is unavailable — it is injected into published backend apps; local dev has no scheduler.',
     });
   }
-  return binding as DigitJobs;
+  return binding as SuttonJobs;
 }
 
-/** Preferred name; same helper as `digitJobs`. */
-export const suttonJobs = digitJobs;
-export type SuttonJobKind = DigitJobKind;
-export type SuttonJobRunStatus = DigitJobRunStatus;
-export type SuttonJobRun = DigitJobRun;
-export type SuttonSchedule = DigitSchedule;
-export type SuttonJobs = DigitJobs;
+/**
+ * @deprecated Use {@link suttonJobs}. Same helper; will be removed in a later release.
+ */
+export const digitJobs = suttonJobs;
 
 /** Argument of the platform's `triggerJob(invocation)` RPC call, plus the Worker env/ctx. */
 export type JobArgs = {
   name: string;
-  kind: DigitJobKind;
+  kind: SuttonJobKind;
   runId: string;
   /** 1-based attempt within the run (failed attempts are retried). */
   attempt: number;

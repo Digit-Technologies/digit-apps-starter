@@ -70,8 +70,8 @@ export must be the `createHandler(...)` class (or your own WorkerEntrypoint with
 ## Submit and inspect jobs: `suttonJobs(env)`
 
 Every published backend Worker gets a `DIGIT_JOBS` binding (platform-injected — never
-declare it; the `DIGIT_` prefix is reserved). `suttonJobs({ env })` (`digitJobs` is the
-same helper) returns it typed:
+declare it; the `DIGIT_` prefix is reserved). `suttonJobs({ env })` returns it typed.
+`digitJobs` is a deprecated alias and will be removed later.
 
 ```js
 import { suttonJobs, ok } from '@digit/lib-backend';

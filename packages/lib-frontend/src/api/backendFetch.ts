@@ -1,6 +1,6 @@
 import { fromThrown, parseBackendResponse, unavailableClient } from '../errors/parse';
 
-import type { BackendFetchOptions, DigitResult } from './types';
+import type { BackendFetchOptions, SuttonResult } from './types';
 
 import '../globals';
 
@@ -17,7 +17,7 @@ export type BackendFetchArgs = BackendFetchOptions & {
 export async function backendFetch<T = unknown>({
   path,
   ...options
-}: BackendFetchArgs): Promise<DigitResult<T>> {
+}: BackendFetchArgs): Promise<SuttonResult<T>> {
   const client = window.DigitProxyClient;
   if (!client?.callBackend) {
     return { ok: false, error: unavailableClient() };

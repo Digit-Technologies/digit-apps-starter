@@ -8,8 +8,12 @@ Snapshot of Sutton web’s theme adapted for the public apps starter.
 
 Import from the package root only. Theme tokens, error parsers, and other modules
 under `src/` are implementation details — use `SuttonThemeProvider`, the hooks, and
-`AppErrorAlert`. `DigitThemeProvider`, `useDigitApiQuery` / `useDigitApiMutation`, and
-the `DigitHost*` types remain supported aliases.
+`AppErrorAlert`.
+
+`DigitThemeProvider`, `useDigitApiQuery` / `useDigitApiMutation`, and the `DigitHost*`
+types are **deprecated aliases** of the Sutton names. They still work; they will be
+removed in a later release. The host still injects `window.DigitHost` /
+`window.DigitProxyClient` (proxy path `/proxy/digit`, headers `X-Digit-*`).
 
 ## Why a copy (not an import from digit-web)
 
