@@ -4,7 +4,7 @@ export type DigitHostSettings = {
   language?: string;
 };
 
-/** Options for `DigitHost.download` — the only way an app can save a file to disk. */
+/** Params for `invoke("download", ...)` — the only way an app can save a file to disk. */
 export type DigitHostDownloadOptions = {
   /** Letters, digits, spaces, dots, hyphens, underscores or parentheses; extension optional. */
   filename: string;
@@ -18,7 +18,7 @@ export type DigitHostDownloadOptions = {
   data: string | ArrayBuffer | Uint8Array;
 };
 
-/** Options for `DigitHost.print`. The host sanitizes and prints this HTML snapshot. */
+/** Params for `invoke("print", ...)`. The host sanitizes and prints this HTML snapshot. */
 export type DigitHostPrintOptions = {
   /** ASCII letters/digits, spaces, dots, hyphens, underscores or parentheses; 119 chars max. */
   title: string;
@@ -26,15 +26,25 @@ export type DigitHostPrintOptions = {
   html: string;
 };
 
+/** Params passed to `DigitHost.invoke` — a plain JSON-serializable object, `{}` when a capability takes none. */
+export type HostInvokeParams = Record<string, unknown>;
+
 /** Read-only host display channel plus host-mediated actions (`window.DigitHost`). */
 export type DigitHost = {
   getSettings: () => DigitHostSettings | null;
   onSettingsChange: (
     cb: (settings: DigitHostSettings | null) => void,
   ) => () => void;
-  /** Saves a file via the host page. Throws on invalid options (message says why). */
+  /**
+   * Calls a host capability: resolves with data, `null` if the user cancelled, rejects on
+   * error — including when this host does not offer the method.
+   */
+  invoke: (method: string, params?: HostInvokeParams) => Promise<unknown>;
+  /** The method names this host offers. Diagnostics only — just call `invoke`. */
+  capabilities: readonly string[];
+  /** @deprecated Use `invoke("download", ...)`. Saves a file via the host page; throws on invalid options. */
   download: (options: DigitHostDownloadOptions) => void;
-  /** Opens the browser print dialog for a sanitized HTML snapshot. */
+  /** @deprecated Use `invoke("print", ...)`. Opens the browser print dialog for a sanitized HTML snapshot. */
   print: (options: DigitHostPrintOptions) => void;
 };
 
