@@ -64,7 +64,9 @@ export type DigitHostScanOptions = {
  * Result of `DigitHost.scan`. Success is `{ text }`; the user dismissing
  * consent or the scanner is `{ cancelled: true }`. Host errors reject the promise.
  */
-export type DigitHostScanResult = { text: string } | { cancelled: true };
+export type DigitHostScanResult =
+  | { text: string; cancelled?: undefined }
+  | { cancelled: true; text?: undefined };
 
 /** Read-only host display channel plus host-mediated actions (`window.DigitHost`). */
 export type DigitHost = {
