@@ -36,7 +36,7 @@ That skill covers:
 - Mounting to `#root` with `DigitThemeProvider`
 - Root `manifest.json` (staged at the zip root by pack)
 - Digit API access via `useDigitApiQuery` / `/proxy/digit`
-- Host-mediated `DigitHost.download`, `print`, and `scan` (the iframe cannot use the camera)
+- Host-mediated `DigitHost.download`, `print`, and `scan` (iframe cannot use the camera; scan host is not on production until digit-web#4259 matches the harness)
 - Env vars and secrets (backend Worker injection only)
 - Publishing with Digit MCP (`apps` → upload zip → `publishApp` → poll)
 

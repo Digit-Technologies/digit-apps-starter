@@ -66,7 +66,9 @@ API after a failed attempt.
   and opens the print dialog from its own frame. The app iframe never receives
   `allow-modals`
 - Barcode/QR scanning via `DigitHost.scan()` (below). Digit owns the camera and
-  returns decoded text — never a `MediaStream`
+  returns decoded text — never a `MediaStream`. The host side is not on production
+  Digit until [digit-web#4259](https://github.com/Digit-Technologies/digit-web/pull/4259)
+  lands a contract that matches the harness.
 
 ## Printing HTML
 
@@ -117,39 +119,65 @@ Never ask for more sandbox flags. For PDF bytes, call `DigitHost.download` with
 ## Scanning barcodes and QR codes
 
 The app iframe cannot use the camera. Digit sets `camera 'none'` on the frame and does
-not pass a `MediaStream` into the sandbox. To scan a barcode or QR code, ask Digit to
-scan on the app's behalf — the same pattern as `DigitHost.download` and `DigitHost.print`.
+not pass a `MediaStream` into the sandbox. To scan a barcode or QR code, call
+`DigitHost.scan()` — the same host-mediated pattern as download and print.
 
-**Call `DigitHost.scan()`. Do not open the camera in the iframe.** In-iframe scanner
-libraries, `navigator.mediaDevices.getUserMedia`, and `<input type="file" accept="image/*"
+**Call `DigitHost.scan()`. Do not open the camera in the iframe, and do not
+`postMessage` a scan request yourself.** In-iframe scanner libraries,
+`navigator.mediaDevices.getUserMedia`, and `<input type="file" accept="image/*"
 capture>` fail because the frame is not allowed to use the camera.
+
+This API is not on production Digit yet. The iframe helper is in merged
+[digit-apps#138](https://github.com/Digit-Technologies/digit-apps/pull/138). The Digit
+web host (consent + scanner) is [digit-web#4259](https://github.com/Digit-Technologies/digit-web/pull/4259)
+and must land a matching contract before scan works in production. Until then, still
+write apps against `DigitHost.scan()` only.
 
 ### Request a scan
 
 ```ts
-const result = await window.DigitHost.scan({
-  purpose: "Scan PO barcode", // optional; scan context only
-});
-
-if (result.cancelled) {
-  // User dismissed consent or the scanner
-  return;
+try {
+  const result = await window.DigitHost?.scan({
+    purpose: "Scan barcode",
+  });
+  if (!result || result.cancelled) {
+    return; // no host, or the user dismissed consent / the scanner
+  }
+  const code = result.text;
+} catch (error) {
+  // Throws: host not ready, invalid options, or rate limit (including a quick double-click).
+  // Rejects: camera/scan failure, or the host's 60s session timeout.
 }
-
-const code = result.text; // decoded barcode / QR text
 ```
 
-Optional `formats` names the barcode types to try (`qr_code`, `code_128`, `ean_13`, …).
-If you omit it, Digit tries **`qr_code`, `code_128`, and `data_matrix`** — the types Digit
-generates and recognizes today — so the host does not run every decoder.
+Cancel is a resolved `{ cancelled: true }`, not a throw. Missing `DigitHost` makes the
+optional-chain return `undefined` — treat that like a no-op, not a crash.
 
-`purpose` is optional context (1–199 characters: letters, digits, spaces, and
-`. _ ( ) , : / -`, not starting with a symbol). Consent UI names the **app** from Digit,
-not from this string.
+Only one scan at a time. Disable the Scan button until the promise settles. A
+double-click within 500ms throws (rate limit). A second `scan()` while consent or the
+scanner is still open is dropped by the host, and **that second promise may never
+settle**. Do not fire overlapping scans.
 
-The call throws if the host is not connected yet, options are invalid, or you hit the
-rate limit. Host failures (camera denied by the OS, scanner error) **reject** the
-promise — catch them like any other async failure.
+### `purpose` and `formats`
+
+`purpose` is optional scan context. Consent UI names the **app** from Digit, not from
+this string. If you pass it, it must be 1–199 characters: letters, digits, spaces, and
+`. _ ( ) , : / -`, and it must start with a letter or digit. Omit the field rather
+than sending `""`, emoji, or a leading `.` — those throw.
+
+Omit `formats` to try **`qr_code`, `code_128`, and `data_matrix`** (what Digit
+generates and recognizes today). That default is **not** retail product barcodes.
+
+For a PO / shelf label that is EAN or UPC, pass those types on the same `scan()` call
+(still wrap it in the try/catch above):
+
+```ts
+formats: ["ean_13", "upc_a", "code_128"],
+```
+
+`formats: []` throws. Group aliases (`any`, `gs1_codes`) throw. Allowed names include
+`qr_code`, `code_128`, `code_39`, `code_93`, `codabar`, `data_matrix`, `ean_13`,
+`ean_8`, `itf`, `pdf417`, `aztec`, `upc_a`, and `upc_e`.
 
 ### Why Digit owns the camera
 
@@ -159,48 +187,38 @@ The iframe is untrusted customer code. Camera access stays in Digit:
 2. Digit shows consent and runs `getUserMedia` in its own UI
 3. Only decoded text comes back to the app — never a live camera stream or raw photo
 
-Do not ask to add camera to the iframe `allow` list. Photo/snapshot capture for app UI
-is not in v1 (`camera-snapshot` messages return `unsupported`).
+Do not ask to add camera to the iframe `allow` list.
 
-### Consent and QA without a camera
+### Consent, scanner, and QA
 
 When the app calls `scan()`:
 
 1. Digit shows a consent dialog: **Allow camera access?** — *"{App name} wants to use
    your camera to scan a barcode."* Allow or Cancel. The name comes from Digit, not
    from `purpose`.
-2. If the user allows, Digit opens its scanner.
-3. A successful decode (or a pasted/typed code) resolves `{ text }`. Cancel at either
-   step resolves `{ cancelled: true }`.
+2. If the user allows, Digit opens its **camera** scanner.
+3. A successful decode resolves `{ text }`. Cancel at either step resolves
+   `{ cancelled: true }`. If nothing completes within **60 seconds**, the host times
+   out and the promise **rejects**.
 
-**Studio / QA:** you do not need a webcam or a printed barcode. After Allow, paste or
-type the barcode text into the host scanner to complete a fake scan. The app still
-receives `{ text }` with that value. Do not mock `getUserMedia` inside the iframe to
-fake this.
+The host scanner is camera-only today (no text field to paste a fake barcode). Studio
+QA needs a webcam, or a barcode on another screen to point the camera at. Do not mock
+`getUserMedia` inside the iframe, and do not tell testers they can paste after Allow
+unless Digit’s scanner UI grows a paste path.
 
-### `digit-apps:*` vs `digit-embed:*` (do not unify)
+### Custom links vs Digit apps
 
-Two embed surfaces talk to Digit over **different** message namespaces. They are not
-aliases. Each host ignores the other prefix.
-
-| Surface | Request | Result | App-author API |
-| --- | --- | --- | --- |
-| Digit apps (Studio / this starter) | `digit-apps:scan-request` | `digit-apps:scan-result` | `DigitHost.scan()` |
-| Custom links (embedded external pages) | `digit-embed:scan-request` | `digit-embed:scan-result` | `postMessage` only |
-
-Prefer `DigitHost.scan()` in Digit apps. The harness posts `digit-apps:scan-request`
-(`requestId`, optional `purpose`, `formats`) to the parent and waits for
-`digit-apps:scan-result` (`requestId`, status `success` / `cancelled` / `error`, plus
-`text` or `message`). Do not post `digit-embed:*` from a Digit app, and do not teach
-custom links to send `digit-apps:*`.
-
-Host implementation: [digit-web#4259](https://github.com/Digit-Technologies/digit-web/pull/4259).
-Iframe contract: [digit-apps#138](https://github.com/Digit-Technologies/digit-apps/pull/138).
+Digit apps and custom-link embeds use different host namespaces (`digit-apps:*` vs
+`digit-embed:*`). Do not unify them. From a Digit app, only call `DigitHost.scan()`.
+Do not `postMessage` scan (or camera) requests — the harness and Digit web shapes do
+not match yet, and a hand-rolled message can hang.
 
 ### Limits
 
+- One in-flight scan; disable repeat clicks until it settles
 - 30 scan requests per page load
 - At least 500ms between requests
+- 60s host session timeout (promise rejects)
 - Decoded text is capped at 8KB
 - No `MediaStream` handoff
 
@@ -210,7 +228,7 @@ Before shipping UI:
 
 1. File exports only via `DigitHost.download` — never `<a download>` / blob links
 2. Printing only via `DigitHost.print` with self-contained HTML under 10MB
-3. Barcode/QR scans only via `DigitHost.scan` — never `getUserMedia` or in-iframe cameras
+3. Barcode/QR scans only via `DigitHost.scan` (try/catch, one at a time) — never `getUserMedia` or in-iframe cameras
 4. No new-tab / popup / `window.open` flows
 5. No `alert` / `confirm` / `prompt` — use MUI Dialog / `AppErrorAlert` instead
 6. No mic, geo, clipboard-read, fullscreen, or other device APIs

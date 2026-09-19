@@ -69,16 +69,22 @@ The print document runs no JavaScript. Inline CSS and convert images or canvases
 is `img-src data:`). Keep the result under 10MB. Use `DigitHost.download` for PDF bytes.
 
 Host-mediated barcode/QR scanning asks Digit to open the camera. The iframe cannot use
-`getUserMedia` (`camera 'none'`). Digit shows consent, scans, and returns decoded text:
+`getUserMedia` (`camera 'none'`). Call `DigitHost.scan()` only — do not `postMessage`.
+The host is not on production Digit until digit-web#4259 lands a matching contract.
 
 ```ts
-const result = await window.DigitHost.scan({ purpose: "Scan PO barcode" });
-if (result.cancelled) return;
-const code = result.text;
+try {
+  const result = await window.DigitHost?.scan({ purpose: "Scan barcode" });
+  if (!result || result.cancelled) return;
+  const code = result.text;
+} catch (error) {
+  // Host not ready, invalid options, rate limit, 60s timeout, or scan failure
+}
 ```
 
-Do not post `digit-embed:*` messages from a Digit app. Custom links use that namespace;
-Digit apps use `DigitHost.scan()` / `digit-apps:scan-*`. Photo capture is not in v1.
+Cancel is `{ cancelled: true }`, not a throw. One scan at a time. Omit `formats` for
+QR / Code 128 / Data Matrix; pass `ean_13` / `upc_a` for a PO barcode. The host scanner
+is camera-only (QA needs a webcam).
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.

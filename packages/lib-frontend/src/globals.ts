@@ -48,14 +48,16 @@ export type DigitHostScanFormat =
 /** Options for `DigitHost.scan`. The host owns the camera; the iframe gets decoded text. */
 export type DigitHostScanOptions = {
   /**
-   * Optional scan context only (e.g. "Scan PO barcode"). 1–199 characters:
+   * Optional scan context only (e.g. "Scan barcode"). 1–199 characters:
    * letters, digits, spaces, and `. _ ( ) , : / -`, not starting with a symbol.
-   * Consent UI names the app from Digit, not from this field.
+   * Empty string, emoji, and a leading `.` throw. Consent UI names the app
+   * from Digit, not from this field.
    */
   purpose?: string;
   /**
-   * Barcode types to try. Omitted formats default to `qr_code`, `code_128`,
-   * and `data_matrix` (what Digit generates/recognizes today).
+   * Barcode types to try. Omit for `qr_code`, `code_128`, and `data_matrix`.
+   * Pass `ean_13` / `upc_a` (and usually `code_128`) for PO/shelf labels.
+   * An empty array throws.
    */
   formats?: DigitHostScanFormat[];
 };
@@ -80,7 +82,8 @@ export type DigitHost = {
   print: (options: DigitHostPrintOptions) => void;
   /**
    * Asks Digit to scan a barcode/QR code. Resolves with `{ text }` or
-   * `{ cancelled: true }`. Never opens the camera in the iframe.
+   * `{ cancelled: true }`. Throws on invalid options / rate limit; rejects on
+   * scan failure or the host's 60s timeout. Never opens the camera in the iframe.
    */
   scan: (options?: DigitHostScanOptions) => Promise<DigitHostScanResult>;
 };

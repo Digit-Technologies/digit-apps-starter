@@ -160,7 +160,8 @@ only; still upload the zip **unchanged**. Details:
   device/clipboard-read/fullscreen APIs — they will not work. Copy buttons
   (`navigator.clipboard.writeText` in a click handler), form `onSubmit` +
   `preventDefault`, file exports via `DigitHost.download`, HTML printing via
-  `DigitHost.print`, and barcode/QR scans via `DigitHost.scan` DO work. In-page MUI
+  `DigitHost.print`, and barcode/QR scans via `DigitHost.scan` DO work (`scan` is
+  not on production Digit until digit-web#4259 matches the harness). In-page MUI
   Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
 - **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
@@ -219,21 +220,30 @@ accepts HTML and opens the browser print dialog.
 #### Scanning barcodes and QR codes
 
 When the user needs to scan a barcode or QR code, call `window.DigitHost.scan()`. Do not
-use `navigator.mediaDevices.getUserMedia`, in-iframe scanner libraries, or ask for camera
-on the app iframe. Digit keeps `camera 'none'` on the frame; the host opens the camera
-and returns decoded text only.
+use `navigator.mediaDevices.getUserMedia`, in-iframe scanner libraries, or `postMessage`.
+Digit keeps `camera 'none'` on the frame; the host opens the camera and returns decoded
+text only. This is not on production Digit until
+[digit-web#4259](https://github.com/Digit-Technologies/digit-web/pull/4259) lands a
+contract that matches the harness.
 
 ```ts
-const result = await window.DigitHost.scan({ purpose: "Scan PO barcode" });
-if (result.cancelled) return;
-const code = result.text;
+try {
+  const result = await window.DigitHost?.scan({ purpose: "Scan barcode" });
+  if (!result || result.cancelled) return;
+  const code = result.text;
+} catch (error) {
+  // Host not ready, invalid options, rate limit, 60s timeout, or scan failure
+}
 ```
 
-Digit shows a consent dialog that names **your app**, then its scanner. Testers without
-a camera can paste or type the barcode text to complete the same `{ text }` result.
+Disable the Scan button until the promise settles (one scan at a time; a double-click
+can hang or throw). Omit `formats` for QR / Code 128 / Data Matrix; pass
+`["ean_13", "upc_a", "code_128"]` for a PO/shelf barcode. `formats: []` throws.
 
-Do not post `digit-embed:*` messages from a Digit app, and do not invent a snapshot /
-photo API — v1 is scan-only. Full contract, namespaces, and limits:
+Digit shows a consent dialog that names **your app**, then a **camera** scanner. QA
+needs a webcam — the host modal has no paste-a-fake-barcode field.
+
+Full options, timeout, and limits:
 [reference/iframe-constraints.md](reference/iframe-constraints.md#scanning-barcodes-and-qr-codes).
 
 ### 5. `manifest.json`
