@@ -2,8 +2,8 @@
 
 Digit apps run inside a **sandboxed iframe** in the Digit host. Design and implement
 only what that environment allows. Do not add direct downloads, new tabs, browser dialogs,
-device APIs, or anything that escapes the frame. Host-mediated downloads and printing
-are the exceptions described below.
+in-iframe device APIs, or anything that escapes the frame. Host-mediated downloads,
+printing, and barcode/QR scanning are the exceptions described below.
 
 ## Host iframe settings
 
@@ -40,7 +40,7 @@ always intercept and post JSON.
 | Navigating the parent Digit page (`top.location`, etc.)                    | No top-navigation flags                                                                   |
 | Fullscreen API                                                             | `fullscreen 'none'`                                                                       |
 | Reading the clipboard (`navigator.clipboard.read*`, paste APIs)            | `clipboard-read 'none'`                                                                   |
-| Camera, mic, geolocation, USB, WebAuthn get, payment, PiP, wake lock, etc. | Permissions Policy `'none'`                                                               |
+| Camera, mic, geolocation, USB, WebAuthn get, payment, PiP, wake lock, etc. | Permissions Policy `'none'` — for barcodes/QR, use `DigitHost.scan` (below); do not call `getUserMedia` |
 | Autoplay media                                                             | `autoplay 'none'`                                                                         |
 
 Do not build UI that depends on these working, and do not “fall back” to a blocked
@@ -65,6 +65,8 @@ API after a failed attempt.
 - Browser printing via `DigitHost.print({ title, html })`. The host sanitizes the HTML
   and opens the print dialog from its own frame. The app iframe never receives
   `allow-modals`
+- Barcode/QR scanning via `DigitHost.scan()` (below). Digit owns the camera and
+  returns decoded text — never a `MediaStream`
 
 ## Printing HTML
 
@@ -112,14 +114,105 @@ Do not use `window.open`, `target="_blank"`, blob navigation, or print-window pa
 Never ask for more sandbox flags. For PDF bytes, call `DigitHost.download` with
 `application/pdf`; `DigitHost.print` accepts HTML only.
 
+## Scanning barcodes and QR codes
+
+The app iframe cannot use the camera. Digit sets `camera 'none'` on the frame and does
+not pass a `MediaStream` into the sandbox. To scan a barcode or QR code, ask Digit to
+scan on the app's behalf — the same pattern as `DigitHost.download` and `DigitHost.print`.
+
+**Call `DigitHost.scan()`. Do not open the camera in the iframe.** In-iframe scanner
+libraries, `navigator.mediaDevices.getUserMedia`, and `<input type="file" accept="image/*"
+capture>` fail because the frame is not allowed to use the camera.
+
+### Request a scan
+
+```ts
+const result = await window.DigitHost.scan({
+  purpose: "Scan PO barcode", // optional; scan context only
+});
+
+if (result.cancelled) {
+  // User dismissed consent or the scanner
+  return;
+}
+
+const code = result.text; // decoded barcode / QR text
+```
+
+Optional `formats` names the barcode types to try (`qr_code`, `code_128`, `ean_13`, …).
+If you omit it, Digit tries **`qr_code`, `code_128`, and `data_matrix`** — the types Digit
+generates and recognizes today — so the host does not run every decoder.
+
+`purpose` is optional context (1–199 characters: letters, digits, spaces, and
+`. _ ( ) , : / -`, not starting with a symbol). Consent UI names the **app** from Digit,
+not from this string.
+
+The call throws if the host is not connected yet, options are invalid, or you hit the
+rate limit. Host failures (camera denied by the OS, scanner error) **reject** the
+promise — catch them like any other async failure.
+
+### Why Digit owns the camera
+
+The iframe is untrusted customer code. Camera access stays in Digit:
+
+1. The frame's Permissions Policy keeps `camera 'none'`
+2. Digit shows consent and runs `getUserMedia` in its own UI
+3. Only decoded text comes back to the app — never a live camera stream or raw photo
+
+Do not ask to add camera to the iframe `allow` list. Photo/snapshot capture for app UI
+is not in v1 (`camera-snapshot` messages return `unsupported`).
+
+### Consent and QA without a camera
+
+When the app calls `scan()`:
+
+1. Digit shows a consent dialog: **Allow camera access?** — *"{App name} wants to use
+   your camera to scan a barcode."* Allow or Cancel. The name comes from Digit, not
+   from `purpose`.
+2. If the user allows, Digit opens its scanner.
+3. A successful decode (or a pasted/typed code) resolves `{ text }`. Cancel at either
+   step resolves `{ cancelled: true }`.
+
+**Studio / QA:** you do not need a webcam or a printed barcode. After Allow, paste or
+type the barcode text into the host scanner to complete a fake scan. The app still
+receives `{ text }` with that value. Do not mock `getUserMedia` inside the iframe to
+fake this.
+
+### `digit-apps:*` vs `digit-embed:*` (do not unify)
+
+Two embed surfaces talk to Digit over **different** message namespaces. They are not
+aliases. Each host ignores the other prefix.
+
+| Surface | Request | Result | App-author API |
+| --- | --- | --- | --- |
+| Digit apps (Studio / this starter) | `digit-apps:scan-request` | `digit-apps:scan-result` | `DigitHost.scan()` |
+| Custom links (embedded external pages) | `digit-embed:scan-request` | `digit-embed:scan-result` | `postMessage` only |
+
+Prefer `DigitHost.scan()` in Digit apps. The harness posts `digit-apps:scan-request`
+(`requestId`, optional `purpose`, `formats`) to the parent and waits for
+`digit-apps:scan-result` (`requestId`, status `success` / `cancelled` / `error`, plus
+`text` or `message`). Do not post `digit-embed:*` from a Digit app, and do not teach
+custom links to send `digit-apps:*`.
+
+Host implementation: [digit-web#4259](https://github.com/Digit-Technologies/digit-web/pull/4259).
+Iframe contract: [digit-apps#138](https://github.com/Digit-Technologies/digit-apps/pull/138).
+
+### Limits
+
+- 30 scan requests per page load
+- At least 500ms between requests
+- Decoded text is capped at 8KB
+- No `MediaStream` handoff
+
 ## Agent checklist
 
 Before shipping UI:
 
 1. File exports only via `DigitHost.download` — never `<a download>` / blob links
 2. Printing only via `DigitHost.print` with self-contained HTML under 10MB
-3. No new-tab / popup / `window.open` flows
-4. No `alert` / `confirm` / `prompt` — use MUI Dialog / `AppErrorAlert` instead
-5. No camera, mic, geo, clipboard-read, fullscreen, or other device APIs
-6. Every form submit handler calls `preventDefault`
-7. Keep all interaction inside the app iframe
+3. Barcode/QR scans only via `DigitHost.scan` — never `getUserMedia` or in-iframe cameras
+4. No new-tab / popup / `window.open` flows
+5. No `alert` / `confirm` / `prompt` — use MUI Dialog / `AppErrorAlert` instead
+6. No mic, geo, clipboard-read, fullscreen, or other device APIs
+7. Every form submit handler calls `preventDefault`
+8. Keep all interaction inside the app iframe (Digit owns the camera UI for scans)

@@ -42,7 +42,8 @@ The provider:
 - Applies Digit `CssBaseline`
 
 Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`,
-`DigitHostDownloadOptions`, and `DigitHostPrintOptions`) are exported from this package.
+`DigitHostDownloadOptions`, `DigitHostPrintOptions`, `DigitHostScanOptions`, and
+`DigitHostScanResult`) are exported from this package.
 Importing `@digit/lib-frontend` also augments `Window`. Prefer the data hooks over calling
 `window.DigitProxyClient` yourself. Do not add a local `digit.d.ts` for the harness.
 
@@ -66,6 +67,18 @@ window.DigitHost?.print({ title: "Packing Slip 1042", html });
 The print document runs no JavaScript. Inline CSS and convert images or canvases to
 `data:image/...` before calling `print`; remote `http(s)` assets do not load (print CSP
 is `img-src data:`). Keep the result under 10MB. Use `DigitHost.download` for PDF bytes.
+
+Host-mediated barcode/QR scanning asks Digit to open the camera. The iframe cannot use
+`getUserMedia` (`camera 'none'`). Digit shows consent, scans, and returns decoded text:
+
+```ts
+const result = await window.DigitHost.scan({ purpose: "Scan PO barcode" });
+if (result.cancelled) return;
+const code = result.text;
+```
+
+Do not post `digit-embed:*` messages from a Digit app. Custom links use that namespace;
+Digit apps use `DigitHost.scan()` / `digit-apps:scan-*`. Photo capture is not in v1.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
