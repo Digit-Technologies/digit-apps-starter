@@ -54,7 +54,10 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 
 Confirm root fields and selection sets against `graphql-schema://…` before shipping.
 Types for `window.DigitHost` are exported from `@digit/lib-frontend` (`DigitHost`,
-`DigitHostSettings`). Prefer the hooks over calling `window.DigitProxyClient` yourself.
+`DigitHostSettings`, `DigitHostDownloadOptions`, `DigitHostPrintOptions`,
+`DigitHostScanOptions`). Prefer the hooks over calling `window.DigitProxyClient`
+yourself. Barcode/QR scans use `DigitHost.scan` — see
+[iframe-constraints.md](iframe-constraints.md#scanning-barcodes-and-qr-codes).
 
 ## Sort, filter, and pagination
 

@@ -42,7 +42,8 @@ The provider:
 - Applies Digit `CssBaseline`
 
 Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`,
-`DigitHostDownloadOptions`, and `DigitHostPrintOptions`) are exported from this package.
+`DigitHostDownloadOptions`, `DigitHostPrintOptions`, `DigitHostScanOptions`, and
+`DigitHostScanResult`) are exported from this package.
 Importing `@digit/lib-frontend` also augments `Window`. Prefer the data hooks over calling
 `window.DigitProxyClient` yourself. Do not add a local `digit.d.ts` for the harness.
 
@@ -66,6 +67,24 @@ window.DigitHost?.print({ title: "Packing Slip 1042", html });
 The print document runs no JavaScript. Inline CSS and convert images or canvases to
 `data:image/...` before calling `print`; remote `http(s)` assets do not load (print CSP
 is `img-src data:`). Keep the result under 10MB. Use `DigitHost.download` for PDF bytes.
+
+Host-mediated barcode/QR scanning asks Digit to open the camera. The iframe cannot use
+`getUserMedia` (`camera 'none'`). Call `DigitHost.scan()` only — do not `postMessage`.
+The host is not on production Digit until digit-web#4259 lands a matching contract.
+
+```ts
+try {
+  const result = await window.DigitHost?.scan({ purpose: "Scan barcode" });
+  if (!result || result.cancelled) return;
+  const code = result.text;
+} catch (error) {
+  // Host not ready, invalid options, rate limit, 60s timeout, or scan failure
+}
+```
+
+Cancel is `{ cancelled: true }`, not a throw. One scan at a time. Omit `formats` for
+QR / Code 128 / Data Matrix; pass `ean_13` / `upc_a` for a PO barcode. The host scanner
+is camera-only (QA needs a webcam).
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
