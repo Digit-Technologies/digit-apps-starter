@@ -350,6 +350,11 @@ const selectionHeadCellSx = {
   borderRight: 1,
   borderColor: 'divider',
   verticalAlign: 'middle',
+  textAlign: 'center',
+  width: 56,
+  minWidth: 56,
+  maxWidth: 56,
+  px: 0,
 } as const;
 
 const selectionBodyCellSx = {
@@ -787,7 +792,7 @@ export default function FulfillmentQueue({
           >
             <TableHead>
               <TableRow>
-                {showSelection ? <TableCell padding="checkbox" sx={selectionHeadCellSx} /> : null}
+                {showSelection ? <TableCell sx={selectionHeadCellSx} /> : null}
                 <TableCell>Shipment</TableCell>
                 <TableCell>Customer</TableCell>
                 <TableCell>Carrier</TableCell>
@@ -823,7 +828,7 @@ export default function FulfillmentQueue({
                 return (
                   <TableRow key={shipment.id} hover sx={{ ...motionFadeIn, '& > .MuiTableCell-root': { verticalAlign: 'middle' } }}>
                     {showSelection ? (
-                      <TableCell padding="checkbox" sx={selectionBodyCellSx}>
+                      <TableCell sx={selectionBodyCellSx}>
                         {blocked ? (
                           <Tooltip
                             title={`${blocked} ${skipNextStep(blocked)}`}
