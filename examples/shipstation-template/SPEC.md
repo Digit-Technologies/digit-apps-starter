@@ -4,16 +4,26 @@
 
 Phase 1 org Digit app: connect one ShipStation account (V2 key, or V1 key + secret), push Digit
 shipments in **awaiting_carrier** into ShipStation as V2 shipments/`create_sales_order` or V1 orders.
-**Scheduled push** (default) sends eligible shipments every five minutes; **Manual push** sends them
-only when an operator clicks Refresh. Operators choose carrier and buy the label in ShipStation. The
-same five-minute poll (and Refresh) pulls tracking, carrier, and cost back onto the Digit shipment.
+**Scheduled push** sends eligible shipments every five minutes; **Manual push** (the default) sends them
+only when an operator clicks Push to ShipStation. Before push, the Digit shipment must have a
+`shippingCarrierField` with a confirmed map to exactly one ShipStation **service** in Carrier configuration;
+that carrier and service are sent on the created ShipStation shipment/order. Operators buy the
+label in ShipStation (no in-app rate shop). The same five-minute poll (and Pull from ShipStation)
+pulls tracking, carrier, and cost back onto the Digit shipment.
 The shipping queue lists awaiting-carrier Digit shipments and can be filtered by ShipStation tracking status
 (`unknown` → Digit `awaiting_pickup`; `in_transit` / `delivered` / `error` → Digit `shipped`).
+On every load (and when the iframe becomes visible again) the queue re-fetches Digit
+`shipments` (up to 100, in a vertically scrolling table) so the Carrier column, packages,
+and Digit status match Digit. If the shipment carrier is empty, the table and push path use the sales
+order’s current `shippingCarrierField`. Do not alias `shipment(id)` per row — that
+exceeds Digit’s GraphQL cost cap (`QUERY_TOO_EXPENSIVE`).
 Operators can download
-the PDF from the shipping queue once a label exists. Digit `shippingCarrierField` writeback
+the PDF from the shipping queue once a label exists. Packing-slip PDFs use Digit
+`Order.shippingFees`, which this app sets from ShipStation label postage on writeback and
+again when the slip is downloaded. Digit `shippingCarrierField` writeback
 uses aliases + conservative fuzzy match on the **service** (not the brand), plus carrier-mapping
 overrides (service map, then carrier default). Unmatched pulled
-services stay unset, appear in a main-page alert, and can be mapped from the carrier chip
+services stay unset, appear in a main-page alert, and can be mapped from the Carrier configuration
 modal. Operators pick/pack and create the Digit
 shipment first. Return labels, in-app rate shop, shipping-class mapping, and shipping-fee
 capture stay out of the UI.
@@ -37,7 +47,7 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
   `0002_order_sync.sql`, `0003_app_config.sql`, `0004_activity_log.sql`,
   `0006_api_version.sql`, `0007_drop_legacy_app_secrets.sql`, `0008_shipment_map.sql`,
   `0009_label_rates.sql`, `0010_carrier_digit_map.sql`, `0011_tracking_status.sql`,
-  `0012_push_mode.sql`, and `0013_carrier_service_map.sql`. Do not edit `0001` after a
+  `0012_push_mode.sql`, `0013_carrier_service_map.sql`, and `0014_manual_push_default.sql`. Do not edit `0001` after a
   consumer has published.
 - **All secrets are organization-level Digit app secrets**, managed only in Digit's built-in
   App Secrets UI: `SHIPSTATION_API_KEY`, `SHIPSTATION_API_SECRET` (V1),
@@ -56,8 +66,8 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
   `api_key_encrypted` is written as `''` for new rows and only read as a
   **legacy V2 fallback** for keys pasted before this switch.
   The auto-generated `ENCRYPTION_KEY` row stays only to decrypt those legacy values.
-- Disconnect soft-deletes local rows; removing the key itself is
-  done in Digit.
+- There is no operator Disconnect control. Connect replaces a leftover connection row when
+  secrets are restored. Removing the ShipStation key itself is done in Digit.
 - Digit GraphQL URL is always `https://api.digit-software.com/graphql`.
 - Optional secret `FAIRE_API_KEY` — enables the Faire adapter stub (`src/backend/channels/faire.js`).
 - `GET /setup` is read-only: per-item `present` / `source` / `enables` plus `ready`,
@@ -66,16 +76,18 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
 - Partial config is **not** a blocking screen. The app always renders; `FeatureStatus.tsx`
   shows per-feature Working / Limited / Not yet with what each one still needs, and the
   queue's push button is disabled with a reason when `JWT_TOKEN` is not live.
-- Org settings: `default_fulfillment_method` is `scheduled` (5-minute outbound push) or
-  `manual` (Refresh only). Default weight (ounces). Carrier maps live in a dedicated modal:
-  one Digit `shippingCarriers` option per ShipStation **service**, with an optional
-  per-carrier Digit default. Digit → ShipStation only.
-- Schedule `poll-outbound-push` every 300s (outbound push when scheduled, plus unlabeled-map
-  label pull). The shipping queue **Refresh** button always runs outbound push plus label pull
-  via `POST /sync/poll`.
+- Org settings: `default_fulfillment_method` is `manual` (the default: Push to ShipStation only)
+  or `scheduled` (5-minute outbound push). Default weight (ounces). Carrier maps live in a dedicated modal
+  with two tabs: **Digit carriers → push** (each Digit option on exactly one confirmed ShipStation
+  service) and **ShipStation services → writeback** (one Digit `shippingCarriers` option per
+  ShipStation service, with an optional per-carrier Digit default).
+- Schedule `poll-outbound-push` every 300s (outbound push only when fulfillment method is scheduled, plus unlabeled-map
+  label pull). The shipping queue **Pull from ShipStation** button only pulls labels
+  via `POST /sync/poll`. Outbound push is **Push to ShipStation** (`POST /sync/push`) or the
+  five-minute job when fulfillment method is scheduled.
 - **Tracking writeback uses `JWT_TOKEN`.** Digit staff generate a Clerk JWT and place it
   in the org’s app secrets. That identity has the user’s live permissions, including
-  `UPDATE_SHIPMENT`. Settings → API Tokens (`da_`) cannot update shipments. Refresh still
+  `UPDATE_SHIPMENT`. Settings → API Tokens (`da_`) cannot update shipments. Pull from ShipStation still
   applies staged `pendingWritebacks[]` in the iframe as a fallback when the operator is
   present.
 - **Rate limits:** the poll lists Digit shipments (`awaiting_carrier`) with `SHIPMENT_LIST_QUERY` and hands each node to
@@ -400,7 +412,9 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 - Digit native pick/pack/PDF; operators create a Digit shipment (`awaiting_carrier`). The shipping
   queue lists awaiting-carrier, unknown (`awaiting_pickup`), and in-transit/delivered (`shipped`)
   Digit shipments (filter by mapped ShipStation `tracking_status`). Worker push is V2
-  `POST /v2/shipments` with `create_sales_order: true`, or V1 `POST /orders/createorder`.
+  `POST /v2/shipments` with `create_sales_order: true`, or V1 `POST /orders/createorder`,
+  and always includes the mapped ShipStation carrier + service from the Digit shipment’s
+  `shippingCarrierField`. Shipments without a mapped Digit carrier are not pushed.
   Operators buy labels in ShipStation. Poll/`POST /sync/poll` uses `GET /v2/labels` (V2) or
   `GET /orders/{id}` (V1) then Digit writeback. Shipping-label download uses `POST /sync/label`;
   packing-slip download uses `POST /sync/packing-slip`, where the Worker calls
@@ -506,3 +520,178 @@ usps_ground_advantage — standard ground/parcel
   count unmatched services. `carrier_digit_map` unique is
   `(connection_id, ss_carrier_code, ss_service_code)` (`0013`). Label pull stores
   `service_code` / `service_name` on the order map. Digit `shippingClass` is not written.
+
+```
+Make some minor ui updates to shipstation template:
+- Move the "connected" and "disconnect" chips to be on the left had side of the page to make it clearer that we are talking about a shipstation connection
+- Make the carriers chip more obviously clickable. Rename to Carrier configuration.
+- Move the digit status dropdown filter to be more integrated with the queue. Same with Refresh.
+- Change "Refresh" button to "Pull from Shipstation"
+```
+
+- `ConnectionBar` splits into a connection cluster (title, status chip) on the left and org
+  actions (Setup and capabilities, Carrier configuration, Settings, Connect) on the right.
+  Status now always renders a chip, including the admin-with-key "Not connected" case that
+  previously showed only the Connect button.
+- The carrier chip is an outlined `Button` (truck icon, `error` color plus count when services
+  are unmapped) labeled **Carrier configuration**, matching the modal title.
+- The queue's Digit status filter and pull action moved out of `SectionHeader` into a
+  `queueToolbar` row directly above the table, above the sticky push bar.
+- **Refresh** is **Pull from ShipStation** (`Pulling…` while polling) everywhere it is named:
+  queue notices, tooltips, eligibility copy, `FeatureStatus`, org-settings hints, and the
+  Worker's activity-log and push messages. The route (`POST /sync/poll`) and the
+  `source: 'refresh'` activity value are unchanged.
+
+```
+Actually remove the disconnect button completely. No one should have to disconnect their account.
+```
+
+- Removed the Disconnect / Clear connection button from `ConnectionBar`, the confirm
+  dialog, and the credentials-missing Clear connection action. Operators restore
+  `SHIPSTATION_API_KEY` and click Connect; Connect already retires the previous D1
+  connection row. `DELETE /connection` remains on the Worker but is unused by the UI.
+
+```
+Flesh out the Digit -> Shipstation and Shipstation -> Digit workflows. Use the
+shipstation mcp to learn about the shipstation api when needed.
+
+Confirm functionality that is already there and write a plan to implement the rest.
+
+Before pushing to Shipstation the customer needs a way to either select a carrier
+and service or to select that they want to use rate shopping. If they haven't
+selected to use rate shopping and a carrier/service are not selected an error
+should be rised and push to shipstation should be prevented. If a carrier is
+selected in digit that is not mapped to shipstation an error should be raised
+and push should be blocked.
+```
+
+```
+actually flesh out this workflow with no rate shopping selected. Is anything
+missing. Outline the steps to test the workflow
+```
+
+```
+Digit ↔ ShipStation workflows (no rate shopping)
+
+Implement the plan as specified, it is attached for your reference. Do NOT edit
+the plan file itself.
+```
+
+- Rate shopping stays out of scope. Push requires a Digit `shippingCarrierField`
+  that reverse-maps via a **service-level** `carrier_digit_map` row to exactly one
+  ShipStation carrier + service. Missing, unmapped, or ambiguous Digit carriers
+  are eligibility skips (Blocked; checkbox off). V2 create sends `carrier_id` +
+  `service_code`; V1 createorder sends `carrierCode` + `serviceCode`. Carrier
+  defaults (`ss_service_code = ''`) do not satisfy push. Queue shows a Carrier
+  column from Digit. Writeback SS → Digit is unchanged.
+
+```
+Change the pull to shipstation button to Push/Pull Shipstation (confirm that it
+pushes before doing this)
+```
+
+- `POST /sync/poll` already ran outbound push before the label pull, so the queue
+  button is **Push/Pull Shipstation** (`Pushing/Pulling…`) and every in-app string
+  that named the click follows it.
+
+```
+I added a new carrier that was designed to cause a failure. When I refreshed the
+app I wasn't alerted that there was a new, mismatched carrier. It was hard for me
+to find in the modal ui. It also did not block the push
+```
+
+- Push now needs a **confirmed** map: only `source = 'manual'` service rows satisfy
+  `resolveSsServiceFromDigitOption`. Auto-persisted `fuzzy` rows resolve to the new
+  `unconfirmed` status and block push until a human picks the service.
+- `/org-settings` returns `digitCarrierMaps[]` — one row per Digit shipping carrier
+  with `status` (`ok` | `unmapped` | `unconfirmed` | `ambiguous`) and the resolved SS
+  carrier/service. The main page shows an **error** alert naming every Digit carrier
+  that cannot push, and the Carrier configuration chip counts push gaps plus
+  writeback gaps.
+- Carrier configuration shows one row per Digit option with a grouped
+  ShipStation-service picker and a Ready/Confirm/Not mapped chip. Picking a service
+  clears that option's other pins so it stays one-to-one.
+- Sweep runs no longer swallow blocks: `pollOutboundPush` pushes as the real actor,
+  returns `blocked` + `blockedShipments[]`, logs attention-worthy skips to the
+  activity log, and the queue notice lists each blocked shipment with its next step.
+  Routine skips (already pushed, already shipped, imported) stay quiet.
+
+```
+remove writeback for now but keep the logic. It won't be needed until rate shopping
+is added
+```
+
+- The ShipStation-services → Digit-carrier writeback mapping tab, its unmatched-service
+  alert, and its count in the Carrier configuration button are hidden for now. The
+  backend payload, matching helpers, saved mappings, and label writeback behavior remain
+  intact for later rate-shopping work. Carrier configuration now exposes only the
+  Digit-carrier → ShipStation-service mapping required to push.
+
+```
+make manual pushing/pulling shipstation the default
+```
+
+- `normalizeFulfillmentMethod` and org-settings reads treat anything other than explicit
+  `scheduled` as `manual`. Settings lists Manual first. Migration `0014_manual_push_default.sql`
+  sets existing org rows to `manual` so the five-minute job no longer auto-pushes; it still
+  pulls labels. Scheduled remains an opt-in in Settings.
+
+```
+My bad - only have the app push to shipstation when push to shipstation is pressed.
+The other button should say pull from shipstation like before.
+```
+
+- Queue **Push to ShipStation** (`POST /sync/push`) is the only operator path that creates
+  ShipStation shipments. **Pull from ShipStation** (`POST /sync/poll`) pulls labels only.
+  The five-minute job still pulls labels, and still pushes only when fulfillment method is
+  scheduled.
+
+```
+the shipstation template queue doesn't repopulate the carrier when it is changed. This table should pull fresh digit information automatically on load.
+```
+
+- The shipping queue re-fetches Digit `shipments` on load and whenever
+  the iframe becomes visible again. Display, eligibility, and push use the shipment
+  `shippingCarrierField` when set, otherwise the parent sales order’s current carrier.
+
+```
+Showing an error even though the table updates correctly:
+Support info
+code=QUERY_TOO_EXPENSIVE kind=platform detail=Query exceeds the maximum allowed cost.
+```
+
+- Removed the aliased `shipment(shipmentId:)` hydrate of every visible row. That second
+  query exceeded Digit’s GraphQL cost cap while the list query already had the updated
+  carrier. Freshness is the list refetch on load/visible plus the order-carrier fallback.
+
+```
+make sure the cost gets applied to the packing slip
+```
+
+- Label postage (`shipment_cost`) is written to Digit `Order.shippingFees` (`CostInput`)
+  on writeback and again immediately before `generateSalesOrderPdf`, so the packing slip
+  PDF includes ShipStation shipping cost. Multi-shipment orders sum D1 label costs.
+
+```
+make sure all the status chips are clearly visible. For example, "blocked" is not easy to see.
+```
+
+- Status chips are filled (not outlined) with theme contrast text and heavier labels so
+  Blocked, Ready, Digit/tracking, connection, setup, and carrier-mapping states stay readable.
+
+```
+keep the hover over that explained why a package is blocked
+```
+
+- Hovering **Blocked** (and the disabled select checkbox) still shows the ineligibility
+  reason and next step. StatusChip forwards Tooltip mouse/focus listeners so the hover
+  is not dropped.
+
+```
+shipping queue is cut off and paginated. Have it scroll vertically rather than paginate. Try and fit it to the page better.
+
+Also center the files icon to the rows that it is referencing
+```
+
+- The shipping queue fills the iframe: table body scrolls vertically (no Previous/Next).
+  Files icons are vertically centered on the row and stay sticky on the right.

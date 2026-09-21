@@ -20,9 +20,15 @@ import {
   ORDER_BY_ID_QUERY,
   SHIPMENT_BY_ID_QUERY,
   SHIPMENT_LIST_QUERY,
+  UPDATE_ORDER_MUTATION,
   UPDATE_SHIPMENT_MUTATION,
 } from './digitQueries.js';
-import { ineligibilityReason, skipNextStep } from './eligibility.js';
+import {
+  effectiveShippingCarrierField,
+  ineligibilityReason,
+  skipNeedsAttention,
+  skipNextStep,
+} from './eligibility.js';
 import { digitShipmentToShipment, orgShipFrom } from './mappers/digitToShipStation.js';
 import { digitShipmentToV1Order } from './mappers/digitToShipStationV1.js';
 import {
@@ -32,6 +38,7 @@ import {
 import {
   normalizeSsRecord,
   normalizedToImportShipment,
+  summedShippingFees,
 } from './mappers/normalizeSsRecord.js';
 import {
   ssBillingAddressInput,
@@ -41,7 +48,7 @@ import {
 } from './mappers/shipStationToDigit.js';
 import { resolveShipStationCredentials } from './runtimeConfig.js';
 import { pdfBase64FromV2Label } from './labels.js';
-import { resolveDigitCarrier } from './matchDigitCarrier.js';
+import { resolveDigitCarrier, resolveSsServiceForDigitShipment } from './matchDigitCarrier.js';
 import { bytesToBase64 } from './shipstationFetch.js';
 import {
   createShipments,
@@ -146,7 +153,8 @@ export function normalizeOrgSettings(row, organizationId, { includeLegacyDimensi
   const height = Number(row?.default_height_in);
   return {
     organizationId,
-    defaultFulfillmentMethod: row?.default_fulfillment_method === 'manual' ? 'manual' : 'scheduled',
+    defaultFulfillmentMethod:
+      row?.default_fulfillment_method === 'scheduled' ? 'scheduled' : 'manual',
     defaultWeightOz: Number.isFinite(weight) && weight > 0 ? weight : 16,
     ...(includeLegacyDimensions
       ? {
@@ -222,6 +230,39 @@ export async function mapsForOrders({ db, connectionId, orderIds }) {
     .bind(connectionId, ...orderIds)
     .all();
   return (results ?? []).map(publicMapRow);
+}
+
+async function shippingFeesForDigitOrder({ db, connectionId, digitOrderId }) {
+  if (!connectionId || !digitOrderId) return null;
+  const { results } = await db
+    .prepare(
+      `SELECT shipment_cost_amount, shipment_cost_currency
+       FROM shipstation_order_map
+       WHERE connection_id = ? AND digit_order_id = ? AND deleted = 0`,
+    )
+    .bind(connectionId, digitOrderId)
+    .all();
+  return summedShippingFees(results);
+}
+
+async function applyOrderShippingFees({ env, orderId, shippingFees }) {
+  if (!orderId || !shippingFees) return { ok: true, data: { skipped: true } };
+  return digitGraphql({
+    env,
+    query: UPDATE_ORDER_MUTATION,
+    variables: { input: { orderId, shippingFees } },
+  });
+}
+
+async function applyMappedShippingFeesToOrder({ env, db, organizationId, orderId }) {
+  const secret = await liveCredentials({ db, env, organizationId });
+  if (!secret?.connectionId) return { ok: true, data: { skipped: true } };
+  const shippingFees = await shippingFeesForDigitOrder({
+    db,
+    connectionId: secret.connectionId,
+    digitOrderId: orderId,
+  });
+  return applyOrderShippingFees({ env, orderId, shippingFees });
 }
 
 async function upsertMap({ db, connectionId, organizationId, digitOrderId, digitShipmentId, fields }) {
@@ -398,7 +439,7 @@ function pushMeaning({ skipped, reason, ssShipmentId, shipmentLabel }) {
   if (skipped) {
     return `${reason} ${skipNextStep(reason)}`.trim();
   }
-  return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel}. Choose the carrier and buy the label in ShipStation. Tracking and cost appear after Refresh or the next five-minute poll.`;
+  return `Created ShipStation shipment ${ssShipmentId} for ${shipmentLabel}. Choose the carrier and buy the label in ShipStation. Tracking and cost appear after Pull from ShipStation or the next five-minute poll.`;
 }
 
 function shipmentLabel(shipment, shipmentId) {
@@ -422,8 +463,10 @@ async function recordPushActivity({
   ssShipmentId,
   message,
   detail,
+  quiet = false,
 }) {
   if (!recordActivity) return;
+  if (quiet) return;
   if (actor === 'schedule' && skipped) return;
   await appendActivity({
     db,
@@ -450,6 +493,7 @@ export async function pushShipment({
   actor = 'user',
   recordActivity = true,
   preloaded = null,
+  sweep = false,
 }) {
   const secret = await liveCredentials({ db, env, organizationId });
   const credentials = credentialsForApi(secret);
@@ -510,12 +554,30 @@ export async function pushShipment({
   const orderId = shipment?.order?.id ?? null;
   const label = shipmentLabel(shipment, shipmentId);
 
-  const reason = ineligibilityReason({
+  const carrierField = effectiveShippingCarrierField(shipment);
+  const ssService = await resolveSsServiceForDigitShipment({
+    db,
+    connectionId: secret.connectionId,
+    digitOptionId: carrierField?.id ?? null,
+    digitValue: carrierField?.value ?? null,
+  });
+
+  let reason = ineligibilityReason({
     shipment,
     orgSettings,
     mapRow: existing ? publicMapRow(existing) : null,
     apiVersion: secret.apiVersion,
+    ssService,
   });
+  if (
+    !reason &&
+    secret.apiVersion !== 'v1' &&
+    ssService.status === 'ok' &&
+    !ssService.carrierId
+  ) {
+    reason =
+      'ShipStation carrier id is missing for the mapped service. Reconnect ShipStation to refresh carriers, then try again.';
+  }
   if (reason) {
     if (orderId) {
       // Ineligibility is not a failure: keep the ShipStation state and leave lastError clear,
@@ -539,6 +601,7 @@ export async function pushShipment({
       });
     }
     const meaning = pushMeaning({ skipped: true, reason, ssShipmentId: existing?.ss_shipment_id ?? null, shipmentLabel: label });
+    const needsAttention = skipNeedsAttention(reason);
     await recordPushActivity({
       db,
       organizationId,
@@ -549,15 +612,33 @@ export async function pushShipment({
       orderId,
       ssShipmentId: existing?.ss_shipment_id ?? null,
       message: meaning,
+      quiet: sweep && !needsAttention,
     });
-    return { ok: true, data: { shipmentId, orderId, skipped: true, reason, message: reason, meaning } };
+    return {
+      ok: true,
+      data: {
+        shipmentId,
+        orderId,
+        skipped: true,
+        needsAttention,
+        shipmentLabel: label,
+        reason,
+        message: reason,
+        meaning,
+      },
+    };
   }
 
   const created =
     secret.apiVersion === 'v1'
       ? await createShipments({
           credentials,
-          order: digitShipmentToV1Order({ shipment, orgSettings }),
+          order: digitShipmentToV1Order({
+            shipment,
+            orgSettings,
+            carrierCode: ssService.carrierCode,
+            serviceCode: ssService.serviceCode,
+          }),
         })
       : await createShipments({
           credentials,
@@ -566,6 +647,8 @@ export async function pushShipment({
               shipment,
               shipFrom: orgShipFrom({ organization }),
               orgSettings,
+              carrierId: ssService.carrierId,
+              serviceCode: ssService.serviceCode,
             }),
           ],
         });
@@ -729,12 +812,15 @@ export async function downloadShipmentLabel({ env, db, organizationId, shipmentI
     ok: false,
     code: AppErrorCode.VALIDATION_ERROR,
     message:
-      'No shipping label is available yet. Buy the label in ShipStation, then Refresh or wait for the five-minute poll.',
+      'No shipping label is available yet. Buy the label in ShipStation, then pull from ShipStation or wait for the five-minute poll.',
     status: 400,
   };
 }
 
-export async function downloadPackingSlip({ env, orderId }) {
+export async function downloadPackingSlip({ env, db, organizationId, orderId }) {
+  const fees = await applyMappedShippingFeesToOrder({ env, db, organizationId, orderId });
+  if (!fees.ok) return fees;
+
   const generated = await digitGraphql({
     env,
     query: GENERATE_SALES_ORDER_PDF_QUERY,
@@ -804,7 +890,9 @@ export async function pollOutboundPush({ env, db, organizationId = null, source 
         .prepare(`SELECT organization_id FROM shipstation_connection WHERE deleted = 0`)
         .all();
 
+  const actor = source === 'schedule' ? 'schedule' : 'user';
   const pushed = [];
+  const skipped = [];
   for (const row of results ?? []) {
     const organizationId = row.organization_id;
     const creds = await liveCredentials({ db, env, organizationId });
@@ -842,12 +930,21 @@ export async function pollOutboundPush({ env, db, organizationId = null, source 
           db,
           organizationId,
           shipmentId: shipment.id,
-          actor: 'schedule',
+          actor,
           recordActivity: true,
           preloaded: { shipment, organization },
+          sweep: true,
         });
-        if (result.ok && result.data && !result.data.skipped) {
+        if (!result.ok || !result.data) continue;
+        if (!result.data.skipped) {
           pushed.push(result.data);
+        } else if (result.data.needsAttention) {
+          skipped.push({
+            shipmentId: result.data.shipmentId,
+            shipmentLabel: result.data.shipmentLabel ?? null,
+            reason: result.data.reason ?? null,
+            nextStep: skipNextStep(result.data.reason),
+          });
         }
       }
       if (pushed.length >= MAX_PUSHES_PER_RUN) break;
@@ -855,7 +952,7 @@ export async function pollOutboundPush({ env, db, organizationId = null, source 
       after = listed.data.shipments.pageInfo.endCursor;
     }
   }
-  return { pushed: pushed.length };
+  return { pushed: pushed.length, blocked: skipped.length, blockedShipments: skipped.slice(0, 10) };
 }
 
 function notesForCarrierWriteback({ matched, carrierName, existingNotes }) {
@@ -1004,6 +1101,14 @@ async function applyDigitShipmentWriteback({
     )
     .bind(connectionId, live?.id ?? null)
     .run();
+
+  const shippingFees = await shippingFeesForDigitOrder({
+    db,
+    connectionId,
+    digitOrderId,
+  });
+  const fees = await applyOrderShippingFees({ env, orderId: digitOrderId, shippingFees });
+  if (!fees.ok) return fees;
 
   await afterDigitShipped({
     env,
@@ -1575,7 +1680,8 @@ export async function pendingShipmentWritebacks({ env, db, organizationId }) {
   const { results } = await db
     .prepare(
       `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id,
-              tracking_number, tracking_status, carrier_name, service_code, service_name, ship_date
+              tracking_number, tracking_status, carrier_name, service_code, service_name, ship_date,
+              shipment_cost_amount, shipment_cost_currency
        FROM shipstation_order_map
        WHERE connection_id = ? AND deleted = 0
          AND push_status = 'label_ready'
@@ -1627,6 +1733,11 @@ export async function pendingShipmentWritebacks({ env, db, organizationId }) {
       shippingStatus,
       shippingCarrierFieldId: digitOptionId,
       notes: [carrierNote, trackingNote].filter(Boolean).join(' ') || null,
+      shippingFees: await shippingFeesForDigitOrder({
+        db,
+        connectionId: secret.connectionId,
+        digitOrderId: row.digit_order_id,
+      }),
     });
   }
   return pending;
@@ -1691,6 +1802,18 @@ export async function completeShipmentWriteback({ env, db, organizationId, digit
       .bind(secret.connectionId, live?.id ?? null)
       .run();
   }
+
+  const shippingFees = await shippingFeesForDigitOrder({
+    db,
+    connectionId: secret.connectionId,
+    digitOrderId: map.digit_order_id,
+  });
+  const fees = await applyOrderShippingFees({
+    env,
+    orderId: map.digit_order_id,
+    shippingFees,
+  });
+  if (!fees.ok) return fees;
 
   await appendActivity({
     db,

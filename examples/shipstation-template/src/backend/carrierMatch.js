@@ -177,6 +177,75 @@ export function findSsCatalogRow({ ssCarriers, value }) {
   );
 }
 
+/**
+ * Reverse-map a Digit shippingCarriers option onto a unique ShipStation carrier + service.
+ * Only confirmed (`manual`) service-level maps count. Carrier defaults and auto-matched
+ * (`fuzzy`) rows are never enough to push: a human has to confirm the service.
+ *
+ * @returns {{
+ *   status: 'missing' | 'unmapped' | 'unconfirmed' | 'ambiguous' | 'ok',
+ *   carrierId: string | null,
+ *   carrierCode: string | null,
+ *   serviceCode: string | null,
+ *   serviceName: string | null,
+ *   digitOptionId: string | null,
+ *   digitValue: string | null,
+ * }}
+ */
+export function resolveSsServiceFromDigitOption({
+  digitOptionId,
+  digitValue = null,
+  mappings = [],
+  ssCarriers = [],
+}) {
+  const optionId = digitOptionId != null ? String(digitOptionId).trim() : '';
+  const blank = (status) => ({
+    status,
+    carrierId: null,
+    carrierCode: null,
+    serviceCode: null,
+    serviceName: null,
+    digitOptionId: optionId || null,
+    digitValue: digitValue ? String(digitValue) : null,
+  });
+  if (!optionId) return blank('missing');
+
+  const hits = [];
+  for (const row of mappings ?? []) {
+    if (!row?.digitOptionId || String(row.digitOptionId) !== optionId) continue;
+    const serviceCode = String(row.ssServiceCode ?? '').trim();
+    if (!serviceCode) continue;
+    const carrierCode = String(row.ssCarrierCode || '').trim();
+    if (!carrierCode) continue;
+    hits.push({ carrierCode, serviceCode, source: row.source || null });
+  }
+
+  if (hits.length === 0) return blank('unmapped');
+
+  const confirmed = hits.filter((hit) => hit.source === 'manual');
+  if (confirmed.length === 0) return blank('unconfirmed');
+
+  const uniqueKeys = new Set(confirmed.map((hit) => mappingKey(hit.carrierCode, hit.serviceCode)));
+  if (uniqueKeys.size > 1) return blank('ambiguous');
+
+  const hit = confirmed[0];
+  const catalog = findSsCatalogRow({ ssCarriers, value: hit.carrierCode });
+  const service = (catalog?.services ?? []).find(
+    (row) => String(row.serviceCode || '').trim() === hit.serviceCode,
+  );
+  return {
+    status: 'ok',
+    carrierId: catalog?.shipstationCarrierId
+      ? String(catalog.shipstationCarrierId)
+      : null,
+    carrierCode: catalog?.carrierCode || hit.carrierCode,
+    serviceCode: hit.serviceCode,
+    serviceName: service?.name || hit.serviceCode,
+    digitOptionId: optionId,
+    digitValue: digitValue ? String(digitValue) : null,
+  };
+}
+
 function indexMappings(mappings) {
   const byKey = new Map();
   for (const row of mappings ?? []) {
@@ -349,8 +418,31 @@ export function buildCarrierMapPayload({
     }
   }
 
+  // Push direction: every Digit option needs one confirmed ShipStation service.
+  const digitCarrierMaps = options.map((option) => {
+    const resolved = resolveSsServiceFromDigitOption({
+      digitOptionId: option.id,
+      digitValue: option.value,
+      mappings,
+      ssCarriers: catalog,
+    });
+    const carrier = resolved.carrierCode
+      ? findSsCatalogRow({ ssCarriers: catalog, value: resolved.carrierCode })
+      : null;
+    return {
+      digitOptionId: option.id,
+      digitValue: option.value,
+      status: resolved.status,
+      ssCarrierCode: resolved.carrierCode,
+      ssCarrierName: carrier?.name || resolved.carrierCode,
+      ssServiceCode: resolved.serviceCode,
+      ssServiceName: resolved.serviceName,
+    };
+  });
+
   return {
     digitCarriers: options.map((option) => ({ id: option.id, value: option.value })),
+    digitCarrierMaps,
     ssCarriers: catalog.map((row) => ({
       carrierCode: row.carrierCode,
       name: row.name,

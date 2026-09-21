@@ -129,6 +129,31 @@ function finiteNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+/** Digit CostInput for packing slips / sales-order PDFs (`UpdateOrderInput.shippingFees`). */
+export function shippingFeesInput({ amount, currency }) {
+  const costAmount = finiteNumber(amount);
+  if (costAmount == null || costAmount < 0) return null;
+  const raw = String(currency || 'USD').trim();
+  return { currencyCode: raw ? raw.toUpperCase() : 'USD', costAmount };
+}
+
+/** Sum label postage stored on D1 map rows for one Digit sales order. */
+export function summedShippingFees(rows) {
+  let total = 0;
+  let currency = null;
+  let found = false;
+  for (const row of rows ?? []) {
+    const amount = finiteNumber(row?.shipment_cost_amount ?? row?.shipmentCostAmount);
+    if (amount == null || amount < 0) continue;
+    found = true;
+    total += amount;
+    const code = row?.shipment_cost_currency ?? row?.shipmentCostCurrency;
+    if (code) currency = code;
+  }
+  if (!found) return null;
+  return shippingFeesInput({ amount: total, currency });
+}
+
 function emptyNormalized(raw) {
   return {
     ssShipmentId: null,

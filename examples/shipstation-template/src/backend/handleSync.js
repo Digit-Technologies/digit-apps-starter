@@ -7,7 +7,6 @@ import {
   liveConnection,
   mapsForShipments,
   pendingShipmentWritebacks,
-  pollOutboundPush,
   pollPendingLabels,
   pushShipment,
   downloadPackingSlip,
@@ -201,7 +200,12 @@ export async function handleSync({ request, env, path, method }) {
       });
     }
     const organizationId = organizationIdResult.value;
-    const result = await downloadPackingSlip({ env, orderId: orderIdResult.value });
+    const result = await downloadPackingSlip({
+      env,
+      db,
+      organizationId,
+      orderId: orderIdResult.value,
+    });
     if (!result.ok) {
       await appendActivity({
         db,
@@ -238,7 +242,6 @@ export async function handleSync({ request, env, path, method }) {
       const value = String(parsed.value?.organizationId || '').trim();
       if (value) organizationId = value;
     }
-    const outbound = await pollOutboundPush({ env, db, organizationId, source: 'refresh' });
     const labels = await pollPendingLabels({
       env,
       db,
@@ -259,11 +262,11 @@ export async function handleSync({ request, env, path, method }) {
         status: 'success',
         message:
           pulled > 0
-            ? `Refresh pulled ${pulled} label(s) from ShipStation.`
-            : `Refresh checked ${candidates} pushed shipment(s) and found no new ShipStation labels. Buy the label in ShipStation, then try again.`,
+            ? `Pull from ShipStation pulled ${pulled} label(s).`
+            : `Pull from ShipStation checked ${candidates} pushed shipment(s) and found no new ShipStation labels. Buy the label in ShipStation, then try again.`,
       });
     }
-    return ok({ data: { ...outbound, ...labels, pendingWritebacks } });
+    return ok({ data: { ...labels, pendingWritebacks } });
   }
 
   if (method === 'POST' && path === '/sync/writeback-complete') {

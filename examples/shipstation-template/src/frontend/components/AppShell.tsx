@@ -10,11 +10,19 @@ export default function AppShell({
   children: ReactNode;
 }) {
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <Box
+      sx={{
+        height: '100vh',
+        minHeight: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        bgcolor: 'background.default',
+      }}
+    >
       <Box
         sx={{
-          position: 'sticky',
-          top: 0,
+          flex: '0 0 auto',
           zIndex: 10,
           bgcolor: 'background.paper',
           borderBottom: 1,
@@ -24,13 +32,15 @@ export default function AppShell({
         {commandBar}
       </Box>
       <Stack
-        spacing={3}
+        spacing={2}
         sx={{
+          flex: 1,
+          minHeight: 0,
           width: '100%',
-          maxWidth: 1100,
           mx: 'auto',
-          px: { xs: 2, sm: 3 },
-          py: { xs: 2.5, sm: 3 },
+          px: { xs: 1.5, sm: 2 },
+          py: { xs: 1.5, sm: 2 },
+          overflow: 'hidden',
         }}
       >
         {children}

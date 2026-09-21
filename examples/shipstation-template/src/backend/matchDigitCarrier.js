@@ -10,6 +10,7 @@ import {
   buildCarrierMapPayload,
   effectiveCarrierMatch,
   liveOptions,
+  resolveSsServiceFromDigitOption,
 } from './carrierMatch.js';
 
 export {
@@ -20,6 +21,7 @@ export {
   matchDigitCarrierOptions,
   mappingKey,
   normalizeCarrierKey,
+  resolveSsServiceFromDigitOption,
 } from './carrierMatch.js';
 
 export async function fetchDigitShippingCarriers({ env }) {
@@ -320,56 +322,9 @@ export async function loadCarrierMapPayload({ env, db, organizationId, connectio
   let mappings = [];
   let pulledServices = [];
   if (connectionId) {
-    const { results: carrierRows } = await db
-      .prepare(
-        `SELECT id, carrier_code, name, shipstation_carrier_id
-         FROM shipstation_carrier
-         WHERE connection_id = ? AND deleted = 0
-         ORDER BY name COLLATE NOCASE, id`,
-      )
-      .bind(connectionId)
-      .all();
-
-    const { results: serviceRows } = await db
-      .prepare(
-        `SELECT carrier_id, shipstation_service_code, name
-         FROM shipstation_service
-         WHERE connection_id = ? AND deleted = 0
-         ORDER BY name COLLATE NOCASE, id`,
-      )
-      .bind(connectionId)
-      .all();
-    const servicesByCarrier = new Map();
-    for (const service of serviceRows ?? []) {
-      const list = servicesByCarrier.get(service.carrier_id) ?? [];
-      list.push({
-        serviceCode: service.shipstation_service_code,
-        name: service.name,
-      });
-      servicesByCarrier.set(service.carrier_id, list);
-    }
-
-    ssCarriers = (carrierRows ?? []).map((row) => ({
-      carrierCode: row.carrier_code,
-      name: row.name,
-      shipstationCarrierId: row.shipstation_carrier_id,
-      services: servicesByCarrier.get(row.id) ?? [],
-    }));
-
-    const { results: mapRows } = await db
-      .prepare(
-        `SELECT ss_carrier_code, ss_service_code, digit_option_id, source
-         FROM carrier_digit_map
-         WHERE connection_id = ?`,
-      )
-      .bind(connectionId)
-      .all();
-    mappings = (mapRows ?? []).map((row) => ({
-      ssCarrierCode: row.ss_carrier_code,
-      ssServiceCode: row.ss_service_code || '',
-      digitOptionId: row.digit_option_id,
-      source: row.source,
-    }));
+    const catalog = await loadSsCatalogAndMaps({ db, connectionId });
+    ssCarriers = catalog.ssCarriers;
+    mappings = catalog.mappings;
 
     const { results: pulledRows } = await db
       .prepare(
@@ -398,5 +353,85 @@ export async function loadCarrierMapPayload({ env, db, organizationId, connectio
     digitCarriersError: fetched.ok
       ? null
       : fetched.message || 'Could not load Digit shipping carriers.',
+  });
+}
+
+/**
+ * Load ShipStation catalog + Digit maps for outbound push reverse-lookup.
+ */
+export async function loadSsCatalogAndMaps({ db, connectionId }) {
+  if (!connectionId) {
+    return { ssCarriers: [], mappings: [] };
+  }
+
+  const { results: carrierRows } = await db
+    .prepare(
+      `SELECT id, carrier_code, name, shipstation_carrier_id
+       FROM shipstation_carrier
+       WHERE connection_id = ? AND deleted = 0
+       ORDER BY name COLLATE NOCASE, id`,
+    )
+    .bind(connectionId)
+    .all();
+
+  const { results: serviceRows } = await db
+    .prepare(
+      `SELECT carrier_id, shipstation_service_code, name
+       FROM shipstation_service
+       WHERE connection_id = ? AND deleted = 0
+       ORDER BY name COLLATE NOCASE, id`,
+    )
+    .bind(connectionId)
+    .all();
+  const servicesByCarrier = new Map();
+  for (const service of serviceRows ?? []) {
+    const list = servicesByCarrier.get(service.carrier_id) ?? [];
+    list.push({
+      serviceCode: service.shipstation_service_code,
+      name: service.name,
+    });
+    servicesByCarrier.set(service.carrier_id, list);
+  }
+
+  const ssCarriers = (carrierRows ?? []).map((row) => ({
+    carrierCode: row.carrier_code,
+    name: row.name,
+    shipstationCarrierId: row.shipstation_carrier_id,
+    services: servicesByCarrier.get(row.id) ?? [],
+  }));
+
+  const { results: mapRows } = await db
+    .prepare(
+      `SELECT ss_carrier_code, ss_service_code, digit_option_id, source
+       FROM carrier_digit_map
+       WHERE connection_id = ?`,
+    )
+    .bind(connectionId)
+    .all();
+  const mappings = (mapRows ?? []).map((row) => ({
+    ssCarrierCode: row.ss_carrier_code,
+    ssServiceCode: row.ss_service_code || '',
+    digitOptionId: row.digit_option_id,
+    source: row.source,
+  }));
+
+  return { ssCarriers, mappings };
+}
+
+/**
+ * Resolve the ShipStation carrier + service for a Digit shipment's shipping carrier.
+ */
+export async function resolveSsServiceForDigitShipment({
+  db,
+  connectionId,
+  digitOptionId,
+  digitValue = null,
+}) {
+  const { ssCarriers, mappings } = await loadSsCatalogAndMaps({ db, connectionId });
+  return resolveSsServiceFromDigitOption({
+    digitOptionId,
+    digitValue,
+    mappings,
+    ssCarriers,
   });
 }

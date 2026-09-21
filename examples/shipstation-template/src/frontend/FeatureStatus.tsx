@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import LinearProgress from '@mui/material/LinearProgress';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
@@ -14,6 +13,7 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 
 import ApiModeToggle, { type ApiModeChoice } from './components/ApiModeToggle';
 import SectionHeader from './components/SectionHeader';
+import StatusChip from './components/StatusChip';
 import type { ChannelSetupEntry } from './setupTypes';
 
 type FeatureState = 'working' | 'partial' | 'off' | 'inactive';
@@ -82,7 +82,7 @@ function v2Features({
     gate({
       title: 'Push orders to ShipStation',
       detail:
-        'Eligible Digit sales orders become V2 shipments (create_sales_order) from the queue. Scheduled push runs every five minutes; Manual push waits for Refresh.',
+        'Eligible Digit sales orders become V2 shipments (create_sales_order) from the queue with the mapped Digit shipping carrier. Manual push (the default) waits for Push to ShipStation; Scheduled push also runs every five minutes.',
       requires: [
         [shipStationKeyPresent, SS_KEY],
         [connected, CONNECTION],
@@ -92,13 +92,13 @@ function v2Features({
     gate({
       title: 'Print labels in ShipStation',
       detail:
-        'Push creates the V2 shipment only. Choose carrier and buy the label in ShipStation, then Refresh or wait for the five-minute poll.',
+        'Push creates the V2 shipment only. Choose carrier and buy the label in ShipStation, then pull from ShipStation or wait for the five-minute poll.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
       title: 'Write tracking back to Digit',
       detail:
-        'The five-minute poll (and Refresh) reads V2 labels and writes carrier, tracking, and cost onto the Digit shipment.',
+        'The five-minute poll (and Pull from ShipStation) reads V2 labels and writes carrier, tracking, and cost onto the Digit shipment.',
       requires: [
         [shipStationKeyPresent, SS_KEY],
         [connected, CONNECTION],
@@ -127,7 +127,7 @@ function v1Features({
     }),
     gate({
       title: 'Push orders to ShipStation',
-      detail: 'Eligible Digit sales orders become V1 orders via createorder from the queue. Scheduled push runs every five minutes; Manual push waits for Refresh.',
+      detail: 'Eligible Digit sales orders become V1 orders via createorder from the queue with the mapped Digit shipping carrier. Manual push (the default) waits for Push to ShipStation; Scheduled push also runs every five minutes.',
       requires: [
         [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
         [connected, CONNECTION],
@@ -137,13 +137,13 @@ function v1Features({
     gate({
       title: 'Print labels in ShipStation',
       detail:
-        'Push creates the V1 order only. Choose carrier and buy the label in ShipStation, then Refresh or wait for the five-minute poll.',
+        'Push creates the V1 order only. Choose carrier and buy the label in ShipStation, then pull from ShipStation or wait for the five-minute poll.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
       title: 'Write tracking back to Digit',
       detail:
-        'The five-minute poll (and Refresh) reads V1 orders and writes carrier, tracking, and cost onto the Digit shipment.',
+        'The five-minute poll (and Pull from ShipStation) reads V1 orders and writes carrier, tracking, and cost onto the Digit shipment.',
       requires: [
         [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
         [connected, CONNECTION],
@@ -213,12 +213,12 @@ function channelFeatures({
 }
 
 function stateChip(state: FeatureState) {
-  if (state === 'working') return <Chip size="small" color="success" label="Working" />;
-  if (state === 'partial') return <Chip size="small" color="warning" label="Limited" />;
+  if (state === 'working') return <StatusChip color="success" label="Working" />;
+  if (state === 'partial') return <StatusChip color="warning" label="Limited" />;
   if (state === 'inactive') {
-    return <Chip size="small" variant="outlined" label="Not this mode" />;
+    return <StatusChip label="Not this mode" />;
   }
-  return <Chip size="small" label="Not yet" />;
+  return <StatusChip label="Not yet" />;
 }
 
 function stateIcon(state: FeatureState) {
@@ -306,9 +306,9 @@ function ModePanel({
             {title}
           </Typography>
           {selected ? (
-            <Chip size="small" color="primary" label="Active mode" />
+            <StatusChip color="primary" label="Active mode" />
           ) : (
-            <Chip size="small" variant="outlined" label="Not selected" />
+            <StatusChip label="Not selected" />
           )}
         </Stack>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>

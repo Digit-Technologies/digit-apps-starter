@@ -2,7 +2,6 @@ import { useState } from 'react';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
-import Chip from '@mui/material/Chip';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
@@ -10,6 +9,7 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 
 import ApiModeToggle, { type ApiModeChoice } from './components/ApiModeToggle';
+import StatusChip from './components/StatusChip';
 import type { SetupItem } from './setupTypes';
 
 const TOKEN_KEY = 'JWT_TOKEN';
@@ -31,18 +31,17 @@ function fieldLabel(item: SetupItem) {
 
 function statusChip({ item }: { item: SetupItem }) {
   if (item.present && !item.valid) {
-    return <Chip size="small" color="error" label="Failed" />;
+    return <StatusChip color="error" label="Failed" />;
   }
   if (item.present) {
     return (
-      <Chip
-        size="small"
+      <StatusChip
         color="success"
         label={item.source === 'appDatabase' ? 'Secret set (legacy)' : 'Secret set'}
       />
     );
   }
-  return <Chip size="small" color="warning" variant="outlined" label="Missing" />;
+  return <StatusChip color="warning" label="Missing" />;
 }
 
 function SetupItemRow({

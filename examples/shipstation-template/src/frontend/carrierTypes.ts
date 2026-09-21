@@ -28,6 +28,17 @@ export type CarrierMappingRow = {
   source: string;
 };
 
+/** Push direction: one Digit shipping carrier and the ShipStation service it resolves to. */
+export type DigitCarrierMapRow = {
+  digitOptionId: string;
+  digitValue: string;
+  status: 'missing' | 'unmapped' | 'unconfirmed' | 'ambiguous' | 'ok';
+  ssCarrierCode?: string | null;
+  ssCarrierName?: string | null;
+  ssServiceCode?: string | null;
+  ssServiceName?: string | null;
+};
+
 export type UnmappedCarrierRow = {
   carrierCode: string | null;
   carrierName: string | null;
@@ -41,6 +52,7 @@ export type OrgSettingsData = {
   defaultFulfillmentMethod: string;
   defaultWeightOz?: number;
   digitCarriers?: DigitCarrierOption[];
+  digitCarrierMaps?: DigitCarrierMapRow[];
   ssCarriers?: SsCarrierRow[];
   carrierMappings?: CarrierMappingRow[];
   unmappedCarriers?: UnmappedCarrierRow[];
@@ -64,6 +76,38 @@ export function unmatchedServicesFrom(orgSettings: OrgSettingsData | undefined):
     }
   }
   return out;
+}
+
+/** Digit carriers that cannot push: no confirmed ShipStation service, or more than one. */
+export function pushBlockedDigitCarriersFrom(
+  orgSettings: OrgSettingsData | undefined,
+): DigitCarrierMapRow[] {
+  return (orgSettings?.digitCarrierMaps ?? []).filter((row) => row.status !== 'ok');
+}
+
+export function digitCarrierStatusCopy(status: DigitCarrierMapRow['status']) {
+  switch (status) {
+    case 'ok':
+      return { label: 'Ready', color: 'success' as const, hint: 'Push sends this ShipStation service.' };
+    case 'unconfirmed':
+      return {
+        label: 'Confirm',
+        color: 'warning' as const,
+        hint: 'Auto-matched on name similarity. Pick the service here to allow push.',
+      };
+    case 'ambiguous':
+      return {
+        label: 'Ambiguous',
+        color: 'error' as const,
+        hint: 'Mapped to more than one ShipStation service. Keep it on one.',
+      };
+    default:
+      return {
+        label: 'Not mapped',
+        color: 'error' as const,
+        hint: 'Shipments using this Digit carrier cannot push to ShipStation.',
+      };
+  }
 }
 
 export function draftFromOrgSettings(orgSettings: OrgSettingsData | undefined): CarrierDraft {

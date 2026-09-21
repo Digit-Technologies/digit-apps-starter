@@ -23,6 +23,7 @@ import Typography from '@mui/material/Typography';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
+import SyncIcon from '@mui/icons-material/Sync';
 
 import {
   AppErrorAlert,
@@ -34,23 +35,29 @@ import {
 
 import EmptyState from './components/EmptyState';
 import OrderQueueCard from './components/OrderQueueCard';
-import QueueStatusDisplay from './components/QueueStatusDisplay';
+import QueueStatusDisplay, { statusTooltipSlotProps } from './components/QueueStatusDisplay';
 import SectionHeader from './components/SectionHeader';
+import StatusChip from './components/StatusChip';
 import { motionFadeIn } from './components/motion';
 import {
-  digitShippingStatusLabel,
+  digitShippingStatusChip,
+  effectiveShippingCarrierField,
   ineligibilityReason,
   queuePushDisplay,
-  shipStationLabelStatusLabel,
+  skipNextStep,
+  trackingStatusChip,
+  type CarrierMapsForEligibility,
   type OrgSettingsForEligibility,
 } from './eligibility';
+import type { OrgSettingsData } from './carrierTypes';
 import {
   packageContainerLabel,
   packageCountLabel,
   type PackageContainer,
 } from './packageContainers';
+import { useRefetchWhenVisible } from './useRefetchWhenVisible';
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 100;
 
 /** Active Digit shipping statuses shown in the queue (cancelled is omitted). */
 const QUEUE_SHIPPING_STATUSES = [
@@ -104,20 +111,13 @@ function emptyQueueCopy(filter: QueueStatusFilter) {
   }
 }
 
-const QUEUE_QUERY = `
-  query ShipStationQueue($connection: ConnectionInput, $shippingStatuses: [ShippingStatus!]) {
-    shipments(
-      shippingStatuses: $shippingStatuses
-      connection: $connection
-      order: { by: createdAt, direction: desc }
-    ) {
-      pageInfo { hasNextPage hasPreviousPage startCursor endCursor }
-      nodes {
+const SHIPMENT_ROW_FIELDS = `
         id
         documentNumber
         shippingNumber
         shippingStatus
         trackingNumber
+        shippingCarrierField { id value }
         packContainers {
           id
           container
@@ -141,11 +141,28 @@ const QUEUE_QUERY = `
           documentNumber
           orderNumber
           customer { name }
+          shippingCarrierField { id value }
         }
-      }
+`;
+
+const QUEUE_QUERY = `
+  query ShipStationQueue($connection: ConnectionInput, $shippingStatuses: [ShippingStatus!]) {
+    shipments(
+      shippingStatuses: $shippingStatuses
+      connection: $connection
+      order: { by: createdAt, direction: desc }
+    ) {
+      pageInfo { hasNextPage }
+      nodes { ${SHIPMENT_ROW_FIELDS} }
     }
   }
 `;
+
+function withEffectiveCarrier(shipment: ShipmentNode): ShipmentNode {
+  const carrier = effectiveShippingCarrierField(shipment);
+  if (carrier === shipment.shippingCarrierField) return shipment;
+  return { ...shipment, shippingCarrierField: carrier };
+}
 
 type ShipmentNode = {
   id: string;
@@ -153,12 +170,14 @@ type ShipmentNode = {
   shippingNumber?: string | null;
   shippingStatus?: string | null;
   trackingNumber?: string | null;
+  shippingCarrierField?: { id?: string | null; value?: string | null } | null;
   packContainers?: PackageContainer[] | null;
   order?: {
     id: string;
     documentNumber?: string | null;
     orderNumber?: string | null;
     customer?: { name?: string | null } | null;
+    shippingCarrierField?: { id?: string | null; value?: string | null } | null;
   } | null;
 };
 
@@ -166,9 +185,6 @@ type QueueData = {
   shipments?: {
     pageInfo?: {
       hasNextPage?: boolean;
-      hasPreviousPage?: boolean;
-      startCursor?: string | null;
-      endCursor?: string | null;
     };
     nodes?: ShipmentNode[];
   };
@@ -186,6 +202,8 @@ type MapRow = {
   trackingNumber?: string | null;
   trackingStatus?: string | null;
 };
+
+const EMPTY_SHIPMENTS: ShipmentNode[] = [];
 
 type MapsData = { maps: MapRow[] };
 
@@ -218,7 +236,7 @@ type PollIssue = {
 
 /**
  * Digit shipment update the Worker cannot perform itself: API tokens are not granted
- * UPDATE_SHIPMENT, so Refresh applies these with the operator's session.
+ * UPDATE_SHIPMENT, so Pull from ShipStation applies these with the operator's session.
  */
 type PendingWriteback = {
   digitShipmentId: string;
@@ -231,6 +249,7 @@ type PendingWriteback = {
   shippingCarrierFieldId: string | null;
   shippingStatus?: string | null;
   notes: string | null;
+  shippingFees?: { currencyCode: string; costAmount: number } | null;
 };
 
 type PollData = {
@@ -246,6 +265,14 @@ const UPDATE_SHIPMENT_MUTATION = `
   mutation ShipStationQueueUpdateShipment($input: UpdateShipmentInput!) {
     updateShipment(input: $input) {
       shipment { id trackingNumber shippingStatus }
+    }
+  }
+`;
+
+const UPDATE_ORDER_MUTATION = `
+  mutation ShipStationQueueUpdateOrder($input: UpdateOrderInput!) {
+    updateOrder(input: $input) {
+      order { id }
     }
   }
 `;
@@ -322,6 +349,7 @@ const selectionHeadCellSx = {
   bgcolor: 'background.paper',
   borderRight: 1,
   borderColor: 'divider',
+  verticalAlign: 'middle',
 } as const;
 
 const selectionBodyCellSx = {
@@ -330,6 +358,31 @@ const selectionBodyCellSx = {
   '.MuiTableRow-hover:hover &': {
     bgcolor: 'action.hover',
   },
+} as const;
+
+const filesHeadCellSx = {
+  position: 'sticky',
+  right: 0,
+  zIndex: 3,
+  bgcolor: 'background.paper',
+  verticalAlign: 'middle',
+  textAlign: 'center',
+  width: 88,
+  minWidth: 88,
+  px: 0.5,
+} as const;
+
+const filesBodyCellSx = {
+  ...filesHeadCellSx,
+  zIndex: 1,
+  '.MuiTableRow-hover:hover &': {
+    bgcolor: 'action.hover',
+  },
+} as const;
+
+const tableCellSx = {
+  verticalAlign: 'middle',
+  py: 1,
 } as const;
 
 export default function FulfillmentQueue({
@@ -344,11 +397,9 @@ export default function FulfillmentQueue({
   canPush: boolean;
   apiVersion?: string | null;
   pushDisabledReason?: string | null;
-  orgSettings?: OrgSettingsForEligibility | null;
+  orgSettings?: (OrgSettingsForEligibility & CarrierMapsForEligibility) | OrgSettingsData | null;
   onPushComplete?: () => void | Promise<void>;
 }) {
-  const [after, setAfter] = useState<string | null>(null);
-  const [before, setBefore] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<QueueStatusFilter>('all');
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [copyHint, setCopyHint] = useState<string | null>(null);
@@ -364,15 +415,15 @@ export default function FulfillmentQueue({
     query: QUEUE_QUERY,
     variables: {
       shippingStatuses: shippingStatusesForFilter(statusFilter),
-      connection: after
-        ? { first: PAGE_SIZE, after }
-        : before
-          ? { last: PAGE_SIZE, before }
-          : { first: PAGE_SIZE },
+      connection: { first: PAGE_SIZE },
     },
   });
 
-  const nodes = queue.data?.shipments?.nodes ?? [];
+  const listedNodes = queue.data?.shipments?.nodes ?? EMPTY_SHIPMENTS;
+  const nodes = useMemo(
+    () => listedNodes.map((node) => withEffectiveCarrier(node)),
+    [listedNodes],
+  );
   const hasV1MultiContainer = apiVersion === 'v1' &&
     nodes.some((shipment) => (shipment.packContainers?.length ?? 0) > 1);
   const shipmentIds = nodes.map((node) => node.id).join(',');
@@ -380,6 +431,8 @@ export default function FulfillmentQueue({
     path: `/sync/shipments?organizationId=${encodeURIComponent(organizationId)}&shipmentIds=${encodeURIComponent(shipmentIds)}`,
     skip: !organizationId || nodes.length === 0,
   });
+
+  useRefetchWhenVisible(() => Promise.all([queue.refetch(), mapsQuery.refetch()]));
 
   const mapsById = useMemo(() => {
     const map = new Map<string, MapRow>();
@@ -397,6 +450,7 @@ export default function FulfillmentQueue({
   const [pollMutate, { error: pollError, loading: polling, reset: resetPoll }] =
     useBackendMutation<PollData>();
   const [updateShipmentMutate] = useDigitApiMutation({ mutation: UPDATE_SHIPMENT_MUTATION });
+  const [updateOrderMutate] = useDigitApiMutation({ mutation: UPDATE_ORDER_MUTATION });
   const [writebackDoneMutate] = useBackendMutation();
 
   const selectedCount = Object.values(selected).filter(Boolean).length;
@@ -436,7 +490,7 @@ export default function FulfillmentQueue({
     await Promise.all([queue.refetch(), mapsQuery.refetch(), onPushComplete?.()]);
   };
 
-  const refreshFromShipStation = async () => {
+  const pullFromShipStation = async () => {
     resetPoll();
     setPushNotice(null);
     const result = await pollMutate({
@@ -445,7 +499,6 @@ export default function FulfillmentQueue({
       body: { organizationId },
     });
     if (!result.ok) return;
-    const autoPushed = Number(result.data?.pushed || 0);
     const candidates = Number(result.data?.labelCandidates || 0);
     const issues = [...(result.data?.labelIssues ?? [])];
 
@@ -477,6 +530,23 @@ export default function FulfillmentQueue({
         });
         continue;
       }
+      if (pendingWriteback.shippingFees && pendingWriteback.digitOrderId) {
+        const fees = await updateOrderMutate({
+          variables: {
+            input: {
+              orderId: pendingWriteback.digitOrderId,
+              shippingFees: pendingWriteback.shippingFees,
+            },
+          },
+        });
+        if (!fees.ok) {
+          issues.push({
+            status: 'error',
+            ssShipmentId: pendingWriteback.ssShipmentId,
+            message: `Wrote tracking for label ${pendingWriteback.labelId}, but could not set shipping fees on the Digit order: ${fees.error.message}`,
+          });
+        }
+      }
       pulled += 1;
       await writebackDoneMutate({
         path: '/sync/writeback-complete',
@@ -490,20 +560,19 @@ export default function FulfillmentQueue({
       severity: failed.length > 0 ? 'error' : pulled > 0 ? 'success' : 'info',
       title:
         failed.length > 0
-          ? `Refresh could not finish ${failed.length} label(s).`
+          ? `Pull from ShipStation could not finish ${failed.length} label(s).`
           : pulled > 0
-            ? `Refresh wrote ${pulled} ShipStation label(s) into Digit.`
-            : `Refresh checked ${candidates} pushed shipment(s) and found no new ShipStation labels.`,
+            ? `Pull from ShipStation wrote ${pulled} ShipStation label(s) into Digit.`
+            : `Pull from ShipStation checked ${candidates} pushed shipment(s) and found no new ShipStation labels.`,
       details: [
         ...issues.map((issue) => issue.message),
         issues.length > 0
           ? ''
           : pulled > 0
-            ? 'Carrier, tracking, and cost are written to Digit when the label exists.'
+            ? 'Carrier, tracking, and shipping cost are written to Digit when the label exists.'
             : candidates === 0
               ? 'No pushed shipments are waiting on a label. Push from the queue first.'
-              : 'Buy the label in ShipStation, then Refresh again or wait up to five minutes.',
-        autoPushed > 0 ? `${autoPushed} eligible shipment(s) were also pushed.` : '',
+              : 'Buy the label in ShipStation, then pull again or wait up to five minutes.',
       ].filter(Boolean),
     });
     await Promise.all([queue.refetch(), mapsQuery.refetch(), onPushComplete?.()]);
@@ -564,15 +633,45 @@ export default function FulfillmentQueue({
     }
   };
 
-  const pageInfo = queue.data?.shipments?.pageInfo;
   const emptyCopy = emptyQueueCopy(statusFilter);
   const showSelection = canPush && statusFilter !== 'shipped';
+  const truncated = Boolean(queue.data?.shipments?.pageInfo?.hasNextPage);
 
-  const setStatusFilterAndResetPage = (next: QueueStatusFilter) => {
-    setStatusFilter(next);
-    setAfter(null);
-    setBefore(null);
-  };
+  const queueToolbar = (
+    <Stack
+      direction={{ xs: 'column', sm: 'row' }}
+      spacing={1}
+      alignItems={{ sm: 'center' }}
+      justifyContent="space-between"
+      sx={{ pb: 1.5, borderBottom: 1, borderColor: 'divider', flex: '0 0 auto' }}
+    >
+      <FormControl size="small" sx={{ minWidth: 200 }}>
+        <InputLabel id="queue-status-filter-label">Digit status</InputLabel>
+        <Select
+          labelId="queue-status-filter-label"
+          label="Digit status"
+          value={statusFilter}
+          onChange={(event) => setStatusFilter(event.target.value as QueueStatusFilter)}
+        >
+          {QUEUE_STATUS_FILTERS.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+      <Button
+        variant="outlined"
+        size="small"
+        startIcon={<SyncIcon />}
+        onClick={() => void pullFromShipStation()}
+        disabled={polling || pushing || !organizationId}
+        sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}
+      >
+        {polling ? 'Pulling…' : 'Pull from ShipStation'}
+      </Button>
+    </Stack>
+  );
 
   const pushBar = showSelection ? (
     <Stack
@@ -613,43 +712,17 @@ export default function FulfillmentQueue({
         onClick={() => void pushSelected()}
         disabled={pushing || polling || Boolean(pushDisabledReason) || selectedCount === 0}
       >
-        {pushing ? 'Pushing…' : 'Push selected'}
+        {pushing ? 'Pushing…' : 'Push to ShipStation'}
       </Button>
     </Stack>
   ) : null;
 
   return (
-    <Stack spacing={2}>
+    <Stack spacing={1.5} sx={{ flex: 1, minHeight: 0, height: '100%', overflow: 'hidden' }}>
       <SectionHeader
         overline="Queue"
         title="Shipping queue"
-        description="Digit shipment status and ShipStation tracking status for each row. Push, buy the label in ShipStation, then Refresh (or wait five minutes)."
-        action={
-          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel id="queue-status-filter-label">Digit status</InputLabel>
-              <Select
-                labelId="queue-status-filter-label"
-                label="Digit status"
-                value={statusFilter}
-                onChange={(event) => setStatusFilterAndResetPage(event.target.value as QueueStatusFilter)}
-              >
-                {QUEUE_STATUS_FILTERS.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <Button
-              variant="outlined"
-              onClick={() => void refreshFromShipStation()}
-              disabled={polling || pushing || !organizationId}
-            >
-              {polling ? 'Refreshing…' : 'Refresh'}
-            </Button>
-          </Stack>
-        }
+        description="Push eligible shipments, buy the label in ShipStation, then pull tracking (or wait five minutes)."
       />
 
       {hasV1MultiContainer ? (
@@ -694,23 +767,39 @@ export default function FulfillmentQueue({
         </Alert>
       ) : null}
 
+      {queueToolbar}
+
       {selectedCount > 0 || showSelection ? pushBar : null}
 
-      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-        <TableContainer sx={{ overflowX: 'auto', maxWidth: '100%' }}>
-          <Table size="small" sx={{ minWidth: 960 }}>
+      <Box sx={{ display: { xs: 'none', md: 'flex' }, flex: 1, minHeight: 0, flexDirection: 'column' }}>
+        <TableContainer sx={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+          <Table
+            size="small"
+            stickyHeader
+            sx={{
+              width: '100%',
+              '& .MuiTableCell-root': tableCellSx,
+              '& .MuiTableCell-head': {
+                bgcolor: 'background.paper',
+                whiteSpace: 'nowrap',
+              },
+            }}
+          >
             <TableHead>
               <TableRow>
                 {showSelection ? <TableCell padding="checkbox" sx={selectionHeadCellSx} /> : null}
                 <TableCell>Shipment</TableCell>
                 <TableCell>Customer</TableCell>
+                <TableCell>Carrier</TableCell>
                 <TableCell>Packages</TableCell>
                 <TableCell>Push status</TableCell>
                 <TableCell>Digit status</TableCell>
                 <TableCell>Tracking status</TableCell>
                 <TableCell>ShipStation ID</TableCell>
                 <TableCell>Tracking</TableCell>
-                <TableCell align="right">Files</TableCell>
+                <TableCell align="center" sx={filesHeadCellSx}>
+                  Files
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -722,27 +811,47 @@ export default function FulfillmentQueue({
                   orgSettings,
                   mapRow: map ?? null,
                   apiVersion,
+                  carrierMaps: orgSettings,
                 });
                 const pushDisplay = queuePushDisplay({
                   blocked,
                   mapRow: map,
                   shippingStatus: shipment.shippingStatus,
                 });
-                const selectable = !blocked;
+                const digitChip = digitShippingStatusChip(shipment.shippingStatus);
+                const trackingChip = trackingStatusChip(map);
                 return (
-                  <TableRow key={shipment.id} hover sx={motionFadeIn}>
+                  <TableRow key={shipment.id} hover sx={{ ...motionFadeIn, '& > .MuiTableCell-root': { verticalAlign: 'middle' } }}>
                     {showSelection ? (
                       <TableCell padding="checkbox" sx={selectionBodyCellSx}>
-                        <Checkbox
-                          checked={Boolean(selected[shipment.id])}
-                          disabled={!selectable}
-                          onChange={(event) =>
-                            setSelected((current) => ({
-                              ...current,
-                              [shipment.id]: event.target.checked,
-                            }))
-                          }
-                        />
+                        {blocked ? (
+                          <Tooltip
+                            title={`${blocked} ${skipNextStep(blocked)}`}
+                            enterDelay={200}
+                            enterTouchDelay={0}
+                            slotProps={statusTooltipSlotProps}
+                          >
+                            <span>
+                              <Checkbox
+                                checked={Boolean(selected[shipment.id])}
+                                disabled
+                                inputProps={{
+                                  'aria-label': `Select shipment ${label}. ${blocked}`,
+                                }}
+                              />
+                            </span>
+                          </Tooltip>
+                        ) : (
+                          <Checkbox
+                            checked={Boolean(selected[shipment.id])}
+                            onChange={(event) =>
+                              setSelected((current) => ({
+                                ...current,
+                                [shipment.id]: event.target.checked,
+                              }))
+                            }
+                          />
+                        )}
                       </TableCell>
                     ) : null}
                     <TableCell>
@@ -758,6 +867,18 @@ export default function FulfillmentQueue({
                       </Stack>
                     </TableCell>
                     <TableCell>{shipment.order?.customer?.name ?? '—'}</TableCell>
+                    <TableCell>
+                      <Typography
+                        variant="body2"
+                        sx={
+                          shipment.shippingCarrierField?.value
+                            ? undefined
+                            : { color: 'text.disabled' }
+                        }
+                      >
+                        {shipment.shippingCarrierField?.value ?? '—'}
+                      </Typography>
+                    </TableCell>
                     <TableCell>
                       <Stack spacing={0.25}>
                         <Typography variant="body2">
@@ -778,21 +899,22 @@ export default function FulfillmentQueue({
                       <QueueStatusDisplay pushDisplay={pushDisplay} />
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2">
-                        {digitShippingStatusLabel(shipment.shippingStatus)}
-                      </Typography>
+                      {digitChip ? (
+                        <StatusChip color={digitChip.color} label={digitChip.label} />
+                      ) : (
+                        <Typography variant="body2" sx={{ color: 'text.disabled' }}>
+                          —
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <Typography
-                        variant="body2"
-                        sx={
-                          shipStationLabelStatusLabel(map) === '—'
-                            ? { color: 'text.disabled' }
-                            : undefined
-                        }
-                      >
-                        {shipStationLabelStatusLabel(map)}
-                      </Typography>
+                      {trackingChip ? (
+                        <StatusChip color={trackingChip.color} label={trackingChip.label} />
+                      ) : (
+                        <Typography variant="body2" sx={{ color: 'text.disabled' }}>
+                          —
+                        </Typography>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Stack direction="row" spacing={0.5} alignItems="center">
@@ -820,13 +942,13 @@ export default function FulfillmentQueue({
                         {map?.trackingNumber ?? '—'}
                       </Typography>
                     </TableCell>
-                    <TableCell align="right">
-                      <Stack direction="row" spacing={0.25} justifyContent="flex-end">
+                    <TableCell align="center" sx={filesBodyCellSx}>
+                      <Stack direction="row" spacing={0.25} justifyContent="center" alignItems="center">
                         <Tooltip
                           title={
                             mapHasLabel(map)
                               ? 'Download shipping label'
-                              : 'No shipping label yet. Buy it in ShipStation, then Refresh.'
+                              : 'No shipping label yet. Buy it in ShipStation, then pull from ShipStation.'
                           }
                         >
                           <span>
@@ -862,7 +984,7 @@ export default function FulfillmentQueue({
               })}
               {nodes.length === 0 && !queue.loading ? (
                 <TableRow>
-                  <TableCell colSpan={showSelection ? 10 : 9}>
+                  <TableCell colSpan={showSelection ? 11 : 10}>
                     <EmptyState title={emptyCopy.title} description={emptyCopy.description} />
                   </TableCell>
                 </TableRow>
@@ -872,7 +994,16 @@ export default function FulfillmentQueue({
         </TableContainer>
       </Box>
 
-      <Stack spacing={1.5} sx={{ display: { xs: 'flex', md: 'none' }, pb: selectedCount > 0 ? 8 : 0 }}>
+      <Stack
+        spacing={1.5}
+        sx={{
+          display: { xs: 'flex', md: 'none' },
+          flex: 1,
+          minHeight: 0,
+          overflow: 'auto',
+          pb: selectedCount > 0 ? 8 : 0,
+        }}
+      >
         {nodes.map((shipment) => (
           <OrderQueueCard
             key={shipment.id}
@@ -903,26 +1034,11 @@ export default function FulfillmentQueue({
         ) : null}
       </Stack>
 
-      <Stack direction="row" spacing={1} justifyContent="flex-end">
-        <Button
-          disabled={!pageInfo?.hasPreviousPage}
-          onClick={() => {
-            setAfter(null);
-            setBefore(pageInfo?.startCursor ?? null);
-          }}
-        >
-          Previous
-        </Button>
-        <Button
-          disabled={!pageInfo?.hasNextPage}
-          onClick={() => {
-            setBefore(null);
-            setAfter(pageInfo?.endCursor ?? null);
-          }}
-        >
-          Next
-        </Button>
-      </Stack>
+      {truncated ? (
+        <Typography variant="caption" sx={{ color: 'text.secondary', flex: '0 0 auto' }}>
+          Showing the {PAGE_SIZE} most recent shipments for this filter.
+        </Typography>
+      ) : null}
     </Stack>
   );
 }

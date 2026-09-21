@@ -57,9 +57,9 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/backend/shipstation.js` | Facade: dispatch helpers on `credentials.apiVersion`. |
 | `src/backend/digitGraphql.js` | Worker Digit GraphQL client. |
 | `src/backend/sync.js` | Push, writeback, D1 map (`liveCredentials`). Sets the shipment carrier after label purchase / fulfillment writeback. |
-| `src/backend/matchDigitCarrier.js` | Map SS `carrier_code` / friendly name to Digit shipping-carrier options (manual map, aliases, conservative fuzzy). |
+| `src/backend/matchDigitCarrier.js` | Map SS `carrier_code` / service onto Digit shipping-carrier options (manual map, aliases, conservative fuzzy). Reverse-map Digit option → unique SS carrier+service for push. |
 | `src/backend/activity.js` | `appendActivity` / `listActivity` (no secrets or PII). |
-| `src/backend/eligibility.js` | Packed / already-pushed / import gates for Digit shipments. |
+| `src/backend/eligibility.js` | Packed / already-pushed / import / Digit carrier map gates for Digit shipments, plus `skipNeedsAttention` (actionable vs routine skips). |
 | `src/backend/mappers/packageMapping.js` | Digit measurements/container ids → V2 packages or V1 order-level package fields. |
 | `src/backend/mappers/digitToShipStation.js` | Digit shipment → V2; aggregates split order lines and emits one package per pack container. |
 | `src/backend/mappers/digitToShipStationV1.js` | Single-container Digit shipment → V1 order (`POST /orders/createorder`). |
@@ -78,7 +78,7 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/frontend/App.tsx` | Connect + Phase 1 settings. |
 | `src/frontend/SetupNeeded.tsx` | Reports missing app-secret keys and directs owners to Digit's App Secrets UI. |
 | `src/frontend/FeatureStatus.tsx` | Per-feature Working / Limited / Not yet and what each needs. |
-| `src/frontend/FulfillmentQueue.tsx` | Paginated shipping queue; status filter follows SS `tracking_status` mapped to Digit shipping statuses. |
+| `src/frontend/FulfillmentQueue.tsx` | Paginated shipping queue; refetches the Digit `shipments` list on load/visible. Status filter follows SS `tracking_status` mapped to Digit shipping statuses. |
 | `src/frontend/ActivityLog.tsx` | D1 activity events. |
 | `src/frontend/eligibility.ts` | Keep in sync with `eligibility.js`. |
 | `manifest.json` | Permissions, D1, schedule. |

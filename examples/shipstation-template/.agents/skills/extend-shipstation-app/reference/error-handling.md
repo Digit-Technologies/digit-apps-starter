@@ -79,13 +79,24 @@ V1 multi-container shipments are blocked before selection because V1 has only on
 order-level package. Show both remedies in the queue and push result: create one Digit
 shipment per pack container, or disconnect ShipStation and reconnect with V2 credentials.
 
+Push also requires a Digit `shippingCarrierField` that reverse-maps to **exactly one**
+ShipStation service through a **confirmed** (`source = 'manual'`) `carrier_digit_map` row.
+Missing, unmapped, auto-matched-only (`unconfirmed`), and ambiguous Digit carriers are
+eligibility skips (Blocked in the queue), not silent push successes.
+
+Sweep runs (`pollOutboundPush`) must not swallow those skips. `skipNeedsAttention` splits
+actionable skips (carrier mapping, V1 multi-container, missing SS carrier id) from routine
+ones (already pushed / shipped / imported). Actionable skips are logged and returned as
+`blocked` + `blockedShipments[]` so the queue notice can name each shipment and next step.
+
 Show Ready / Blocked in the queue **Status** column **before** push so skips are not a
 surprise. Do not duplicate that in a second status column — sync state (`pushed`,
 `shipped`, errors) replaces Ready/Blocked when a map row exists.
 
 ## Scheduled jobs
 
-- `poll-outbound-push` (300s): outbound push when fulfillment method is `scheduled`, plus
-  unlabeled-map label pull. Refresh (`POST /sync/poll`) always pushes and pulls labels.
+- `poll-outbound-push` (300s): outbound push when fulfillment method is `scheduled` (manual is the default), plus
+  unlabeled-map label pull. Refresh (`POST /sync/poll`) pulls labels only; outbound push is
+  `/sync/push` or the scheduled job when fulfillment method is `scheduled`.
 - `appendActivity` on poll errors and operator Refresh; skip flooding the log with
   routine eligibility skips.

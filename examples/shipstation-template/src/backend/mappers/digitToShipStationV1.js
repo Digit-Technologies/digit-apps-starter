@@ -33,9 +33,19 @@ function v1Address(address, { name, companyName, phone }) {
 }
 
 /**
- * @param {{ shipment: object, orgSettings?: object | null }} args
+ * @param {{
+ *   shipment: object,
+ *   orgSettings?: object | null,
+ *   carrierCode?: string | null,
+ *   serviceCode?: string | null,
+ * }} args
  */
-export function digitShipmentToV1Order({ shipment, orgSettings = null }) {
+export function digitShipmentToV1Order({
+  shipment,
+  orgSettings = null,
+  carrierCode = null,
+  serviceCode = null,
+}) {
   const order = shipment?.order;
   const customerName = order?.customer?.name || '';
   const shipAddress = shipment?.shippingAddress || order?.shippingAddress;
@@ -64,6 +74,9 @@ export function digitShipmentToV1Order({ shipment, orgSettings = null }) {
     unitPrice: Number(line.unitPrice ?? line.price ?? 0) || 0,
   }));
 
+  const resolvedCarrierCode = carrierCode ? String(carrierCode).trim() : '';
+  const resolvedServiceCode = serviceCode ? String(serviceCode).trim() : '';
+
   return {
     orderNumber,
     orderKey,
@@ -81,6 +94,8 @@ export function digitShipmentToV1Order({ shipment, orgSettings = null }) {
     ...v1PackageFieldsFromDigitContainer(shipment?.packContainers?.[0], orgSettings),
     items,
     internalNotes: [order?.notes, shipment?.notes].filter(Boolean).join('\n').slice(0, 1000) || undefined,
+    ...(resolvedCarrierCode ? { carrierCode: resolvedCarrierCode } : {}),
+    ...(resolvedServiceCode ? { serviceCode: resolvedServiceCode } : {}),
   };
 }
 

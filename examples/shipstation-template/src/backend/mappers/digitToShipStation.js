@@ -85,9 +85,21 @@ export function v1WeightFromOrgSettings(orgSettings) {
 }
 
 /**
- * @param {{ shipment: object, shipFrom: object, orgSettings?: object | null }} args
+ * @param {{
+ *   shipment: object,
+ *   shipFrom: object,
+ *   orgSettings?: object | null,
+ *   carrierId?: string | null,
+ *   serviceCode?: string | null,
+ * }} args
  */
-export function digitShipmentToShipment({ shipment, shipFrom, orgSettings = null }) {
+export function digitShipmentToShipment({
+  shipment,
+  shipFrom,
+  orgSettings = null,
+  carrierId = null,
+  serviceCode = null,
+}) {
   const order = shipment?.order;
   const customerName = order?.customer?.name || '';
   const shipAddress = shipment?.shippingAddress || order?.shippingAddress;
@@ -108,6 +120,9 @@ export function digitShipmentToShipment({ shipment, shipFrom, orgSettings = null
     customerName,
   });
 
+  const resolvedCarrierId = carrierId ? String(carrierId).trim() : '';
+  const resolvedServiceCode = serviceCode ? String(serviceCode).trim() : '';
+
   return {
     external_shipment_id: externalId,
     shipment_number:
@@ -125,6 +140,8 @@ export function digitShipmentToShipment({ shipment, shipFrom, orgSettings = null
     items,
     packages: packagesFromDigitShipment(shipment, orgSettings),
     internal_notes: [order?.notes, shipment?.notes, note].filter(Boolean).join('\n').slice(0, 1000) || undefined,
+    ...(resolvedCarrierId ? { carrier_id: resolvedCarrierId } : {}),
+    ...(resolvedServiceCode ? { service_code: resolvedServiceCode } : {}),
   };
 }
 

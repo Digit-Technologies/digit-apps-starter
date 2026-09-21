@@ -57,6 +57,7 @@ const SHIPMENT_NODE_FIELDS = `
     customerContact { id fullName phone email }
     shippingAddress { ${ADDRESS_FIELDS} }
     billingAddress { ${ADDRESS_FIELDS} }
+    shippingCarrierField { id value }
   }
 `;
 
@@ -257,6 +258,14 @@ export const UPDATE_SHIPMENT_MUTATION = `
   mutation ShipStationUpdateShipment($input: UpdateShipmentInput!) {
     updateShipment(input: $input) {
       shipment { id trackingNumber shippingStatus shippingCarrierField { id value } }
+    }
+  }
+`;
+
+export const UPDATE_ORDER_MUTATION = `
+  mutation ShipStationUpdateOrder($input: UpdateOrderInput!) {
+    updateOrder(input: $input) {
+      order { id }
     }
   }
 `;

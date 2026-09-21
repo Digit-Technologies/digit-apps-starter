@@ -32,7 +32,7 @@ MCP config or the frontend.
 - `JWT_TOKEN` is a Clerk JWT. **Digit staff generate this token and place it in the
   organization’s app secrets.** Do not use a Settings → API Tokens `da_` key.
 - Connect does **not** use ShipStation webhooks. Tracking is polled every 300s
-  and via **Refresh** (`POST /sync/poll`).
+  and via **Pull from ShipStation** (`POST /sync/poll`).
 - Add D1 changes as a new migration file.
 - Update `SPEC.md` with verbatim prompts.
 - Follow [error-handling.md](.agents/skills/extend-shipstation-app/reference/error-handling.md)

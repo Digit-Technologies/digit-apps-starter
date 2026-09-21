@@ -162,10 +162,20 @@ test('maps a single Digit container to V1 order-level package fields', () => {
 test('blocks multi-container shipments on V1 with actionable guidance', () => {
   const shipment = {
     order: { id: 'order-1' },
+    shippingCarrierField: { id: 'opt-ups-gnd', value: 'UPS Ground' },
     packContainers: [
       { packedItems: [packedItem('line-1', 1)] },
       { packedItems: [packedItem('line-2', 1)] },
     ],
+  };
+  const ssService = {
+    status: 'ok',
+    carrierId: 'se-ups-1',
+    carrierCode: 'ups',
+    serviceCode: 'ups_ground',
+    serviceName: 'UPS Ground',
+    digitOptionId: 'opt-ups-gnd',
+    digitValue: 'UPS Ground',
   };
 
   const reason = ineligibilityReason({
@@ -173,11 +183,18 @@ test('blocks multi-container shipments on V1 with actionable guidance', () => {
     orgSettings,
     mapRow: null,
     apiVersion: 'v1',
+    ssService,
   });
   assert.equal(reason, V1_MULTI_CONTAINER_REASON);
   assert.match(skipNextStep(reason), /one Digit shipment per pack container/);
   assert.equal(
-    ineligibilityReason({ shipment, orgSettings, mapRow: null, apiVersion: 'v2' }),
+    ineligibilityReason({
+      shipment,
+      orgSettings,
+      mapRow: null,
+      apiVersion: 'v2',
+      ssService,
+    }),
     null,
   );
 });

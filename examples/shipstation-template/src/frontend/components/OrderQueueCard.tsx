@@ -11,15 +11,19 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 
 import { motionFadeIn } from './motion';
-import QueueStatusDisplay from './QueueStatusDisplay';
+import QueueStatusDisplay, { statusTooltipSlotProps } from './QueueStatusDisplay';
+import StatusChip from './StatusChip';
 import {
-  digitShippingStatusLabel,
+  digitShippingStatusChip,
   ineligibilityReason,
   queuePushDisplay,
-  shipStationLabelStatusLabel,
+  skipNextStep,
+  trackingStatusChip,
+  type CarrierMapsForEligibility,
   type OrgSettingsForEligibility,
   type ShipmentForEligibility,
 } from '../eligibility';
+import type { OrgSettingsData } from '../carrierTypes';
 import {
   packageContainerLabel,
   packageCountLabel,
@@ -106,7 +110,7 @@ export default function OrderQueueCard({
 }: {
   shipment: ShipmentNode;
   map?: MapRow;
-  orgSettings?: OrgSettingsForEligibility | null;
+  orgSettings?: (OrgSettingsForEligibility & CarrierMapsForEligibility) | OrgSettingsData | null;
   apiVersion?: string | null;
   canPush: boolean;
   selected: boolean;
@@ -123,12 +127,15 @@ export default function OrderQueueCard({
     orgSettings,
     mapRow: map ?? null,
     apiVersion,
+    carrierMaps: orgSettings,
   });
   const pushDisplay = queuePushDisplay({
     blocked,
     mapRow: map,
     shippingStatus: shipment.shippingStatus,
   });
+  const digitChip = digitShippingStatusChip(shipment.shippingStatus);
+  const trackingChip = trackingStatusChip(map);
   const hasLabel = Boolean(map?.hasLabel || map?.ssLabelId);
 
   return (
@@ -140,16 +147,33 @@ export default function OrderQueueCard({
       }}
     >
       <Stack spacing={1.5}>
-        <Stack direction="row" spacing={1} alignItems="flex-start" justifyContent="space-between">
+        <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
           <Stack direction="row" spacing={1} alignItems="flex-start" sx={{ minWidth: 0 }}>
             {canPush ? (
-              <Checkbox
-                checked={selected}
-                disabled={Boolean(blocked)}
-                onChange={(event) => onSelect(event.target.checked)}
-                inputProps={{ 'aria-label': `Select shipment ${label}` }}
-                sx={{ mt: -0.5, ml: -0.5 }}
-              />
+              blocked ? (
+                <Tooltip
+                  title={`${blocked} ${skipNextStep(blocked)}`}
+                  enterDelay={200}
+                  enterTouchDelay={0}
+                  slotProps={statusTooltipSlotProps}
+                >
+                  <span>
+                    <Checkbox
+                      checked={selected}
+                      disabled
+                      inputProps={{ 'aria-label': `Select shipment ${label}. ${blocked}` }}
+                      sx={{ mt: -0.5, ml: -0.5 }}
+                    />
+                  </span>
+                </Tooltip>
+              ) : (
+                <Checkbox
+                  checked={selected}
+                  onChange={(event) => onSelect(event.target.checked)}
+                  inputProps={{ 'aria-label': `Select shipment ${label}` }}
+                  sx={{ mt: -0.5, ml: -0.5 }}
+                />
+              )
             ) : null}
             <Stack spacing={0.25} sx={{ minWidth: 0 }}>
               <DigitLink path={shipmentPath(shipment.id)} label={label} />
@@ -165,7 +189,7 @@ export default function OrderQueueCard({
             </Stack>
           </Stack>
           <Stack direction="row" spacing={0.25} sx={{ flexShrink: 0 }}>
-            <Tooltip title={hasLabel ? 'Download shipping label' : 'No shipping label yet. Buy it in ShipStation, then Refresh.'}>
+            <Tooltip title={hasLabel ? 'Download shipping label' : 'No shipping label yet. Buy it in ShipStation, then pull from ShipStation.'}>
               <span>
                 <IconButton
                   size="small"
@@ -211,30 +235,46 @@ export default function OrderQueueCard({
         </Stack>
 
         <Stack spacing={0.5}>
+          <Stack direction="row" spacing={0.5}>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+              Carrier
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={shipment.shippingCarrierField?.value ? undefined : { color: 'text.disabled' }}
+            >
+              {shipment.shippingCarrierField?.value ?? '—'}
+            </Typography>
+          </Stack>
           <Stack direction="row" spacing={0.75} alignItems="center">
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Push status
             </Typography>
             <QueueStatusDisplay pushDisplay={pushDisplay} />
           </Stack>
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.75} alignItems="center">
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Digit status
             </Typography>
-            <Typography variant="caption">
-              {digitShippingStatusLabel(shipment.shippingStatus)}
-            </Typography>
+            {digitChip ? (
+              <StatusChip color={digitChip.color} label={digitChip.label} />
+            ) : (
+              <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                —
+              </Typography>
+            )}
           </Stack>
-          <Stack direction="row" spacing={0.5}>
+          <Stack direction="row" spacing={0.75} alignItems="center">
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Tracking status
             </Typography>
-            <Typography
-              variant="caption"
-              sx={shipStationLabelStatusLabel(map) === '—' ? { color: 'text.disabled' } : undefined}
-            >
-              {shipStationLabelStatusLabel(map)}
-            </Typography>
+            {trackingChip ? (
+              <StatusChip color={trackingChip.color} label={trackingChip.label} />
+            ) : (
+              <Typography variant="caption" sx={{ color: 'text.disabled' }}>
+                —
+              </Typography>
+            )}
           </Stack>
           <Stack direction="row" spacing={0.5} alignItems="center">
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>

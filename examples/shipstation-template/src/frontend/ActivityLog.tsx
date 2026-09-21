@@ -1,4 +1,3 @@
-import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
@@ -9,6 +8,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
 
 import SectionHeader from './components/SectionHeader';
+import StatusChip from './components/StatusChip';
 
 export type ActivityEvent = {
   id: number;
@@ -135,7 +135,7 @@ export default function ActivityLog({
           >
             <Stack spacing={0.5} sx={{ minWidth: 0, flex: 1 }}>
               <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
-                <Chip size="small" color={statusColor(event.status)} label={event.status} />
+                <StatusChip color={statusColor(event.status)} label={event.status} />
                 <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                   {formatWhen(event.createdAt)} · {event.actor} · {event.action.replace(/_/g, ' ')}
                 </Typography>

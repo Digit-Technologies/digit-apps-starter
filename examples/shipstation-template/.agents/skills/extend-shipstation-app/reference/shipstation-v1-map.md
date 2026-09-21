@@ -16,7 +16,7 @@ V2 paths: [shipstation-v2-map.md](shipstation-v2-map.md). Dispatch lives in
 | --- | --- | --- |
 | `GET` | `/carriers` | Validate credentials; carrier sync |
 | `GET` | `/carriers/listservices?carrierCode=` | Services when the carrier list has none |
-| `POST` | `/orders/createorder` | Push Digit shipment (V1 order; `orderKey` = Digit shipment id) |
+| `POST` | `/orders/createorder` | Push Digit shipment (V1 order; `orderKey` = Digit shipment id). Always includes `carrierCode` + `serviceCode` from the Digit shipping-carrier → ShipStation service map. |
 | `GET` | `/orders/{orderId}` | Writeback / unlabeled-map poll |
 | `GET` | `/orders?orderNumber=` | Lookup by Digit document number / order key |
 
@@ -27,6 +27,10 @@ V1 exposes only one order-level `packageCode`, `weight`, and `dimensions` object
 shipment with one pack container maps that container into those fields. A shipment with
 multiple pack containers is ineligible: tell the operator to create one Digit shipment
 per container or disconnect and reconnect with V2 credentials.
+
+Push requires a Digit `shippingCarrierField` that reverse-maps to exactly one ShipStation
+**service** through a confirmed (`manual`) map; that map supplies `carrierCode` and
+`serviceCode` on createorder.
 
 ## Not wrapped
 

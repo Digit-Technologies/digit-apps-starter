@@ -24,11 +24,15 @@ Typical starting queries (confirm on MCP; add whatever keys those fields require
 
 - Digit GraphQL used: `currentPermissions`, `organization`, `organizationDynamicFields.shippingCarriers`,
   `shipments`, `shipment`, `orders`, `items`,
-  `companies`, `generateSalesOrderPdf`, and Worker mutations for orders/shipments (`shippingCarrierFieldId`).
+  `companies`, `generateSalesOrderPdf`, and Worker mutations for orders/shipments
+  (`shippingCarrierFieldId`, `updateOrder.shippingFees` so packing-slip PDFs include
+  ShipStation label postage).
   Look up fields on `graphql-schema://…` before adding more.
 - Queue filters `shipments(shippingStatuses: …)` using Digit statuses mapped from ShipStation
   label `tracking_status`: `unknown` → `awaiting_pickup`; `in_transit` / `delivered` / `error`
   → `shipped`. Default All is those plus `awaiting_carrier` and `awaiting_drop_off`.
+  Nested `order` includes `shippingCarrierField` as a fallback when the shipment carrier is empty.
+  Do not alias `shipment(shipmentId:)` for every visible row — that exceeds Digit’s query cost cap.
   Outbound poll still uses `SHIPMENT_LIST_QUERY` with `shippingStatuses: [awaiting_carrier]`. Nested `order`
   and packed items (`packContainers.packedItems.pickedItem.orderItem`) need `READ_ORDER`,
   `READ_PACK_CONTAINER`, `READ_PICKED_ITEM`, and `READ_ITEM`.

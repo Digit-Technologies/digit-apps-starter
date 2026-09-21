@@ -5,6 +5,7 @@ import {
   buildCarrierMapPayload,
   effectiveCarrierMatch,
   matchDigitCarrierOptions,
+  resolveSsServiceFromDigitOption,
 } from './carrierMatch.js';
 
 const usps = { id: 'opt-usps', value: 'USPS' };
@@ -169,4 +170,152 @@ test('buildCarrierMapPayload drops unmatched pulled services once a manual servi
   const svc = extra?.services.find((row) => row.serviceCode === 'ontrac_ground');
   assert.equal(svc?.matchSource, 'manual');
   assert.equal(svc?.digitOptionId, ontrac.id);
+});
+
+const upsCatalog = [
+  {
+    carrierCode: 'ups',
+    name: 'UPS',
+    shipstationCarrierId: 'se-ups-1',
+    services: [
+      { serviceCode: 'ups_ground', name: 'UPS Ground' },
+      { serviceCode: 'ups_2nd_day_air', name: 'UPS 2nd Day Air' },
+    ],
+  },
+];
+
+test('resolveSsServiceFromDigitOption returns missing when Digit option is empty', () => {
+  const result = resolveSsServiceFromDigitOption({
+    digitOptionId: null,
+    mappings: [],
+    ssCarriers: upsCatalog,
+  });
+  assert.equal(result.status, 'missing');
+  assert.equal(result.serviceCode, null);
+});
+
+test('resolveSsServiceFromDigitOption ignores carrier-level defaults', () => {
+  const result = resolveSsServiceFromDigitOption({
+    digitOptionId: upsGround.id,
+    digitValue: upsGround.value,
+    mappings: [
+      {
+        ssCarrierCode: 'ups',
+        ssServiceCode: '',
+        digitOptionId: upsGround.id,
+        source: 'manual',
+      },
+    ],
+    ssCarriers: upsCatalog,
+  });
+  assert.equal(result.status, 'unmapped');
+});
+
+test('resolveSsServiceFromDigitOption returns a unique service map', () => {
+  const result = resolveSsServiceFromDigitOption({
+    digitOptionId: upsGround.id,
+    digitValue: upsGround.value,
+    mappings: [
+      {
+        ssCarrierCode: 'ups',
+        ssServiceCode: 'ups_ground',
+        digitOptionId: upsGround.id,
+        source: 'manual',
+      },
+    ],
+    ssCarriers: upsCatalog,
+  });
+  assert.equal(result.status, 'ok');
+  assert.equal(result.carrierId, 'se-ups-1');
+  assert.equal(result.carrierCode, 'ups');
+  assert.equal(result.serviceCode, 'ups_ground');
+  assert.equal(result.serviceName, 'UPS Ground');
+});
+
+test('resolveSsServiceFromDigitOption returns ambiguous when one Digit option maps to two services', () => {
+  const result = resolveSsServiceFromDigitOption({
+    digitOptionId: upsGround.id,
+    digitValue: upsGround.value,
+    mappings: [
+      {
+        ssCarrierCode: 'ups',
+        ssServiceCode: 'ups_ground',
+        digitOptionId: upsGround.id,
+        source: 'manual',
+      },
+      {
+        ssCarrierCode: 'ups',
+        ssServiceCode: 'ups_2nd_day_air',
+        digitOptionId: upsGround.id,
+        source: 'manual',
+      },
+    ],
+    ssCarriers: upsCatalog,
+  });
+  assert.equal(result.status, 'ambiguous');
+  assert.equal(result.serviceCode, null);
+});
+
+test('resolveSsServiceFromDigitOption will not push on an auto-matched service map', () => {
+  const result = resolveSsServiceFromDigitOption({
+    digitOptionId: upsGround.id,
+    digitValue: upsGround.value,
+    mappings: [
+      {
+        ssCarrierCode: 'ups',
+        ssServiceCode: 'ups_ground',
+        digitOptionId: upsGround.id,
+        source: 'fuzzy',
+      },
+    ],
+    ssCarriers: upsCatalog,
+  });
+  assert.equal(result.status, 'unconfirmed');
+  assert.equal(result.serviceCode, null);
+  assert.equal(result.digitValue, upsGround.value);
+});
+
+test('resolveSsServiceFromDigitOption ignores a fuzzy row once the option is confirmed elsewhere', () => {
+  const result = resolveSsServiceFromDigitOption({
+    digitOptionId: upsGround.id,
+    digitValue: upsGround.value,
+    mappings: [
+      {
+        ssCarrierCode: 'ups',
+        ssServiceCode: 'ups_2nd_day_air',
+        digitOptionId: upsGround.id,
+        source: 'fuzzy',
+      },
+      {
+        ssCarrierCode: 'ups',
+        ssServiceCode: 'ups_ground',
+        digitOptionId: upsGround.id,
+        source: 'manual',
+      },
+    ],
+    ssCarriers: upsCatalog,
+  });
+  assert.equal(result.status, 'ok');
+  assert.equal(result.serviceCode, 'ups_ground');
+});
+
+test('buildCarrierMapPayload reports push readiness for every Digit carrier', () => {
+  const payload = buildCarrierMapPayload({
+    digitCarriers: [upsGround, ontrac],
+    ssCarriers: upsCatalog,
+    mappings: [
+      {
+        ssCarrierCode: 'ups',
+        ssServiceCode: 'ups_ground',
+        digitOptionId: upsGround.id,
+        source: 'manual',
+      },
+    ],
+    pulledServices: [],
+  });
+  const byOption = new Map(payload.digitCarrierMaps.map((row) => [row.digitOptionId, row]));
+  assert.equal(byOption.get(upsGround.id)?.status, 'ok');
+  assert.equal(byOption.get(upsGround.id)?.ssServiceName, 'UPS Ground');
+  assert.equal(byOption.get(upsGround.id)?.ssCarrierName, 'UPS');
+  assert.equal(byOption.get(ontrac.id)?.status, 'unmapped');
 });

@@ -86,6 +86,9 @@ ShipStation extend:
       place it on the account. The app never accepts, returns, or logs them
 - [ ] New D1 shape = new migration file, not an edit of 0001_init.sql
 - [ ] Digit shipment carrier writeback: `matchDigitCarrier.js` + carrier modal maps (service then carrier default); never auto-create Digit options
+- [ ] Digit → SS push: Digit `shippingCarrierField` must reverse-map to exactly one SS service through a confirmed (`manual`) map; send `carrier_id`/`service_code` (V2) or `carrierCode`/`serviceCode` (V1)
+- [ ] Digit carrier → SS service push gaps are visible on the main page and in Carrier configuration
+- [ ] Keep SS service → Digit carrier writeback mapping logic intact but hidden until rate shopping is added
 - [ ] Tracking writeback: poll unlabeled maps (`GET /v2/labels` or V1 `GET /orders/{id}`)
 - [ ] New sync/poll paths: `appendActivity` (no secrets/PII); UI Alert + activity refetch
 - [ ] `ssFetch` / `digitGraphql` errors include upstream messages (not HTTP-only)

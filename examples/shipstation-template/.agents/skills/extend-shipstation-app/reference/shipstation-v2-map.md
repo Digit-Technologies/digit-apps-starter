@@ -13,7 +13,7 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 | --- | --- | --- |
 | `GET` | `/v2/carriers` | Validate API key; carrier sync |
 | `GET` | `/v2/carriers/{id}/services` | Services when the carrier list has none |
-| `POST` | `/v2/shipments` | Push Digit shipment (`create_sales_order: true`) |
+| `POST` | `/v2/shipments` | Push Digit shipment (`create_sales_order: true`). Always includes `carrier_id` + `service_code` from the Digit shipping-carrier → ShipStation service map. |
 | `GET` | `/v2/shipments/{id}` | Writeback |
 | `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Digit shipment id |
 | `GET` | `/v2/labels` | Poll unlabeled maps (`shipment_id` / `external_shipment_id`); `tracking_status` drives Digit `shippingStatus` |
@@ -24,8 +24,11 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 weight and complete dimensions when available, org defaults otherwise, and the Digit
 pack-container id as `external_package_id`. Shipment `items[]` remain shipment-level;
 do not misuse customs-only `packages[].products[]` as item-to-package allocation.
+Push requires a Digit `shippingCarrierField` that reverse-maps to exactly one
+ShipStation **service** through a confirmed (`manual`) map — not a carrier-level default
+and not an auto-matched `fuzzy` row; that map supplies `carrier_id` and `service_code`.
 
 ## Later (not wrapped)
 
-Address validation, return labels, rate shop (`POST /v2/rates`), purchase from rate
+Address validation, return labels, in-app rate shop (`POST /v2/rates`), purchase from rate
 (`POST /v2/labels/rates/{id}`), Rate Shopper one-shot.

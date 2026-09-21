@@ -35,7 +35,7 @@ import type {
 import {
   draftFromOrgSettings,
   mappingsFromDraft,
-  unmatchedServicesFrom,
+  pushBlockedDigitCarriersFrom,
 } from './carrierTypes';
 import AppShell from './components/AppShell';
 import CarrierSettingsDialog from './components/CarrierSettingsDialog';
@@ -44,6 +44,7 @@ import SectionHeader from './components/SectionHeader';
 import SetupCapabilitiesDialog from './components/SetupCapabilitiesDialog';
 import FulfillmentQueue from './FulfillmentQueue';
 import type { SetupData } from './setupTypes';
+import { useRefetchWhenVisible } from './useRefetchWhenVisible';
 
 type Permission = { key: string };
 
@@ -63,7 +64,7 @@ const ADMIN_PERMISSION = 'UPDATE_ORGANIZATION';
 
 const SETTING_HINTS = {
   defaultFulfillmentMethod:
-    'Scheduled push sends eligible awaiting-carrier shipments to ShipStation every five minutes. Manual push only sends them when you click Refresh in the shipping queue.',
+    'Manual push (the default) only sends eligible awaiting-carrier shipments when you click Push to ShipStation. Scheduled push also sends them every five minutes.',
   defaultWeightOz:
     'Package weight sent to ShipStation on push. Digit shipments have no weight field, so this default applies to every push.',
 } as const;
@@ -131,7 +132,8 @@ type SettingsDraft = {
 
 function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
   return {
-    defaultFulfillmentMethod: orgSettings?.defaultFulfillmentMethod === 'manual' ? 'manual' : 'scheduled',
+    defaultFulfillmentMethod:
+      orgSettings?.defaultFulfillmentMethod === 'scheduled' ? 'scheduled' : 'manual',
     defaultWeightOz: String(orgSettings?.defaultWeightOz ?? 16),
   };
 }
@@ -167,6 +169,7 @@ export default function App() {
     path: `/org-settings?organizationId=${encodeURIComponent(organizationId ?? '')}`,
     skip: !organizationId || !configLoaded,
   });
+  useRefetchWhenVisible(() => orgSettingsQuery.refetch());
   const connected = Boolean(connectionQuery.data?.connected);
   const credentialsMissing = Boolean(
     connectionQuery.data?.credentialsMissing || connectionQuery.data?.staleConnection,
@@ -181,7 +184,6 @@ export default function App() {
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [carrierSettingsOpen, setCarrierSettingsOpen] = useState(false);
-  const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [setupCapabilitiesOpen, setSetupCapabilitiesOpen] = useState(false);
   const [draft, setDraft] = useState<SettingsDraft | null>(null);
   const [carrierDraft, setCarrierDraft] = useState<CarrierDraft | null>(null);
@@ -285,25 +287,6 @@ export default function App() {
     await orgSettingsQuery.refetch();
   };
 
-  const disconnect = async () => {
-    if (!organizationId) return;
-    resetMutation();
-    const result = await mutate({
-      path: '/connection',
-      method: 'DELETE',
-      body: { organizationId },
-    });
-    if (!result.ok) return;
-    setDisconnectOpen(false);
-    setSettingsOpen(false);
-    setCarrierSettingsOpen(false);
-    setSuccessNotice(
-      'Disconnected ShipStation. The shipping queue cannot push until you connect again. Shipment maps stay for audit.',
-    );
-    await connectionQuery.refetch();
-    await orgSettingsQuery.refetch();
-  };
-
   const loading =
     setupQuery.loading ||
     bootstrap.loading ||
@@ -317,16 +300,14 @@ export default function App() {
     mutationError?.code === 'BACKEND_UNAVAILABLE';
   const canOfferConnect = !backendUnavailable && !connectionQuery.error;
   const digitCarriersError = orgSettingsQuery.data?.digitCarriersError ?? null;
-  const unmatchedServices = digitCarriersError ? [] : unmatchedServicesFrom(orgSettingsQuery.data);
-  const unmatchedCarrierCount = unmatchedServices.length;
-  const unmatchedCarrierLabel = unmatchedServices
-    .map((row) => row.name || row.serviceCode)
+  /** Push direction: Digit carriers with no single confirmed ShipStation service. */
+  const pushBlockedCarriers = digitCarriersError
+    ? []
+    : pushBlockedDigitCarriersFrom(orgSettingsQuery.data);
+  const pushBlockedLabel = pushBlockedCarriers
+    .map((row) => row.digitValue)
     .filter(Boolean)
     .join(', ');
-  /** A purchased label already used one of these, so a shipment is missing its Digit carrier. */
-  const unmatchedOnLabel = digitCarriersError
-    ? []
-    : (orgSettingsQuery.data?.unmappedCarriers ?? []);
   const featureStatusProps = {
     connected: operable,
     apiTokenPresent,
@@ -345,7 +326,7 @@ export default function App() {
           credentialsMissing={credentialsMissing}
           apiVersion={connectionQuery.data?.apiVersion}
           carrierCount={connectionQuery.data?.carrierCount}
-          unmatchedCarrierCount={unmatchedCarrierCount}
+          pushBlockedCarrierCount={pushBlockedCarriers.length}
           loading={loading}
           isAdmin={isAdmin}
           shipStationKeyPresent={shipStationKeyPresent}
@@ -356,11 +337,6 @@ export default function App() {
           onConnect={() => void connect()}
           onOpenSettings={openSettings}
           onOpenCarrierSettings={openCarrierSettings}
-          onOpenDisconnect={() => {
-            resetMutation();
-            setSuccessNotice(null);
-            setDisconnectOpen(true);
-          }}
           onOpenSetupCapabilities={() => setSetupCapabilitiesOpen(true)}
         />
       }
@@ -394,8 +370,8 @@ export default function App() {
       {credentialsMissing ? (
         <Alert severity="warning">
           ShipStation app secrets were removed, so this org is <strong>not connected</strong> even
-          though a local connection record remains. Click <strong>Clear connection</strong> to remove
-          it, or restore <strong>SHIPSTATION_API_KEY</strong> and reload.
+          though a local connection record remains. Restore <strong>SHIPSTATION_API_KEY</strong> and
+          reload. Connect will replace the leftover record with the current secrets.
         </Alert>
       ) : null}
       {successNotice ? (
@@ -406,9 +382,9 @@ export default function App() {
       {operable && digitCarriersError ? (
         <Alert severity="warning">{digitCarriersError}</Alert>
       ) : null}
-      {operable && unmatchedCarrierCount > 0 ? (
+      {operable && pushBlockedCarriers.length > 0 ? (
         <Alert
-          severity={unmatchedOnLabel.length > 0 ? 'error' : 'warning'}
+          severity="error"
           action={
             isAdmin ? (
               <Button color="inherit" size="small" onClick={openCarrierSettings}>
@@ -417,24 +393,28 @@ export default function App() {
             ) : null
           }
         >
-          {unmatchedOnLabel.length > 0
-            ? `A purchased label used a ShipStation service that is not mapped to Digit (${unmatchedOnLabel
-                .map((row) => row.serviceName || row.serviceCode || row.carrierName || row.carrierCode)
-                .filter(Boolean)
-                .join(', ')}), so those shipments have no Digit carrier. `
-            : `${unmatchedCarrierCount} ShipStation service${
-                unmatchedCarrierCount === 1 ? ' is' : 's are'
-              } not mapped to a Digit shipping carrier (${unmatchedCarrierLabel}). Digit’s carrier stays empty when a label uses ${
-                unmatchedCarrierCount === 1 ? 'it' : 'one of them'
-              }. `}
+          {`${pushBlockedCarriers.length} Digit shipping carrier${
+            pushBlockedCarriers.length === 1 ? '' : 's'
+          } cannot push to ShipStation (${pushBlockedLabel}). Shipments using ${
+            pushBlockedCarriers.length === 1 ? 'it' : 'them'
+          } stay blocked in the queue. `}
           {isAdmin
-            ? 'Open carrier mapping to choose a Digit shipping carrier for each service, or set a carrier default.'
-            : 'An org admin must map it in carrier settings.'}
+            ? 'Open Carrier configuration → Digit carriers and pick one ShipStation service for each.'
+            : 'An org admin must map them in Carrier configuration.'}
         </Alert>
       ) : null}
 
       {showContent && operable && organizationId ? (
-        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+        <Paper
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            p: { xs: 1.5, sm: 2 },
+          }}
+        >
           <FulfillmentQueue
             organizationId={organizationId}
             canPush
@@ -455,29 +435,16 @@ export default function App() {
             title={credentialsMissing ? 'Connection inactive' : 'Connect your account'}
             description={
               credentialsMissing
-                ? 'Secrets are missing. Clear the leftover connection, or restore the ShipStation API key and reload.'
+                ? 'Secrets are missing. Restore the ShipStation API key in Digit and reload, then connect again.'
                 : 'Validate credentials (V2 key, or V1 key plus secret) and sync carriers before pushing shipments.'
             }
           />
           <Box sx={{ mt: 2 }}>
             {credentialsMissing ? (
-              <Stack spacing={2}>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  The shipping queue stays hidden until ShipStation credentials are live again.
-                </Typography>
-                <Button
-                  color="error"
-                  variant="outlined"
-                  onClick={() => {
-                    resetMutation();
-                    setSuccessNotice(null);
-                    setDisconnectOpen(true);
-                  }}
-                  sx={{ alignSelf: 'flex-start' }}
-                >
-                  Clear connection
-                </Button>
-              </Stack>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                The shipping queue stays hidden until ShipStation credentials are live again. Connect
+                replaces any leftover connection record once the key is restored.
+              </Typography>
             ) : !canOfferConnect ? (
               <Alert severity="warning">
                 The app backend is unavailable right now, so Connect cannot verify your ShipStation
@@ -501,7 +468,14 @@ export default function App() {
       ) : null}
 
       {showContent && operable && organizationId ? (
-        <Paper sx={{ p: { xs: 2, sm: 3 } }}>
+        <Paper
+          sx={{
+            flex: '0 1 auto',
+            maxHeight: { xs: 180, md: 220 },
+            overflow: 'auto',
+            p: { xs: 1.5, sm: 2 },
+          }}
+        >
           <ActivityLog query={activityQuery} />
         </Paper>
       ) : null}
@@ -533,8 +507,8 @@ export default function App() {
                       setDraft({ ...draft, defaultFulfillmentMethod: event.target.value })
                     }
                   >
-                    <MenuItem value="scheduled">Scheduled push</MenuItem>
                     <MenuItem value="manual">Manual push</MenuItem>
+                    <MenuItem value="scheduled">Scheduled push</MenuItem>
                   </Select>
                 </FormControl>
               </SettingField>
@@ -566,46 +540,22 @@ export default function App() {
         draft={carrierDraft ?? { defaults: {}, services: {} }}
         mutating={mutating}
         mutationError={mutationError}
-        onChangeDefault={(ssCarrierCode, digitOptionId) =>
-          setCarrierDraft((current) => ({
-            defaults: { ...(current?.defaults ?? {}), [ssCarrierCode]: digitOptionId },
-            services: current?.services ?? {},
-          }))
-        }
-        onChangeService={(ssCarrierCode, ssServiceCode, digitOptionId) =>
-          setCarrierDraft((current) => ({
-            defaults: current?.defaults ?? {},
-            services: {
-              ...(current?.services ?? {}),
-              [ssCarrierCode + '::' + ssServiceCode]: digitOptionId,
-            },
-          }))
+        onPickDigitCarrierService={(digitOptionId, serviceKey) =>
+          setCarrierDraft((current) => {
+            // One Digit carrier resolves to one ShipStation service, so drop its other pins.
+            const services = Object.fromEntries(
+              Object.entries(current?.services ?? {}).map(([key, value]) => [
+                key,
+                value === digitOptionId ? '' : value,
+              ]),
+            );
+            if (serviceKey) services[serviceKey] = digitOptionId;
+            return { defaults: current?.defaults ?? {}, services };
+          })
         }
         onClose={() => setCarrierSettingsOpen(false)}
         onSave={() => void saveCarrierMappings()}
       />
-
-      <Dialog open={disconnectOpen} onClose={() => setDisconnectOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Disconnect ShipStation?</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            This disables ShipStation actions and soft-deletes the connection
-            and carrier catalog. Existing label and order-map records stay for audit. Reconnect
-            creates a new connection and re-syncs carriers.
-          </Typography>
-          {mutationError && (
-            <Box sx={{ mt: 2 }}>
-              <AppErrorAlert error={mutationError} />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDisconnectOpen(false)}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={() => void disconnect()} disabled={mutating}>
-            {mutating ? 'Disconnecting…' : 'Disconnect'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </AppShell>
   );
 }
