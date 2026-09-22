@@ -28,8 +28,8 @@ Scripts:
 - `npm run pack` — `digit-app pack`: build + `app.zip` for Digit upload
 
 Local Digit runtime preview is not supported (there is no local Worker / env / D1 harness).
-Pack this example for a remote Digit preview first; preview and live use separate platform
-resources, but preview is not production-equivalent for schedules or inbound webhooks.
+Pack this example for a remote Digit preview first — preview isolates Worker/D1/R2 from live
+but shares live env vars and secrets; schedules and inbound webhooks stay live-only.
 
 ### What `pack` puts in `app.zip`
 
