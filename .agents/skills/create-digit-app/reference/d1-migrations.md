@@ -37,6 +37,9 @@ completing the deployment does not apply any SQL.
 - Keep each file **small and focused** — one logical change per file when possible.
 - Prefer backward-compatible expand/contract migrations because preview and live may be on
   different schema versions while a build is being reviewed or promoted.
+- If a live/promote migration cannot capture a D1 Time Travel bookmark, promotion **fails
+  closed** and does not migrate — see [publish.md](publish.md). Digit does not auto-restore
+  from that bookmark if a later step fails.
 - If a migration fails partway through, fix the SQL and **publish again**. Digit retries
   files that have not yet been recorded as successfully applied.
 

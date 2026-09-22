@@ -51,12 +51,15 @@ type AppManifest = {
   binding points the app at a fresh, empty resource
 - Optional `backend/migrations/*.sql` requires a `database` binding — see
   [d1-migrations.md](d1-migrations.md)
-- Optional `backend.schedules` (recurring background runs): name `[a-z0-9-]{1,32}` unique,
-  `everySeconds` 300–86400, payload ≤4KB, max 5 — handled via `createHandler({ jobs })`;
-  publishing replaces the set wholesale (no `schedules` = clears them)
-- Optional `backend.webhooks` (public inbound POST endpoints): `path` `[a-z0-9-]{1,32}`
-  unique, max 10 — handled via `createHandler({ webhooks })`; undeclared paths 404 at the
-  platform edge, and the handler must verify the provider's signature itself
+- Optional `backend.schedules` are **live only** (preview cron stays off): name
+  `[a-z0-9-]{1,32}` unique, `everySeconds` 300–86400, payload ≤4KB, max 5 — handled via
+  `createHandler({ jobs })`; a live deployment replaces the live set wholesale (no
+  `schedules` = clears live schedules). See [jobs-and-schedules.md](jobs-and-schedules.md)
+- Optional `backend.webhooks` (public inbound POST endpoints, **live only** — preview Hosts
+  404 and do not deliver): `path` `[a-z0-9-]{1,32}` unique, max 10 — handled via
+  `createHandler({ webhooks })`; undeclared paths 404 at the platform edge, and the handler
+  must verify the provider's signature itself. Preview cron, webhooks, and other
+  timer/webhook side effects stay off
 - `frontend/index.js` must exist; `frontend/index.html` and `frontend/loader.js` are
   harness-reserved names your bundle may not contain
 

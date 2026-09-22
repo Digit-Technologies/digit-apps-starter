@@ -22,6 +22,9 @@ Digit Settings that edit env vars or secrets update **live only**. A change made
 reviewing a preview still writes the live record, and both the preview Worker and the live
 Worker then receive those values.
 
+**Promote does not wipe live env/secrets.** Preview already shares that live Worker config,
+so promotion does not copy, replace, or clear live env or secrets.
+
 Because preview therefore always holds live credentials, guard or disable external writes,
 email, payments, and other irreversible side effects. Do not infer the channel from internal
 `X-Digit-*` headers: there is not yet a documented app-facing `isPreview()` helper. A supported

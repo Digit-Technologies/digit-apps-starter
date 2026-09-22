@@ -125,7 +125,9 @@ The Digit App Builder is preview-first:
 - Talk about that result as “built a preview,” never “published.” Keep iterating by packing
   and deploying another preview.
 - The Digit web app's explicit Publish action promotes the current preview build to live.
-  Promotion uses the already-reviewed build; it does not rebuild it.
+  Promotion uses the already-reviewed build; it does not rebuild it. **Promote does not wipe
+  live env/secrets** — preview shares the live Worker config, and Digit Settings write live
+  only.
 
 Standalone MCP clients use `publishApp` directly and may choose `channel: "preview"` or
 `channel: "live"`. Omitting `channel` remains the backwards-compatible live behavior, so do
@@ -136,9 +138,9 @@ Preview is not production-equivalent for every backend feature:
 
 - Preview sessions may read Digit data, but Digit GraphQL writes are not a valid preview
   test; app-owned D1/R2 writes stay in preview resources.
-- Preview schedules are not registered, and inbound webhooks are live-only. On-demand jobs
-  are scoped to the preview job namespace when invoked, but should not be treated as a
-  production run.
+- **Schedules are live only.** Preview cron, inbound webhooks, and other timer/webhook side
+  effects stay off. On-demand jobs are scoped to the preview job namespace when invoked, but
+  should not be treated as a production run.
 - Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
   secrets update **live only** — there is no preview-specific configuration. Guard or
   disable external side effects; do not seed live data into preview by default.
@@ -271,11 +273,11 @@ Omit `backend` when the app is UI-only / Digit API only. `bindings` maps
 file/blob storage, max 10). Names are `UPPER_SNAKE_CASE` and must not start with
 `DIGIT_`.
 
-Optional `backend.schedules` and on-demand jobs:
+Optional `backend.schedules` are **live only** (preview cron stays off) — see
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md).
-Optional `backend.webhooks` — public inbound POST endpoints at `/webhooks/{path}`; the
-handler MUST verify the provider's signature over the raw bytes:
-[reference/webhooks.md](reference/webhooks.md).
+Optional `backend.webhooks` — public inbound POST endpoints at `/webhooks/{path}`
+(**live only**; preview Hosts 404); the handler MUST verify the provider's signature over
+the raw bytes: [reference/webhooks.md](reference/webhooks.md).
 Full schema: [reference/manifest.md](reference/manifest.md).
 
 ### 6. Permissions
@@ -300,7 +302,8 @@ Configured on the app in Digit Settings (UI only). Injected only into the Worker
 embeds secrets — read env-backed data via backend hooks.
 
 Preview uses the **same live env vars and live secrets**. Settings edits update live only;
-they are not preview-scoped. [reference/backend-env-secrets.md](reference/backend-env-secrets.md).
+they are not preview-scoped. **Promote does not wipe live env/secrets.** Details:
+[reference/backend-env-secrets.md](reference/backend-env-secrets.md).
 
 ### 8. Deploy or publish
 

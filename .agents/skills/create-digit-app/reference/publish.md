@@ -87,11 +87,21 @@ must remain in the published zip so the app can be restored for a later iteratio
 
 Call `appPublish` with `appId` and `appPublishId` (the upload-link `id`) until the state is
 `succeeded` or `failed`. Intermediate states include `queued`, `validating`,
-`deployingBackend`, and `publishingBundle`.
+`deployingBackend`, and `publishingBundle`. During `deployingBackend`, Digit applies pending
+migrations — see [d1-migrations.md](d1-migrations.md).
 
 For a preview, a succeeded row means the owner can open the preview environment; it does not
 mean the live pointer changed. For a live publish or a later promotion, the live app changes
 only after the platform has completed the live deployment.
+
+**Promote does not wipe live env/secrets.** Preview shares the live Worker config; Digit
+Settings write live only. Promotion does not copy a preview configuration onto live.
+
+Live D1 migrations are **fail-closed** on Time Travel. Digit captures a D1 Time Travel
+bookmark before migrating production; if bookmark capture fails, promotion fails and does
+not migrate. Digit does not auto-restore from that bookmark if a later step fails — live
+traffic keeps writing after the bookmark, so a restore would drop those rows. The bookmark
+stays on the promote row as an operator recovery aid.
 
 On failure, report the returned `error`, fix the app, repack, and start a fresh upload. Each
 upload is single-use.

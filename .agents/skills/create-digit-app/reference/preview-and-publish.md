@@ -24,16 +24,19 @@ when it wants a non-production deploy.
 
 Never describe a successful preview deployment as a production publish. If a preview deploy
 fails, fix the bundle and deploy a new upload. If the user wants to ship, use the Digit web
-app's explicit Publish action for the current preview build.
+app's explicit Publish action for the current preview build. **Promote does not wipe live
+env/secrets** — preview shares the live Worker config, and Digit Settings write live only.
 
 ## What preview does and does not test
 
 - Preview migrations run against the preview D1. Promotion applies the build's pending
   migrations to live D1; use backward-compatible expand/contract changes.
-- Preview schedules are not registered, so timer-driven behavior is not production-equivalent.
-  On-demand jobs use the preview job namespace when invoked by the preview app.
-- Inbound webhooks are live-only and are not delivered to a preview Host. Test webhook
-  handlers with signed local/unit fixtures or a deliberate live test strategy.
+- **Schedules are live only.** Preview cron is not registered, so timer-driven behavior is
+  not production-equivalent. On-demand jobs use the preview job namespace when invoked by
+  the preview app.
+- Inbound webhooks are live-only and are not delivered to a preview Host. Preview cron,
+  webhooks, and other timer/webhook side effects stay off. Test webhook handlers with signed
+  local/unit fixtures or a deliberate live test strategy.
 - Preview sessions may read Digit data, but Digit GraphQL writes are not a valid preview test.
   App-owned D1/R2 writes are isolated to preview resources.
 - Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
@@ -46,6 +49,9 @@ app's explicit Publish action for the current preview build.
 Preview uses the **live env vars and live secrets**. There is no separate preview
 configuration, inheritance step, or preview override. Digit Settings that edit env or
 secrets update the live record only; preview Workers receive those same values.
+
+**Promote does not wipe live env/secrets.** Preview already shares the live Worker config,
+so promotion does not copy, replace, or clear live env or secrets.
 
 Because preview always has live credentials, preview code must not assume that external
 calls are harmless. Guard third-party writes, email, payments, and other irreversible
