@@ -1,5 +1,9 @@
 # Deploy a Digit app
 
+Requires the org `CUSTOM_APPS` feature flag and `publish:app` permission. If either is
+missing, stop — there is no alternate publish path. Digit MCP is required for the standalone
+upload workflow below.
+
 Packing is local; the Digit platform performs the deployment. There is no local Digit runtime
 preview because Workers, env/secrets, D1, and R2 are injected by the platform. The same
 channel-neutral `app.zip` can be deployed to preview and later promoted to live.
@@ -23,7 +27,8 @@ production.
 
 ### Standalone MCP
 
-Standalone agents and scripts use the upload-link flow:
+Standalone agents and scripts use the upload-link flow. Digit MCP is required for this
+workflow.
 
 ```text
 1. apps                     → find appId
@@ -33,6 +38,9 @@ Standalone agents and scripts use the upload-link flow:
 5. appPublish               → poll until succeeded | failed
 ```
 
+Call MCP `apps`. Match by `name`. Use the returned `id` as `appId`. If the app does not
+exist, stop and ask the user to create it in Digit.
+
 `publishApp` accepts `channel: "preview" | "live"`. Use `channel: "preview"` when testing
 without changing production. If `channel` is omitted, it defaults to `live` for backwards
 compatibility with existing callers. Promotion is currently an explicit Digit web action;
@@ -40,8 +48,11 @@ do not assume a preview is live just because its `appPublish` row succeeded.
 
 ## Prerequisites
 
-1. The user has **created the app in Digit** (UI). Deployment never creates apps.
+1. The user has **created the app in Digit** (UI). Deployment never creates apps — there are
+   no MCP tools to create, update, or delete apps. If the app does not exist, stop and ask
+   the user to create it in Digit.
 2. You know the app `id` — resolve it with MCP `apps`, or use the builder's request context.
+   If the app does not exist, stop and ask the user to create it in Digit.
 3. GraphQL operations were checked against `graphql-schema://…`, and
    `manifest.permissions` contains the `key` values returned by `appPermissions`.
 4. `app.zip` is ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`).
