@@ -105,8 +105,9 @@ For a preview, a succeeded row means the owner can open the preview environment;
 mean the live pointer changed. For a live publish or a later promotion, the live app changes
 only after the platform has completed the live deployment.
 
-**Promote does not wipe live env/secrets.** Preview shares the live Worker config; Digit
-Settings write live only. Promotion does not copy a preview configuration onto live.
+Publish ships the reviewed build and applies pending live migrations only — it is not a
+config promote. **Promote does not wipe live env/secrets.** Preview shares live env and
+secrets; Digit Settings write live only.
 
 Live D1 migrations are **fail-closed** on Time Travel. Digit captures a D1 Time Travel
 bookmark before migrating production; if bookmark capture fails, promotion fails and does

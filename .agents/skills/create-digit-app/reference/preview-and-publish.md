@@ -24,8 +24,10 @@ when it wants a non-production deploy.
 
 Never describe a successful preview deployment as a production publish. If a preview deploy
 fails, fix the bundle and deploy a new upload. If the user wants to ship, use the Digit web
-app's explicit Publish action for the current preview build. **Promote does not wipe live
-env/secrets** — preview shares the live Worker config, and Digit Settings write live only.
+app's explicit Publish action for the current preview build. Publish ships the reviewed
+build and applies pending live migrations only — it is not a config promote. **Promote does
+not wipe live env/secrets** — preview shares live env and secrets, and Digit Settings write
+live only.
 
 ## What preview does and does not test
 
@@ -49,8 +51,8 @@ env/secrets** — preview shares the live Worker config, and Digit Settings writ
 Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
 secrets update the live record only; preview Workers receive those same values.
 
-**Promote does not wipe live env/secrets.** Preview already shares the live Worker config,
-so promotion does not copy, replace, or clear live env or secrets.
+**Promote does not wipe live env/secrets.** Preview shares live env and secrets; Digit
+Settings write live only.
 
 Because preview always has live credentials, preview code must not assume that external
 calls are harmless. Guard third-party writes, email, payments, and other irreversible
