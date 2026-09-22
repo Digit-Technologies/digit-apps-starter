@@ -40,14 +40,13 @@ env/secrets** — preview shares the live Worker config, and Digit Settings writ
 - Preview sessions may read Digit data, but Digit GraphQL writes are not a valid preview test.
   App-owned D1/R2 writes are isolated to preview resources.
 - Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
-  secrets update live only; there is no preview configuration channel.
+  secrets update live only.
 - Do not seed live data into preview by default. Live data may contain sensitive information;
   use synthetic data unless the user explicitly requests a permitted seed operation.
 
 ## Configuration and external side effects
 
-Preview uses the **live env vars and live secrets**. There is no separate preview
-configuration, inheritance step, or preview override. Digit Settings that edit env or
+Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
 secrets update the live record only; preview Workers receive those same values.
 
 **Promote does not wipe live env/secrets.** Preview already shares the live Worker config,

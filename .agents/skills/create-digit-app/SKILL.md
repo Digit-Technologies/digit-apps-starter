@@ -142,7 +142,7 @@ Preview is not production-equivalent for every backend feature:
   effects stay off. On-demand jobs are scoped to the preview job namespace when invoked, but
   should not be treated as a production run.
 - Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
-  secrets update **live only** — there is no preview-specific configuration. Guard or
+  secrets update **live only**. Guard or
   disable external side effects; do not seed live data into preview by default.
 
 Full deployment details and safety notes: [reference/publish.md](reference/publish.md),
@@ -301,8 +301,8 @@ Configured on the app in Digit Settings (UI only). Injected only into the Worker
 `env.KEY`. Read with `requireEnv` / `optionalEnv` inside `createHandler`. Frontend never
 embeds secrets — read env-backed data via backend hooks.
 
-Preview uses the **same live env vars and live secrets**. Settings edits update live only;
-they are not preview-scoped. **Promote does not wipe live env/secrets.** Details:
+Preview uses the **same live env vars and live secrets**. Settings edits update live only.
+**Promote does not wipe live env/secrets.** Details:
 [reference/backend-env-secrets.md](reference/backend-env-secrets.md).
 
 ### 8. Deploy or publish

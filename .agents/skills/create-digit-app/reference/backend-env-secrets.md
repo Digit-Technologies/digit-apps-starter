@@ -15,8 +15,7 @@ into the frontend bundle.
 ## Preview: live env and live secrets
 
 Preview has a separate Worker and separate app-owned storage (D1/R2), but it uses the
-**same env vars and secrets as live**. There is no preview configuration channel, inheritance
-step, or preview override.
+**same env vars and secrets as live**.
 
 Digit Settings that edit env vars or secrets update **live only**. A change made while
 reviewing a preview still writes the live record, and both the preview Worker and the live
