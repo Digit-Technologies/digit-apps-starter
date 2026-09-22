@@ -12,17 +12,18 @@ into the frontend bundle.
 - Secrets are write-only in the API (owners see keys, not values)
 - Frontend must never hard-code secret values
 
-## Preview configuration and side effects
+## Preview: live env and live secrets
 
-Preview has a separate Worker and separate app-owned storage, but its configuration is managed
-as a separate channel. When preview is first created, env vars and secrets may inherit the live
-ciphertext. An explicitly saved preview configuration is the one that can be copied to live when
-the preview is promoted; if no preview override was saved, promotion preserves the existing live
-configuration.
+Preview has a separate Worker and separate app-owned storage (D1/R2), but it uses the
+**same env vars and secrets as live**. There is no preview configuration channel, inheritance
+step, or preview override.
 
-This means a preview Worker can still hold real third-party credentials. Use test credentials
-and test endpoints whenever possible, and guard or disable external writes, email, payments,
-and other irreversible side effects in preview. Do not infer the channel from internal
+Digit Settings that edit env vars or secrets update **live only**. A change made while
+reviewing a preview still writes the live record, and both the preview Worker and the live
+Worker then receive those values.
+
+Because preview therefore always holds live credentials, guard or disable external writes,
+email, payments, and other irreversible side effects. Do not infer the channel from internal
 `X-Digit-*` headers: there is not yet a documented app-facing `isPreview()` helper. A supported
 runtime channel signal would be a platform/SDK change, not an app convention.
 
@@ -109,6 +110,6 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 ## Setup for users
 
 1. Create the app in Digit
-2. Set env vars / secrets on the app in Digit
+2. Set env vars / secrets in Digit Settings (live values; preview uses them too)
 3. Publish a bundle whose manifest declares `backend.kind: "cloudflare-worker"`
 4. Ship `backend/index.js` that reads those keys via `requireEnv` inside `createHandler`

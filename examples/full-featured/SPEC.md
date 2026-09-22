@@ -27,7 +27,8 @@ wired to a real host).
   `POST /jobs/note-stats` — handlers in `src/backend/jobs.js`, UI in the Jobs tab
 
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code. Preview
-may inherit live credentials, schedules do not run on preview, and inbound webhooks are live-only.
+uses live env and live secrets (Settings edits update live only); schedules do not run on
+preview, and inbound webhooks are live-only.
 `@digit/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@digit/lib-build`)
 vendors those packages (including `lib-build`) under `project/packages/` in `app.zip`.
 Local Digit runtime preview is not supported; remote preview is the platform deployment path.

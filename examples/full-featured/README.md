@@ -54,10 +54,10 @@ D1 migrations in `src/backend/migrations/` run during the platform deployment wh
 declares a `database` binding. Preview migrations apply to preview D1; promotion applies pending
 migrations to live D1 — no manual apply step.
 
-The example's secret-backed HTTP call should use a test endpoint and test credential in preview.
-Preview configuration can inherit live secrets, and there is no documented app-facing
+The example's secret-backed HTTP call uses the **same live env and live secrets** as
+production. Digit Settings edits update live only. There is no documented app-facing
 `isPreview()` helper yet, so do not add irreversible external side effects without an explicit
-guard.
+guard. Preview schedules and inbound webhooks stay off.
 
 ## Notes
 

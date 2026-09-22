@@ -34,8 +34,8 @@ Rules (publish-validated):
 Preview Workers receive the jobs binding under the preview app identity, but the platform does
 not register the manifest's recurring schedules for preview. This prevents a preview from
 running a second copy of production cron work. An on-demand job submitted by preview code is
-scoped to the preview job namespace, but it is still a real background run and should use test
-data and credentials.
+scoped to the preview job namespace, but it still sees live env/secrets and is a real
+background run.
 
 Promotion registers the manifest schedules against the live Worker. Do not use a successful
 preview to claim that timer-driven behavior has been tested in production conditions; test the

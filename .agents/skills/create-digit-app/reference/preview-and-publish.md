@@ -36,19 +36,20 @@ app's explicit Publish action for the current preview build.
   handlers with signed local/unit fixtures or a deliberate live test strategy.
 - Preview sessions may read Digit data, but Digit GraphQL writes are not a valid preview test.
   App-owned D1/R2 writes are isolated to preview resources.
+- Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
+  secrets update live only; there is no preview configuration channel.
 - Do not seed live data into preview by default. Live data may contain sensitive information;
   use synthetic data unless the user explicitly requests a permitted seed operation.
 
 ## Configuration and external side effects
 
-Preview configuration is separate from live configuration. When preview is first created, its
-env vars and secrets may inherit the live ciphertext. An explicit preview configuration can be
-saved and is the configuration promoted with the preview build; otherwise promotion preserves
-the existing live configuration.
+Preview uses the **live env vars and live secrets**. There is no separate preview
+configuration, inheritance step, or preview override. Digit Settings that edit env or
+secrets update the live record only; preview Workers receive those same values.
 
-Because a preview Worker can therefore have live credentials, preview code must not assume that
-external calls are harmless. Prefer test credentials and test endpoints, and add idempotency or
-feature-flag guards around third-party writes, email, payments, and other irreversible actions.
+Because preview always has live credentials, preview code must not assume that external
+calls are harmless. Guard third-party writes, email, payments, and other irreversible
+actions. Changing Settings to test credentials would also change live.
 
 There is currently no documented app-facing `isPreview()` runtime helper. Do not infer the
 channel from internal platform headers. If app behavior must differ between channels, track a
