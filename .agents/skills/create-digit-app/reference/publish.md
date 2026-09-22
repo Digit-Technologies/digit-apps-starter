@@ -107,7 +107,8 @@ only after the platform has completed the live deployment.
 
 Publish ships the reviewed build and applies pending live migrations only — it is not a
 config promote. **Promote does not wipe live env/secrets.** Preview shares live env and
-secrets; Digit Settings write live only.
+secrets; Digit Settings write live only. Nothing is copied from preview onto live for env
+or secrets — preview already shares live, and promote is not a config copy.
 
 Live D1 migrations are **fail-closed** on Time Travel. Digit captures a D1 Time Travel
 bookmark before migrating production; if bookmark capture fails, promotion fails and does
@@ -126,4 +127,4 @@ upload is single-use.
 - `manifest.permissions` are **`key`** values from `appPermissions`
 
 See [preview-and-publish.md](preview-and-publish.md) for channel isolation, migrations,
-schedules, webhooks, configuration, and side-effect guidance.
+schedules, webhooks, env/secrets, and side-effect guidance.

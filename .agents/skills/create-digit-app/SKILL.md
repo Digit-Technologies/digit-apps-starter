@@ -127,7 +127,8 @@ The Digit App Builder is preview-first:
 - The Digit web app's explicit Publish action promotes the current preview build to live.
   Publish ships the reviewed build and applies pending live migrations only — it is not a
   config promote. **Promote does not wipe live env/secrets** — preview shares live env and
-  secrets, and Digit Settings write live only.
+  secrets, and Digit Settings write live only. Nothing is copied from preview onto live for
+  env or secrets.
 
 Standalone MCP clients use `publishApp` directly and may choose `channel: "preview"` or
 `channel: "live"`. Omitting `channel` remains the backwards-compatible live behavior, so do
@@ -302,7 +303,8 @@ Configured on the app in Digit Settings (UI only). Injected only into the Worker
 embeds secrets — read env-backed data via backend hooks.
 
 Preview uses the **same live env vars and live secrets**. Settings edits update live only.
-**Promote does not wipe live env/secrets.** Details:
+**Promote does not wipe live env/secrets.** Nothing is copied from preview onto live for env
+or secrets — preview already shares live, and promote is not a config copy. Details:
 [reference/backend-env-secrets.md](reference/backend-env-secrets.md).
 
 ### 8. Deploy or publish

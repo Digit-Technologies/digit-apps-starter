@@ -22,7 +22,8 @@ reviewing a preview still writes the live record, and both the preview Worker an
 Worker then receive those values.
 
 **Promote does not wipe live env/secrets.** Preview shares live env and secrets; Digit
-Settings write live only.
+Settings write live only. Nothing is copied from preview onto live for env or secrets —
+preview already shares live, and promote is not a config copy.
 
 Because preview therefore always holds live credentials, guard or disable external writes,
 email, payments, and other irreversible side effects. Do not infer the channel from internal

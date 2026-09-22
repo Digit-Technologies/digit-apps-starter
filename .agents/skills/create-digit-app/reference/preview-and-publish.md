@@ -27,7 +27,7 @@ fails, fix the bundle and deploy a new upload. If the user wants to ship, use th
 app's explicit Publish action for the current preview build. Publish ships the reviewed
 build and applies pending live migrations only — it is not a config promote. **Promote does
 not wipe live env/secrets** — preview shares live env and secrets, and Digit Settings write
-live only.
+live only. Nothing is copied from preview onto live for env or secrets.
 
 ## What preview does and does not test
 
@@ -42,17 +42,12 @@ live only.
 - Preview sessions may read Digit data, but Digit GraphQL writes are not a valid preview test.
   App-owned D1/R2 writes are isolated to preview resources.
 - Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
-  secrets update live only.
+  secrets update live only. Nothing is copied from preview onto live for env or secrets —
+  preview already shares live, and promote is not a config copy.
 - Do not seed live data into preview by default. Live data may contain sensitive information;
   use synthetic data unless the user explicitly requests a permitted seed operation.
 
-## Configuration and external side effects
-
-Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
-secrets update the live record only; preview Workers receive those same values.
-
-**Promote does not wipe live env/secrets.** Preview shares live env and secrets; Digit
-Settings write live only.
+## External side effects
 
 Because preview always has live credentials, preview code must not assume that external
 calls are harmless. Guard third-party writes, email, payments, and other irreversible
