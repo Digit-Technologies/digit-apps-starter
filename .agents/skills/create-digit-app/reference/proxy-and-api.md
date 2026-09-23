@@ -77,6 +77,12 @@ tables.
 - Do **not** call Digit GraphQL with a bearer token from app JS
 - Do **not** invent a different proxy URL
 
+On a preview Host, the platform may allow reads using the viewer's live permissions, but
+preview sessions are not a safe way to test writes to Digit organization data: preview grants
+are narrowed to read-only GraphQL access, and attempted writes return `PREVIEW_READ_ONLY`.
+This is an expected preview restriction, not a missing `manifest.permissions` entry. Put
+app-owned test writes in the preview D1/R2 resources instead.
+
 ## App backend
 
 When `manifest.backend` is set, `useBackendQuery` / `useBackendMutation` hit

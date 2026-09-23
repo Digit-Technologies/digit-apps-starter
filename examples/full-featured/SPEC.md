@@ -18,7 +18,7 @@ wired to a real host).
 
 - `READ_ITEM` — Digit API tab runs an `items` query; needed so the proxy allows that field
 - D1 binding `FULL_FEATURED_DB` — schema from `src/backend/migrations/`; Digit applies
-  pending files during publish (not at runtime; publish is required — upload alone is not enough)
+  pending files during each channel's deployment (not at runtime; upload alone is not enough)
 - Env `WELCOME_MESSAGE` — greeting text for the Config tab (`GET /greeting`)
 - Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets tab hits an external HTTP API
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
@@ -26,10 +26,12 @@ wired to a real host).
   `payload.maxAgeDays`; job `note-stats` is submitted via `digitJobs` from
   `POST /jobs/note-stats` — handlers in `src/backend/jobs.js`, UI in the Jobs tab
 
-Gotchas: secrets and env are Worker bindings only — never put them in frontend code.
+Gotchas: secrets and env are Worker bindings only — never put them in frontend code. Preview
+uses live env and live secrets (Settings edits update live only); schedules do not run on
+preview, and inbound webhooks are live-only.
 `@digit/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@digit/lib-build`)
 vendors those packages (including `lib-build`) under `project/packages/` in `app.zip`.
-Local Digit preview is not supported yet.
+Local Digit runtime preview is not supported; remote preview is the platform deployment path.
 
 ## Prompts
 

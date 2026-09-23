@@ -1,7 +1,7 @@
 ---
 name: create-digit-app
 description: >-
-  Build and publish Digit custom apps (React + MUI + Digit theme via
+  Build, preview, and publish Digit custom apps (React + MUI + Digit theme via
   @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
@@ -25,9 +25,10 @@ Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the t
 package. Users are often non-developers — one path keeps apps looking and behaving
 like Digit.
 
-**Digit MCP is required.** Use it for schema lookup, permissions, listing apps, and
-publish. If MCP is not connected, stop and ask the user to connect Digit MCP before
-continuing.
+**Digit platform tools are required.** Use Digit MCP for standalone schema lookup,
+permissions, app discovery, and publishing. When this skill runs inside Digit App Builder,
+use the builder's platform tools for those same operations. If neither surface is available,
+stop and ask the user to connect the Digit tools before continuing.
 
 ## When to use
 
@@ -45,7 +46,8 @@ continuing.
 | Public GraphQL schema     | MCP resources `graphql-schema://index`, `graphql-schema://type/{TypeName}`, `graphql-schema://search/{query}` |
 | Manifest permissions      | MCP tool **`appPermissions`** — put each permission’s **`key`** in `manifest.json`                            |
 | Find an existing app’s id | MCP tool **`apps`**                                                                                           |
-| Publish                   | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** → poll **`appPublish`**                        |
+| Standalone publish       | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** (`channel`) → poll **`appPublish`**       |
+| App Builder deploy       | **`publishAppZip`** → preview; the Digit web app's Publish action promotes it to live                  |
 
 There are **no** MCP tools to create, update, or delete apps, or to manage env/secrets —
 those stay in the Digit UI. Do not invent them.
@@ -70,8 +72,9 @@ Digit app progress:
 - [ ] 7. Check manifest.permissions against appPermissions — confirm it covers every Digit API call the app makes
 - [ ] 8. Write/update SPEC.md
 - [ ] 9. npm run pack -w apps/<name> → app.zip
-- [ ] 10. Publish via MCP (upload zip out-of-band)
-- [ ] 11. Keep app source under apps/ — not build outputs; no upstream PRs
+- [ ] 10. Deploy a preview (App Builder: `publishAppZip`; standalone MCP: `publishApp` with `channel: preview`)
+- [ ] 11. If the user explicitly asks to ship, promote the current preview from the Digit web app
+- [ ] 12. Keep app source under apps/ — not build outputs; no upstream PRs
 ```
 
 Schema and permission lookup (steps 5–7) must happen **before publish**. Do them as soon
@@ -109,8 +112,43 @@ its build toolchain (Vite) in the root `node_modules`, not the app's. Running `n
 only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
 All apps share React + MUI + `@digit/lib-frontend` and the same folder conventions.
-There is no local Digit preview (Worker / env / D1 are platform-injected) — pack + publish
-is the path.
+There is no local Digit runtime preview (Worker, env/secrets, and D1 are platform-injected).
+`npm run pack` produces the same channel-neutral `app.zip` for a remote preview or a live
+deployment.
+
+### Preview and production
+
+The Digit App Builder is preview-first:
+
+- Pack the app, then call `publishAppZip` to deploy the zip to the owner's preview. A
+  successful preview deploy does **not** change the live app.
+- Talk about that result as “built a preview,” never “published.” Keep iterating by packing
+  and deploying another preview.
+- The Digit web app's explicit Publish action promotes the current preview build to live.
+  Publish ships the reviewed build and applies pending live migrations only — it is not a
+  config promote. **Promote does not wipe live env/secrets** — preview shares live env and
+  secrets, and Digit Settings write live only. Nothing is copied from preview onto live for
+  env or secrets.
+
+Standalone MCP clients use `publishApp` directly and may choose `channel: "preview"` or
+`channel: "live"`. Omitting `channel` remains the backwards-compatible live behavior, so do
+not omit it when a standalone workflow is meant to preview. Preview and live have separate
+Workers, D1 databases, R2 buckets, and bundle pointers; preview is owner-only.
+
+Preview is not production-equivalent for every backend feature:
+
+- Preview sessions may read Digit data, but Digit GraphQL writes are not a valid preview
+  test; app-owned D1/R2 writes stay in preview resources.
+- **Schedules are live only.** Preview cron, inbound webhooks, and other timer/webhook side
+  effects stay off. On-demand jobs are scoped to the preview job namespace when invoked, but
+  should not be treated as a production run.
+- Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
+  secrets update **live only**. Guard or
+  disable external side effects; do not seed live data into preview by default.
+
+Full deployment details and safety notes: [reference/publish.md](reference/publish.md),
+[reference/backend-env-secrets.md](reference/backend-env-secrets.md), and
+[reference/preview-and-publish.md](reference/preview-and-publish.md).
 
 **Debugging a published app.** The harness forwards uncaught errors, unhandled rejections,
 `console.error` / `console.warn`, bundle load failures and failed Digit API / backend calls
@@ -236,11 +274,11 @@ Omit `backend` when the app is UI-only / Digit API only. `bindings` maps
 file/blob storage, max 10). Names are `UPPER_SNAKE_CASE` and must not start with
 `DIGIT_`.
 
-Optional `backend.schedules` and on-demand jobs:
+Optional `backend.schedules` are **live only** (preview cron stays off) — see
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md).
-Optional `backend.webhooks` — public inbound POST endpoints at `/webhooks/{path}`; the
-handler MUST verify the provider's signature over the raw bytes:
-[reference/webhooks.md](reference/webhooks.md).
+Optional `backend.webhooks` — public inbound POST endpoints at `/webhooks/{path}`
+(**live only**; preview Hosts 404); the handler MUST verify the provider's signature over
+the raw bytes: [reference/webhooks.md](reference/webhooks.md).
 Full schema: [reference/manifest.md](reference/manifest.md).
 
 ### 6. Permissions
@@ -260,19 +298,25 @@ operations need. Details: [reference/permissions.md](reference/permissions.md).
 
 ### 7. Env vars and secrets
 
-Configured on the app in the Digit UI. Injected only into the Worker as `env.KEY`. Read
-with `requireEnv` / `optionalEnv` inside `createHandler`. Frontend never embeds secrets —
-read env-backed data via backend hooks.
+Configured on the app in Digit Settings (UI only). Injected only into the Worker as
+`env.KEY`. Read with `requireEnv` / `optionalEnv` inside `createHandler`. Frontend never
+embeds secrets — read env-backed data via backend hooks.
+
+Preview uses the **same live env vars and live secrets**. Settings edits update live only.
+**Promote does not wipe live env/secrets.** Nothing is copied from preview onto live for env
+or secrets — preview already shares live, and promote is not a config copy. Details:
 [reference/backend-env-secrets.md](reference/backend-env-secrets.md).
 
-### 8. Publish via MCP
+### 8. Deploy or publish
 
 ```
-apps → generateAppUploadLink → POST zip to uploadUrl → publishApp → poll appPublish
+pack → preview (App Builder: publishAppZip; standalone MCP: publishApp channel=preview)
+preview → explicit Digit web Publish action → live
 ```
 
-The zip does **not** travel through MCP. If you cannot HTTP POST the zip, stop and tell the
-user. Run `npm run pack`, then upload **`app.zip` unchanged**.
+The zip does **not** travel through standalone MCP. If you cannot upload it, stop and tell the
+user. Run `npm run pack`, then use **`app.zip` unchanged**. Do not call a live publish just to
+make a preview, and do not describe a successful preview deploy as production.
 Full steps: [reference/publish.md](reference/publish.md).
 
 ### 9. SPEC.md and local source
@@ -330,6 +374,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md) — jobs, schedules, DIGIT_JOBS
 - [reference/webhooks.md](reference/webhooks.md) — inbound webhooks, signature verification
 - [reference/d1-migrations.md](reference/d1-migrations.md) — database SQL applied on publish
-- [reference/publish.md](reference/publish.md) — MCP publish workflow and zip rules
+- [reference/publish.md](reference/publish.md) — preview/live deployment workflows and zip rules
+- [reference/preview-and-publish.md](reference/preview-and-publish.md) — channel behavior and preview safety
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context
 - [`packages/lib-build`](../../../packages/lib-build) — `digit-app pack` shared tooling

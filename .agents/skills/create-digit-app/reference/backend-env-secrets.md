@@ -12,6 +12,24 @@ into the frontend bundle.
 - Secrets are write-only in the API (owners see keys, not values)
 - Frontend must never hard-code secret values
 
+## Preview: live env and live secrets
+
+Preview has a separate Worker and separate app-owned storage (D1/R2), but it uses the
+**same env vars and secrets as live**.
+
+Digit Settings that edit env vars or secrets update **live only**. A change made while
+reviewing a preview still writes the live record, and both the preview Worker and the live
+Worker then receive those values.
+
+**Promote does not wipe live env/secrets.** Preview shares live env and secrets; Digit
+Settings write live only. Nothing is copied from preview onto live for env or secrets —
+preview already shares live, and promote is not a config copy.
+
+Because preview therefore always holds live credentials, guard or disable external writes,
+email, payments, and other irreversible side effects. Do not infer the channel from internal
+`X-Digit-*` headers: there is not yet a documented app-facing `isPreview()` helper. A supported
+runtime channel signal would be a platform/SDK change, not an app convention.
+
 ## Worker access
 
 Prefer `@digit/lib-backend`: wrap with `createHandler`, read bindings with `requireEnv`
@@ -95,6 +113,6 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 ## Setup for users
 
 1. Create the app in Digit
-2. Set env vars / secrets on the app in Digit
+2. Set env vars / secrets in Digit Settings (live values; preview uses them too)
 3. Publish a bundle whose manifest declares `backend.kind: "cloudflare-worker"`
 4. Ship `backend/index.js` that reads those keys via `requireEnv` inside `createHandler`
