@@ -33,16 +33,16 @@ Checklists only. Look up request/response shapes in vendor docs — do not inven
 **Hook:** `faireAdapter.afterDigitShipped` via registry.  
 Implement POST against Faire order-shipment API in `channels/faire.js`.
 
-## Digit Rutter (no adapter code)
+## Sutton Rutter (no adapter code)
 
-When the store is connected in Digit and Rutter pushes fulfillments:
+When the store is connected in Sutton and Rutter pushes fulfillments:
 
-- Finish ShipStation writeback (tracking on Digit shipment).
+- Finish ShipStation writeback (tracking on Sutton shipment).
 - Leave channel adapters unconfigured — registry skips them.
 
 ## D1 mapping
 
-Use `channel_order_map` when the store order id differs from Digit order id:
+Use `channel_order_map` when the store order id differs from Sutton order id:
 
 ```sql
 -- see migration 0005_channel_integration.sql

@@ -62,7 +62,7 @@ export default function ConnectionBar({
 }: ConnectionBarProps) {
   const carrierGapCount = pushBlockedCarrierCount;
   const carrierGapSummary =
-    `${pushBlockedCarrierCount} Digit shipping carrier${
+    `${pushBlockedCarrierCount} Sutton shipping carrier${
       pushBlockedCarrierCount === 1 ? '' : 's'
     } cannot push until mapped to a ShipStation service`;
   const setupIncomplete =
@@ -81,7 +81,7 @@ export default function ConnectionBar({
     <StatusChip color="error" label="Not published" />
   ) : !organizationId ? (
     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-      Open inside Digit
+      Open inside Sutton
     </Typography>
   ) : operable ? (
     <StatusChip
@@ -117,9 +117,9 @@ export default function ConnectionBar({
           </Stack>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {operable
-              ? 'Create Digit shipments, push from the shipping queue, then download the shipping label.'
+              ? 'Create Sutton shipments, push from the shipping queue, then download the shipping label.'
               : credentialsMissing
-                ? 'Connection inactive — restore ShipStation secrets in Digit and reload.'
+                ? 'Connection inactive — restore ShipStation secrets in Sutton and reload.'
                 : 'Connect ShipStation to sync carriers and push awaiting-carrier shipments for labels.'}
           </Typography>
         </Stack>
@@ -151,7 +151,7 @@ export default function ConnectionBar({
                 title={
                   carrierGapCount > 0
                     ? carrierGapSummary
-                    : `Map Digit shipping carriers to ShipStation services (${carrierCount} carrier${
+                    : `Map Sutton shipping carriers to ShipStation services (${carrierCount} carrier${
                         carrierCount === 1 ? '' : 's'
                       } synced)`
                 }
@@ -208,7 +208,7 @@ export function ConnectPanel({
     return (
       <Alert severity="warning">
         No ShipStation API key is configured for this organization. Add{' '}
-        <strong>SHIPSTATION_API_KEY</strong> to this app’s secrets in Digit (and{' '}
+        <strong>SHIPSTATION_API_KEY</strong> to this app’s secrets in Sutton (and{' '}
         <strong>SHIPSTATION_API_SECRET</strong> only if you use V1 Basic auth), then reload and
         connect.
       </Alert>
@@ -234,7 +234,7 @@ export function NonAdminNotice({ connected }: { connected: boolean }) {
     <Typography variant="body2" sx={{ color: 'text.secondary' }}>
       {connected
         ? 'Org admins manage connection and settings. You can work the shipping queue below.'
-        : 'Org admins can connect ShipStation. App owners manage secrets in Digit.'}
+        : 'Org admins can connect ShipStation. App owners manage secrets in Sutton.'}
     </Typography>
   );
 }

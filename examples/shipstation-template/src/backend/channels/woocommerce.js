@@ -26,7 +26,7 @@ export const woocommerceAdapter = {
     return {
       status: 'skipped',
       skipped: true,
-      reason: 'WooCommerce fulfillment push is a recipe — implement in a clone or use Digit Rutter.',
+      reason: 'WooCommerce fulfillment push is a recipe — implement in a clone or use Sutton Rutter.',
     };
   },
 };

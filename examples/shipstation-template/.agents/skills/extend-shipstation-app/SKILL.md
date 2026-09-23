@@ -1,7 +1,7 @@
 ---
 name: extend-shipstation-app
 description: >-
-  Extend this Digit ShipStation template (encrypted V1/V2 connection, D1,
+  Extend this Sutton ShipStation template (encrypted V1/V2 connection, D1,
   Worker ssFetch). Use when editing this template directory or an app copied
   from it with new-app --from shipstation-template, or when the user mentions
   ShipStation, labels, rates, tracking, or carriers while working on this app.
@@ -17,7 +17,7 @@ template — do not invent a second stack or call ShipStation from the browser.
 
 | MCP | Role | If missing |
 | --- | --- | --- |
-| **Digit** | GraphQL schema (`graphql-schema://index`, `type/…`, `search/…`), `appPermissions`, `apps` / publish | Stop. Ask the user to connect Digit MCP. |
+| **Sutton** | GraphQL schema (`graphql-schema://index`, `type/…`, `search/…`), `appPermissions`, `apps` / publish | Stop. Ask the user to connect Sutton MCP. |
 | **ShipStation docs** | Endpoint and payload docs only (`https://docs.shipstation.com/mcp`) | Stop. Ask the user to connect it. Do not invent V1 or V2 paths or bodies. |
 
 ShipStation’s MCP **does not** call ShipStation. Runtime HTTP belongs in the Worker via
@@ -25,24 +25,24 @@ ShipStation’s MCP **does not** call ShipStation. Runtime HTTP belongs in the W
 from `credentials.apiVersion`. Do **not** put a ShipStation API key in Cursor MCP config,
 `.env`, or the frontend.
 
-Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
+Setup: [reference/mcp.md](reference/mcp.md). Sutton GraphQL lookup:
 [reference/digit-graphql.md](reference/digit-graphql.md).
 
 ## Hard rules
 
-- Digit has **no** `shipstation*` GraphQL types. Connection, carriers, settings, and
-  labels live in D1 (`SHIPSTATION_DB`). Look up every Digit field you use; never invent
+- Sutton has **no** `shipstation*` GraphQL types. Connection, carriers, settings, and
+  labels live in D1 (`SHIPSTATION_DB`). Look up every Sutton field you use; never invent
   types or `manifest.permissions` keys — use `appPermissions`.
 - New ShipStation HTTP: look up the operation on ShipStation docs MCP, then add a
   function next to the existing helpers in `shipstation.js` (all go through `ssFetch`).
   Thin path maps (not schemas): [reference/shipstation-v2-map.md](reference/shipstation-v2-map.md)
   and [reference/shipstation-v1-map.md](reference/shipstation-v1-map.md).
-- All credentials are **organization-level Digit app secrets**, read via `env`. Never add
+- All credentials are **organization-level Sutton app secrets**, read via `env`. Never add
   a UI field that accepts a secret, and never write one to D1 — the published app is a
   shared template, so nothing may leak between organizations.
   - `SHIPSTATION_API_KEY` alone → **V2**
   - key + `SHIPSTATION_API_SECRET` → **V1**
-  - Also `JWT_TOKEN` (Clerk JWT; **Digit staff generate this token and place it in the
+  - Also `JWT_TOKEN` (Clerk JWT; **Sutton staff generate this token and place it in the
     organization’s app secrets**). Do not use a Settings → API Tokens `da_` key.
 - Never log or return `apiKey`, `apiSecret`, `api_key`, or `api_key_encrypted`. Do not
   `SELECT` the encrypted key into JSON responses.
@@ -57,7 +57,7 @@ Setup: [reference/mcp.md](reference/mcp.md). Digit GraphQL lookup:
 - Do not POST subscribe or DELETE ShipStation webhooks on connect/disconnect.
 - Org-admin in the UI (`UPDATE_ORGANIZATION`) is **not** Worker auth. Anyone who can
   open the published app can hit `/proxy/backend`.
-- Sort / filter / page Digit lists via GraphQL args. Paginate tables.
+- Sort / filter / page Sutton lists via GraphQL args. Paginate tables.
 - Update `SPEC.md` with **verbatim** user prompts before pack.
 
 ## Where to edit
@@ -79,16 +79,16 @@ exists; look up APIs via MCP.
 ```
 ShipStation extend:
 - [ ] create-digit-app stack / iframe / pack rules
-- [ ] Digit MCP connected; schema + appPermissions for any new Digit call
+- [ ] Sutton MCP connected; schema + appPermissions for any new Sutton call
 - [ ] ShipStation docs MCP connected; lookup before new ssFetch paths (V1 or V2)
 - [ ] `JWT_TOKEN` / ShipStation API key (and V1 secret) are managed only
-      in Digit's built-in App Secrets UI; Digit staff generate `JWT_TOKEN` and
+      in Sutton's built-in App Secrets UI; Sutton staff generate `JWT_TOKEN` and
       place it on the account. The app never accepts, returns, or logs them
 - [ ] New D1 shape = new migration file, not an edit of 0001_init.sql
-- [ ] Digit shipment carrier writeback: `matchDigitCarrier.js` + carrier modal maps (service then carrier default); never auto-create Digit options
-- [ ] Digit → SS push: Digit `shippingCarrierField` must reverse-map to exactly one SS service through a confirmed (`manual`) map; send `carrier_id`/`service_code` (V2) or `carrierCode`/`serviceCode` (V1)
-- [ ] Digit carrier → SS service push gaps are visible on the main page and in Carrier configuration
-- [ ] Keep SS service → Digit carrier writeback mapping logic intact but hidden until rate shopping is added
+- [ ] Sutton shipment carrier writeback: `matchDigitCarrier.js` + carrier modal maps (service then carrier default); never auto-create Sutton options
+- [ ] Sutton → SS push: Sutton `shippingCarrierField` must reverse-map to exactly one SS service through a confirmed (`manual`) map; send `carrier_id`/`service_code` (V2) or `carrierCode`/`serviceCode` (V1)
+- [ ] Sutton carrier → SS service push gaps are visible on the main page and in Carrier configuration
+- [ ] Keep SS service → Sutton carrier writeback mapping logic intact but hidden until rate shopping is added
 - [ ] Tracking writeback: poll unlabeled maps (`GET /v2/labels` or V1 `GET /orders/{id}`)
 - [ ] New sync/poll paths: `appendActivity` (no secrets/PII); UI Alert + activity refetch
 - [ ] `ssFetch` / `digitGraphql` errors include upstream messages (not HTTP-only)
@@ -97,7 +97,7 @@ ShipStation extend:
 Channel extend (Shopify, WooCommerce, Faire, …):
 - [ ] Read reference/channels.md — Rutter vs direct outbound adapter
 - [ ] Adapter in channels/{platform}.js registered in registry.js
-- [ ] Secret key names in runtimeConfig.CHANNEL_SECRETS (Digit App Secrets UI only)
+- [ ] Secret key names in runtimeConfig.CHANNEL_SECRETS (Sutton App Secrets UI only)
 - [ ] Outbound: afterDigitShipped via platformFetch; channel_order_map when ids differ
 - [ ] appendActivity channelId + externalOrderId; FeatureStatus / GET /setup if new secrets
 - [ ] Vendor API paths from channel-api-map.md + official docs — never invent

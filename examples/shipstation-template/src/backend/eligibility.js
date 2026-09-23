@@ -4,10 +4,10 @@ const FULFILLMENT_METHODS = new Set(['scheduled', 'manual']);
 export { FULFILLMENT_METHODS };
 
 export const V1_MULTI_CONTAINER_REASON =
-  'ShipStation V1 supports only one package per order, but this Digit shipment has multiple pack containers.';
+  'ShipStation V1 supports only one package per order, but this Sutton shipment has multiple pack containers.';
 
 export const NO_DIGIT_CARRIER_REASON =
-  'No Digit shipping carrier is selected. Set the shipment carrier in Digit to a mapped service, then try again.';
+  'No Sutton shipping carrier is selected. Set the shipment carrier in Sutton to a mapped service, then try again.';
 
 /** Explicit scheduled stays scheduled; unspecified / leftover values → manual (the default). */
 export function normalizeFulfillmentMethod(value) {
@@ -36,23 +36,23 @@ export function effectiveShippingCarrierField(shipment) {
 export function digitCarrierUnmappedReason(digitValue) {
   const label = digitValue ? String(digitValue).trim() : '';
   if (label) {
-    return `Digit carrier "${label}" is not mapped to a ShipStation service. Map it in Carrier configuration, then try again.`;
+    return `Sutton carrier "${label}" is not mapped to a ShipStation service. Map it in Carrier configuration, then try again.`;
   }
-  return 'Digit carrier is not mapped to a ShipStation service. Map it in Carrier configuration, then try again.';
+  return 'Sutton carrier is not mapped to a ShipStation service. Map it in Carrier configuration, then try again.';
 }
 
 export function digitCarrierUnconfirmedReason(digitValue) {
   const label = digitValue ? String(digitValue).trim() : '';
-  const who = label ? `Digit carrier "${label}"` : 'Digit carrier';
+  const who = label ? `Sutton carrier "${label}"` : 'Sutton carrier';
   return `${who} is only auto-matched to a ShipStation service. Confirm the service in Carrier configuration, then try again.`;
 }
 
 export function digitCarrierAmbiguousReason(digitValue) {
   const label = digitValue ? String(digitValue).trim() : '';
   if (label) {
-    return `Digit carrier "${label}" maps to more than one ShipStation service. Keep service maps one-to-one.`;
+    return `Sutton carrier "${label}" maps to more than one ShipStation service. Keep service maps one-to-one.`;
   }
-  return 'Digit carrier maps to more than one ShipStation service. Keep service maps one-to-one.';
+  return 'Sutton carrier maps to more than one ShipStation service. Keep service maps one-to-one.';
 }
 
 /**
@@ -72,7 +72,7 @@ export function ineligibilityReason({
     return 'This shipment was imported from ShipStation and will not be re-pushed.';
   }
   if (shipment?.shippingStatus === 'shipped') {
-    return 'Already shipped in Digit.';
+    return 'Already shipped in Sutton.';
   }
   // A ShipStation resource id is the durable guard: re-pushing would duplicate the SS shipment.
   if (
@@ -149,31 +149,31 @@ export function skipNextStep(reason) {
     return 'Fulfill it in ShipStation; this app will not create a second shipment.';
   }
   if (reason.includes('Already shipped')) {
-    return 'Download the label from this queue if you need it again. Tracking should already be on the Digit shipment.';
+    return 'Download the label from this queue if you need it again. Tracking should already be on the Sutton shipment.';
   }
   if (reason.includes('Already pushed')) {
-    return 'Buy the label in ShipStation, then pull from ShipStation or wait for the five-minute poll. This Digit shipment stays until it is marked shipped.';
+    return 'Buy the label in ShipStation, then pull from ShipStation or wait for the five-minute poll. This Sutton shipment stays until it is marked shipped.';
   }
   if (reason.includes('not linked to a sales order')) {
     return 'Multi-order or unlinked shipments are not pushed from this queue.';
   }
   if (reason.includes('no packed items')) {
-    return 'Pack items onto this Digit shipment, then try again.';
+    return 'Pack items onto this Sutton shipment, then try again.';
   }
   if (reason.includes('V1 supports only one package')) {
-    return 'Create one Digit shipment per pack container, or disconnect ShipStation and reconnect with V2 credentials.';
+    return 'Create one Sutton shipment per pack container, or disconnect ShipStation and reconnect with V2 credentials.';
   }
-  if (reason.includes('No Digit shipping carrier is selected')) {
-    return 'Open the Digit shipment and set Shipping carrier to a service that is mapped in Carrier configuration.';
+  if (reason.includes('No Sutton shipping carrier is selected')) {
+    return 'Open the Sutton shipment and set Shipping carrier to a service that is mapped in Carrier configuration.';
   }
   if (reason.includes('is not mapped to a ShipStation service')) {
-    return 'Open Carrier configuration and map that Digit option to exactly one ShipStation service.';
+    return 'Open Carrier configuration and map that Sutton option to exactly one ShipStation service.';
   }
   if (reason.includes('only auto-matched')) {
-    return 'Open Carrier configuration, pick the ShipStation service for that Digit carrier, and save.';
+    return 'Open Carrier configuration, pick the ShipStation service for that Sutton carrier, and save.';
   }
   if (reason.includes('maps to more than one ShipStation service')) {
-    return 'In Carrier configuration, keep each Digit shipping carrier on a single ShipStation service row.';
+    return 'In Carrier configuration, keep each Sutton shipping carrier on a single ShipStation service row.';
   }
   return 'Fix the issue above, then try again.';
 }

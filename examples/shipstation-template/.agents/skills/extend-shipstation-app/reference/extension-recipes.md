@@ -1,6 +1,6 @@
 # Extension recipes
 
-Checklists only. Look up shapes on Digit MCP / ShipStation docs MCP.
+Checklists only. Look up shapes on Sutton MCP / ShipStation docs MCP.
 
 ## New ShipStation endpoint
 
@@ -12,7 +12,7 @@ Checklists only. Look up shapes on Digit MCP / ShipStation docs MCP.
 4. Expose a `/proxy/backend` route; call it with `useBackendQuery` / `useBackendMutation`.
 5. Parse failures through `ssFetch` (upstream errors). `appendActivity`. UI: Alert with meaning + refetch `/sync/activity`.
 
-## New Digit write
+## New Sutton write
 
 1. `graphql-schema://search/…` + `type/…`.
 2. `appPermissions` → add `key`s to `manifest.json`. Worker GraphQL uses `JWT_TOKEN`
@@ -28,16 +28,16 @@ Override `skuForLine` in `src/backend/mappers/digitToShipStation.js`. Add a D1 m
 ## Faire tracking (CS-01)
 
 Set secret `FAIRE_API_KEY`. Implement fulfillment POST in `src/backend/channels/faire.js`
-(`faireAdapter.afterDigitShipped`). Registry runs it after Digit writeback.
+(`faireAdapter.afterDigitShipped`). Registry runs it after Sutton writeback.
 
 ## Add commerce channel (Shopify, WooCommerce, …)
 
 See [channel-recipes.md](channel-recipes.md) and [channels.md](channels.md). Copy
 `_scaffold.js`, register in `registry.js`, add secrets to `CHANNEL_SECRETS`.
 
-## Digit carrier from ShipStation
+## Sutton carrier from ShipStation
 
-Writeback sets `shippingCarrierFieldId` via `matchDigitCarrier.js` (service map, then carrier default, then service-string auto-match gated by brand). Unmatched services stay unset, log `carrier_unmapped`, and appear in `unmappedCarriers` plus a main-page alert. Operators correct maps in the carrier settings modal. Do not create Digit carrier options. Do not map SS service codes to Digit shipping class unless asked.
+Writeback sets `shippingCarrierFieldId` via `matchDigitCarrier.js` (service map, then carrier default, then service-string auto-match gated by brand). Unmatched services stay unset, log `carrier_unmapped`, and appear in `unmappedCarriers` plus a main-page alert. Operators correct maps in the carrier settings modal. Do not create Sutton carrier options. Do not map SS service codes to Sutton shipping class unless asked.
 
 ## Phase 2 leftovers on `0001`
 
@@ -45,14 +45,14 @@ Writeback sets `shippingCarrierFieldId` via `matchDigitCarrier.js` (service map,
 
 ## Phase 2: scan verification / multi-account
 
-Scan: Digit `pickItem` + item `scanCodeSerialNumber` in a clone UI — not this template’s queue. Multi-account: drop `idx_shipstation_connection_one_live` in a new migration; do not drop it in Phase 1.
+Scan: Sutton `pickItem` + item `scanCodeSerialNumber` in a clone UI — not this template’s queue. Multi-account: drop `idx_shipstation_connection_one_live` in a new migration; do not drop it in Phase 1.
 
 ## New D1 table or column
 
 1. Add `src/backend/migrations/0003_….sql` (never edit applied files).
 2. Never select `api_key_encrypted` into JSON.
 3. In scheduled or batch paths, reuse data you already listed (`pushShipment({ preloaded })`)
-   and cap work per run. A Digit query per row trips the API rate limit (429).
+   and cap work per run. A Sutton query per row trips the API rate limit (429).
 
 ## New UI screen
 

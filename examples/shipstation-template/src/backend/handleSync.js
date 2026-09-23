@@ -229,7 +229,7 @@ export async function handleSync({ request, env, path, method }) {
       actor: 'user',
       action: 'packing_slip_download',
       status: 'success',
-      message: 'Downloaded a Digit packing slip from the queue.',
+      message: 'Downloaded a Sutton packing slip from the queue.',
       digitOrderId: orderIdResult.value,
     });
     return ok({ data: result.data });

@@ -105,7 +105,7 @@ export function digitCarrierStatusCopy(status: DigitCarrierMapRow['status']) {
       return {
         label: 'Not mapped',
         color: 'error' as const,
-        hint: 'Shipments using this Digit carrier cannot push to ShipStation.',
+        hint: 'Shipments using this Sutton carrier cannot push to ShipStation.',
       };
   }
 }

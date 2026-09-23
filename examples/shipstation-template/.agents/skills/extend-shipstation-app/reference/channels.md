@@ -8,7 +8,7 @@ and setup reporting. There is **no inbound webhook path**.
 
 | Path | When to use | What this app does |
 | --- | --- | --- |
-| **Digit Rutter** | Store already connected in Digit; Rutter `pushFulfillments` covers tracking | Nothing extra — tracking on the Digit shipment is enough |
+| **Sutton Rutter** | Store already connected in Sutton; Rutter `pushFulfillments` covers tracking | Nothing extra — tracking on the Sutton shipment is enough |
 | **Direct adapter** | Rutter gap, custom store, Faire, B2B marketplace | Implement `afterDigitShipped` in `src/backend/channels/{platform}.js` |
 
 There is no default — pick per organization and document the choice in `SPEC.md`.
@@ -17,7 +17,7 @@ There is no default — pick per organization and document the choice in `SPEC.m
 
 | Flow | Trigger | Template hook |
 | --- | --- | --- |
-| **Outbound** (tracking → store) | After ShipStation label writeback to Digit | `runAfterDigitShipped` → `afterDigitShipped` on configured adapters |
+| **Outbound** (tracking → store) | After ShipStation label writeback to Sutton | `runAfterDigitShipped` → `afterDigitShipped` on configured adapters |
 
 ## Files
 
@@ -38,7 +38,7 @@ Recipes: [channel-recipes.md](channel-recipes.md) · API paths: [channel-api-map
 1. Read this doc — choose Rutter vs direct outbound adapter.
 2. Copy `_scaffold.js` → `channels/{platform}.js`; register in `registry.js`.
 3. Add app secrets to `CHANNEL_SECRETS` in `runtimeConfig.js` (names only in UI).
-4. Use `channel_order_map` for Digit ↔ store order ids ([d1.md](d1.md)).
+4. Use `channel_order_map` for Sutton ↔ store order ids ([d1.md](d1.md)).
 5. `appendActivity` with `channelId` / `externalOrderId` — no addresses or secrets.
 6. Extend `FeatureStatus` / `GET /setup` only when adding new secret keys.
 

@@ -67,7 +67,7 @@ function DigitCarrierRows({
       <Table size="small" sx={{ '& td, & th': { py: 0.75 } }}>
         <TableHead>
           <TableRow>
-            <TableCell>Digit shipping carrier</TableCell>
+            <TableCell>Sutton shipping carrier</TableCell>
             <TableCell sx={{ width: '46%' }}>ShipStation service used on push</TableCell>
             <TableCell align="right">Push</TableCell>
           </TableRow>
@@ -138,7 +138,7 @@ function DigitCarrierRows({
             <TableRow>
               <TableCell colSpan={3}>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  This organization has no Digit shipping carriers yet. Add them in Digit under
+                  This organization has no Sutton shipping carriers yet. Add them in Sutton under
                   shipping carriers, then reopen this dialog.
                 </Typography>
               </TableCell>
@@ -209,7 +209,7 @@ export default function CarrierSettingsDialog({
       <DialogContent dividers sx={{ p: 0 }}>
         <Stack spacing={1.5} sx={{ p: 2 }}>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Pick the ShipStation service to use when each Digit shipping carrier is pushed. A
+            Pick the ShipStation service to use when each Sutton shipping carrier is pushed. A
             carrier with no service blocks its shipments in the queue. Auto-matched services must
             be confirmed here before they can push.
           </Typography>

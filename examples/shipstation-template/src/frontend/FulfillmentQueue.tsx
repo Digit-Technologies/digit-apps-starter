@@ -86,27 +86,27 @@ function emptyQueueCopy(filter: QueueStatusFilter) {
     case 'awaiting_carrier':
       return {
         title: 'No shipments awaiting carrier',
-        description: 'Create a shipment in Digit. Awaiting carrier rows show up here.',
+        description: 'Create a shipment in Sutton. Awaiting carrier rows show up here.',
       };
     case 'awaiting_pickup':
       return {
         title: 'No shipments awaiting pickup',
-        description: 'Digit shipments waiting for carrier pickup show up here.',
+        description: 'Sutton shipments waiting for carrier pickup show up here.',
       };
     case 'awaiting_drop_off':
       return {
         title: 'No shipments awaiting drop-off',
-        description: 'Digit shipments waiting to be dropped off show up here.',
+        description: 'Sutton shipments waiting to be dropped off show up here.',
       };
     case 'shipped':
       return {
         title: 'No shipped shipments',
-        description: 'Shipped Digit shipments show up here after tracking is written back.',
+        description: 'Shipped Sutton shipments show up here after tracking is written back.',
       };
     default:
       return {
         title: 'No shipments',
-        description: 'Create a shipment in Digit. Filter by Digit shipping status.',
+        description: 'Create a shipment in Sutton. Filter by Sutton shipping status.',
       };
   }
 }
@@ -531,16 +531,24 @@ export default function FulfillmentQueue({
         issues.push({
           status: 'error',
           ssShipmentId: pendingWriteback.ssShipmentId,
-          message: `Could not write label ${pendingWriteback.labelId} to the Digit shipment: ${updated.error.message}`,
+          message: `Could not write label ${pendingWriteback.labelId} to the Sutton shipment: ${updated.error.message}`,
         });
         continue;
       }
-      if (pendingWriteback.shippingFees && pendingWriteback.digitOrderId) {
+      if (
+        pendingWriteback.digitOrderId &&
+        (pendingWriteback.shippingFees || pendingWriteback.shippingCarrierFieldId)
+      ) {
         const fees = await updateOrderMutate({
           variables: {
             input: {
               orderId: pendingWriteback.digitOrderId,
-              shippingFees: pendingWriteback.shippingFees,
+              ...(pendingWriteback.shippingFees
+                ? { shippingFees: pendingWriteback.shippingFees }
+                : {}),
+              ...(pendingWriteback.shippingCarrierFieldId
+                ? { shippingCarrierFieldId: pendingWriteback.shippingCarrierFieldId }
+                : {}),
             },
           },
         });
@@ -548,7 +556,7 @@ export default function FulfillmentQueue({
           issues.push({
             status: 'error',
             ssShipmentId: pendingWriteback.ssShipmentId,
-            message: `Wrote tracking for label ${pendingWriteback.labelId}, but could not set shipping fees on the Digit order: ${fees.error.message}`,
+            message: `Wrote tracking for label ${pendingWriteback.labelId}, but could not set the ShipStation carrier and shipping fees on the Sutton order: ${fees.error.message}`,
           });
         }
       }
@@ -567,14 +575,14 @@ export default function FulfillmentQueue({
         failed.length > 0
           ? `Pull from ShipStation could not finish ${failed.length} label(s).`
           : pulled > 0
-            ? `Pull from ShipStation wrote ${pulled} ShipStation label(s) into Digit.`
+            ? `Pull from ShipStation wrote ${pulled} ShipStation label(s) into Sutton.`
             : `Pull from ShipStation checked ${candidates} pushed shipment(s) and found no new ShipStation labels.`,
       details: [
         ...issues.map((issue) => issue.message),
         issues.length > 0
           ? ''
           : pulled > 0
-            ? 'Carrier, tracking, and shipping cost are written to Digit when the label exists.'
+            ? 'Carrier, tracking, and shipping cost are written to Sutton when the label exists.'
             : candidates === 0
               ? 'No pushed shipments are waiting on a label. Push from the queue first.'
               : 'Buy the label in ShipStation, then pull again or wait up to five minutes.',
@@ -622,7 +630,7 @@ export default function FulfillmentQueue({
     if (!result.ok) return;
     const pdfBase64 = result.data?.pdfBase64;
     if (!pdfBase64) {
-      setPdfError('Digit did not return packing slip PDF data.');
+      setPdfError('Sutton did not return packing slip PDF data.');
       return;
     }
     try {
@@ -651,10 +659,10 @@ export default function FulfillmentQueue({
       sx={{ pb: 1.5, borderBottom: 1, borderColor: 'divider', flex: '0 0 auto' }}
     >
       <FormControl size="small" sx={{ minWidth: 200 }}>
-        <InputLabel id="queue-status-filter-label">Digit status</InputLabel>
+        <InputLabel id="queue-status-filter-label">Sutton status</InputLabel>
         <Select
           labelId="queue-status-filter-label"
-          label="Digit status"
+          label="Sutton status"
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value as QueueStatusFilter)}
         >
@@ -732,7 +740,7 @@ export default function FulfillmentQueue({
 
       {hasV1MultiContainer ? (
         <Alert severity="warning">
-          ShipStation V1 cannot push shipments with multiple packages. Create one Digit shipment
+          ShipStation V1 cannot push shipments with multiple packages. Create one Sutton shipment
           per pack container, or disconnect ShipStation and reconnect with V2 credentials.
           Affected rows are marked Blocked.
         </Alert>
@@ -798,7 +806,7 @@ export default function FulfillmentQueue({
                 <TableCell>Carrier</TableCell>
                 <TableCell>Packages</TableCell>
                 <TableCell>Push status</TableCell>
-                <TableCell>Digit status</TableCell>
+                <TableCell>Sutton status</TableCell>
                 <TableCell>Tracking status</TableCell>
                 <TableCell>ShipStation ID</TableCell>
                 <TableCell>Tracking</TableCell>

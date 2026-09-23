@@ -35,7 +35,7 @@ export async function fetchDigitShippingCarriers({ env }) {
     return {
       ok: false,
       code: error?.code || 'MISSING_CONFIG',
-      message: error?.message || 'Could not load Digit shipping carriers.',
+      message: error?.message || 'Could not load Sutton shipping carriers.',
       status: error?.status || 503,
     };
   }
@@ -287,7 +287,7 @@ export async function resolveDigitCarrier({
       status: 'warning',
       digitOrderId,
       ssShipmentId,
-      message: `ShipStation ${resolvedServiceName || resolvedService || resolvedCode || friendly} did not match a Digit shipping carrier. Map it in carrier settings.`,
+      message: `ShipStation ${resolvedServiceName || resolvedService || resolvedCode || friendly} did not match a Sutton shipping carrier. Map it in carrier settings.`,
       detail: {
         carrierCode: resolvedCode,
         carrierName: friendly,
@@ -352,7 +352,7 @@ export async function loadCarrierMapPayload({ env, db, organizationId, connectio
     pulledServices,
     digitCarriersError: fetched.ok
       ? null
-      : fetched.message || 'Could not load Digit shipping carriers.',
+      : fetched.message || 'Could not load Sutton shipping carriers.',
   });
 }
 

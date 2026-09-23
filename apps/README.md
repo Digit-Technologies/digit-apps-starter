@@ -1,6 +1,6 @@
 # apps/
 
-Digit apps live here, one folder per app. They are npm workspaces of this clone, which is
+Sutton apps live here, one folder per app. They are npm workspaces of this clone, which is
 what lets `digit-app pack` find its build toolchain.
 
 The curated starter archive includes `apps/app/`, a packable source scaffold generated

@@ -280,7 +280,7 @@ export async function handleConnection({ request, env, path, method }) {
       return err({
         code: AppErrorCode.MISSING_CONFIG,
         message:
-          'No ShipStation API key is configured. Add SHIPSTATION_API_KEY to this app’s secrets in Digit (and SHIPSTATION_API_SECRET for V1), then try again.',
+          'No ShipStation API key is configured. Add SHIPSTATION_API_KEY to this app’s secrets in Sutton (and SHIPSTATION_API_SECRET for V1), then try again.',
         status: 503,
       });
     }

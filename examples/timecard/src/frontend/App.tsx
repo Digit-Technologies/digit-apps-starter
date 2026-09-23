@@ -248,7 +248,7 @@ export default function App() {
         >
           <Box>
             <Typography variant="overline" component="p" sx={{ color: 'primary.main', mb: 0.5 }}>
-              Digit App
+              Sutton App
             </Typography>
             <Typography variant="h1" component="h1">
               Time card

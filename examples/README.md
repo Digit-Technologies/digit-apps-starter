@@ -3,7 +3,7 @@
 [`hello-world/`](hello-world) is the minimal frontend-only example used to pre-scaffold
 `apps/app` in the curated starter archive.
 
-[`full-featured/`](full-featured) is the reference Digit app. Copy it and remove tabs /
+[`full-featured/`](full-featured) is the reference Sutton app. Copy it and remove tabs /
 routes you don’t need rather than inventing a new project shape.
 
 [`shipstation-template/`](shipstation-template) is a Worker + D1 template for connecting
@@ -29,7 +29,7 @@ Shared conventions (also enforced by the skill):
   `lib-backend`; `AppErrorCode` / parsers from `lib-common`
 - Root `manifest.json`; `digit-app pack` stages it at the zip root
 - `npm run pack` → `app.zip` with root `manifest.json` + `frontend/` (+ `backend/`) for
-  Digit deploy and required `project/` (source, `SPEC.md`, tooling, vendored
+  Sutton deploy and required `project/` (source, `SPEC.md`, tooling, vendored
   `@digit/lib-*` incl. `lib-build` — not deployed)
 - Do not copy Vite configs or pack scripts into each example — use `@digit/lib-build`
 - Ignore `node_modules/`, `.vite/`, `*.zip`, and build folders

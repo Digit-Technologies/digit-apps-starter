@@ -3,9 +3,9 @@ import { pack } from './pack.js';
 
 const usage = `Usage: digit-app pack
 
-Build frontend/ (+ backend/ when present) and write app.zip for Digit publish.
+Build frontend/ (+ backend/ when present) and write app.zip for Sutton publish.
 
-Local Digit preview (dev/preview) is not supported yet — pack + publish is the path.
+Local Sutton preview (dev/preview) is not supported yet — pack + publish is the path.
 `;
 
 async function main() {

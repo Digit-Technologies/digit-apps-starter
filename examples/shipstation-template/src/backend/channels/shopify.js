@@ -26,7 +26,7 @@ export const shopifyAdapter = {
     return {
       status: 'skipped',
       skipped: true,
-      reason: 'Shopify fulfillment push is a recipe — implement in a clone or use Digit Rutter.',
+      reason: 'Shopify fulfillment push is a recipe — implement in a clone or use Sutton Rutter.',
     };
   },
 };

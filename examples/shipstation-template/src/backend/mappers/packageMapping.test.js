@@ -186,7 +186,7 @@ test('blocks multi-container shipments on V1 with actionable guidance', () => {
     ssService,
   });
   assert.equal(reason, V1_MULTI_CONTAINER_REASON);
-  assert.match(skipNextStep(reason), /one Digit shipment per pack container/);
+  assert.match(skipNextStep(reason), /one Sutton shipment per pack container/);
   assert.equal(
     ineligibilityReason({
       shipment,

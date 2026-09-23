@@ -40,7 +40,7 @@ export async function digitGraphql({ env, query, variables }) {
     throw new HandlerError({
       code: AppErrorCode.MISSING_CONFIG,
       message:
-        'Add the JWT_TOKEN app secret in Digit so this app can write tracking back from ShipStation. Digit staff generate this token and place it on the account.',
+        'Add the JWT_TOKEN app secret in Sutton so this app can write tracking back from ShipStation. Sutton staff generate this token and place it on the account.',
       status: 503,
     });
   }
@@ -63,7 +63,7 @@ export async function digitGraphql({ env, query, variables }) {
       return {
         ok: false,
         code: AppErrorCode.UPSTREAM_ERROR,
-        message: 'Could not reach the Digit API. Try again in a moment.',
+        message: 'Could not reach the Sutton API. Try again in a moment.',
         status: 502,
       };
     }
@@ -76,7 +76,7 @@ export async function digitGraphql({ env, query, variables }) {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
       message:
-        'The Digit JWT was rejected. Ask Digit staff to generate JWT_TOKEN and place it in this organization’s app secrets.',
+        'The Sutton JWT was rejected. Ask Sutton staff to generate JWT_TOKEN and place it in this organization’s app secrets.',
       status: 400,
     };
   }
@@ -85,7 +85,7 @@ export async function digitGraphql({ env, query, variables }) {
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'Digit API rate limit reached. This run stopped early and will resume on the next sync.',
+      message: 'Sutton API rate limit reached. This run stopped early and will resume on the next sync.',
       status: 429,
     };
   }
@@ -94,7 +94,7 @@ export async function digitGraphql({ env, query, variables }) {
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: `Digit API request failed (HTTP ${response.status}).`,
+      message: `Sutton API request failed (HTTP ${response.status}).`,
       status: 502,
     };
   }
@@ -106,7 +106,7 @@ export async function digitGraphql({ env, query, variables }) {
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'Digit API returned a non-JSON body.',
+      message: 'Sutton API returned a non-JSON body.',
       status: 502,
     };
   }
@@ -116,7 +116,7 @@ export async function digitGraphql({ env, query, variables }) {
     const raw =
       typeof first?.message === 'string' && first.message
         ? first.message
-        : 'Digit GraphQL request failed.';
+        : 'Sutton GraphQL request failed.';
     const extCode =
       first?.extensions && typeof first.extensions.code === 'string' ? first.extensions.code : null;
     return {

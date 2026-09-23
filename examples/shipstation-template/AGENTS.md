@@ -5,7 +5,7 @@ This template’s ShipStation skill lives **here**, not in the starter’s share
 
 Read before changing this app:
 
-- [create-digit-app](../../.agents/skills/create-digit-app/SKILL.md) — Digit stack, iframe, pack, publish
+- [create-digit-app](../../.agents/skills/create-digit-app/SKILL.md) — Sutton stack, iframe, pack, publish
 - [extend-shipstation-app](.agents/skills/extend-shipstation-app/SKILL.md) — this template
 
 `npm run new-app -- <name> --from shipstation-template` copies this file and
@@ -14,7 +14,7 @@ at the **repo root**.
 
 ## Required MCPs
 
-- **Digit MCP** — GraphQL schema, `appPermissions`, publish. Do not invent types or
+- **Sutton MCP** — GraphQL schema, `appPermissions`, publish. Do not invent types or
   permission keys.
 - **ShipStation docs MCP** (`https://docs.shipstation.com/mcp`) — endpoint docs only.
   It does not call ShipStation. Implement HTTP in `src/backend/shipstationFetch.js`
@@ -25,11 +25,11 @@ MCP config or the frontend.
 
 ## Do
 
-- Extend `ssFetch` / the facade for new ShipStation calls; keep secrets in Digit / D1.
+- Extend `ssFetch` / the facade for new ShipStation calls; keep secrets in Sutton / D1.
 - **Credential rule:** `SHIPSTATION_API_KEY` alone → V2 (`api.shipstation.com`);
   key + `SHIPSTATION_API_SECRET` → V1 (`ssapi.shipstation.com` Basic auth). Persist
   `api_version` on connect. Switching versions requires disconnect and reconnect.
-- `JWT_TOKEN` is a Clerk JWT. **Digit staff generate this token and place it in the
+- `JWT_TOKEN` is a Clerk JWT. **Sutton staff generate this token and place it in the
   organization’s app secrets.** Do not use a Settings → API Tokens `da_` key.
 - Connect does **not** use ShipStation webhooks. Tracking is polled every 300s
   and via **Pull from ShipStation** (`POST /sync/poll`).

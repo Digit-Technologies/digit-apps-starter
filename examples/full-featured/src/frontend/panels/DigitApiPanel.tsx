@@ -35,7 +35,7 @@ export default function DigitApiPanel() {
   return (
     <Stack spacing={2}>
       <Typography variant="h2" component="h2">
-        Digit API
+        Sutton API
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary' }}>
         <code>useDigitApiQuery</code> from <code>@digit/lib-frontend</code> with{' '}

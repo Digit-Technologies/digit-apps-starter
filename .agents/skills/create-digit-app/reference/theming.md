@@ -1,6 +1,6 @@
 # Theming
 
-Digit apps should look like Digit. Use **one stack only**:
+Sutton apps should look like Sutton. Use **one stack only**:
 
 **React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`)**
 
@@ -10,7 +10,7 @@ HTML/CSS UI for new apps.
 ## Package
 
 [`packages/lib-frontend`](../../../../packages/lib-frontend) is a public snapshot of
-Digit web’s MUI theme (palette, typography, component overrides). The private
+Sutton web’s MUI theme (palette, typography, component overrides). The private
 `digit-web` repo is **not** a dependency — keep this package self-contained.
 
 Depend on it from an app:

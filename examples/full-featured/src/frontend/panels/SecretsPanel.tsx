@@ -24,7 +24,7 @@ export default function SecretsPanel() {
       </Typography>
       <Typography variant="body1" sx={{ color: 'text.secondary' }}>
         Set env <code>API_BASE_URL</code> (e.g. <code>https://httpbin.org</code>) and secret{' '}
-        <code>THIRD_PARTY_API_KEY</code> on the Digit app. The Worker uses the secret server-side
+        <code>THIRD_PARTY_API_KEY</code> on the Sutton app. The Worker uses the secret server-side
         and never returns it — only a short prefix for demo.
       </Typography>
 

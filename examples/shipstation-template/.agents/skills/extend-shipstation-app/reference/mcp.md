@@ -1,16 +1,16 @@
 # MCP setup
 
-Both MCPs are required before changing Digit GraphQL or ShipStation HTTP. If either is
+Both MCPs are required before changing Sutton GraphQL or ShipStation HTTP. If either is
 disconnected, **stop** and ask the user to connect it. Do not invent schema, permission
 keys, or ShipStation request bodies.
 
-Do **not** put a ShipStation API key or secret (or Digit token) in MCP config, `mcp.json`,
+Do **not** put a ShipStation API key or secret (or Sutton token) in MCP config, `mcp.json`,
 or committed files. Each organization manages `SHIPSTATION_API_KEY`,
-`SHIPSTATION_API_SECRET` (V1), `JWT_TOKEN` (Digit staff generate this Clerk JWT and
-place it in the org’s app secrets) in Digit's built-in App Secrets UI. There is
+`SHIPSTATION_API_SECRET` (V1), `JWT_TOKEN` (Sutton staff generate this Clerk JWT and
+place it in the org’s app secrets) in Sutton's built-in App Secrets UI. There is
 no MCP tool for app env vars or secrets.
 
-## Digit MCP
+## Sutton MCP
 
 Already required by create-digit-app. Use:
 
@@ -56,4 +56,4 @@ Runtime mode is **not** chosen in MCP config. Key alone = V2; key + secret = V1.
    Do not commit that file. Do not paste ShipStation prose docs into the repo.
 
 A third-party *live* ShipStation API MCP (key in Cursor, tools that POST to ShipStation)
-is out of scope. Org credentials stay in Digit.
+is out of scope. Org credentials stay in Sutton.

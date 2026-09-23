@@ -2,34 +2,34 @@
 
 ## What it does
 
-Phase 1 org Digit app: connect one ShipStation account (V2 key, or V1 key + secret), push Digit
+Phase 1 org Sutton app: connect one ShipStation account (V2 key, or V1 key + secret), push Sutton
 shipments in **awaiting_carrier** into ShipStation as V2 shipments/`create_sales_order` or V1 orders.
 **Scheduled push** sends eligible shipments every five minutes; **Manual push** (the default) sends them
-only when an operator clicks Push to ShipStation. Before push, the Digit shipment must have a
+only when an operator clicks Push to ShipStation. Before push, the Sutton shipment must have a
 `shippingCarrierField` with a confirmed map to exactly one ShipStation **service** in Carrier configuration;
 that carrier and service are sent on the created ShipStation shipment/order. Operators buy the
 label in ShipStation (no in-app rate shop). The same five-minute poll (and Pull from ShipStation)
-pulls tracking, carrier, and cost back onto the Digit shipment.
-The shipping queue lists awaiting-carrier Digit shipments and can be filtered by ShipStation tracking status
-(`unknown` → Digit `awaiting_pickup`; `in_transit` / `delivered` / `error` → Digit `shipped`).
-On every load (and when the iframe becomes visible again) the queue re-fetches Digit
+pulls tracking, carrier, and cost back onto the Sutton shipment.
+The shipping queue lists awaiting-carrier Sutton shipments and can be filtered by ShipStation tracking status
+(`unknown` → Sutton `awaiting_pickup`; `in_transit` / `delivered` / `error` → Sutton `shipped`).
+On every load (and when the iframe becomes visible again) the queue re-fetches Sutton
 `shipments` (up to 100, in a vertically scrolling table) so the Carrier column, packages,
-and Digit status match Digit. If the shipment carrier is empty, the table and push path use the sales
+and Sutton status match Sutton. If the shipment carrier is empty, the table and push path use the sales
 order’s current `shippingCarrierField`. Do not alias `shipment(id)` per row — that
-exceeds Digit’s GraphQL cost cap (`QUERY_TOO_EXPENSIVE`).
+exceeds Sutton’s GraphQL cost cap (`QUERY_TOO_EXPENSIVE`).
 Operators can download
-the PDF from the shipping queue once a label exists. Packing-slip PDFs use Digit
+the PDF from the shipping queue once a label exists. Packing-slip PDFs use Sutton
 `Order.shippingFees`, which this app sets from ShipStation label postage on writeback and
-again when the slip is downloaded. Digit `shippingCarrierField` writeback
+again when the slip is downloaded. Sutton `shippingCarrierField` writeback
 uses aliases + conservative fuzzy match on the **service** (not the brand), plus carrier-mapping
 overrides (service map, then carrier default). Unmatched pulled
 services stay unset, appear in a main-page alert, and can be mapped from the Carrier configuration
-modal. Operators pick/pack and create the Digit
+modal. Operators pick/pack and create the Sutton
 shipment first. Return labels, in-app rate shop, shipping-class mapping, and shipping-fee
 capture stay out of the UI.
 
 Source for `npm run new-app -- my-app --from shipstation-template`. Connect and sync only
-work after a consumer publishes to Digit (Worker, D1, secrets).
+work after a consumer publishes to Sutton (Worker, D1, secrets).
 
 ## Data & permissions
 
@@ -40,7 +40,7 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
   `READ_COMPANY_DETAILS` / `CREATE_COMPANY`, `READ_CONTACT`, `READ_ORGANIZATION_LOCATION`,
   `READ_ORGANIZATION_DYNAMIC_FIELD`.
   Keys from MCP `appPermissions`. The Worker uses `JWT_TOKEN` (a Clerk user JWT) for the
-  same operations on the 5-minute poll. **Digit staff generate this token and place it in
+  same operations on the 5-minute poll. **Sutton staff generate this token and place it in
   the organization’s app secrets.** A Settings → API Tokens `da_` key is not sufficient
   (`apiPermissions` has no `UPDATE_SHIPMENT`).
 - D1 `SHIPSTATION_DB` — publish binding only (not shown in the UI). `0001_init.sql` plus
@@ -49,14 +49,14 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
   `0009_label_rates.sql`, `0010_carrier_digit_map.sql`, `0011_tracking_status.sql`,
   `0012_push_mode.sql`, `0013_carrier_service_map.sql`, and `0014_manual_push_default.sql`. Do not edit `0001` after a
   consumer has published.
-- **All secrets are organization-level Digit app secrets**, managed only in Digit's built-in
+- **All secrets are organization-level Sutton app secrets**, managed only in Sutton's built-in
   App Secrets UI: `SHIPSTATION_API_KEY`, `SHIPSTATION_API_SECRET` (V1),
   `JWT_TOKEN`. Key alone = V2; key + secret = V1.
-  The app never accepts, writes, returns, or logs their values. Digit injects them into the
+  The app never accepts, writes, returns, or logs their values. Sutton injects them into the
   Worker as `env.KEY`. There is **no D1 fallback** for these keys (legacy `app_config` rows
-  are deleted on publish via `0007`) so removing a secret in Digit drops setup progress to
+  are deleted on publish via `0007`) so removing a secret in Sutton drops setup progress to
   match. The published app is a template for many organizations, so **no secret is ever
-  shared across organizations**. Do not use a `DIGIT_` prefix — Digit reserves it for
+  shared across organizations**. Do not use a `DIGIT_` prefix — Sutton reserves it for
   platform bindings.
 - `GET /setup` reports `items[].source` (`appSecret` when live) plus `shipStationApiMode`
   (`v1` | `v2` | `missing`). Setup progress counts **required** items only.
@@ -67,33 +67,35 @@ work after a consumer publishes to Digit (Worker, D1, secrets).
   **legacy V2 fallback** for keys pasted before this switch.
   The auto-generated `ENCRYPTION_KEY` row stays only to decrypt those legacy values.
 - There is no operator Disconnect control. Connect replaces a leftover connection row when
-  secrets are restored. Removing the ShipStation key itself is done in Digit.
-- Digit GraphQL URL is always `https://api.digit-software.com/graphql`.
+  secrets are restored. Removing the ShipStation key itself is done in Sutton.
+- Sutton GraphQL URL is always `https://api.digit-software.com/graphql`.
 - Optional secret `FAIRE_API_KEY` — enables the Faire adapter stub (`src/backend/channels/faire.js`).
 - `GET /setup` is read-only: per-item `present` / `source` / `enables` plus `ready`,
   `usable`, `apiTokenPresent`. `POST /setup` only returns a message
-  pointing at Digit app secrets.
+  pointing at Sutton app secrets.
 - Partial config is **not** a blocking screen. The app always renders; `FeatureStatus.tsx`
   shows per-feature Working / Limited / Not yet with what each one still needs, and the
   queue's push button is disabled with a reason when `JWT_TOKEN` is not live.
 - Org settings: `default_fulfillment_method` is `manual` (the default: Push to ShipStation only)
   or `scheduled` (5-minute outbound push). Default weight (ounces). Carrier maps live in a dedicated modal
-  with two tabs: **Digit carriers → push** (each Digit option on exactly one confirmed ShipStation
-  service) and **ShipStation services → writeback** (one Digit `shippingCarriers` option per
-  ShipStation service, with an optional per-carrier Digit default).
+  with two tabs: **Sutton carriers → push** (each Sutton option on exactly one confirmed ShipStation
+  service) and **ShipStation services → writeback** (one Sutton `shippingCarriers` option per
+  ShipStation service, with an optional per-carrier Sutton default).
 - Schedule `poll-outbound-push` every 300s (outbound push only when fulfillment method is scheduled, plus unlabeled-map
   label pull). The shipping queue **Pull from ShipStation** button only pulls labels
   via `POST /sync/poll`. Outbound push is **Push to ShipStation** (`POST /sync/push`) or the
   five-minute job when fulfillment method is scheduled.
-- **Tracking writeback uses `JWT_TOKEN`.** Digit staff generate a Clerk JWT and place it
+- Schedule `prune-activity` every 300s. It deletes activity rows older than one calendar
+  month, and only during 12:00–12:09 AM Pacific, because the platform has no clock cron.
+- **Tracking writeback uses `JWT_TOKEN`.** Sutton staff generate a Clerk JWT and place it
   in the org’s app secrets. That identity has the user’s live permissions, including
   `UPDATE_SHIPMENT`. Settings → API Tokens (`da_`) cannot update shipments. Pull from ShipStation still
   applies staged `pendingWritebacks[]` in the iframe as a fallback when the operator is
   present.
-- **Rate limits:** the poll lists Digit shipments (`awaiting_carrier`) with `SHIPMENT_LIST_QUERY` and hands each node to
-  `pushShipment` as `preloaded`, so ineligible shipments cost no extra Digit query, and a run stops
+- **Rate limits:** the poll lists Sutton shipments (`awaiting_carrier`) with `SHIPMENT_LIST_QUERY` and hands each node to
+  `pushShipment` as `preloaded`, so ineligible shipments cost no extra Sutton query, and a run stops
   after `MAX_PUSHES_PER_RUN` (25). `digitGraphql` retries a 429 twice with backoff (honoring
-  `Retry-After`) and then returns "Digit API rate limit reached". Keep per-order Digit calls
+  `Retry-After`) and then returns "Sutton API rate limit reached". Keep per-order Sutton calls
   out of any loop you add here — that is what caused "Too many requests" before.
 - **Gotcha:** Org-admin is UI-only. Anyone who can open the app can hit `/proxy/backend`.
 - **Gotcha:** `0001` still has unused rate/label-cost columns. Do not expose them in GET/PATCH
@@ -109,7 +111,7 @@ Make the following updates:
   - Update default fulfillment method to have two options:
     - Scheduled push: Use shipstation api to push from shipment queue every 5 mins
     - Manual push: only push to shipstation on refresh button click
-  - Remove Sync mode completely: only offer Digit to Shipstation workflow
+  - Remove Sync mode completely: only offer Sutton to Shipstation workflow
   - Remove any settings that are not currently used by the app like Push and Lane tag ID
   - Remove default package dimensions
 ```
@@ -182,11 +184,11 @@ Support info
 
 ```
 Change the copy in the informational from "These are this organization’s app secrets in
-Digit. Add the missing values under Digit → Apps → this app → Secrets, then reload. Values
-are managed by Digit and are never entered or shown inside this app." to "These are this
-organization’s app secrets in Digit. Add the missing values by clicking 'Manage Custom
+Sutton. Add the missing values under Sutton → Apps → this app → Secrets, then reload. Values
+are managed by Sutton and are never entered or shown inside this app." to "These are this
+organization’s app secrets in Sutton. Add the missing values by clicking 'Manage Custom
 Apps' and then 'Edit' for the ShipStation integration, then reload. Values are managed by
-Digit and are never entered or shown inside this app."
+Sutton and are never entered or shown inside this app."
 ```
 
 ```
@@ -334,7 +336,7 @@ make sure to use the /frontend-design /create-digit-app skills when forging this
 ```
 
 ```
-Shipping Queue from Digit Shipments
+Shipping Queue from Sutton Shipments
 
 Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
 ```
@@ -368,7 +370,7 @@ write a plan to update the carrier to what is returned by shipstation. there may
 ```
 
 ```
-Digit carrier writeback from ShipStation
+Sutton carrier writeback from ShipStation
 
 Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
 ```
@@ -378,7 +380,7 @@ Investigate why clicking the 'Download packing slip' icon button results in an e
 ```
 
 ```
-I can't run this locally I have to run through the Digit platform. Maybe we can build a button into the app for testing purposes that allows me to download the log and then I could provide attach it to this chat
+I can't run this locally I have to run through the Sutton platform. Maybe we can build a button into the app for testing purposes that allows me to download the log and then I could provide attach it to this chat
 ```
 
 ```
@@ -408,27 +410,27 @@ To-do's from the plan have already been created. Do not create them again. Mark 
 - Phase 1: COM-01–COM-08 plus CS-12/13/14/16 and CS-01 as a Faire recipe/stub.
 - Strip FR-3 return-email, address-block, and shipping-fee capture from UI and Worker JSON.
   Leave unused `0001` connection columns at SQL defaults. Default package weight lives on
-  `org_settings` (`0009_label_rates.sql`). Do not auto rate-shop or buy labels from Digit.
-- Digit native pick/pack/PDF; operators create a Digit shipment (`awaiting_carrier`). The shipping
+  `org_settings` (`0009_label_rates.sql`). Do not auto rate-shop or buy labels from Sutton.
+- Sutton native pick/pack/PDF; operators create a Sutton shipment (`awaiting_carrier`). The shipping
   queue lists awaiting-carrier, unknown (`awaiting_pickup`), and in-transit/delivered (`shipped`)
-  Digit shipments (filter by mapped ShipStation `tracking_status`). Worker push is V2
+  Sutton shipments (filter by mapped ShipStation `tracking_status`). Worker push is V2
   `POST /v2/shipments` with `create_sales_order: true`, or V1 `POST /orders/createorder`,
-  and always includes the mapped ShipStation carrier + service from the Digit shipment’s
-  `shippingCarrierField`. Shipments without a mapped Digit carrier are not pushed.
+  and always includes the mapped ShipStation carrier + service from the Sutton shipment’s
+  `shippingCarrierField`. Shipments without a mapped Sutton carrier are not pushed.
   Operators buy labels in ShipStation. Poll/`POST /sync/poll` uses `GET /v2/labels` (V2) or
-  `GET /orders/{id}` (V1) then Digit writeback. Shipping-label download uses `POST /sync/label`;
+  `GET /orders/{id}` (V1) then Sutton writeback. Shipping-label download uses `POST /sync/label`;
   packing-slip download uses `POST /sync/packing-slip`, where the Worker calls
   `generateSalesOrderPdf`, fetches the presigned PDF URL outside the iframe CSP, and returns
   base64. Both finish with `DigitHost.download`. This app does not register or receive
-  ShipStation webhooks. Digit `shippingCarrierFieldId` is set from the ShipStation service on
+  ShipStation webhooks. Sutton `shippingCarrierFieldId` is set from the ShipStation service on
   writeback (service map, then carrier default, then service-string auto-match). Pulled labels
   whose service still does not resolve show a warning on the main page.
-- `JWT_TOKEN` because the scheduled poll has no iframe Digit session. Digit staff generate
+- `JWT_TOKEN` because the scheduled poll has no iframe Sutton session. Sutton staff generate
   this Clerk JWT and place it in the organization’s app secrets. Do not use `da_` API tokens.
 
 ```
 why am I getting this error in the app:
-"Writing ShipStation label se-200223533 back to Digit failed: [NOT_AUTHORIZED] User is not
+"Writing ShipStation label se-200223533 back to Sutton failed: [NOT_AUTHORIZED] User is not
 authorized to access updateShipment on Mutation"
 ```
 
@@ -439,11 +441,11 @@ authorized to access updateShipment on Mutation"
   /sync/writeback-complete`.
 
 ```
-Change the api token secret to JWT_TOKEN and make a note that Digit staff will have to
+Change the api token secret to JWT_TOKEN and make a note that Sutton staff will have to
 generate this token and place it in the account for the user
 ```
 
-- Rename `API_TOKEN_DIGIT` → `JWT_TOKEN`. Digit staff generate a Clerk JWT and store it as
+- Rename `API_TOKEN_DIGIT` → `JWT_TOKEN`. Sutton staff generate a Clerk JWT and store it as
   that org app secret. Do not use Settings → API Tokens (`da_`).
 
 ```
@@ -454,10 +456,10 @@ Pull in carrier information in the following ways.
 ```
 
 - Carrier count in the command bar is a chip that opens a dedicated mapping modal (org admins).
-  Each ShipStation carrier shows name, code, Digit match, and Auto/Manual/Unmatched. Pulled
+  Each ShipStation carrier shows name, code, Sutton match, and Auto/Manual/Unmatched. Pulled
   label carriers that still do not resolve are listed separately, warned on the main page, and
   omitted from `unmappedCarriers` once they match or are mapped. Fulfillment method and default
-  weight stay in Settings. Creating Digit carrier options is out of scope.
+  weight stay in Settings. Creating Sutton carrier options is out of scope.
 
 ```
 testing shows that there are two unmatched but no alert to the user. Show a little red alert
@@ -465,10 +467,10 @@ icon on the chip to let users know mapping is needed.
 ```
 
 - The alert counted only `unmappedCarriers` (carriers seen on a purchased label), so synced
-  carriers with no Digit match showed Unmatched in the modal with no page alert. The chip and
+  carriers with no Sutton match showed Unmatched in the modal with no page alert. The chip and
   alert now key off every `ssCarriers[]` row without a `digitOptionId`; the chip turns red with
   an error icon and tooltip. A carrier already used on a label escalates the alert to `error`
-  ("those shipments have no Digit carrier"); otherwise it is a `warning`. When
+  ("those shipments have no Sutton carrier"); otherwise it is a `warning`. When
   `digitCarriersError` is set, unmatched state is suppressed (nothing can match) and the load
   error itself is shown on the page.
 
@@ -476,13 +478,13 @@ icon on the chip to let users know mapping is needed.
 Make the carrier mapping UI tighter. Consider a more table like format
 ```
 
-- The modal is a dense MUI `Table` (ShipStation / Digit shipping carrier / Match) instead of
+- The modal is a dense MUI `Table` (ShipStation / Sutton shipping carrier / Match) instead of
   stacked cards, with a `mapped of total` count. Rows sort unmatched-first by server state so
   they do not jump while editing. Catalog and label-only carriers share one table; label-only
   rows are tagged `from label` under the code. `TablePagination` appears past 10 rows.
 
 ```
-The carrier matching feature needs to take into account that Digit considers different services offered by a carrier as unique carriers.
+The carrier matching feature needs to take into account that Sutton considers different services offered by a carrier as unique carriers.
 
 The following describes how shipstation handles this:
 Shipping service (ground, air, express, etc.) is selected via the service_code field on your shipment.
@@ -513,13 +515,13 @@ usps_ground_advantage — standard ground/parcel
  Outline how to reconcile this in the carrier config modal
 ```
 
-- Mapping grain is ShipStation **service** (`service_code`) → Digit `shippingCarriers`.
+- Mapping grain is ShipStation **service** (`service_code`) → Sutton `shippingCarriers`.
   Resolution: manual service map, then manual carrier default, then auto-match on the
   service name/code with a brand gate (never `stamps_com` → `USPS`). The modal filters by
-  ShipStation carrier, has a Default Digit carrier control, and a service table. Chip/alert
+  ShipStation carrier, has a Default Sutton carrier control, and a service table. Chip/alert
   count unmatched services. `carrier_digit_map` unique is
   `(connection_id, ss_carrier_code, ss_service_code)` (`0013`). Label pull stores
-  `service_code` / `service_name` on the order map. Digit `shippingClass` is not written.
+  `service_code` / `service_name` on the order map. Sutton `shippingClass` is not written.
 
 ```
 Make some minor ui updates to shipstation template:
@@ -535,7 +537,7 @@ Make some minor ui updates to shipstation template:
   previously showed only the Connect button.
 - The carrier chip is an outlined `Button` (truck icon, `error` color plus count when services
   are unmapped) labeled **Carrier configuration**, matching the modal title.
-- The queue's Digit status filter and pull action moved out of `SectionHeader` into a
+- The queue's Sutton status filter and pull action moved out of `SectionHeader` into a
   `queueToolbar` row directly above the table, above the sticky push bar.
 - **Refresh** is **Pull from ShipStation** (`Pulling…` while polling) everywhere it is named:
   queue notices, tooltips, eligibility copy, `FeatureStatus`, org-settings hints, and the
@@ -552,7 +554,7 @@ Actually remove the disconnect button completely. No one should have to disconne
   connection row. `DELETE /connection` remains on the Worker but is unused by the UI.
 
 ```
-Flesh out the Digit -> Shipstation and Shipstation -> Digit workflows. Use the
+Flesh out the Sutton -> Shipstation and Shipstation -> Sutton workflows. Use the
 shipstation mcp to learn about the shipstation api when needed.
 
 Confirm functionality that is already there and write a plan to implement the rest.
@@ -571,19 +573,19 @@ missing. Outline the steps to test the workflow
 ```
 
 ```
-Digit ↔ ShipStation workflows (no rate shopping)
+Sutton ↔ ShipStation workflows (no rate shopping)
 
 Implement the plan as specified, it is attached for your reference. Do NOT edit
 the plan file itself.
 ```
 
-- Rate shopping stays out of scope. Push requires a Digit `shippingCarrierField`
+- Rate shopping stays out of scope. Push requires a Sutton `shippingCarrierField`
   that reverse-maps via a **service-level** `carrier_digit_map` row to exactly one
-  ShipStation carrier + service. Missing, unmapped, or ambiguous Digit carriers
+  ShipStation carrier + service. Missing, unmapped, or ambiguous Sutton carriers
   are eligibility skips (Blocked; checkbox off). V2 create sends `carrier_id` +
   `service_code`; V1 createorder sends `carrierCode` + `serviceCode`. Carrier
   defaults (`ss_service_code = ''`) do not satisfy push. Queue shows a Carrier
-  column from Digit. Writeback SS → Digit is unchanged.
+  column from Sutton. Writeback SS → Sutton is unchanged.
 
 ```
 Change the pull to shipstation button to Push/Pull Shipstation (confirm that it
@@ -603,12 +605,12 @@ to find in the modal ui. It also did not block the push
 - Push now needs a **confirmed** map: only `source = 'manual'` service rows satisfy
   `resolveSsServiceFromDigitOption`. Auto-persisted `fuzzy` rows resolve to the new
   `unconfirmed` status and block push until a human picks the service.
-- `/org-settings` returns `digitCarrierMaps[]` — one row per Digit shipping carrier
+- `/org-settings` returns `digitCarrierMaps[]` — one row per Sutton shipping carrier
   with `status` (`ok` | `unmapped` | `unconfirmed` | `ambiguous`) and the resolved SS
-  carrier/service. The main page shows an **error** alert naming every Digit carrier
+  carrier/service. The main page shows an **error** alert naming every Sutton carrier
   that cannot push, and the Carrier configuration chip counts push gaps plus
   writeback gaps.
-- Carrier configuration shows one row per Digit option with a grouped
+- Carrier configuration shows one row per Sutton option with a grouped
   ShipStation-service picker and a Ready/Confirm/Not mapped chip. Picking a service
   clears that option's other pins so it stays one-to-one.
 - Sweep runs no longer swallow blocks: `pollOutboundPush` pushes as the real actor,
@@ -621,11 +623,11 @@ remove writeback for now but keep the logic. It won't be needed until rate shopp
 is added
 ```
 
-- The ShipStation-services → Digit-carrier writeback mapping tab, its unmatched-service
+- The ShipStation-services → Sutton-carrier writeback mapping tab, its unmatched-service
   alert, and its count in the Carrier configuration button are hidden for now. The
   backend payload, matching helpers, saved mappings, and label writeback behavior remain
   intact for later rate-shopping work. Carrier configuration now exposes only the
-  Digit-carrier → ShipStation-service mapping required to push.
+  Sutton-carrier → ShipStation-service mapping required to push.
 
 ```
 make manual pushing/pulling shipstation the default
@@ -650,7 +652,7 @@ The other button should say pull from shipstation like before.
 the shipstation template queue doesn't repopulate the carrier when it is changed. This table should pull fresh digit information automatically on load.
 ```
 
-- The shipping queue re-fetches Digit `shipments` on load and whenever
+- The shipping queue re-fetches Sutton `shipments` on load and whenever
   the iframe becomes visible again. Display, eligibility, and push use the shipment
   `shippingCarrierField` when set, otherwise the parent sales order’s current carrier.
 
@@ -661,14 +663,14 @@ code=QUERY_TOO_EXPENSIVE kind=platform detail=Query exceeds the maximum allowed 
 ```
 
 - Removed the aliased `shipment(shipmentId:)` hydrate of every visible row. That second
-  query exceeded Digit’s GraphQL cost cap while the list query already had the updated
+  query exceeded Sutton’s GraphQL cost cap while the list query already had the updated
   carrier. Freshness is the list refetch on load/visible plus the order-carrier fallback.
 
 ```
 make sure the cost gets applied to the packing slip
 ```
 
-- Label postage (`shipment_cost`) is written to Digit `Order.shippingFees` (`CostInput`)
+- Label postage (`shipment_cost`) is written to Sutton `Order.shippingFees` (`CostInput`)
   on writeback and again immediately before `generateSalesOrderPdf`, so the packing slip
   PDF includes ShipStation shipping cost. Multi-shipment orders sum D1 label costs.
 
@@ -677,7 +679,7 @@ make sure all the status chips are clearly visible. For example, "blocked" is no
 ```
 
 - Status chips are filled (not outlined) with theme contrast text and heavier labels so
-  Blocked, Ready, Digit/tracking, connection, setup, and carrier-mapping states stay readable.
+  Blocked, Ready, Sutton/tracking, connection, setup, and carrier-mapping states stay readable.
 
 ```
 keep the hover over that explained why a package is blocked
@@ -695,3 +697,63 @@ Also center the files icon to the rows that it is referencing
 
 - The shipping queue fills the iframe: table body scrolls vertically (no Previous/Next).
   Files icons are vertically centered on the row and stay sticky on the right.
+
+```
+The packing slip does not map the correct carrier to the slip. Make sure that the slip carrier matches the SHP and shipstation carrier
+```
+
+- The sales-order packing slip prints `Order.shippingCarrierField`. Before
+  `generateSalesOrderPdf`, the purchased ShipStation label is read again and that
+  field is set from the label’s mapped Sutton option. The SHP field is only used
+  when the label does not resolve, because it can still be the carrier chosen on
+  the sales order before the label was bought.
+
+```
+the packing slip is still showing fedex
+```
+
+- Downloading the slip was copying the SHP’s original FedEx option back onto the
+  order. The slip now uses the carrier and service on the purchased label. V1
+  orders use the label shipment’s carrier, not the carrier sent at push.
+
+```
+Make the Activity Log in the shipstation template more robust.
+
+- User needs to be able to expand it or click to another tab for it
+- It should be filterable by type (error, success, warning)
+- It should be searchable by date/time/text
+- It should be very clear if the error came from Sutton vs Shipstation
+```
+
+- The queue keeps a short activity preview with Expand. The Activity tab is the
+  full log: type filters (warnings include skipped), search across date, time,
+  and text, and a banner on errors and warnings that names Sutton or ShipStation.
+  `origin` is derived when the log is read, so older rows get the same label.
+
+```
+Remove the log at the bottom of the page and just keep the activity log tab
+```
+
+- The queue no longer shows an activity preview. The Activity tab is the only log.
+
+```
+Improve the UI of the activity log entries. Show exact error message if there is one. I especially do not like the way that it shows "Shipstation has no update for this shipment"
+```
+
+- Entries show the stored message, plus a detail `message` when it is not already
+  included. Sutton or ShipStation is a chip. The log no longer adds its own
+  sentence in place of that text.
+
+```
+instead of a chip that says "this app" have it say "In app" and make it a charcoal grey chip
+```
+
+- Events recorded by this template use an “In app” chip in charcoal grey.
+
+```
+The activity log should only hold onto entries up to 1 month old. Auto delete entries as they surupass this age every day at 12 AM.
+```
+
+- `prune-activity` deletes `activity_log` rows older than one calendar month. The job is
+  scheduled every five minutes and performs the delete only from midnight to 12:09 AM
+  Pacific.

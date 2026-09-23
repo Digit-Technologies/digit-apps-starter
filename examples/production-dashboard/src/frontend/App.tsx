@@ -40,7 +40,7 @@ export default function App() {
         <Box>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
             <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
-              Digit App
+              Sutton App
             </Typography>
             {previewMode && (
               <Chip

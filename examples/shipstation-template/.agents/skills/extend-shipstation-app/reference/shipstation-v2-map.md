@@ -13,18 +13,18 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 | --- | --- | --- |
 | `GET` | `/v2/carriers` | Validate API key; carrier sync |
 | `GET` | `/v2/carriers/{id}/services` | Services when the carrier list has none |
-| `POST` | `/v2/shipments` | Push Digit shipment (`create_sales_order: true`). Always includes `carrier_id` + `service_code` from the Digit shipping-carrier → ShipStation service map. |
+| `POST` | `/v2/shipments` | Push Sutton shipment (`create_sales_order: true`). Always includes `carrier_id` + `service_code` from the Sutton shipping-carrier → ShipStation service map. |
 | `GET` | `/v2/shipments/{id}` | Writeback |
-| `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Digit shipment id |
-| `GET` | `/v2/labels` | Poll unlabeled maps (`shipment_id` / `external_shipment_id`); `tracking_status` drives Digit `shippingStatus` |
+| `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Sutton shipment id |
+| `GET` | `/v2/labels` | Poll unlabeled maps (`shipment_id` / `external_shipment_id`); `tracking_status` drives Sutton `shippingStatus` |
 | `GET` | `/v2/labels/{id}` | Queue PDF download (`label_download_type=inline`) |
 
-`POST /v2/shipments` keeps one ShipStation shipment per Digit shipment and sends one
-`packages[]` entry per Digit pack container. Each package uses the container's gross
-weight and complete dimensions when available, org defaults otherwise, and the Digit
+`POST /v2/shipments` keeps one ShipStation shipment per Sutton shipment and sends one
+`packages[]` entry per Sutton pack container. Each package uses the container's gross
+weight and complete dimensions when available, org defaults otherwise, and the Sutton
 pack-container id as `external_package_id`. Shipment `items[]` remain shipment-level;
 do not misuse customs-only `packages[].products[]` as item-to-package allocation.
-Push requires a Digit `shippingCarrierField` that reverse-maps to exactly one
+Push requires a Sutton `shippingCarrierField` that reverse-maps to exactly one
 ShipStation **service** through a confirmed (`manual`) map — not a carrier-level default
 and not an auto-matched `fuzzy` row; that map supplies `carrier_id` and `service_code`.
 

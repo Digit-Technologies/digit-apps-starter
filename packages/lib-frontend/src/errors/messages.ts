@@ -3,11 +3,11 @@ import { AppErrorCode } from '@digit/lib-common';
 import type { AppError } from './types';
 
 const PLATFORM_USER_MESSAGES: Record<string, string> = {
-  NO_SESSION: 'No active session. Re-open the app from Digit.',
-  SESSION_EXPIRED: 'Your session expired. Re-open the app from Digit.',
-  SESSION_APP_MISMATCH: 'Session does not match this app. Reload the app from Digit.',
+  NO_SESSION: 'No active session. Re-open the app from Sutton.',
+  SESSION_EXPIRED: 'Your session expired. Re-open the app from Sutton.',
+  SESSION_APP_MISMATCH: 'Session does not match this app. Reload the app from Sutton.',
   INVALID_ORIGIN:
-    'Request was rejected by Digit. Use DigitProxyClient (do not call /proxy/* with a bare fetch).',
+    'Request was rejected by Sutton. Use DigitProxyClient (do not call /proxy/* with a bare fetch).',
   RATE_LIMITED: 'Too many requests. Wait a moment and try again.',
   APP_UNAVAILABLE: 'This app is not currently available.',
   NO_BACKEND: 'This app has no backend configured.',
@@ -15,13 +15,13 @@ const PLATFORM_USER_MESSAGES: Record<string, string> = {
   OPERATION_NOT_ALLOWED: 'This operation is not allowed for this app or user.',
   QUERY_TOO_DEEP: 'The GraphQL query is too deeply nested.',
   QUERY_TOO_EXPENSIVE: 'The GraphQL query exceeds the allowed cost.',
-  REDEEM_FAILED: 'Could not start a session. Re-open the app from Digit.',
+  REDEEM_FAILED: 'Could not start a session. Re-open the app from Sutton.',
 };
 
 /** Fallback when the Worker did not send a specific message. */
 const BACKEND_USER_MESSAGES: Record<string, string> = {
   [AppErrorCode.MISSING_CONFIG]:
-    'This app is missing required configuration. Set the env var or secret in Digit.',
+    'This app is missing required configuration. Set the env var or secret in Sutton.',
   [AppErrorCode.VALIDATION_ERROR]: 'Check the form fields and try again.',
   [AppErrorCode.UPSTREAM_ERROR]: 'An upstream service failed. Try again shortly.',
   [AppErrorCode.NOT_FOUND]: 'The requested resource was not found.',
@@ -47,15 +47,15 @@ const CODE_TITLES: Record<string, string> = {
 
 /** Extra next-step copy shown under the main message for known codes. */
 const CODE_GUIDANCE: Record<string, string> = {
-  NO_SESSION: 'Close this view and open the app again from Digit.',
-  SESSION_EXPIRED: 'Close this view and open the app again from Digit.',
-  SESSION_APP_MISMATCH: 'Reload the app from Digit so the session matches this app.',
+  NO_SESSION: 'Close this view and open the app again from Sutton.',
+  SESSION_EXPIRED: 'Close this view and open the app again from Sutton.',
+  SESSION_APP_MISMATCH: 'Reload the app from Sutton so the session matches this app.',
   NO_BACKEND:
     'Publish a bundle whose manifest declares backend.kind: "cloudflare-worker".',
   [AppErrorCode.MISSING_CONFIG]:
-    'In Digit, open the app → Env vars / Secrets, set the missing key, then republish.',
+    'In Sutton, open the app → Env vars / Secrets, set the missing key, then republish.',
   CLIENT_UNAVAILABLE:
-    'This screen only works inside the Digit app harness (not plain local Vite alone).',
+    'This screen only works inside the Sutton app harness (not plain local Vite alone).',
 };
 
 export type ErrorPresentation = {

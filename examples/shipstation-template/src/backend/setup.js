@@ -44,10 +44,10 @@ async function setupItems({ env, db }) {
       present: Boolean(token.value),
       valid: Boolean(token.value),
       source: token.source,
-      issue: token.value ? null : 'Ask Digit staff to generate JWT_TOKEN and place it on this account.',
+      issue: token.value ? null : 'Ask Sutton staff to generate JWT_TOKEN and place it on this account.',
       enables: 'Pushing shipments to ShipStation, tracking writeback, and the scheduled poll.',
       description:
-        'Clerk JWT used by the Worker for Digit GraphQL (poll writeback and scheduled push). Digit staff generate this token and place it in the organization’s app secrets. Do not create a da_ API token — those cannot update shipments. Saved as a Digit app secret, so its value is write-only.',
+        'Clerk JWT used by the Worker for Sutton GraphQL (poll writeback and scheduled push). Sutton staff generate this token and place it in the organization’s app secrets. Do not create a da_ API token — those cannot update shipments. Saved as a Sutton app secret, so its value is write-only.',
     },
   ];
 
@@ -111,7 +111,7 @@ export async function handleSetup({ env, path, method }) {
     return err({
       code: AppErrorCode.VALIDATION_ERROR,
       message:
-        'Setup values are Digit app secrets. Manage them in Digit → Apps → this app → Secrets.',
+        'Setup values are Sutton app secrets. Manage them in Sutton → Apps → this app → Secrets.',
       status: 400,
     });
   }

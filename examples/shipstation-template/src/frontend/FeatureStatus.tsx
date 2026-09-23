@@ -35,7 +35,7 @@ export type FeatureStatusProps = {
 };
 
 const CONNECTION = 'a connected ShipStation account';
-const TOKEN = 'the Digit JWT (JWT_TOKEN)';
+const TOKEN = 'the Sutton JWT (JWT_TOKEN)';
 const SS_KEY = 'the ShipStation API key';
 const SS_SECRET = 'SHIPSTATION_API_SECRET';
 
@@ -82,7 +82,7 @@ function v2Features({
     gate({
       title: 'Push orders to ShipStation',
       detail:
-        'Eligible Digit sales orders become V2 shipments (create_sales_order) from the queue with the mapped Digit shipping carrier. Manual push (the default) waits for Push to ShipStation; Scheduled push also runs every five minutes.',
+        'Eligible Sutton sales orders become V2 shipments (create_sales_order) from the queue with the mapped Sutton shipping carrier. Manual push (the default) waits for Push to ShipStation; Scheduled push also runs every five minutes.',
       requires: [
         [shipStationKeyPresent, SS_KEY],
         [connected, CONNECTION],
@@ -96,9 +96,9 @@ function v2Features({
       requires: [[connected, CONNECTION]],
     }),
     gate({
-      title: 'Write tracking back to Digit',
+      title: 'Write tracking back to Sutton',
       detail:
-        'The five-minute poll (and Pull from ShipStation) reads V2 labels and writes carrier, tracking, and cost onto the Digit shipment.',
+        'The five-minute poll (and Pull from ShipStation) reads V2 labels and writes carrier, tracking, and cost onto the Sutton shipment.',
       requires: [
         [shipStationKeyPresent, SS_KEY],
         [connected, CONNECTION],
@@ -127,7 +127,7 @@ function v1Features({
     }),
     gate({
       title: 'Push orders to ShipStation',
-      detail: 'Eligible Digit sales orders become V1 orders via createorder from the queue with the mapped Digit shipping carrier. Manual push (the default) waits for Push to ShipStation; Scheduled push also runs every five minutes.',
+      detail: 'Eligible Sutton sales orders become V1 orders via createorder from the queue with the mapped Sutton shipping carrier. Manual push (the default) waits for Push to ShipStation; Scheduled push also runs every five minutes.',
       requires: [
         [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
         [connected, CONNECTION],
@@ -141,9 +141,9 @@ function v1Features({
       requires: [[connected, CONNECTION]],
     }),
     gate({
-      title: 'Write tracking back to Digit',
+      title: 'Write tracking back to Sutton',
       detail:
-        'The five-minute poll (and Pull from ShipStation) reads V1 orders and writes carrier, tracking, and cost onto the Digit shipment.',
+        'The five-minute poll (and Pull from ShipStation) reads V1 orders and writes carrier, tracking, and cost onto the Sutton shipment.',
       requires: [
         [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
         [connected, CONNECTION],
@@ -156,21 +156,21 @@ function v1Features({
 function digitFeatures({ connected }: FeatureStatusProps): Feature[] {
   return [
     {
-      title: 'Pick and pack in Digit',
+      title: 'Pick and pack in Sutton',
       detail:
-        'Operators pick and pack in Digit, and can download sales-order, pick-list, and packing-slip PDFs.',
+        'Operators pick and pack in Sutton, and can download sales-order, pick-list, and packing-slip PDFs.',
       state: 'working',
       needs: [],
     },
     gate({
       title: 'Shipping queue',
-      detail: 'Digit shipment status and ShipStation tracking status, batch push, and packing-slip PDFs.',
+      detail: 'Sutton shipment status and ShipStation tracking status, batch push, and packing-slip PDFs.',
       requires: [[connected, CONNECTION]],
     }),
     gate({
       title: 'Hold shipments that should not ship yet',
       detail:
-        'Imported ShipStation rows stay in Digit. The queue lists awaiting-carrier, unknown, and in-transit/delivered shipments.',
+        'Imported ShipStation rows stay in Sutton. The queue lists awaiting-carrier, unknown, and in-transit/delivered shipments.',
       requires: [[connected, CONNECTION]],
     }),
   ];
@@ -187,16 +187,16 @@ function channelFeatures({
     {
       title: 'Store order import',
       detail:
-        'Connect a store via Digit Rutter, or add channel secrets and implement a direct adapter in a clone of this template.',
+        'Connect a store via Sutton Rutter, or add channel secrets and implement a direct adapter in a clone of this template.',
       state: 'off' as const,
-      needs: ['Digit Rutter store connection or channel adapter secrets'],
+      needs: ['Sutton Rutter store connection or channel adapter secrets'],
     },
     storeFulfillmentConfigured || (connected && apiTokenPresent)
       ? {
           title: 'Tracking to sales channel',
           detail: storeFulfillmentConfigured
-            ? 'A direct channel adapter can push tracking after Digit writeback. Digit Rutter also propagates tracking when the store is connected in Digit.'
-            : 'When tracking is on the Digit shipment, Digit Rutter can notify connected Shopify/WooCommerce stores. Add a channel adapter for stores Rutter does not cover.',
+            ? 'A direct channel adapter can push tracking after Sutton writeback. Sutton Rutter also propagates tracking when the store is connected in Sutton.'
+            : 'When tracking is on the Sutton shipment, Sutton Rutter can notify connected Shopify/WooCommerce stores. Add a channel adapter for stores Rutter does not cover.',
           state: (storeFulfillmentConfigured ? 'partial' : 'working') as FeatureState,
           needs: storeFulfillmentConfigured
             ? ['channel adapter implementation in your clone']
@@ -205,7 +205,7 @@ function channelFeatures({
       : {
           title: 'Tracking to sales channel',
           detail:
-            'Finish ShipStation writeback first, then use Digit Rutter or a direct channel adapter to notify the store.',
+            'Finish ShipStation writeback first, then use Sutton Rutter or a direct channel adapter to notify the store.',
           state: 'off' as const,
           needs: [CONNECTION, TOKEN],
         },
@@ -392,7 +392,7 @@ export default function FeatureStatus(props: FeatureStatusProps) {
 
       <Stack spacing={1}>
         <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.06em' }}>
-          In Digit
+          In Sutton
         </Typography>
         <FeatureGrid features={digit} />
       </Stack>

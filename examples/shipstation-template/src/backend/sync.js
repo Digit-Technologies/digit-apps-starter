@@ -38,6 +38,7 @@ import {
 import {
   normalizeSsRecord,
   normalizedToImportShipment,
+  packingSlipCarrierChoice,
   summedShippingFees,
 } from './mappers/normalizeSsRecord.js';
 import {
@@ -245,13 +246,113 @@ async function shippingFeesForDigitOrder({ db, connectionId, digitOrderId }) {
   return summedShippingFees(results);
 }
 
-async function applyOrderShippingFees({ env, orderId, shippingFees }) {
-  if (!orderId || !shippingFees) return { ok: true, data: { skipped: true } };
+async function applyOrderShippingFees({
+  env,
+  orderId,
+  shippingFees,
+  shippingCarrierFieldId = null,
+}) {
+  if (!orderId || (!shippingFees && !shippingCarrierFieldId)) {
+    return { ok: true, data: { skipped: true } };
+  }
   return digitGraphql({
     env,
     query: UPDATE_ORDER_MUTATION,
-    variables: { input: { orderId, shippingFees } },
+    variables: {
+      input: {
+        orderId,
+        ...(shippingFees ? { shippingFees } : {}),
+        ...(shippingCarrierFieldId ? { shippingCarrierFieldId } : {}),
+      },
+    },
   });
+}
+
+/**
+ * Carrier to print on the packing slip. The purchased ShipStation label is
+ * read again so a sales-order carrier such as FedEx 2Day is not reused after
+ * a different service was bought. Newest mapped shipment wins.
+ */
+async function packingSlipCarrierForOrder({
+  env,
+  db,
+  organizationId,
+  connectionId,
+  orderId,
+  credentials = null,
+}) {
+  const empty = { shippingCarrierFieldId: null, digitShipmentId: null };
+  if (!connectionId || !orderId) return empty;
+  const { results } = await db
+    .prepare(
+      `SELECT digit_shipment_id, ss_shipment_id, carrier_name, service_code, service_name
+       FROM shipstation_order_map
+       WHERE connection_id = ? AND digit_order_id = ? AND deleted = 0
+       ORDER BY id DESC`,
+    )
+    .bind(connectionId, orderId)
+    .all();
+  const rows = results ?? [];
+  if (!rows.length) return empty;
+
+  let order = null;
+  let fetched = false;
+  async function shipmentOptionId(shipmentId) {
+    if (!shipmentId) return null;
+    if (!fetched) {
+      fetched = true;
+      const loaded = await fetchDigitOrder({ env, orderId });
+      order = loaded.ok ? loaded.data.order : null;
+    }
+    const shipment = order?.shipments?.find((item) => item.id === shipmentId);
+    return shipment?.shippingCarrierField?.id || null;
+  }
+
+  const choices = [];
+  for (const row of rows) {
+    const live = await labelCarrierForMapRow({ credentials, row });
+    const carrierCode = live?.carrierCode || row.carrier_name;
+    const serviceCode = live?.serviceCode || row.service_code;
+    const serviceName = live?.serviceCode ? null : row.service_name;
+    const resolved = await resolveDigitCarrier({
+      env,
+      db,
+      organizationId,
+      connectionId,
+      carrierCode,
+      carrierName: carrierCode,
+      serviceCode,
+      serviceName,
+      actor: 'user',
+      digitOrderId: orderId,
+      recordActivity: false,
+    });
+    choices.push({
+      digitShipmentId: row.digit_shipment_id,
+      shipmentOptionId: await shipmentOptionId(row.digit_shipment_id),
+      resolvedOptionId: resolved.ok ? resolved.data.digitOptionId : null,
+    });
+  }
+  const choice = packingSlipCarrierChoice(choices);
+  return {
+    shippingCarrierFieldId: choice.optionId,
+    digitShipmentId: choice.shipmentId,
+  };
+}
+
+async function labelCarrierForMapRow({ credentials, row }) {
+  if (!credentials || !row?.ss_shipment_id) return null;
+  const looked = await lookupSsFulfillmentRecord({
+    credentials,
+    map: {
+      ss_shipment_id: row.ss_shipment_id,
+      digit_shipment_id: row.digit_shipment_id,
+    },
+  });
+  if (!looked.record) return null;
+  const normalized = normalizeSsRecord(looked.record);
+  if (!normalized.carrierCode && !normalized.serviceCode) return null;
+  return normalized;
 }
 
 async function applyMappedShippingFeesToOrder({ env, db, organizationId, orderId }) {
@@ -262,7 +363,34 @@ async function applyMappedShippingFeesToOrder({ env, db, organizationId, orderId
     connectionId: secret.connectionId,
     digitOrderId: orderId,
   });
-  return applyOrderShippingFees({ env, orderId, shippingFees });
+  const carrier = await packingSlipCarrierForOrder({
+    env,
+    db,
+    organizationId,
+    connectionId: secret.connectionId,
+    orderId,
+    credentials: credentialsForApi(secret),
+  });
+  const updated = await applyOrderShippingFees({
+    env,
+    orderId,
+    shippingFees,
+    shippingCarrierFieldId: carrier.shippingCarrierFieldId,
+  });
+  if (!updated.ok) return updated;
+  if (carrier.shippingCarrierFieldId && carrier.digitShipmentId) {
+    await digitGraphql({
+      env,
+      query: UPDATE_SHIPMENT_MUTATION,
+      variables: {
+        input: {
+          shipmentId: carrier.digitShipmentId,
+          shippingCarrierFieldId: carrier.shippingCarrierFieldId,
+        },
+      },
+    });
+  }
+  return updated;
 }
 
 async function upsertMap({ db, connectionId, organizationId, digitOrderId, digitShipmentId, fields }) {
@@ -428,7 +556,7 @@ export async function fetchDigitShipment({ env, shipmentId }) {
     return {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
-      message: 'Digit shipment not found.',
+      message: 'Sutton shipment not found.',
       status: 400,
     };
   }
@@ -833,7 +961,7 @@ export async function downloadPackingSlip({ env, db, organizationId, orderId }) 
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'Digit did not return a packing slip URL.',
+      message: 'Sutton did not return a packing slip URL.',
       status: 502,
     };
   }
@@ -845,7 +973,7 @@ export async function downloadPackingSlip({ env, db, organizationId, orderId }) 
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'The app backend could not fetch the packing slip from Digit.',
+      message: 'The app backend could not fetch the packing slip from Sutton.',
       status: 502,
     };
   }
@@ -853,7 +981,7 @@ export async function downloadPackingSlip({ env, db, organizationId, orderId }) 
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: `Digit packing slip download failed (HTTP ${response.status}).`,
+      message: `Sutton packing slip download failed (HTTP ${response.status}).`,
       status: 502,
     };
   }
@@ -863,7 +991,7 @@ export async function downloadPackingSlip({ env, db, organizationId, orderId }) 
     return {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
-      message: 'The packing slip exceeds Digit’s 10MB download limit.',
+      message: 'The packing slip exceeds Sutton’s 10MB download limit.',
       status: 400,
     };
   }
@@ -1107,7 +1235,12 @@ async function applyDigitShipmentWriteback({
     connectionId,
     digitOrderId,
   });
-  const fees = await applyOrderShippingFees({ env, orderId: digitOrderId, shippingFees });
+  const fees = await applyOrderShippingFees({
+    env,
+    orderId: digitOrderId,
+    shippingFees,
+    shippingCarrierFieldId: digitOptionId,
+  });
   if (!fees.ok) return fees;
 
   await afterDigitShipped({
@@ -1181,7 +1314,7 @@ export async function processSsFulfillment({
       .first();
   }
   if (!map?.digit_order_id) {
-    return { ok: true, data: { skipped: true, reason: 'No Digit order mapped for this shipment.' } };
+    return { ok: true, data: { skipped: true, reason: 'No Sutton order mapped for this shipment.' } };
   }
 
   return applyDigitShipmentWriteback({
@@ -1262,7 +1395,7 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'Could not resolve a Digit customer for the inbound order.',
+      message: 'Could not resolve a Sutton customer for the inbound order.',
       status: 502,
     };
   }
@@ -1297,7 +1430,7 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
       return {
         ok: false,
         code: AppErrorCode.VALIDATION_ERROR,
-        message: `No Digit item matches SKU ${line.sku}.`,
+        message: `No Sutton item matches SKU ${line.sku}.`,
         status: 400,
       };
     }
@@ -1326,7 +1459,7 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
     return {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
-      message: 'Inbound shipment has no SKUs that map to Digit items.',
+      message: 'Inbound shipment has no SKUs that map to Sutton items.',
       status: 400,
     };
   }
@@ -1366,7 +1499,7 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'Digit did not return an order id.',
+      message: 'Sutton did not return an order id.',
       status: 502,
     };
   }
@@ -1770,7 +1903,7 @@ export async function completeShipmentWriteback({ env, db, organizationId, digit
     return {
       ok: false,
       code: AppErrorCode.VALIDATION_ERROR,
-      message: 'No ShipStation mapping for that Digit shipment.',
+      message: 'No ShipStation mapping for that Sutton shipment.',
       status: 400,
     };
   }
@@ -1808,10 +1941,20 @@ export async function completeShipmentWriteback({ env, db, organizationId, digit
     connectionId: secret.connectionId,
     digitOrderId: map.digit_order_id,
   });
+  const carrier = await packingSlipCarrierForOrder({
+    env,
+    db,
+    organizationId,
+    connectionId: secret.connectionId,
+    orderId: map.digit_order_id,
+    credentials: credentialsForApi(secret),
+  });
+  const shippingCarrierFieldId = carrier.shippingCarrierFieldId;
   const fees = await applyOrderShippingFees({
     env,
     orderId: map.digit_order_id,
     shippingFees,
+    shippingCarrierFieldId,
   });
   if (!fees.ok) return fees;
 
@@ -1821,7 +1964,7 @@ export async function completeShipmentWriteback({ env, db, organizationId, digit
     actor: 'user',
     action: 'poll',
     status: 'success',
-    message: `Wrote ShipStation tracking ${map.tracking_status || 'unknown'} for label ${map.ss_label_id} to Digit (tracking ${map.tracking_number}).`,
+    message: `Wrote ShipStation tracking ${map.tracking_status || 'unknown'} for label ${map.ss_label_id} to Sutton (tracking ${map.tracking_number}).`,
     digitOrderId: map.digit_order_id,
     ssShipmentId: map.ss_shipment_id,
   });

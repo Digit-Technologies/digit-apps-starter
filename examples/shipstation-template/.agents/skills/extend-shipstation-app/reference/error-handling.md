@@ -14,11 +14,11 @@ app must keep that contract. Details live here; recipes and routes only cross-li
 - Pair `useBackendQuery` / `useBackendMutation` / `useDigitApiQuery` errors with
   `AppErrorAlert`. Surface `DigitHost.download` throws the same way.
 
-Example meaning for a successful push: the Digit shipment **stays awaiting carrier** until
+Example meaning for a successful push: the Sutton shipment **stays awaiting carrier** until
 the poll (or Refresh) finds a ShipStation label and writes tracking (`shipped`); the Worker
-also sets Digit `shippingCarrierField` when the ShipStation service matches (or is mapped
+also sets Sutton `shippingCarrierField` when the ShipStation service matches (or is mapped
 in the carrier modal). Operators buy the label in ShipStation, then download the PDF from
-the queue once it exists. Unmapped services log `carrier_unmapped`, leave Digit’s carrier
+the queue once it exists. Unmapped services log `carrier_unmapped`, leave Sutton’s carrier
 unset, and surface on the main page until they are mapped in carrier settings.
 
 ## HTTP 200 is not “all good”
@@ -34,7 +34,7 @@ mixed batch is not a single mutation error.
 ```
 
 - `skipped: true` is eligibility (`ineligibilityReason`), not success. Show it.
-- `ok: false` on a result is a ShipStation or Digit failure; keep that row selected.
+- `ok: false` on a result is a ShipStation or Sutton failure; keep that row selected.
 - The UI must read `summary` and `meaning`. Do not treat hook `error === null` as
   “every shipment pushed.”
 
@@ -44,9 +44,20 @@ D1 table `activity_log` (migration `0004_activity_log.sql`). Helpers:
 `appendActivity` / `listActivity` in `src/backend/activity.js`.
 
 `GET /sync/activity?organizationId=` returns `{ events }` (newest first, max 100).
+Each event includes `origin`: `sutton`, `shipstation`, `channel`, `app`, or
+`unknown`. `inferActivityOrigin` in `activityOrigin.js` derives it at read time
+from the action, message, and detail shape (`graphqlCode` → Sutton;
+`requestId` / `errorCodes` → ShipStation). Do not guess when those signals are
+absent — leave `unknown` so the log can say the source was not recorded.
+
+The log lives only on the **Activity** tab (search by date, time, and text;
+filters for error, success, and warning — skipped counts as warning). Each row
+shows the stored message as written, with a Sutton or ShipStation chip when the
+source is known. Do not replace that message with a summary sentence. The queue
+does not show a log.
 
 Record: `actor` (`user` | `schedule` | `channel`), `action`, ids, `status`
-(`success` | `skipped` | `error`), human `message`, optional `detail` JSON (HTTP
+(`success` | `skipped` | `error` | `warning`), human `message`, optional `detail` JSON (HTTP
 status, `error_code`s, GraphQL `extensions.code`).
 
 **Never** store API keys, `api_key_encrypted`, addresses, tracking numbers, or raw
@@ -63,7 +74,7 @@ body: V2 / ShipEngine `{ request_id, errors[].error_code, errors[].message, erro
 V1 often `{ Message }` / `{ message }`. Confirm the shape on ShipStation docs MCP before
 changing parsers. Do **not** include `field_value` (may be PII) or request bodies.
 
-Digit Worker GraphQL (`digitGraphql.js`): include `errors[0].message` and
+Sutton Worker GraphQL (`digitGraphql.js`): include `errors[0].message` and
 `extensions.code` when present.
 
 Keep `last_error` / activity `message` truncated (~500 chars). Full sentences belong
@@ -76,12 +87,12 @@ sentence. Frontend copy lives in `src/frontend/eligibility.ts` — keep them in 
 (Worker cannot import TS). `skipNextStep` says what to change.
 
 V1 multi-container shipments are blocked before selection because V1 has only one
-order-level package. Show both remedies in the queue and push result: create one Digit
+order-level package. Show both remedies in the queue and push result: create one Sutton
 shipment per pack container, or disconnect ShipStation and reconnect with V2 credentials.
 
-Push also requires a Digit `shippingCarrierField` that reverse-maps to **exactly one**
+Push also requires a Sutton `shippingCarrierField` that reverse-maps to **exactly one**
 ShipStation service through a **confirmed** (`source = 'manual'`) `carrier_digit_map` row.
-Missing, unmapped, auto-matched-only (`unconfirmed`), and ambiguous Digit carriers are
+Missing, unmapped, auto-matched-only (`unconfirmed`), and ambiguous Sutton carriers are
 eligibility skips (Blocked in the queue), not silent push successes.
 
 Sweep runs (`pollOutboundPush`) must not swallow those skips. `skipNeedsAttention` splits
@@ -100,3 +111,6 @@ surprise. Do not duplicate that in a second status column — sync state (`pushe
   `/sync/push` or the scheduled job when fulfillment method is `scheduled`.
 - `appendActivity` on poll errors and operator Refresh; skip flooding the log with
   routine eligibility skips.
+- `prune-activity` (300s): deletes `activity_log` rows older than one calendar month.
+  The platform schedule is an interval, so the handler runs only from 12:00–12:09 AM
+  Pacific (`America/Los_Angeles`) and skips every other tick.

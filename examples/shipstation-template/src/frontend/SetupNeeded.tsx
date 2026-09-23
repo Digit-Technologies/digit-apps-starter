@@ -23,7 +23,7 @@ type SetupNeededProps = {
 };
 
 function fieldLabel(item: SetupItem) {
-  if (item.key === TOKEN_KEY) return 'Digit JWT (staff-generated)';
+  if (item.key === TOKEN_KEY) return 'Sutton JWT (staff-generated)';
   if (item.key === SHIPSTATION_KEY) return 'ShipStation API key';
   if (item.key === SHIPSTATION_SECRET) return 'ShipStation API secret (V1)';
   return item.key;
@@ -148,9 +148,9 @@ export default function SetupNeeded({ items }: SetupNeededProps) {
   return (
     <Stack spacing={2.5}>
       <Alert severity="info">
-        These are this organization’s app secrets in Digit. Add or remove them under Manage Custom
+        These are this organization’s app secrets in Sutton. Add or remove them under Manage Custom
         Apps → Edit for this integration, then click <strong>Save</strong> and reload this app.
-        Digit’s secret <em>values</em> are write-only — empty “Key name / Value” rows are only for
+        Sutton’s secret <em>values</em> are write-only — empty “Key name / Value” rows are only for
         adding new secrets. If a row below says <strong>Secret set</strong>, the Worker still has
         that key injected even when the edit form looks blank. Delete the named keys (
         <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace' }}>
@@ -164,11 +164,11 @@ export default function SetupNeeded({ items }: SetupNeededProps) {
         <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace' }}>
           JWT_TOKEN
         </Typography>
-        ). Digit staff generate JWT_TOKEN and place it on this account — do not use a
+        ). Sutton staff generate JWT_TOKEN and place it on this account — do not use a
         Settings → API Tokens <Typography component="span" variant="body2" sx={{ fontFamily: 'monospace' }}>
           da_
         </Typography>{' '}
-        token. Save, reload. If it still shows set after a delete, republish the app so Digit
+        token. Save, reload. If it still shows set after a delete, republish the app so Sutton
         rebinds Worker env.
       </Alert>
 

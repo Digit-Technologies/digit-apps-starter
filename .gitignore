@@ -12,6 +12,9 @@ dist/
 # Sibling to package.json; do not match src/frontend or src/backend.
 apps/*/frontend/
 apps/*/backend/
+
+# CutThat WooCommerce fulfillment — source lives in digit-ai-projects/woocommerce-fulfillment-module
+apps/woocommerce-fulfillment/
 examples/*/frontend/
 examples/*/backend/
 .claude/*

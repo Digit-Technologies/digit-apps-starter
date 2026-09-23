@@ -31,13 +31,14 @@ export function normalizeSsRecord(record) {
 
   // V1 order (orderId / orderKey)
   if (record.orderId != null || record.orderKey != null || record.orderNumber != null) {
+    const labelShipment = v1LabelShipment(record);
     const tracking =
+      labelShipment?.trackingNumber ||
       record.trackingNumber ||
-      (Array.isArray(record.shipments) && record.shipments[0]?.trackingNumber) ||
       null;
     const shipDate =
+      labelShipment?.shipDate ||
       record.shipDate ||
-      (Array.isArray(record.shipments) && record.shipments[0]?.shipDate) ||
       record.orderDate ||
       null;
     return {
@@ -46,8 +47,8 @@ export function normalizeSsRecord(record) {
       labelId: null,
       trackingNumber: tracking ? String(tracking) : null,
       trackingStatus: trackingStatusFromSsRecord(record),
-      carrierCode: record.carrierCode || null,
-      serviceCode: record.serviceCode || null,
+      carrierCode: labelShipment?.carrierCode || record.carrierCode || null,
+      serviceCode: labelShipment?.serviceCode || record.serviceCode || null,
       shipDate: shipDate ? String(shipDate) : null,
       costAmount:
         typeof record.shippingAmount === 'number'
@@ -135,6 +136,37 @@ export function shippingFeesInput({ amount, currency }) {
   if (costAmount == null || costAmount < 0) return null;
   const raw = String(currency || 'USD').trim();
   return { currencyCode: raw ? raw.toUpperCase() : 'USD', costAmount };
+}
+
+/**
+ * Sutton shipping-carrier option printed on the sales-order packing slip.
+ * The PDF reads the order field. The purchased ShipStation label wins over the
+ * SHP field, which often still holds the carrier selected on the sales order
+ * before the label was bought. Rows are newest shipment first.
+ */
+export function packingSlipCarrierChoice(rows) {
+  for (const row of rows ?? []) {
+    const resolved = String(row?.resolvedOptionId || '').trim();
+    const shipment = String(row?.shipmentOptionId || '').trim();
+    const optionId = resolved || shipment;
+    if (!optionId) continue;
+    const shipmentId = String(row?.digitShipmentId || '').trim();
+    return { optionId, shipmentId: shipmentId || null };
+  }
+  return { optionId: null, shipmentId: null };
+}
+
+export function packingSlipCarrierOptionId(rows) {
+  return packingSlipCarrierChoice(rows).optionId;
+}
+
+/** V1 label row. The order header can still name the carrier requested at push. */
+function v1LabelShipment(record) {
+  const shipments = Array.isArray(record?.shipments) ? record.shipments : [];
+  return (
+    shipments.find((entry) => entry?.trackingNumber || entry?.carrierCode || entry?.serviceCode) ||
+    null
+  );
 }
 
 /** Sum label postage stored on D1 map rows for one Digit sales order. */

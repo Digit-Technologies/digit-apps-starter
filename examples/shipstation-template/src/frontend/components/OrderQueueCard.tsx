@@ -254,7 +254,7 @@ export default function OrderQueueCard({
           </Stack>
           <Stack direction="row" spacing={0.75} alignItems="center">
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              Digit status
+              Sutton status
             </Typography>
             {digitChip ? (
               <StatusChip color={digitChip.color} label={digitChip.label} />

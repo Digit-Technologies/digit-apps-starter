@@ -10,7 +10,7 @@ MOs open & late as a tinted alert tile) plus two 8-day charts (line/area of unit
 grouped bar of MOs completed vs. MOs open late). UI-only — no backend/Worker/D1.
 
 "Today" and day boundaries are computed in the viewer's browser/device local timezone
-(Digit apps have no org timezone field to read), and the resolved timezone abbreviation is
+(Sutton apps have no org timezone field to read), and the resolved timezone abbreviation is
 shown in the page header so the basis is obvious. Missing days or null values are rendered
 as an explicit "No data" state, never faked as zero.
 
@@ -71,7 +71,7 @@ as an explicit "No data" state, never faked as zero.
 ## Prompts
 
 ```
-Can you clone this repo and use the skill within it and the Digit MCP connector to build me an application and publish it to the Digit Staging - Digit org platform?
+Can you clone this repo and use the skill within it and the Sutton MCP connector to build me an application and publish it to the Sutton Staging - Sutton org platform?
 
 https://github.com/Digit-Technologies/digit-apps-starter
 
@@ -82,7 +82,7 @@ What to build:
 A single-page production dashboard for a manufacturing team to check at any time.
 
 Data:
-- Query Digit's dailyMetrics(startDate: DateTimeISO!, endDate: DateTimeISO!) for today plus the prior 7 days.
+- Query Sutton's dailyMetrics(startDate: DateTimeISO!, endDate: DateTimeISO!) for today plus the prior 7 days.
 - Declare READ_ORGANIZATION_DETAIL_AND_METRICS in the app manifest permissions (required by dailyMetrics).
 - Metrics: inventoryQuantityProduced, numMOsCompleted, percentMOsCompletedOnTime, numMOsOpenLate.
 - Treat missing days or null values as no data — never fake zeros.
@@ -111,8 +111,8 @@ Behavior:
 ## Context supplied
 
 - Started from `examples/full-featured` per the `create-digit-app` skill, then removed
-  `src/backend` and the example tabs/panels since this app is Digit-API-only.
-- Schema/permission lookups done live via the Digit Staging MCP resources
+  `src/backend` and the example tabs/panels since this app is Sutton-API-only.
+- Schema/permission lookups done live via the Sutton Staging MCP resources
   (`graphql-schema://search/dailyMetrics`, `graphql-schema://type/Query`,
   `graphql-schema://type/DailyMetric`, `graphql-schema://type/MetricType`,
   `graphql-schema://type/MetricValue`, `graphql-schema://type/MetricNumber`,
