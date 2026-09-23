@@ -39,8 +39,9 @@ live only. Nothing is copied from preview onto live for env or secrets.
 - Inbound webhooks are live-only and are not delivered to a preview Host. Preview cron,
   webhooks, and other timer/webhook side effects stay off. Test webhook handlers with signed
   local/unit fixtures or a deliberate live test strategy.
-- Preview sessions may read Digit data, but Digit GraphQL writes are not a valid preview test.
-  App-owned D1/R2 writes are isolated to preview resources.
+- Preview sessions may read Digit data, but Digit GraphQL writes are refused with
+  `PREVIEW_READ_ONLY`. This is an expected preview restriction, not a missing
+  `manifest.permissions` entry. App-owned D1/R2 writes are isolated to preview resources.
 - Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
   secrets update live only. Nothing is copied from preview onto live for env or secrets —
   preview already shares live, and promote is not a config copy.
