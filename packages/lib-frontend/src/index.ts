@@ -11,6 +11,9 @@ export type {
   DigitHost,
   DigitHostDownloadOptions,
   DigitHostPrintOptions,
+  DigitHostScanFormat,
+  DigitHostScanOptions,
+  DigitHostScanResult,
   DigitHostSettings,
 } from "./globals";
 import "./globals";

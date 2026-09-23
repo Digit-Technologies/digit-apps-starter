@@ -26,6 +26,50 @@ export type DigitHostPrintOptions = {
   html: string;
 };
 
+/**
+ * Barcode types `DigitHost.scan` can request. Group aliases (`any`, `gs1_codes`)
+ * are not allowed — they would make the host try every decoder.
+ */
+export type DigitHostScanFormat =
+  | "aztec"
+  | "code_128"
+  | "code_39"
+  | "code_93"
+  | "codabar"
+  | "data_matrix"
+  | "ean_13"
+  | "ean_8"
+  | "itf"
+  | "pdf417"
+  | "qr_code"
+  | "upc_a"
+  | "upc_e";
+
+/** Options for `DigitHost.scan`. The host owns the camera; the iframe gets decoded text. */
+export type DigitHostScanOptions = {
+  /**
+   * Optional scan context only (e.g. "Scan barcode"). 1–199 characters:
+   * letters, digits, spaces, and `. _ ( ) , : / -`, not starting with a symbol.
+   * Empty string, emoji, and a leading `.` throw. Consent UI names the app
+   * from Digit, not from this field.
+   */
+  purpose?: string;
+  /**
+   * Barcode types to try. Omit for `qr_code`, `code_128`, and `data_matrix`.
+   * Pass `ean_13` / `upc_a` (and usually `code_128`) for PO/shelf labels.
+   * An empty array throws.
+   */
+  formats?: DigitHostScanFormat[];
+};
+
+/**
+ * Result of `DigitHost.scan`. Success is `{ text }`; the user dismissing
+ * consent or the scanner is `{ cancelled: true }`. Host errors reject the promise.
+ */
+export type DigitHostScanResult =
+  | { text: string; cancelled?: undefined }
+  | { cancelled: true; text?: undefined };
+
 /** Read-only host display channel plus host-mediated actions (`window.DigitHost`). */
 export type DigitHost = {
   getSettings: () => DigitHostSettings | null;
@@ -36,6 +80,12 @@ export type DigitHost = {
   download: (options: DigitHostDownloadOptions) => void;
   /** Opens the browser print dialog for a sanitized HTML snapshot. */
   print: (options: DigitHostPrintOptions) => void;
+  /**
+   * Asks Digit to scan a barcode/QR code. Resolves with `{ text }` or
+   * `{ cancelled: true }`. Throws on invalid options / rate limit; rejects on
+   * scan failure or the host's 60s timeout. Never opens the camera in the iframe.
+   */
+  scan: (options?: DigitHostScanOptions) => Promise<DigitHostScanResult>;
 };
 
 /** Harness credential proxy (`window.DigitProxyClient`) — used by data hooks; not a public app API. */

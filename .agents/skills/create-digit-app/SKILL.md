@@ -5,7 +5,8 @@ description: >-
   @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
-  or device APIs). Use when creating a Digit app, editing an app in a local clone
+  or in-iframe device APIs). Use DigitHost.scan for barcodes/QR — never getUserMedia.
+  Use when creating a Digit app, editing an app in a local clone
   of this starter, publishing via MCP, or when the user mentions Digit apps,
   manifest.json, DigitProxyClient, DigitThemeProvider, /proxy/digit, or
   /proxy/backend.
@@ -16,9 +17,9 @@ description: >-
 Build Digit custom apps that run inside Digit as **sandboxed iframes** with a locked-down
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
-support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
-Use `DigitHost.download` for files and `DigitHost.print` for printable HTML.
-See [reference/iframe-constraints.md](reference/iframe-constraints.md).
+support (new tabs/popups, direct browser dialogs, clipboard read, in-iframe camera,
+etc.). Use `DigitHost.download` for files, `DigitHost.print` for printable HTML, and
+`DigitHost.scan` for barcodes/QR. See [reference/iframe-constraints.md](reference/iframe-constraints.md).
 
 **Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
@@ -193,10 +194,12 @@ only; still upload the zip **unchanged**. Details:
   `sandbox="allow-scripts allow-same-origin allow-forms"` and a Permissions Policy
   that sets camera, clipboard-read, fullscreen, geolocation, mic, and related
   features to `'none'`. **Never** implement direct downloads, `window.open` /
-  `target="_blank"`, browser `alert`/`confirm`/`prompt`, or device/clipboard-read/
-  fullscreen APIs — they will not work. Copy buttons (`navigator.clipboard.writeText`
-  in a click handler), form `onSubmit` + `preventDefault`, file exports via
-  `DigitHost.download`, and HTML printing via `DigitHost.print` DO work. In-page MUI
+  `target="_blank"`, browser `alert`/`confirm`/`prompt`, `getUserMedia`, or other
+  device/clipboard-read/fullscreen APIs — they will not work. Copy buttons
+  (`navigator.clipboard.writeText` in a click handler), form `onSubmit` +
+  `preventDefault`, file exports via `DigitHost.download`, HTML printing via
+  `DigitHost.print`, and barcode/QR scans via `DigitHost.scan` DO work (`scan` is
+  not on production Digit until digit-web#4259 matches the harness). In-page MUI
   Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
 - **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
@@ -251,6 +254,35 @@ rel="stylesheet">`, and the print CSP blocks network CSS.
 Do not send PDF bytes to `DigitHost.print`. Download a PDF with
 `DigitHost.download({ filename, contentType: 'application/pdf', data })`. Printing only
 accepts HTML and opens the browser print dialog.
+
+#### Scanning barcodes and QR codes
+
+When the user needs to scan a barcode or QR code, call `window.DigitHost.scan()`. Do not
+use `navigator.mediaDevices.getUserMedia`, in-iframe scanner libraries, or `postMessage`.
+Digit keeps `camera 'none'` on the frame; the host opens the camera and returns decoded
+text only. This is not on production Digit until
+[digit-web#4259](https://github.com/Digit-Technologies/digit-web/pull/4259) lands a
+contract that matches the harness.
+
+```ts
+try {
+  const result = await window.DigitHost?.scan({ purpose: "Scan barcode" });
+  if (!result || result.cancelled) return;
+  const code = result.text;
+} catch (error) {
+  // Host not ready, invalid options, rate limit, 60s timeout, or scan failure
+}
+```
+
+Disable the Scan button until the promise settles (one scan at a time; a double-click
+can hang or throw). Omit `formats` for QR / Code 128 / Data Matrix; pass
+`["ean_13", "upc_a", "code_128"]` for a PO/shelf barcode. `formats: []` throws.
+
+Digit shows a consent dialog that names **your app**, then a **camera** scanner. QA
+needs a webcam — the host modal has no paste-a-fake-barcode field.
+
+Full options, timeout, and limits:
+[reference/iframe-constraints.md](reference/iframe-constraints.md#scanning-barcodes-and-qr-codes).
 
 ### 5. `manifest.json`
 
@@ -365,7 +397,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 
 ## Additional resources
 
-- [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
+- [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, printing, and scanning
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, DigitHost
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
