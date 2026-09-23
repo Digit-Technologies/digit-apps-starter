@@ -29,6 +29,10 @@
       {
         "name": "poll-outbound-push",
         "everySeconds": 300
+      },
+      {
+        "name": "prune-activity",
+        "everySeconds": 300
       }
     ]
   }

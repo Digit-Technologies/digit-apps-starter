@@ -1,6 +1,43 @@
+import { inferActivityOrigin } from './activityOrigin.js';
+
 const MESSAGE_MAX = 500;
 const DETAIL_MAX = 2000;
 const LIST_LIMIT = 100;
+
+/** Calendar month, matched to SQLite `datetime('now', '-1 month')`. */
+export const ACTIVITY_MAX_AGE = '-1 month';
+/** Midnight for the prune job. The platform has no clock cron, only an interval. */
+export const ACTIVITY_PRUNE_TIME_ZONE = 'America/Los_Angeles';
+const MIDNIGHT_WINDOW_MINUTES = 10;
+
+export function pacificClock(date = new Date(), timeZone = ACTIVITY_PRUNE_TIME_ZONE) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value]),
+  );
+  return { hour: Number(parts.hour), minute: Number(parts.minute) };
+}
+
+/** True from 12:00 AM through 12:09 AM Pacific, wide enough for a 5-minute schedule to land. */
+export function isActivityPruneWindow(date = new Date()) {
+  const { hour, minute } = pacificClock(date);
+  return hour === 0 && minute < MIDNIGHT_WINDOW_MINUTES;
+}
+
+export async function pruneActivityLog({ db, now = new Date() }) {
+  if (!isActivityPruneWindow(now)) return { deleted: 0, skipped: true };
+  const result = await db
+    .prepare(`DELETE FROM activity_log WHERE created_at < datetime('now', ?)`)
+    .bind(ACTIVITY_MAX_AGE)
+    .run();
+  return { deleted: result?.meta?.changes ?? 0, skipped: false };
+}
 
 export function truncateMessage(text, max = MESSAGE_MAX) {
   const value = String(text ?? '').trim();
@@ -76,6 +113,13 @@ export function publicActivityRow(row) {
     status: row.status,
     message: row.message,
     detail,
+    origin: inferActivityOrigin({
+      actor: row.actor,
+      action: row.action,
+      status: row.status,
+      message: row.message,
+      detail,
+    }),
   };
 }
 

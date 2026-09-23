@@ -14,6 +14,8 @@ import MenuItem from '@mui/material/MenuItem';
 import Paper from '@mui/material/Paper';
 import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
+import Tab from '@mui/material/Tab';
+import Tabs from '@mui/material/Tabs';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
@@ -66,7 +68,7 @@ const SETTING_HINTS = {
   defaultFulfillmentMethod:
     'Manual push (the default) only sends eligible awaiting-carrier shipments when you click Push to ShipStation. Scheduled push also sends them every five minutes.',
   defaultWeightOz:
-    'Package weight sent to ShipStation on push. Digit shipments have no weight field, so this default applies to every push.',
+    'Package weight sent to ShipStation on push. Sutton shipments have no weight field, so this default applies to every push.',
 } as const;
 
 const settingTooltipSlotProps = {
@@ -182,6 +184,7 @@ export default function App() {
     useBackendMutation<ConnectionData>();
   const [checkSetup] = useBackendMutation<SetupData>();
 
+  const [workspace, setWorkspace] = useState<'queue' | 'activity'>('queue');
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [carrierSettingsOpen, setCarrierSettingsOpen] = useState(false);
   const [setupCapabilitiesOpen, setSetupCapabilitiesOpen] = useState(false);
@@ -211,7 +214,7 @@ export default function App() {
     await setupQuery.refetch();
     if (!setupResult.data?.shipStationKeyPresent) {
       setConnectBlocker(
-        'No ShipStation API key is configured. Add SHIPSTATION_API_KEY to this app’s secrets in Digit (and SHIPSTATION_API_SECRET only for V1), then reload and connect.',
+        'No ShipStation API key is configured. Add SHIPSTATION_API_KEY to this app’s secrets in Sutton (and SHIPSTATION_API_SECRET only for V1), then reload and connect.',
       );
       return;
     }
@@ -225,7 +228,7 @@ export default function App() {
     const carriers = result.data?.carrierCount ?? 0;
     const version = result.data?.apiVersion === 'v1' ? 'V1' : 'V2';
     setSuccessNotice(
-      `Connected to ShipStation ${version} and synced ${carriers} carrier(s). Create Digit shipments, then push from the shipping queue to purchase a label.`,
+      `Connected to ShipStation ${version} and synced ${carriers} carrier(s). Create Sutton shipments, then push from the shipping queue to purchase a label.`,
     );
     await connectionQuery.refetch();
     await orgSettingsQuery.refetch();
@@ -282,7 +285,7 @@ export default function App() {
     if (!orgResult.ok) return;
     setCarrierSettingsOpen(false);
     setSuccessNotice(
-      'Carrier mapping saved. The next label writeback uses these Digit shipping carriers.',
+      'Carrier mapping saved. The next label writeback uses these Sutton shipping carriers.',
     );
     await orgSettingsQuery.refetch();
   };
@@ -308,6 +311,9 @@ export default function App() {
     .map((row) => row.digitValue)
     .filter(Boolean)
     .join(', ');
+  const activityErrorCount = (activityQuery.data?.events ?? []).filter(
+    (event) => event.status === 'error' || event.status === 'failed',
+  ).length;
   const featureStatusProps = {
     connected: operable,
     apiTokenPresent,
@@ -393,13 +399,13 @@ export default function App() {
             ) : null
           }
         >
-          {`${pushBlockedCarriers.length} Digit shipping carrier${
+          {`${pushBlockedCarriers.length} Sutton shipping carrier${
             pushBlockedCarriers.length === 1 ? '' : 's'
           } cannot push to ShipStation (${pushBlockedLabel}). Shipments using ${
             pushBlockedCarriers.length === 1 ? 'it' : 'them'
           } stay blocked in the queue. `}
           {isAdmin
-            ? 'Open Carrier configuration → Digit carriers and pick one ShipStation service for each.'
+            ? 'Open Carrier configuration → Sutton carriers and pick one ShipStation service for each.'
             : 'An org admin must map them in Carrier configuration.'}
         </Alert>
       ) : null}
@@ -412,19 +418,55 @@ export default function App() {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            p: { xs: 1.5, sm: 2 },
           }}
         >
-          <FulfillmentQueue
-            organizationId={organizationId}
-            canPush
-            apiVersion={connectionQuery.data?.apiVersion ?? null}
-            orgSettings={orgSettingsQuery.data ?? null}
-            pushDisabledReason={
-              apiTokenPresent ? null : 'Ask Digit staff to generate JWT_TOKEN and place it in this organization’s app secrets.'
-            }
-            onPushComplete={() => activityQuery.refetch()}
-          />
+          <Tabs
+            value={workspace}
+            onChange={(_, value: 'queue' | 'activity') => setWorkspace(value)}
+            aria-label="Queue and activity"
+            sx={{ px: { xs: 1.5, sm: 2 }, borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}
+          >
+            <Tab value="queue" label="Queue" />
+            <Tab
+              value="activity"
+              label={activityErrorCount > 0 ? `Activity (${activityErrorCount} errors)` : 'Activity'}
+            />
+          </Tabs>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: workspace === 'queue' ? 'flex' : 'none',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              p: { xs: 1.5, sm: 2 },
+            }}
+          >
+            <FulfillmentQueue
+              organizationId={organizationId}
+              canPush
+              apiVersion={connectionQuery.data?.apiVersion ?? null}
+              orgSettings={orgSettingsQuery.data ?? null}
+              pushDisabledReason={
+                apiTokenPresent
+                  ? null
+                  : 'Ask Sutton staff to generate JWT_TOKEN and place it in this organization’s app secrets.'
+              }
+              onPushComplete={() => activityQuery.refetch()}
+            />
+          </Box>
+          <Box
+            sx={{
+              flex: 1,
+              minHeight: 0,
+              display: workspace === 'activity' ? 'flex' : 'none',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              p: { xs: 1.5, sm: 2 },
+            }}
+          >
+            <ActivityLog query={activityQuery} />
+          </Box>
         </Paper>
       ) : null}
 
@@ -435,7 +477,7 @@ export default function App() {
             title={credentialsMissing ? 'Connection inactive' : 'Connect your account'}
             description={
               credentialsMissing
-                ? 'Secrets are missing. Restore the ShipStation API key in Digit and reload, then connect again.'
+                ? 'Secrets are missing. Restore the ShipStation API key in Sutton and reload, then connect again.'
                 : 'Validate credentials (V2 key, or V1 key plus secret) and sync carriers before pushing shipments.'
             }
           />
@@ -464,19 +506,6 @@ export default function App() {
       {showContent && !operable && !isAdmin && organizationId && !loading ? (
         <Paper sx={{ p: { xs: 2, sm: 3 } }}>
           <NonAdminNotice connected={operable} />
-        </Paper>
-      ) : null}
-
-      {showContent && operable && organizationId ? (
-        <Paper
-          sx={{
-            flex: '0 1 auto',
-            maxHeight: { xs: 180, md: 220 },
-            overflow: 'auto',
-            p: { xs: 1.5, sm: 2 },
-          }}
-        >
-          <ActivityLog query={activityQuery} />
         </Paper>
       ) : null}
 
