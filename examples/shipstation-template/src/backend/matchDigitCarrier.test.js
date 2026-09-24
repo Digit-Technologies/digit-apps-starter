@@ -118,6 +118,7 @@ test('buildCarrierMapPayload annotates services and omits resolved pulled servic
 
   const upsRow = payload.ssCarriers.find((row) => row.carrierCode === 'ups');
   const ground = upsRow?.services.find((row) => row.serviceCode === 'ups_ground');
+  assert.equal(upsRow?.shipstationCarrierId, 'se-2');
   assert.equal(ground?.matchSource, 'exact');
   assert.equal(ground?.digitOptionId, upsGround.id);
   assert.equal(payload.unmappedCarriers.length, 0);

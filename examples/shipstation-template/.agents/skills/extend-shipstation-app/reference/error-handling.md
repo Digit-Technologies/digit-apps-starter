@@ -62,7 +62,12 @@ status, `error_code`s, GraphQL `extensions.code`).
 
 **Never** store API keys, `api_key_encrypted`, addresses, tracking numbers, or raw
 payloads. Scheduled poll should not flood the log with routine eligibility
-skips (those are user-visible on an explicit push).
+skips (those are user-visible on an explicit push). A carrier or package refresh writes
+`catalog_pull` only when ShipStation returns a carrier or package this connection has not
+seen before. Repeat refreshes of the same catalog stay out of the log. Sutton sales-order
+and shipment mutations write `sutton_update` with the object number and the fields that
+changed (shipping status, carrier, drop-off date, shipping fees). Failures use the same
+action with status `error`.
 
 New sync, connect, or poll paths must `appendActivity` and refetch
 `/sync/activity` from the UI after operator actions.

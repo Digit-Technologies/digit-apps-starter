@@ -2,15 +2,34 @@ import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-comm
 import { err, ok, requireEnv } from '@digit/lib-backend';
 
 import { appendActivity, listActivity } from './activity.js';
+import { refreshCarriers } from './connection.js';
+import {
+  createPackageCatalogCache,
+  catalogPullMessage,
+  loadAccountCustomPackages,
+  loadPushCatalog,
+  packageListTargets,
+  recordNewPackages,
+} from './packageCatalog.js';
+import {
+  clearPackageSelection,
+  selectionsForShipments,
+  shipmentPackageLocked,
+  upsertPackageSelection,
+} from './packageSelection.js';
 import {
   completeShipmentWriteback,
+  credentialsForApi,
   liveConnection,
+  liveCredentials,
   mapsForShipments,
+  mapsMatchingQuery,
   pendingShipmentWritebacks,
   pollPendingLabels,
   pushShipment,
   downloadPackingSlip,
   downloadShipmentLabel,
+  recordSuttonApiUpdate,
 } from './sync.js';
 
 function requireOrganizationId(url) {
@@ -54,7 +73,8 @@ function pushResultRow(shipmentId, result) {
 }
 
 export async function handleSync({ request, env, path, method }) {
-  if (!path.startsWith('/sync')) return null;
+  const packageRoute = path === '/package-types' || path === '/package-selections';
+  if (!path.startsWith('/sync') && !packageRoute) return null;
   const db = requireEnv({ env, key: 'SHIPSTATION_DB' });
   const url = new URL(request.url);
 
@@ -69,9 +89,26 @@ export async function handleSync({ request, env, path, method }) {
       .split(',')
       .map((id) => id.trim())
       .filter(Boolean)
-      .slice(0, 100);
-    const maps = await mapsForShipments({ db, connectionId: row.id, shipmentIds: ids });
-    return ok({ data: { maps } });
+      .slice(0, 250);
+    const query = (url.searchParams.get('q') || '').trim().slice(0, 80);
+    const [byIds, byQuery] = await Promise.all([
+      mapsForShipments({ db, connectionId: row.id, shipmentIds: ids }),
+      query ? mapsMatchingQuery({ db, connectionId: row.id, query }) : Promise.resolve([]),
+    ]);
+    const mapsByShipment = new Map();
+    for (const mapRow of byQuery) {
+      if (mapRow?.digitShipmentId) mapsByShipment.set(mapRow.digitShipmentId, mapRow);
+    }
+    for (const mapRow of byIds) {
+      if (mapRow?.digitShipmentId) mapsByShipment.set(mapRow.digitShipmentId, mapRow);
+    }
+    const maps = [...mapsByShipment.values()];
+    const packageSelections = await selectionsForShipments({
+      db,
+      connectionId: row.id,
+      shipmentIds: ids,
+    });
+    return ok({ data: { maps, packageSelections } });
   }
 
   if (method === 'GET' && path === '/sync/activity') {
@@ -105,6 +142,7 @@ export async function handleSync({ request, env, path, method }) {
         status: 400,
       });
     }
+    const packageCatalog = createPackageCatalogCache();
     const results = [];
     for (const shipmentId of shipmentIds) {
       const result = await pushShipment({
@@ -114,6 +152,7 @@ export async function handleSync({ request, env, path, method }) {
         shipmentId,
         actor: 'user',
         recordActivity: true,
+        packageCatalog,
       });
       results.push(pushResultRow(shipmentId, result));
     }
@@ -281,10 +320,275 @@ export async function handleSync({ request, env, path, method }) {
         status: 400,
       });
     }
-    const result = await completeShipmentWriteback({ env, db, organizationId, digitShipmentId });
+    if (parsed.value?.recordOnly) {
+      await recordSuttonApiUpdate({
+        db,
+        organizationId,
+        kind: parsed.value.kind === 'order' ? 'order' : 'shipment',
+        label: parsed.value.label || null,
+        digitOrderId: parsed.value.digitOrderId || null,
+        ok: false,
+        message: parsed.value.message || 'Sutton did not accept the update.',
+      });
+      return ok({ data: { recorded: true } });
+    }
+    const result = await completeShipmentWriteback({
+      env,
+      db,
+      organizationId,
+      digitShipmentId,
+      shipmentLabel: parsed.value?.shipmentLabel || null,
+      orderLabel: parsed.value?.orderLabel || null,
+    });
     if (!result.ok) return err(result);
     return ok({ data: result.data });
   }
 
+  if (method === 'GET' && path === '/package-types') {
+    const org = requireOrganizationId(url);
+    if (org.error) return org.error;
+    const secret = await liveCredentials({ db, env, organizationId: org.organizationId });
+    const credentials = credentialsForApi(secret);
+    if (!secret) {
+      return ok({
+        data: { apiVersion: null, customPackages: [], carrierPackages: [], errors: [] },
+      });
+    }
+    if (!credentials) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: secret.mismatch || 'Connect a ShipStation account first.',
+        status: 400,
+      });
+    }
+    const carrierIds = (url.searchParams.get('carrierIds') || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+    const carrierCodes = (url.searchParams.get('carrierCodes') || '')
+      .split(',')
+      .map((code) => code.trim())
+      .filter(Boolean)
+      .slice(0, 20);
+    const cache = createPackageCatalogCache();
+    await refreshCarriers({ db, connectionId: secret.connectionId, credentials });
+    const custom = await loadAccountCustomPackages({ credentials, cache });
+    if (!custom.ok) {
+      return err({
+        code: AppErrorCode.UPSTREAM_ERROR,
+        message: custom.message || 'Could not list custom packages.',
+        status: 502,
+      });
+    }
+    const { results: storedCarriers } = await db
+      .prepare(
+        `SELECT shipstation_carrier_id, carrier_code, name
+         FROM shipstation_carrier
+         WHERE connection_id = ? AND deleted = 0`,
+      )
+      .bind(secret.connectionId)
+      .all();
+    const targets = packageListTargets({
+      apiVersion: credentials.apiVersion,
+      carrierIds,
+      carrierCodes,
+      storedCarriers: storedCarriers ?? [],
+    });
+    const carrierPackages = [];
+    const errors = [];
+    for (const target of targets) {
+      const loaded = await loadPushCatalog({ credentials, ...target, cache });
+      if (!loaded.ok) {
+        errors.push({
+          carrierId: target.carrierId,
+          carrierCode: target.carrierCode,
+          message: loaded.message,
+        });
+        continue;
+      }
+      carrierPackages.push({
+        carrierId: target.carrierId,
+        carrierCode: target.carrierCode,
+        packages: loaded.carrierPackages,
+      });
+    }
+    const carrierName = (carrierId, carrierCode) => {
+      const row = (storedCarriers ?? []).find(
+        (carrier) =>
+          (carrierId && carrier.shipstation_carrier_id === carrierId) ||
+          (carrierCode && carrier.carrier_code === carrierCode),
+      );
+      return row?.name || carrierCode || carrierId || null;
+    };
+    const pulledPackages = [
+      ...(custom.packages ?? []),
+      ...carrierPackages.flatMap((group) =>
+        (group.packages ?? []).map((pkg) => ({
+          ...pkg,
+          carrierName: carrierName(group.carrierId, group.carrierCode),
+        })),
+      ),
+    ];
+    const newPackages = await recordNewPackages({
+      db,
+      connectionId: secret.connectionId,
+      packages: pulledPackages,
+    });
+    if (newPackages.length > 0) {
+      await appendActivity({
+        db,
+        organizationId: org.organizationId,
+        actor: 'user',
+        action: 'catalog_pull',
+        status: 'success',
+        message: catalogPullMessage({ kind: 'packages', items: newPackages }),
+        detail: {
+          packages: newPackages.slice(0, 40).map((pkg) => ({
+            name: pkg.name,
+            packageCode: pkg.packageCode,
+            source: pkg.source,
+            carrierCode: pkg.carrierCode || null,
+            carrierName: pkg.carrierName || null,
+          })),
+        },
+      });
+    }
+    return ok({
+      data: {
+        apiVersion: credentials.apiVersion,
+        customPackages: custom.packages,
+        carrierPackages,
+        errors,
+      },
+    });
+  }
+
+  if (method === 'PUT' && path === '/package-selections') {
+    const parsed = await parseJsonResponse({ value: request.json() });
+    if (!parsed.ok) {
+      return err({ code: parsed.error.code, message: parsed.error.message, status: 400 });
+    }
+    const organizationIdResult = requiredString({ obj: parsed.value, key: 'organizationId' });
+    const shipmentIdResult = requiredString({ obj: parsed.value, key: 'digitShipmentId' });
+    const containerIdResult = requiredString({ obj: parsed.value, key: 'digitContainerId' });
+    if (!organizationIdResult.ok || !shipmentIdResult.ok || !containerIdResult.ok) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'organizationId, digitShipmentId, and digitContainerId are required.',
+        status: 400,
+      });
+    }
+    const organizationId = organizationIdResult.value;
+    const digitShipmentId = shipmentIdResult.value;
+    const digitContainerId = containerIdResult.value;
+    const secret = await liveCredentials({ db, env, organizationId });
+    if (!secret?.connectionId) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: secret?.mismatch || 'Connect a ShipStation account first.',
+        status: 400,
+      });
+    }
+    const mapRow = await db
+      .prepare(
+        `SELECT source, ss_shipment_id, push_status
+         FROM shipstation_order_map
+         WHERE connection_id = ? AND digit_shipment_id = ? AND deleted = 0
+         LIMIT 1`,
+      )
+      .bind(secret.connectionId, digitShipmentId)
+      .first();
+    if (shipmentPackageLocked(mapRow)) {
+      const message =
+        'This shipment is already in ShipStation. Change the package there, then pull from ShipStation to refresh the queue.';
+      await appendActivity({
+        db,
+        organizationId,
+        actor: 'user',
+        action: 'package_selection',
+        status: 'error',
+        message,
+        digitOrderId: null,
+        ssShipmentId: mapRow?.ss_shipment_id ?? null,
+      });
+      return err({ code: AppErrorCode.VALIDATION_ERROR, message, status: 400 });
+    }
+    if (parsed.value.clear) {
+      await clearPackageSelection({
+        db,
+        connectionId: secret.connectionId,
+        digitContainerId,
+      });
+      await appendActivity({
+        db,
+        organizationId,
+        actor: 'user',
+        action: 'package_selection',
+        status: 'success',
+        message: 'Cleared the ShipStation package type. Push will use Sutton dimensions.',
+      });
+      return ok({ data: { cleared: true, digitShipmentId, digitContainerId } });
+    }
+    const source = String(parsed.value.source || '').trim();
+    const packageCode = String(parsed.value.packageCode || '').trim();
+    const packageName = String(parsed.value.packageName || packageCode).trim();
+    if ((source !== 'custom' && source !== 'carrier') || !packageCode || packageCode.length > 50) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'Choose a custom or carrier package type.',
+        status: 400,
+      });
+    }
+    const ssCarrierId = String(parsed.value.ssCarrierId || '').trim() || null;
+    const ssCarrierCode = String(parsed.value.ssCarrierCode || '').trim() || null;
+    if (source === 'carrier' && !ssCarrierId && !ssCarrierCode) {
+      return err({
+        code: AppErrorCode.VALIDATION_ERROR,
+        message: 'Carrier packages need the mapped ShipStation carrier.',
+        status: 400,
+      });
+    }
+    const length = positiveDimension(parsed.value.length);
+    const width = positiveDimension(parsed.value.width);
+    const height = positiveDimension(parsed.value.height);
+    const hasDimensions = length != null && width != null && height != null;
+    const dimensionUnit =
+      parsed.value.dimensionUnit === 'centimeter' ? 'centimeter' : hasDimensions ? 'inch' : null;
+    await upsertPackageSelection({
+      db,
+      connectionId: secret.connectionId,
+      organizationId,
+      digitShipmentId,
+      digitContainerId,
+      source,
+      packageCode,
+      packageId: String(parsed.value.packageId || '').trim() || null,
+      packageName,
+      ssCarrierId: source === 'carrier' ? ssCarrierId : null,
+      ssCarrierCode: source === 'carrier' ? ssCarrierCode : null,
+      length: hasDimensions ? length : null,
+      width: hasDimensions ? width : null,
+      height: hasDimensions ? height : null,
+      dimensionUnit: hasDimensions ? dimensionUnit : null,
+    });
+    await appendActivity({
+      db,
+      organizationId,
+      actor: 'user',
+      action: 'package_selection',
+      status: 'success',
+      message: `Selected ${packageName} for a package on this shipment. Push will send that ShipStation package type.`,
+    });
+    return ok({
+      data: { cleared: false, digitShipmentId, digitContainerId, packageCode, packageName },
+    });
+  }
+
   return err({ code: AppErrorCode.NOT_FOUND, message: 'Not found.', status: 404 });
+}
+
+function positiveDimension(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
 }

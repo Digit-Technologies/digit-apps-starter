@@ -159,6 +159,75 @@ test('maps a single Digit container to V1 order-level package fields', () => {
   });
 });
 
+test('selected package type sends its code and dimensions and keeps Sutton weight', () => {
+  const container = {
+    id: 'container-1',
+    packageGrossWeight: measurement(2, 'lb'),
+    packageLength: measurement(4, 'in'),
+    packageWidth: measurement(4, 'in'),
+    packageHeight: measurement(4, 'in'),
+  };
+  assert.deepEqual(
+    packageFromDigitContainer(container, orgSettings, {
+      packageCode: 'custom_laptop_box',
+      packageId: 'se-102873',
+      dimensions: { length: 15, width: 20, height: 5, unit: 'inch' },
+    }),
+    {
+      package_code: 'custom_laptop_box',
+      package_id: 'se-102873',
+      external_package_id: 'container-1',
+      weight: { value: 32, unit: 'ounce' },
+      dimensions: { length: 15, width: 20, height: 5, unit: 'inch' },
+    },
+  );
+});
+
+test('a selected type with no dimensions omits dimensions instead of sending Sutton dimensions', () => {
+  const pkg = packageFromDigitContainer(
+    {
+      id: 'container-1',
+      packageGrossWeight: measurement(1, 'lb'),
+      packageLength: measurement(12, 'in'),
+      packageWidth: measurement(10, 'in'),
+      packageHeight: measurement(8, 'in'),
+    },
+    orgSettings,
+    { packageCode: 'fedex_small_box', packageId: 'not-a-shipstation-id' },
+  );
+  assert.equal(pkg.package_code, 'fedex_small_box');
+  assert.equal(pkg.package_id, undefined);
+  assert.equal(pkg.dimensions, undefined);
+  assert.deepEqual(pkg.weight, { value: 16, unit: 'ounce' });
+});
+
+test('V1 selected package type uses the catalog code and omits dimensions when the type has none', () => {
+  const order = digitShipmentToV1Order({
+    shipment: {
+      id: 'shipment-1',
+      documentNumber: 'SHP-1',
+      createdAt: '2026-09-16T00:00:00.000Z',
+      shippingAddress: {},
+      order: { id: 'order-1', customer: { name: 'Customer' } },
+      packContainers: [
+        {
+          id: 'container-1',
+          packageGrossWeight: measurement(8, 'oz'),
+          packageLength: measurement(10, 'in'),
+          packageWidth: measurement(8, 'in'),
+          packageHeight: measurement(6, 'in'),
+          packedItems: [packedItem('line-1', 1)],
+        },
+      ],
+    },
+    orgSettings,
+    packageSelection: { packageCode: 'flat_rate_envelope' },
+  });
+  assert.equal(order.packageCode, 'flat_rate_envelope');
+  assert.equal(order.dimensions, undefined);
+  assert.deepEqual(order.weight, { value: 8, units: 'ounces' });
+});
+
 test('blocks multi-container shipments on V1 with actionable guidance', () => {
   const shipment = {
     order: { id: 'order-1' },

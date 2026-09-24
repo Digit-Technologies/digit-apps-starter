@@ -91,6 +91,7 @@ export function v1WeightFromOrgSettings(orgSettings) {
  *   orgSettings?: object | null,
  *   carrierId?: string | null,
  *   serviceCode?: string | null,
+ *   packageSelections?: object | null,
  * }} args
  */
 export function digitShipmentToShipment({
@@ -99,6 +100,7 @@ export function digitShipmentToShipment({
   orgSettings = null,
   carrierId = null,
   serviceCode = null,
+  packageSelections = null,
 }) {
   const order = shipment?.order;
   const customerName = order?.customer?.name || '';
@@ -138,7 +140,7 @@ export function digitShipmentToShipment({
     }),
     ship_from: shipFrom,
     items,
-    packages: packagesFromDigitShipment(shipment, orgSettings),
+    packages: packagesFromDigitShipment(shipment, orgSettings, packageSelections),
     internal_notes: [order?.notes, shipment?.notes, note].filter(Boolean).join('\n').slice(0, 1000) || undefined,
     ...(resolvedCarrierId ? { carrier_id: resolvedCarrierId } : {}),
     ...(resolvedServiceCode ? { service_code: resolvedServiceCode } : {}),

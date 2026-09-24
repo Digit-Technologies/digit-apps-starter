@@ -277,6 +277,9 @@ export function skipNextStep(reason: string | null | undefined) {
   if (reason.includes('maps to more than one ShipStation service')) {
     return 'In Carrier configuration, keep each Sutton shipping carrier on a single ShipStation service row.';
   }
+  if (reason.includes('no longer available in ShipStation')) {
+    return 'On that shipment, pick another package type or choose Sutton dimensions, then push again.';
+  }
   return 'Fix the issue above, then try again.';
 }
 
@@ -391,6 +394,63 @@ export type QueuePushDisplay = {
   lastError?: string | null;
 };
 
+export type QueueSyncState = 'shipped' | 'imported' | 'label_ready' | 'pushed';
+
+/** A ShipStation id means the push landed, whatever a later skip wrote to push_status. */
+export function queueSyncState({
+  mapRow,
+  shippingStatus,
+}: {
+  mapRow?: {
+    pushStatus?: string | null;
+    ssShipmentId?: string | null;
+  } | null;
+  shippingStatus?: string | null;
+}): QueueSyncState | null {
+  const pushStatus = mapRow?.pushStatus;
+  if (shippingStatus === 'shipped' || pushStatus === 'shipped') return 'shipped';
+  if (pushStatus === 'imported') return 'imported';
+  if (pushStatus === 'label_ready') return 'label_ready';
+  if (pushStatus === 'pushed' || mapRow?.ssShipmentId) return 'pushed';
+  return null;
+}
+
+/** Group order for the queue's push-status view. Tracking labels stay on the row. */
+export const PUSH_STATUS_GROUP_ORDER = [
+  'ready',
+  'blocked',
+  'error',
+  'pushed',
+  'label_ready',
+  'imported',
+  'shipped',
+] as const;
+
+export function queuePushGroup({
+  blocked,
+  mapRow,
+  shippingStatus,
+}: {
+  blocked: string | null;
+  mapRow?: {
+    pushStatus?: string | null;
+    lastError?: string | null;
+    ssShipmentId?: string | null;
+  } | null;
+  shippingStatus?: string | null;
+}): { key: string; label: string } {
+  const syncState = queueSyncState({ mapRow, shippingStatus });
+  if (syncState === 'pushed') return { key: 'pushed', label: pushStatusLabel('pushed') };
+  if (syncState === 'label_ready') return { key: 'label_ready', label: pushStatusLabel('label_ready') };
+  if (syncState === 'imported') return { key: 'imported', label: pushStatusLabel('imported') };
+  if (syncState === 'shipped') return { key: 'shipped', label: pushStatusLabel('shipped') };
+  if (mapRow?.lastError || mapRow?.pushStatus === 'error') {
+    return { key: 'error', label: 'Push failed' };
+  }
+  if (blocked) return { key: 'blocked', label: 'Blocked' };
+  return { key: 'ready', label: 'Ready' };
+}
+
 /** Single queue column: eligibility (ready/blocked) or ShipStation sync state — not both. */
 export function queuePushDisplay({
   blocked,
@@ -406,20 +466,8 @@ export function queuePushDisplay({
   } | null;
   shippingStatus?: string | null;
 }): QueuePushDisplay {
-  const pushStatus = mapRow?.pushStatus;
   const lastError = mapRow?.lastError ?? null;
-
-  /** A ShipStation id means the push landed, whatever a later skip wrote to push_status. */
-  const syncState =
-    shippingStatus === 'shipped' || pushStatus === 'shipped'
-      ? 'shipped'
-      : pushStatus === 'imported'
-        ? 'imported'
-        : pushStatus === 'label_ready'
-          ? 'label_ready'
-          : pushStatus === 'pushed' || mapRow?.ssShipmentId
-            ? 'pushed'
-            : null;
+  const syncState = queueSyncState({ mapRow, shippingStatus });
 
   if (syncState) {
     const trackingLabel = trackingStatusLabel(mapRow?.trackingStatus);

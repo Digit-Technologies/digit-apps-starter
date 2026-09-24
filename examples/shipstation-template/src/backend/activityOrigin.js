@@ -18,6 +18,7 @@ const APP_ACTIONS = new Set([
   'disconnect',
   'push_skip',
   'carrier_unmapped',
+  'catalog_pull',
 ]);
 
 const SUTTON_TEXT =

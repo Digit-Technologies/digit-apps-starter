@@ -38,6 +38,7 @@ function v1Address(address, { name, companyName, phone }) {
  *   orgSettings?: object | null,
  *   carrierCode?: string | null,
  *   serviceCode?: string | null,
+ *   packageSelection?: object | null,
  * }} args
  */
 export function digitShipmentToV1Order({
@@ -45,6 +46,7 @@ export function digitShipmentToV1Order({
   orgSettings = null,
   carrierCode = null,
   serviceCode = null,
+  packageSelection = null,
 }) {
   const order = shipment?.order;
   const customerName = order?.customer?.name || '';
@@ -91,7 +93,11 @@ export function digitShipmentToV1Order({
       name: shipToName,
       companyName: customerName,
     }),
-    ...v1PackageFieldsFromDigitContainer(shipment?.packContainers?.[0], orgSettings),
+    ...v1PackageFieldsFromDigitContainer(
+      shipment?.packContainers?.[0],
+      orgSettings,
+      packageSelection,
+    ),
     items,
     internalNotes: [order?.notes, shipment?.notes].filter(Boolean).join('\n').slice(0, 1000) || undefined,
     ...(resolvedCarrierCode ? { carrierCode: resolvedCarrierCode } : {}),

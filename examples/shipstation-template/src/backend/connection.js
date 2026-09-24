@@ -11,12 +11,13 @@ import { err, ok, requireEnv } from '@digit/lib-backend';
 
 import { FULFILLMENT_METHODS, normalizeFulfillmentMethod } from './eligibility.js';
 import { appendActivity } from './activity.js';
+import { catalogPullMessage } from './packageCatalog.js';
 import { loadShipStationApiKey, resolveShipStationCredentials } from './runtimeConfig.js';
 import {
   listCarrierServices,
-  listCarriers,
+  listAllCarriers,
 } from './shipstation.js';
-import { liveCredentials, publicConnection, loadOrgSettings } from './sync.js';
+import { credentialsForApi, liveCredentials, publicConnection, loadOrgSettings } from './sync.js';
 import { loadCarrierMapPayload, saveManualCarrierMaps } from './matchDigitCarrier.js';
 
 async function liveConnection({ db, organizationId }) {
@@ -57,49 +58,46 @@ function normalizeServiceList(data) {
   return [];
 }
 
-async function syncCarriers({ db, connectionId, credentials, carriers }) {
-  for (const carrier of carriers) {
-    const shipstationCarrierId = String(
-      carrier.carrier_id ??
-        carrier.carrierId ??
-        carrier.code ??
-        carrier.id ??
-        carrier.shippingProviderId ??
-        '',
-    );
-    if (!shipstationCarrierId) continue;
-    const name = String(
-      carrier.friendly_name ?? carrier.name ?? carrier.nickname ?? shipstationCarrierId,
-    );
-    const carrierCode = carrier.carrier_code ?? carrier.carrierCode ?? carrier.code ?? null;
+function carrierIdentity(carrier) {
+  return String(
+    carrier.carrier_id ??
+      carrier.carrierId ??
+      carrier.code ??
+      carrier.id ??
+      carrier.shippingProviderId ??
+      '',
+  ).trim();
+}
 
-    const inserted = await db
-      .prepare(
-        `INSERT INTO shipstation_carrier
-           (connection_id, shipstation_carrier_id, carrier_code, name, deleted)
-         VALUES (?, ?, ?, ?, 0)
-         RETURNING id`,
-      )
-      .bind(connectionId, shipstationCarrierId, carrierCode, name)
-      .first();
-    const carrierRowId = inserted.id;
-
-    let services = normalizeServiceList(carrier.services);
-    if (services.length === 0) {
-      const listed = await listCarrierServices({
-        credentials,
-        carrierId: shipstationCarrierId,
-        carrierCode: carrierCode || shipstationCarrierId,
-      });
-      if (listed.ok) services = normalizeServiceList(listed.data);
-    }
-
-    for (const service of services) {
-      const code = String(
-        service.service_code ?? service.serviceCode ?? service.code ?? '',
-      );
-      if (!code) continue;
-      const serviceName = String(service.name ?? code);
+async function upsertCarrierServices({ db, connectionId, carrierRowId, services }) {
+  const { results } = await db
+    .prepare(
+      `SELECT id, shipstation_service_code
+       FROM shipstation_service
+       WHERE connection_id = ? AND carrier_id = ?`,
+    )
+    .bind(connectionId, carrierRowId)
+    .all();
+  const existing = new Map(
+    (results ?? []).map((row) => [String(row.shipstation_service_code), row.id]),
+  );
+  const seen = new Set();
+  for (const service of services) {
+    const code = String(service.service_code ?? service.serviceCode ?? service.code ?? '').trim();
+    if (!code || seen.has(code)) continue;
+    seen.add(code);
+    const serviceName = String(service.name ?? code);
+    const existingId = existing.get(code);
+    if (existingId) {
+      await db
+        .prepare(
+          `UPDATE shipstation_service
+           SET name = ?, deleted = 0, updated_at = datetime('now')
+           WHERE id = ?`,
+        )
+        .bind(serviceName, existingId)
+        .run();
+    } else {
       await db
         .prepare(
           `INSERT INTO shipstation_service
@@ -110,6 +108,153 @@ async function syncCarriers({ db, connectionId, credentials, carriers }) {
         .run();
     }
   }
+  for (const [code, id] of existing) {
+    if (seen.has(code)) continue;
+    await db
+      .prepare(
+        `UPDATE shipstation_service
+         SET deleted = 1, updated_at = datetime('now')
+         WHERE id = ? AND deleted = 0`,
+      )
+      .bind(id)
+      .run();
+  }
+}
+
+async function syncCarriers({ db, connectionId, credentials, carriers, pruneMissing = true }) {
+  const { results: existingRows } = await db
+    .prepare(
+      `SELECT id, shipstation_carrier_id, deleted
+       FROM shipstation_carrier
+       WHERE connection_id = ?`,
+    )
+    .bind(connectionId)
+    .all();
+  const existingByShipstationId = new Map();
+  for (const row of existingRows ?? []) {
+    const key = String(row.shipstation_carrier_id || '');
+    const current = existingByShipstationId.get(key);
+    if (!current || (current.deleted && !row.deleted)) existingByShipstationId.set(key, row);
+  }
+
+  const seen = new Set();
+  const added = [];
+  for (const carrier of carriers) {
+    const shipstationCarrierId = carrierIdentity(carrier);
+    if (!shipstationCarrierId || seen.has(shipstationCarrierId)) continue;
+    seen.add(shipstationCarrierId);
+    const name = String(
+      carrier.friendly_name ?? carrier.name ?? carrier.nickname ?? shipstationCarrierId,
+    );
+    const carrierCode = carrier.carrier_code ?? carrier.carrierCode ?? carrier.code ?? null;
+    const existing = existingByShipstationId.get(shipstationCarrierId);
+    const isNew = !existing || Boolean(existing.deleted);
+    let carrierRowId = existing?.id;
+    if (isNew) {
+      added.push({
+        name,
+        carrierCode: carrierCode || null,
+        shipstationCarrierId,
+      });
+    }
+    if (carrierRowId) {
+      await db
+        .prepare(
+          `UPDATE shipstation_carrier
+           SET carrier_code = ?, name = ?, deleted = 0, updated_at = datetime('now')
+           WHERE id = ?`,
+        )
+        .bind(carrierCode, name, carrierRowId)
+        .run();
+    } else {
+      const inserted = await db
+        .prepare(
+          `INSERT INTO shipstation_carrier
+             (connection_id, shipstation_carrier_id, carrier_code, name, deleted)
+           VALUES (?, ?, ?, ?, 0)
+           RETURNING id`,
+        )
+        .bind(connectionId, shipstationCarrierId, carrierCode, name)
+        .first();
+      carrierRowId = inserted.id;
+    }
+
+    let services = normalizeServiceList(carrier.services);
+    if (services.length === 0 && !existing) {
+      const listed = await listCarrierServices({
+        credentials,
+        carrierId: shipstationCarrierId,
+        carrierCode: carrierCode || shipstationCarrierId,
+      });
+      if (listed.ok) services = normalizeServiceList(listed.data);
+    }
+    if (services.length > 0) {
+      await upsertCarrierServices({ db, connectionId, carrierRowId, services });
+    }
+  }
+
+  for (const [shipstationCarrierId, row] of existingByShipstationId) {
+    if (!pruneMissing || seen.has(shipstationCarrierId) || row.deleted) continue;
+    await db
+      .prepare(
+        `UPDATE shipstation_carrier
+         SET deleted = 1, updated_at = datetime('now')
+         WHERE id = ?`,
+      )
+      .bind(row.id)
+      .run();
+    await db
+      .prepare(
+        `UPDATE shipstation_service
+         SET deleted = 1, updated_at = datetime('now')
+         WHERE carrier_id = ? AND deleted = 0`,
+      )
+      .bind(row.id)
+      .run();
+  }
+  return added;
+}
+
+const carrierRefreshInflight = new Map();
+
+/** Re-pull the connected carrier catalog from ShipStation and upsert it. */
+export async function refreshCarriers({ db, connectionId, credentials }) {
+  const key = String(connectionId);
+  const pending = carrierRefreshInflight.get(key);
+  if (pending) return pending;
+  const job = (async () => {
+    const listed = await listAllCarriers({ credentials });
+    if (!listed.ok) return listed;
+    const added = await syncCarriers({
+      db,
+      connectionId,
+      credentials,
+      carriers: normalizeCarrierList(listed.data),
+      pruneMissing: !listed.truncated,
+    });
+    if (added.length > 0) {
+      const org = await db
+        .prepare(`SELECT organization_id FROM shipstation_connection WHERE id = ?`)
+        .bind(connectionId)
+        .first();
+      if (org?.organization_id) {
+        await appendActivity({
+          db,
+          organizationId: org.organization_id,
+          actor: 'user',
+          action: 'catalog_pull',
+          status: 'success',
+          message: catalogPullMessage({ kind: 'carriers', items: added }),
+          detail: { carriers: added.slice(0, 40) },
+        });
+      }
+    }
+    return { ok: true, added };
+  })().finally(() => {
+    if (carrierRefreshInflight.get(key) === job) carrierRefreshInflight.delete(key);
+  });
+  carrierRefreshInflight.set(key, job);
+  return job;
 }
 
 async function carrierCount({ db, connectionId }) {
@@ -254,6 +399,13 @@ export async function handleConnection({ request, env, path, method }) {
     const organizationId = org.organizationId;
     const settings = await loadOrgSettings({ db, organizationId });
     const row = await liveConnection({ db, organizationId });
+    if (row) {
+      const secret = await liveCredentials({ db, env, organizationId });
+      const credentials = credentialsForApi(secret);
+      if (credentials) {
+        await refreshCarriers({ db, connectionId: row.id, credentials });
+      }
+    }
     const carrierPayload = await loadCarrierMapPayload({
       env,
       db,
@@ -305,7 +457,7 @@ export async function handleConnection({ request, env, path, method }) {
       });
     }
 
-    const listed = await listCarriers({ credentials });
+    const listed = await listAllCarriers({ credentials });
     if (!listed.ok) {
       return err({
         code: listed.code,
@@ -338,6 +490,7 @@ export async function handleConnection({ request, env, path, method }) {
       connectionId: inserted.id,
       credentials,
       carriers: normalizeCarrierList(listed.data),
+      pruneMissing: !listed.truncated,
     });
 
     const count = await carrierCount({ db, connectionId: inserted.id });

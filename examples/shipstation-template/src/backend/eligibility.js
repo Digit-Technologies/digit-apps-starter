@@ -138,7 +138,8 @@ export function skipNeedsAttention(reason) {
     reason === NO_DIGIT_CARRIER_REASON ||
     reason === V1_MULTI_CONTAINER_REASON ||
     reason.includes('ShipStation service') ||
-    reason.includes('ShipStation carrier id is missing')
+    reason.includes('ShipStation carrier id is missing') ||
+    reason.includes('no longer available in ShipStation')
   );
 }
 
@@ -174,6 +175,9 @@ export function skipNextStep(reason) {
   }
   if (reason.includes('maps to more than one ShipStation service')) {
     return 'In Carrier configuration, keep each Sutton shipping carrier on a single ShipStation service row.';
+  }
+  if (reason.includes('no longer available in ShipStation')) {
+    return 'On that shipment, pick another package type or choose Sutton dimensions, then push again.';
   }
   return 'Fix the issue above, then try again.';
 }

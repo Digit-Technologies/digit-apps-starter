@@ -14,7 +14,12 @@ The shipping queue lists awaiting-carrier Sutton shipments and can be filtered b
 (`unknown` → Sutton `awaiting_pickup`; `in_transit` / `delivered` / `error` → Sutton `shipped`).
 On every load (and when the iframe becomes visible again) the queue re-fetches Sutton
 `shipments` (up to 100, in a vertically scrolling table) so the Carrier column, packages,
-and Sutton status match Sutton. If the shipment carrier is empty, the table and push path use the sales
+and Sutton status match Sutton. Each pack container can use a ShipStation package type
+from the queue: V2 lists account custom packages and the mapped carrier's packages
+(including flat-rate boxes); V1 lists carrier packages only. The choice is stored in D1
+and sent on push. It is not written to the Sutton sales order or shipment. After push the
+picker locks; pull and the five-minute poll refresh the queue from the ShipStation package.
+If the shipment carrier is empty, the table and push path use the sales
 order’s current `shippingCarrierField`. Do not alias `shipment(id)` per row — that
 exceeds Sutton’s GraphQL cost cap (`QUERY_TOO_EXPENSIVE`).
 Operators can download
@@ -47,7 +52,8 @@ work after a consumer publishes to Sutton (Worker, D1, secrets).
   `0002_order_sync.sql`, `0003_app_config.sql`, `0004_activity_log.sql`,
   `0006_api_version.sql`, `0007_drop_legacy_app_secrets.sql`, `0008_shipment_map.sql`,
   `0009_label_rates.sql`, `0010_carrier_digit_map.sql`, `0011_tracking_status.sql`,
-  `0012_push_mode.sql`, `0013_carrier_service_map.sql`, and `0014_manual_push_default.sql`. Do not edit `0001` after a
+  `0012_push_mode.sql`, `0013_carrier_service_map.sql`, `0014_manual_push_default.sql`,
+  `0015_activity_log_created_index.sql`, and `0016_package_selection.sql`. Do not edit `0001` after a
   consumer has published.
 - **All secrets are organization-level Sutton app secrets**, managed only in Sutton's built-in
   App Secrets UI: `SHIPSTATION_API_KEY`, `SHIPSTATION_API_SECRET` (V1),
@@ -401,6 +407,48 @@ Container-Aware ShipStation Refactor
 Implement the plan as specified, it is attached for your reference. Do NOT edit the plan file itself.
 
 To-do's from the plan have already been created. Do not create them again. Mark them as in_progress as you work, starting with the first one. Don't stop until you have completed all the to-dos.
+```
+
+```
+I want to create a workflow in this template that addresses the following use case.
+
+Our customers use ShipStation to manage shipments. In ShipStation customers are able to save custom package types so they do not have to continually type in the dimensions. Further they have access to carrier specific packages. For example FedEx might offer a box that has a flat rate rather than being priced by dimensions and/or weight. The problem is that a user cannot preconfigure shipping containers or select carrier specific package types using the built in Sutton container selection workflow.
+
+Build a package configuration workflow into the shipment queue. This workflow should pull in the customer saved and carrier specific packaging container types and allow the user to select them as need per package. This does not need to update what is stored in the Sutton Sales order or Shipment object.
+```
+
+```
+carrier specific packages are not showing up in the dropdown.
+
+The following is from the shipstation api docs:
+
+Yes — the sandbox pre-provisioned carriers do include carrier package types like USPS flat rate boxes. Let me pull your connected carriers to check exactly what's available.The session key is returning 401 so I can't pull your specific carrier list directly. Here's what you need to know:
+
+Yes, carrier packages are available in sandbox. Pre-provisioned sandbox carriers — including USPS via stamps_com — support carrier-defined package types like:
+
+USPS flat rate boxes (small, medium, large)
+USPS flat rate envelopes (regular, legal, padded)
+USPS regional rate boxes (A, B)
+FedEx and UPS carrier packaging if those carriers are pre-provisioned on your account
+To see the full list for your sandbox carriers, call GET /v1/carriers/{carrier_id}/packages — it returns every package type supported by that carrier.
+
+Once you have your carrier IDs (from GET /v1/carriers), the packages endpoint will show the package_code values you use when creating labels, for example flat_rate_box, flat_rate_envelope, etc.
+```
+
+```
+make sure that carriers are re pulled on refresh
+```
+
+```
+add to the activity log when app pulls in new carriers and packages from shipstation
+```
+
+```
+Also include API updates to Sutton objects like SOs and SHPs
+```
+
+```
+Indicate that packages types are loading in the drop down. Currently it makes it look like there are no carrier package types.
 ```
 
 ## Context supplied

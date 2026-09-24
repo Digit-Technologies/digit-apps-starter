@@ -105,6 +105,15 @@ function v2Features({
         [apiTokenPresent, TOKEN],
       ],
     }),
+    gate({
+      title: 'Choose ShipStation package types',
+      detail:
+        'Each pack container can use an account custom package or a package from the mapped carrier, including flat-rate boxes such as a FedEx One Rate box. The choice is stored in this app and sent when the shipment is pushed. It is not written to the Sutton sales order or shipment. After push, change the package in ShipStation, then pull from ShipStation or wait for the five-minute poll to refresh the queue.',
+      requires: [
+        [shipStationKeyPresent, SS_KEY],
+        [connected, CONNECTION],
+      ],
+    }),
   ];
 }
 
@@ -148,6 +157,15 @@ function v1Features({
         [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
         [connected, CONNECTION],
         [apiTokenPresent, TOKEN],
+      ],
+    }),
+    gate({
+      title: 'Choose ShipStation package types',
+      detail:
+        'Each pack container can use a carrier package, including flat-rate boxes. Packages saved on the ShipStation account are not available with V1 credentials. Disconnect, remove SHIPSTATION_API_SECRET, and reconnect with a V2 API key to select those saved packages. Carrier package choices are stored in this app and sent on push. They are not written to the Sutton sales order or shipment. After push, change the package in ShipStation, then pull or wait for the five-minute poll to refresh the queue.',
+      requires: [
+        [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
+        [connected, CONNECTION],
       ],
     }),
   ];

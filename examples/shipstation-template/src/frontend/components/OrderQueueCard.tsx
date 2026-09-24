@@ -12,11 +12,14 @@ import DownloadIcon from '@mui/icons-material/Download';
 
 import { motionFadeIn } from './motion';
 import QueueStatusDisplay, { statusTooltipSlotProps } from './QueueStatusDisplay';
+import PackageTypeList, { missingSelectionReason } from './PackageTypeList';
 import StatusChip from './StatusChip';
 import {
+  effectiveShippingCarrierField,
   digitShippingStatusChip,
   ineligibilityReason,
   queuePushDisplay,
+  resolveSsServiceFromDigitOption,
   skipNextStep,
   trackingStatusChip,
   type CarrierMapsForEligibility,
@@ -24,11 +27,13 @@ import {
   type ShipmentForEligibility,
 } from '../eligibility';
 import type { OrgSettingsData } from '../carrierTypes';
+import type { PackageContainer } from '../packageContainers';
 import {
-  packageContainerLabel,
-  packageCountLabel,
-  type PackageContainer,
-} from '../packageContainers';
+  packageSelectionLocked,
+  type PackageCatalog,
+  type PackageChoice,
+  type PackageSelection,
+} from '../packageSelection';
 
 type ShipmentNode = Omit<ShipmentForEligibility, 'packContainers'> & {
   id: string;
@@ -107,6 +112,12 @@ export default function OrderQueueCard({
   onDownloadLabel,
   labelDownloading = false,
   onDownloadSlip,
+  selections = [],
+  catalog = null,
+  catalogLoaded = false,
+  catalogLoading = false,
+  savingContainerId = null,
+  onPackageChange,
 }: {
   shipment: ShipmentNode;
   map?: MapRow;
@@ -120,15 +131,41 @@ export default function OrderQueueCard({
   onDownloadLabel: () => void;
   labelDownloading?: boolean;
   onDownloadSlip: () => void;
+  selections?: PackageSelection[];
+  catalog?: PackageCatalog | null;
+  catalogLoaded?: boolean;
+  catalogLoading?: boolean;
+  savingContainerId?: string | null;
+  onPackageChange: (containerId: string, choice: PackageChoice | null) => void;
 }) {
   const label = ticketLabel(shipment);
-  const blocked = ineligibilityReason({
-    shipment,
-    orgSettings,
-    mapRow: map ?? null,
-    apiVersion,
-    carrierMaps: orgSettings,
+  const locked = packageSelectionLocked(map);
+  const field = effectiveShippingCarrierField(shipment);
+  const resolved = resolveSsServiceFromDigitOption({
+    digitOptionId: field?.id,
+    digitValue: field?.value,
+    mappings: orgSettings?.carrierMappings ?? [],
+    ssCarriers: orgSettings?.ssCarriers ?? [],
   });
+  const packageReason = missingSelectionReason({
+    containers: shipment.packContainers,
+    selections,
+    catalog,
+    catalogLoaded,
+    locked,
+    apiVersion,
+    carrierReady: resolved.status === 'ok',
+    carrierId: resolved.carrierId,
+    carrierCode: resolved.carrierCode,
+  });
+  const blocked =
+    ineligibilityReason({
+      shipment,
+      orgSettings,
+      mapRow: map ?? null,
+      apiVersion,
+      carrierMaps: orgSettings,
+    }) || packageReason;
   const pushDisplay = queuePushDisplay({
     blocked,
     mapRow: map,
@@ -216,23 +253,18 @@ export default function OrderQueueCard({
           </Stack>
         </Stack>
 
-        <Stack
-          spacing={0.25}
-          sx={{ px: 1.25, py: 1, borderRadius: 1, bgcolor: 'action.hover' }}
-        >
-          <Typography variant="caption" sx={{ fontWeight: 600 }}>
-            {packageCountLabel(shipment.packContainers)}
-          </Typography>
-          {(shipment.packContainers ?? []).map((container, index) => (
-            <Typography
-              key={container.id || index}
-              variant="caption"
-              sx={{ color: 'text.secondary' }}
-            >
-              {packageContainerLabel(container, index)}
-            </Typography>
-          ))}
-        </Stack>
+        <PackageTypeList
+          shipment={shipment}
+          selections={selections}
+          orgSettings={orgSettings}
+          apiVersion={apiVersion}
+          catalog={catalog}
+          catalogLoaded={catalogLoaded}
+          catalogLoading={catalogLoading}
+          locked={locked}
+          savingContainerId={savingContainerId}
+          onChange={onPackageChange}
+        />
 
         <Stack spacing={0.5}>
           <Stack direction="row" spacing={0.5}>

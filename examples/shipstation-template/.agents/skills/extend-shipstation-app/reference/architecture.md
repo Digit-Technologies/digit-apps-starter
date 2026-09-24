@@ -60,7 +60,7 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/backend/matchDigitCarrier.js` | Map SS `carrier_code` / service onto Sutton shipping-carrier options (manual map, aliases, conservative fuzzy). Reverse-map Sutton option → unique SS carrier+service for push. |
 | `src/backend/activity.js` | `appendActivity` / `listActivity` (no secrets or PII). |
 | `src/backend/eligibility.js` | Packed / already-pushed / import / Sutton carrier map gates for Sutton shipments, plus `skipNeedsAttention` (actionable vs routine skips). |
-| `src/backend/mappers/packageMapping.js` | Sutton measurements/container ids → V2 packages or V1 order-level package fields. |
+| `src/backend/mappers/packageMapping.js` | Sutton measurements/container ids → V2 packages or V1 order-level package fields. A queue selection overrides code and dimensions. |
 | `src/backend/mappers/digitToShipStation.js` | Sutton shipment → V2; aggregates split order lines and emits one package per pack container. |
 | `src/backend/mappers/digitToShipStationV1.js` | Single-container Sutton shipment → V1 order (`POST /orders/createorder`). |
 | `src/backend/mappers/normalizeSsRecord.js` | V1 order / V2 shipment → shared fulfillment shape. |

@@ -35,6 +35,10 @@ function measurementLabel(measurement?: PackageMeasurement | null) {
   return `${formatNumber(value)}${unit ? ` ${unit}` : ''}`;
 }
 
+export function packageWeightLabel(container: PackageContainer) {
+  return measurementLabel(container.packageGrossWeight);
+}
+
 function containerTypeLabel(value?: string | null) {
   if (value === 'asIs') return 'As-is';
   if (value === 'pallet') return 'Pallet';

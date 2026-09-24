@@ -7,7 +7,7 @@ import { requireEnv } from '@digit/lib-backend';
 
 import { afterDigitShipped } from './channels/index.js';
 import { digitGraphql } from './digitGraphql.js';
-import { appendActivity } from './activity.js';
+import { appendActivity, suttonUpdateMessage } from './activity.js';
 import {
   COMPANIES_SEARCH_QUERY,
   CREATE_COMPANY_LOCATION_MUTATION,
@@ -50,6 +50,16 @@ import {
 import { resolveShipStationCredentials } from './runtimeConfig.js';
 import { pdfBase64FromV2Label } from './labels.js';
 import { resolveDigitCarrier, resolveSsServiceForDigitShipment } from './matchDigitCarrier.js';
+import { createPackageCatalogCache, loadPushCatalog, pulledPackagesFromRecord } from './packageCatalog.js';
+import {
+  clearPackageSelection,
+  matchPulledPackages,
+  missingPackageTypeReason,
+  resolvePushPackageSelections,
+  saveObservedPackage,
+  selectionForContainer,
+  selectionsForShipment,
+} from './packageSelection.js';
 import { bytesToBase64 } from './shipstationFetch.js';
 import {
   createShipments,
@@ -134,7 +144,7 @@ export function publicConnection(row, extra = {}) {
 }
 
 /** Credentials object for shipstation.js, or null when the connection cannot call ShipStation. */
-function credentialsForApi(secret) {
+export function credentialsForApi(secret) {
   if (!secret || secret.mismatch || !secret.apiKey) return null;
   return {
     apiVersion: secret.apiVersion,
@@ -199,19 +209,49 @@ export function publicMapRow(row) {
   };
 }
 
+const MAP_ROW_SELECT = `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id, source,
+              push_status, last_error, tracking_number, tracking_status, carrier_name, ship_date,
+              shipment_cost_amount, shipment_cost_currency,
+              CASE WHEN label_pdf_base64 IS NOT NULL AND length(label_pdf_base64) > 0 THEN 1 ELSE 0 END AS has_label_pdf
+       FROM shipstation_order_map`;
+
+export const MAP_SEARCH_LIMIT = 25;
+
+/** Bound pattern for a contains match. `%`, `_`, and `\\` in the query stay literal. */
+export function mapSearchLikePattern(query) {
+  const text = String(query ?? '').trim();
+  if (!text) return null;
+  const escaped = text.replace(/[\\%_]/g, (char) => `\\${char}`);
+  return `%${escaped}%`;
+}
+
 export async function mapsForShipments({ db, connectionId, shipmentIds }) {
   if (!shipmentIds.length) return [];
   const placeholders = shipmentIds.map(() => '?').join(',');
   const { results } = await db
     .prepare(
-      `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id, source,
-              push_status, last_error, tracking_number, tracking_status, carrier_name, ship_date,
-              shipment_cost_amount, shipment_cost_currency,
-              CASE WHEN label_pdf_base64 IS NOT NULL AND length(label_pdf_base64) > 0 THEN 1 ELSE 0 END AS has_label_pdf
-       FROM shipstation_order_map
+      `${MAP_ROW_SELECT}
        WHERE connection_id = ? AND deleted = 0 AND digit_shipment_id IN (${placeholders})`,
     )
     .bind(connectionId, ...shipmentIds)
+    .all();
+  return (results ?? []).map(publicMapRow);
+}
+
+export async function mapsMatchingQuery({ db, connectionId, query }) {
+  const pattern = mapSearchLikePattern(query);
+  if (!pattern || !connectionId) return [];
+  const { results } = await db
+    .prepare(
+      `${MAP_ROW_SELECT}
+       WHERE connection_id = ? AND deleted = 0
+         AND (
+           IFNULL(ss_shipment_id, '') LIKE ? ESCAPE '\\'
+           OR IFNULL(tracking_number, '') LIKE ? ESCAPE '\\'
+         )
+       LIMIT ${MAP_SEARCH_LIMIT}`,
+    )
+    .bind(connectionId, pattern, pattern)
     .all();
   return (results ?? []).map(publicMapRow);
 }
@@ -221,11 +261,7 @@ export async function mapsForOrders({ db, connectionId, orderIds }) {
   const placeholders = orderIds.map(() => '?').join(',');
   const { results } = await db
     .prepare(
-      `SELECT digit_order_id, digit_shipment_id, ss_shipment_id, ss_label_id, source,
-              push_status, last_error, tracking_number, tracking_status, carrier_name, ship_date,
-              shipment_cost_amount, shipment_cost_currency,
-              CASE WHEN label_pdf_base64 IS NOT NULL AND length(label_pdf_base64) > 0 THEN 1 ELSE 0 END AS has_label_pdf
-       FROM shipstation_order_map
+      `${MAP_ROW_SELECT}
        WHERE connection_id = ? AND deleted = 0 AND digit_order_id IN (${placeholders})`,
     )
     .bind(connectionId, ...orderIds)
@@ -377,9 +413,23 @@ async function applyMappedShippingFeesToOrder({ env, db, organizationId, orderId
     shippingFees,
     shippingCarrierFieldId: carrier.shippingCarrierFieldId,
   });
+  if (!updated.ok || !updated.data?.skipped) {
+    await logSuttonUpdate({
+      db,
+      organizationId,
+      kind: 'order',
+      digitOrderId: orderId,
+      ok: updated.ok,
+      message: updated.ok ? null : updated.message,
+      changes: orderFeeChanges({
+        shippingFees,
+        shippingCarrierFieldId: carrier.shippingCarrierFieldId,
+      }),
+    });
+  }
   if (!updated.ok) return updated;
   if (carrier.shippingCarrierFieldId && carrier.digitShipmentId) {
-    await digitGraphql({
+    const shipmentUpdate = await digitGraphql({
       env,
       query: UPDATE_SHIPMENT_MUTATION,
       variables: {
@@ -388,6 +438,15 @@ async function applyMappedShippingFeesToOrder({ env, db, organizationId, orderId
           shippingCarrierFieldId: carrier.shippingCarrierFieldId,
         },
       },
+    });
+    await logSuttonUpdate({
+      db,
+      organizationId,
+      kind: 'shipment',
+      digitOrderId: orderId,
+      ok: shipmentUpdate.ok,
+      message: shipmentUpdate.ok ? null : shipmentUpdate.message,
+      changes: ['shipping carrier'],
     });
   }
   return updated;
@@ -509,6 +568,51 @@ async function mapBySsShipment({ db, connectionId, ssShipmentId }) {
     .first();
 }
 
+function orderFeeChanges({ shippingFees, shippingCarrierFieldId }) {
+  const changes = [];
+  if (shippingFees?.costAmount != null) {
+    const currency = shippingFees.currencyCode ? ` ${shippingFees.currencyCode}` : '';
+    changes.push(`shipping fees ${shippingFees.costAmount}${currency}`);
+  }
+  if (shippingCarrierFieldId) changes.push('shipping carrier');
+  return changes;
+}
+
+async function logSuttonUpdate({
+  db,
+  organizationId,
+  actor = 'user',
+  verb = 'Updated',
+  kind,
+  label,
+  changes,
+  ok = true,
+  message = null,
+  digitOrderId = null,
+}) {
+  if (!organizationId || !kind) return;
+  await appendActivity({
+    db,
+    organizationId,
+    actor,
+    action: 'sutton_update',
+    status: ok ? 'success' : 'error',
+    message: suttonUpdateMessage({
+      verb,
+      kind,
+      label,
+      changes,
+      message: ok ? null : message,
+    }),
+    digitOrderId,
+    detail: { origin: 'sutton', kind, verb },
+  });
+}
+
+export async function recordSuttonApiUpdate(args) {
+  return logSuttonUpdate(args);
+}
+
 function recordsFromSsPayload(data) {
   if (!data) return [];
   if (Array.isArray(data.orders)) return data.orders;
@@ -613,6 +717,73 @@ async function recordPushActivity({
  * `preloaded` lets the scheduled poll reuse the shipment it already listed. Without it every
  * candidate costs another Digit query, which is enough to hit the API rate limit.
  */
+async function packageOverridesForPush({
+  db,
+  organizationId,
+  connectionId,
+  credentials,
+  shipment,
+  shipmentLabel: label,
+  ssService,
+  packageCatalog,
+  actor,
+  recordActivity,
+}) {
+  const selections = await selectionsForShipment({
+    db,
+    connectionId,
+    digitShipmentId: shipment?.id,
+  });
+  if (!selections.length) {
+    return { ok: true, overrides: null, v1Selection: null };
+  }
+  const catalog = await loadPushCatalog({
+    credentials,
+    carrierId: ssService?.carrierId,
+    carrierCode: ssService?.carrierCode,
+    cache: packageCatalog || createPackageCatalogCache(),
+  });
+  if (!catalog.ok) {
+    return {
+      ok: false,
+      message: catalog.message || 'Could not list ShipStation package types.',
+    };
+  }
+  const resolved = resolvePushPackageSelections({
+    selections,
+    carrier: ssService,
+    customPackages: catalog.customPackages,
+    carrierPackages: catalog.carrierPackages,
+  });
+  for (const stale of resolved.stale) {
+    await clearPackageSelection({
+      db,
+      connectionId,
+      digitContainerId: stale.digitContainerId,
+    });
+    if (recordActivity) {
+      await appendActivity({
+        db,
+        organizationId,
+        actor,
+        action: 'package_selection',
+        status: 'success',
+        message: `Cleared ${stale.packageName || stale.packageCode} on ${label} because the mapped carrier changed.`,
+        digitOrderId: shipment?.order?.id ?? null,
+      });
+    }
+  }
+  if (resolved.missing) {
+    return { ok: true, skipReason: missingPackageTypeReason(resolved.missing) };
+  }
+  const containerId = String(shipment?.packContainers?.[0]?.id ?? '').trim();
+  return {
+    ok: true,
+    overrides: resolved.overridesByContainerId,
+    v1Selection: containerId ? (resolved.overridesByContainerId[containerId] ?? null) : null,
+  };
+}
+
 export async function pushShipment({
   env,
   db,
@@ -622,6 +793,7 @@ export async function pushShipment({
   recordActivity = true,
   preloaded = null,
   sweep = false,
+  packageCatalog = null,
 }) {
   const secret = await liveCredentials({ db, env, organizationId });
   const credentials = credentialsForApi(secret);
@@ -757,6 +929,92 @@ export async function pushShipment({
     };
   }
 
+  const packageChoice = await packageOverridesForPush({
+    db,
+    organizationId,
+    connectionId: secret.connectionId,
+    credentials,
+    shipment,
+    shipmentLabel: label,
+    ssService,
+    packageCatalog,
+    actor,
+    recordActivity,
+  });
+  if (!packageChoice.ok) {
+    await recordPushActivity({
+      db,
+      organizationId,
+      actor,
+      recordActivity,
+      skipped: false,
+      ok: false,
+      orderId,
+      ssShipmentId: null,
+      message: packageChoice.message,
+    });
+    return {
+      ok: false,
+      code: AppErrorCode.UPSTREAM_ERROR,
+      message: packageChoice.message,
+      status: 502,
+    };
+  }
+  if (packageChoice.skipReason) {
+    const reason = packageChoice.skipReason;
+    if (orderId) {
+      const retainedStatus = ['shipped', 'imported'].includes(existing?.push_status ?? '')
+        ? existing.push_status
+        : existing?.ss_shipment_id
+          ? 'pushed'
+          : 'skipped';
+      await upsertMap({
+        db,
+        connectionId: secret.connectionId,
+        organizationId,
+        digitOrderId: orderId,
+        digitShipmentId: shipmentId,
+        fields: {
+          pushStatus: retainedStatus,
+          lastError: null,
+          source: existing?.source ?? 'digit',
+        },
+      });
+    }
+    const meaning = pushMeaning({
+      skipped: true,
+      reason,
+      ssShipmentId: existing?.ss_shipment_id ?? null,
+      shipmentLabel: label,
+    });
+    const needsAttention = skipNeedsAttention(reason);
+    await recordPushActivity({
+      db,
+      organizationId,
+      actor,
+      recordActivity,
+      skipped: true,
+      ok: true,
+      orderId,
+      ssShipmentId: existing?.ss_shipment_id ?? null,
+      message: meaning,
+      quiet: sweep && !needsAttention,
+    });
+    return {
+      ok: true,
+      data: {
+        shipmentId,
+        orderId,
+        skipped: true,
+        needsAttention,
+        shipmentLabel: label,
+        reason,
+        message: reason,
+        meaning,
+      },
+    };
+  }
+
   const created =
     secret.apiVersion === 'v1'
       ? await createShipments({
@@ -766,6 +1024,7 @@ export async function pushShipment({
             orgSettings,
             carrierCode: ssService.carrierCode,
             serviceCode: ssService.serviceCode,
+            packageSelection: packageChoice.v1Selection,
           }),
         })
       : await createShipments({
@@ -777,6 +1036,7 @@ export async function pushShipment({
               orgSettings,
               carrierId: ssService.carrierId,
               serviceCode: ssService.serviceCode,
+              packageSelections: packageChoice.overrides,
             }),
           ],
         });
@@ -1039,6 +1299,7 @@ export async function pollOutboundPush({ env, db, organizationId = null, source 
     }
     const orgSettings = await loadOrgSettings({ db, organizationId });
     if (source === 'schedule' && orgSettings.defaultFulfillmentMethod === 'manual') continue;
+    const packageCatalog = createPackageCatalogCache();
 
     let after = null;
     for (let page = 0; page < MAX_POLL_PAGES; page += 1) {
@@ -1062,6 +1323,7 @@ export async function pollOutboundPush({ env, db, organizationId = null, source 
           recordActivity: true,
           preloaded: { shipment, organization },
           sweep: true,
+          packageCatalog,
         });
         if (!result.ok || !result.data) continue;
         if (!result.data.skipped) {
@@ -1175,8 +1437,32 @@ async function applyDigitShipmentWriteback({
         },
       },
     });
-    if (!createdShipment.ok) return createdShipment;
+    if (!createdShipment.ok) {
+      await logSuttonUpdate({
+        db,
+        organizationId,
+        actor: 'schedule',
+        verb: 'Created',
+        kind: 'shipment',
+        digitOrderId,
+        ok: false,
+        message: createdShipment.message,
+      });
+      return createdShipment;
+    }
     digitShipmentId = createdShipment.data?.createShipment?.shipment?.id;
+    await logSuttonUpdate({
+      db,
+      organizationId,
+      actor: 'schedule',
+      verb: 'Created',
+      kind: 'shipment',
+      digitOrderId,
+      changes: [
+        `shipping status ${shippingStatus}`,
+        ...(digitOptionId ? ['shipping carrier'] : []),
+      ],
+    });
   } else {
     const updated = await digitGraphql({
       env,
@@ -1192,7 +1478,31 @@ async function applyDigitShipmentWriteback({
         },
       },
     });
-    if (!updated.ok) return updated;
+    if (!updated.ok) {
+      await logSuttonUpdate({
+        db,
+        organizationId,
+        actor: 'schedule',
+        kind: 'shipment',
+        digitOrderId,
+        ok: false,
+        message: updated.message,
+      });
+      return updated;
+    }
+    await logSuttonUpdate({
+      db,
+      organizationId,
+      actor: 'schedule',
+      kind: 'shipment',
+      label: digitShipment?.documentNumber || digitShipment?.shippingNumber || null,
+      digitOrderId,
+      changes: [
+        `shipping status ${shippingStatus}`,
+        ...(shipDate ? ['drop-off date'] : []),
+        ...(digitOptionId ? ['shipping carrier'] : []),
+      ],
+    });
   }
 
   await upsertMap({
@@ -1241,6 +1551,19 @@ async function applyDigitShipmentWriteback({
     shippingFees,
     shippingCarrierFieldId: digitOptionId,
   });
+  if (!fees.ok || !fees.data?.skipped) {
+    await logSuttonUpdate({
+      db,
+      organizationId,
+      actor: 'schedule',
+      kind: 'order',
+      label: order.documentNumber || order.orderNumber || null,
+      digitOrderId,
+      ok: fees.ok,
+      message: fees.ok ? null : fees.message,
+      changes: orderFeeChanges({ shippingFees, shippingCarrierFieldId: digitOptionId }),
+    });
+  }
   if (!fees.ok) return fees;
 
   await afterDigitShipped({
@@ -1493,8 +1816,20 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
       },
     },
   });
-  if (!createdOrder.ok) return createdOrder;
+  if (!createdOrder.ok) {
+    await logSuttonUpdate({
+      db,
+      organizationId,
+      actor: 'schedule',
+      verb: 'Created',
+      kind: 'order',
+      ok: false,
+      message: createdOrder.message,
+    });
+    return createdOrder;
+  }
   const digitOrderId = createdOrder.data?.createOrder?.order?.id;
+  const createdOrderNumber = createdOrder.data?.createOrder?.order?.documentNumber || null;
   if (!digitOrderId) {
     return {
       ok: false,
@@ -1515,6 +1850,16 @@ export async function importSsShipment({ env, db, organizationId, connectionId, 
       pushStatus: 'imported',
       lastError: null,
     },
+  });
+  await logSuttonUpdate({
+    db,
+    organizationId,
+    actor: 'schedule',
+    verb: 'Created',
+    kind: 'order',
+    label: createdOrderNumber,
+    digitOrderId,
+    changes: ['customer', 'line items', ...(carrier.data.digitOptionId ? ['shipping carrier'] : [])],
   });
   return { ok: true, data: { digitOrderId, ssShipmentId, skipped: false } };
 }
@@ -1591,6 +1936,95 @@ async function lookupSsFulfillmentRecord({ credentials, map }) {
   return { record: label, lookupError, lookupDetail, queried };
 }
 
+async function refreshObservedPackages({
+  env,
+  db,
+  organizationId,
+  connectionId,
+  credentials,
+  map,
+  actor,
+  preloadedRecord = null,
+  skipFetch = false,
+}) {
+  if (!map?.ss_shipment_id || !map?.digit_shipment_id) return;
+  let record = preloadedRecord;
+  if (!record) {
+    if (skipFetch) return;
+    const fetched = await getShipment({ credentials, shipmentId: map.ss_shipment_id });
+    if (!fetched.ok) {
+      await appendActivity({
+        db,
+        organizationId,
+        actor,
+        action: 'poll',
+        status: 'error',
+        message: `Could not refresh ShipStation package types for ${map.ss_shipment_id}: ${fetched.message}`,
+        digitOrderId: map.digit_order_id,
+        ssShipmentId: map.ss_shipment_id,
+        detail: fetched.detail ?? { code: fetched.code ?? null },
+      });
+      return;
+    }
+    record = firstCreatedShipment(fetched.data) || fetched.data;
+  }
+  try {
+    const packages = pulledPackagesFromRecord(record, credentials.apiVersion);
+    if (!packages.length) return;
+    const identified = packages.every((pkg) => String(pkg.externalPackageId || '').trim());
+    let containerIds = packages
+      .map((pkg) => String(pkg.externalPackageId || '').trim())
+      .filter(Boolean);
+    if (!identified) {
+      const loaded = await fetchDigitShipment({ env, shipmentId: map.digit_shipment_id });
+      if (!loaded.ok) {
+        await appendActivity({
+          db,
+          organizationId,
+          actor,
+          action: 'poll',
+          status: 'error',
+          message: `Could not refresh ShipStation package types for ${map.ss_shipment_id}: ${loaded.message}`,
+          digitOrderId: map.digit_order_id,
+          ssShipmentId: map.ss_shipment_id,
+        });
+        return;
+      }
+      containerIds = (loaded.data?.shipment?.packContainers ?? [])
+        .map((container) => String(container?.id || '').trim())
+        .filter(Boolean);
+    }
+    const matches = matchPulledPackages({ containerIds, packages });
+    for (const match of matches) {
+      const existing = await selectionForContainer({
+        db,
+        connectionId,
+        digitContainerId: match.digitContainerId,
+      });
+      await saveObservedPackage({
+        db,
+        connectionId,
+        organizationId,
+        digitShipmentId: map.digit_shipment_id,
+        digitContainerId: match.digitContainerId,
+        existing,
+        pulled: match.pkg,
+      });
+    }
+  } catch (error) {
+    await appendActivity({
+      db,
+      organizationId,
+      actor,
+      action: 'poll',
+      status: 'error',
+      message: `Could not refresh ShipStation package types for ${map.ss_shipment_id}: ${error?.message || 'Package sync failed.'}`,
+      digitOrderId: map.digit_order_id,
+      ssShipmentId: map.ss_shipment_id,
+    });
+  }
+}
+
 /**
  * Pull labels purchased in the ShipStation UI for Digit-pushed maps that still lack tracking.
  */
@@ -1631,6 +2065,17 @@ export async function pollPendingLabels({ env, db, organizationId = null, actor 
       const { record, lookupError, lookupDetail, queried } = await lookupSsFulfillmentRecord({
         credentials,
         map,
+      });
+      await refreshObservedPackages({
+        env,
+        db,
+        organizationId: orgId,
+        connectionId: secret.connectionId,
+        credentials,
+        map,
+        actor,
+        preloadedRecord: credentials.apiVersion === 'v1' ? record : null,
+        skipFetch: credentials.apiVersion === 'v1' && !record,
       });
 
       if (lookupError) {
@@ -1729,6 +2174,17 @@ export async function pollPendingLabels({ env, db, organizationId = null, actor 
 
       for (const map of trackingMaps ?? []) {
         const { record, lookupError } = await lookupSsFulfillmentRecord({ credentials, map });
+        await refreshObservedPackages({
+          env,
+          db,
+          organizationId: orgId,
+          connectionId: secret.connectionId,
+          credentials,
+          map,
+          actor,
+          preloadedRecord: credentials.apiVersion === 'v1' ? record : null,
+          skipFetch: credentials.apiVersion === 'v1' && !record,
+        });
         if (lookupError || !record) continue;
         const normalized = normalizeSsRecord(record);
         const nextStatus = String(normalized.trackingStatus || '').toLowerCase();
@@ -1880,7 +2336,14 @@ export async function pendingShipmentWritebacks({ env, db, organizationId }) {
  * Called by the frontend once it has updated the Digit shipment, so the map row stops being
  * offered for writeback and downstream channels get their tracking notification.
  */
-export async function completeShipmentWriteback({ env, db, organizationId, digitShipmentId }) {
+export async function completeShipmentWriteback({
+  env,
+  db,
+  organizationId,
+  digitShipmentId,
+  shipmentLabel = null,
+  orderLabel = null,
+}) {
   const secret = await liveCredentials({ db, env, organizationId });
   if (!secret?.connectionId) {
     return {
@@ -1950,12 +2413,37 @@ export async function completeShipmentWriteback({ env, db, organizationId, digit
     credentials: credentialsForApi(secret),
   });
   const shippingCarrierFieldId = carrier.shippingCarrierFieldId;
+  const shipmentChanges = [
+    `shipping status ${digitShippingStatusFromTrackingStatus(map.tracking_status) || 'shipped'}`,
+  ];
+  if (map.ship_date) shipmentChanges.push('drop-off date');
+  if (map.carrier_name || map.service_code) shipmentChanges.push('shipping carrier');
+  await logSuttonUpdate({
+    db,
+    organizationId,
+    kind: 'shipment',
+    label: shipmentLabel,
+    digitOrderId: map.digit_order_id,
+    changes: shipmentChanges,
+  });
   const fees = await applyOrderShippingFees({
     env,
     orderId: map.digit_order_id,
     shippingFees,
     shippingCarrierFieldId,
   });
+  if (!fees.ok || !fees.data?.skipped) {
+    await logSuttonUpdate({
+      db,
+      organizationId,
+      kind: 'order',
+      label: orderLabel,
+      digitOrderId: map.digit_order_id,
+      ok: fees.ok,
+      message: fees.ok ? null : fees.message,
+      changes: orderFeeChanges({ shippingFees, shippingCarrierFieldId }),
+    });
+  }
   if (!fees.ok) return fees;
 
   await appendActivity({

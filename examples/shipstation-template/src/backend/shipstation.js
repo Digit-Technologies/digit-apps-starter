@@ -26,6 +26,80 @@ export async function listCarriers({ credentials }) {
   return ssFetch({ credentials: creds, method: 'GET', path: '/v2/carriers' });
 }
 
+/** Every connected carrier. V2 follows `links.next` so a refresh does not keep only the first page. */
+export async function listAllCarriers({ credentials }) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion === 'v1') return listCarriers({ credentials: creds });
+
+  const carriers = [];
+  let path = '/v2/carriers?page_size=100';
+  let absoluteUrl;
+  let truncated = false;
+  for (let page = 0; page < 20; page += 1) {
+    const listed = await ssFetch({
+      credentials: creds,
+      method: 'GET',
+      path: absoluteUrl ? '/v2/carriers' : path,
+      url: absoluteUrl,
+    });
+    if (!listed.ok) return listed;
+    const pageCarriers = Array.isArray(listed.data?.carriers) ? listed.data.carriers : [];
+    carriers.push(...pageCarriers);
+    const next = listed.data?.links?.next?.href;
+    if (typeof next !== 'string' || !next) break;
+    if (page === 19) {
+      truncated = true;
+      break;
+    }
+    absoluteUrl = next;
+  }
+  return { ok: true, data: { carriers }, truncated };
+}
+
+/** Account custom packages. V1 has no list endpoint; returns an empty list. */
+export async function listCustomPackageTypes({ credentials }) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion === 'v1') {
+    return { ok: true, data: { packages: [] } };
+  }
+  return ssFetch({ credentials: creds, method: 'GET', path: '/v2/packages' });
+}
+
+/** V2: GET /v2/carriers/{carrier_id}/packages. V1: GET /carriers/listpackages?carrierCode=. */
+export async function listCarrierPackageTypes({ credentials, carrierId, carrierCode }) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion === 'v1') {
+    const code = String(carrierCode || '').trim();
+    if (!code) {
+      return {
+        ok: false,
+        code: 'VALIDATION_ERROR',
+        message: 'carrierCode is required to list V1 carrier packages.',
+        status: 400,
+      };
+    }
+    return ssFetch({
+      credentials: creds,
+      method: 'GET',
+      path: `/carriers/listpackages?carrierCode=${encodeURIComponent(code)}`,
+    });
+  }
+  const id = String(carrierId || '').trim();
+  if (!id) {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'carrierId is required to list V2 carrier packages.',
+      status: 400,
+    };
+  }
+  return ssFetch({
+    credentials: creds,
+    method: 'GET',
+    path: `/v2/carriers/${encodeURIComponent(id)}/packages`,
+  });
+}
+
 export async function listCarrierServices({ credentials, carrierId, carrierCode }) {
   const creds = requireCredentials(credentials);
   if (creds.apiVersion === 'v1') {

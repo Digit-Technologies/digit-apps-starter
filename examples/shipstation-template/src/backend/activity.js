@@ -45,6 +45,21 @@ export function truncateMessage(text, max = MESSAGE_MAX) {
   return `${value.slice(0, max - 1)}…`;
 }
 
+/** Operator-facing line for a Sutton sales-order or shipment mutation. */
+export function suttonUpdateMessage({ verb = 'Updated', kind, label, changes, message }) {
+  const object = kind === 'order' ? 'sales order' : 'shipment';
+  const name = String(label || '').trim();
+  const target = name && name.toLowerCase() !== object ? `Sutton ${object} ${name}` : `Sutton ${object}`;
+  if (message) {
+    const action = verb === 'Created' ? 'create' : 'update';
+    return truncateMessage(`Could not ${action} ${target}: ${message}`);
+  }
+  const shown = (changes ?? []).map((change) => String(change || '').trim()).filter(Boolean);
+  const detail = shown.length > 0 ? shown.join(', ') : 'fields sent by this app';
+  const action = verb === 'Created' ? 'Created' : 'Updated';
+  return truncateMessage(`${action} ${target}: ${detail}.`);
+}
+
 function stringifyDetail(detail) {
   if (detail == null) return null;
   let raw;

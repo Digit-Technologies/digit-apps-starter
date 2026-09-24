@@ -13,6 +13,7 @@ export type SsServiceRow = {
 export type SsCarrierRow = {
   carrierCode: string;
   name: string;
+  shipstationCarrierId?: string | null;
   inCatalog?: boolean;
   /** Carrier-level Digit default (empty service map). */
   digitOptionId?: string | null;

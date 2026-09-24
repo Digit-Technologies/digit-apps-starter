@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -35,6 +35,7 @@ import {
 
 import EmptyState from './components/EmptyState';
 import OrderQueueCard from './components/OrderQueueCard';
+import PackageTypeList, { missingSelectionReason } from './components/PackageTypeList';
 import QueueStatusDisplay, { statusTooltipSlotProps } from './components/QueueStatusDisplay';
 import SectionHeader from './components/SectionHeader';
 import StatusChip from './components/StatusChip';
@@ -44,17 +45,21 @@ import {
   effectiveShippingCarrierField,
   ineligibilityReason,
   queuePushDisplay,
+  resolveSsServiceFromDigitOption,
   skipNextStep,
   trackingStatusChip,
   type CarrierMapsForEligibility,
   type OrgSettingsForEligibility,
 } from './eligibility';
 import type { OrgSettingsData } from './carrierTypes';
+import type { PackageContainer } from './packageContainers';
 import {
-  packageContainerLabel,
-  packageCountLabel,
-  type PackageContainer,
-} from './packageContainers';
+  isStaleCarrierSelection,
+  packageSelectionLocked,
+  type PackageCatalog,
+  type PackageChoice,
+  type PackageSelection,
+} from './packageSelection';
 import { useRefetchWhenVisible } from './useRefetchWhenVisible';
 
 const PAGE_SIZE = 100;
@@ -205,7 +210,7 @@ type MapRow = {
 
 const EMPTY_SHIPMENTS: ShipmentNode[] = [];
 
-type MapsData = { maps: MapRow[] };
+type MapsData = { maps: MapRow[]; packageSelections?: PackageSelection[] };
 
 type LabelData = {
   filename: string;
@@ -437,7 +442,33 @@ export default function FulfillmentQueue({
     skip: !organizationId || nodes.length === 0,
   });
 
-  useRefetchWhenVisible(() => Promise.all([queue.refetch(), mapsQuery.refetch()]));
+  const carrierQuery = useMemo(() => {
+    const ids = new Set<string>();
+    const codes = new Set<string>();
+    for (const shipment of nodes) {
+      const field = effectiveShippingCarrierField(shipment);
+      const resolved = resolveSsServiceFromDigitOption({
+        digitOptionId: field?.id,
+        digitValue: field?.value,
+        mappings: orgSettings?.carrierMappings ?? [],
+        ssCarriers: orgSettings?.ssCarriers ?? [],
+      });
+      if (resolved.status !== 'ok') continue;
+      if (resolved.carrierId) ids.add(resolved.carrierId);
+      if (resolved.carrierCode) codes.add(resolved.carrierCode);
+    }
+    return { ids: [...ids].sort().join(','), codes: [...codes].sort().join(',') };
+  }, [nodes, orgSettings]);
+
+  const typesQuery = useBackendQuery<PackageCatalog>({
+    path: `/package-types?organizationId=${encodeURIComponent(organizationId)}&carrierIds=${encodeURIComponent(carrierQuery.ids)}&carrierCodes=${encodeURIComponent(carrierQuery.codes)}`,
+    skip: !organizationId,
+  });
+
+  useRefetchWhenVisible(async () => {
+    await Promise.all([queue.refetch(), mapsQuery.refetch(), typesQuery.refetch()]);
+    await onPushComplete?.();
+  });
 
   const mapsById = useMemo(() => {
     const map = new Map<string, MapRow>();
@@ -446,6 +477,76 @@ export default function FulfillmentQueue({
     }
     return map;
   }, [mapsQuery.data]);
+
+  const selectionsByShipment = useMemo(() => {
+    const map = new Map<string, PackageSelection[]>();
+    for (const row of mapsQuery.data?.packageSelections ?? []) {
+      const list = map.get(row.digitShipmentId) ?? [];
+      list.push(row);
+      map.set(row.digitShipmentId, list);
+    }
+    return map;
+  }, [mapsQuery.data]);
+
+  const [saveSelection] = useBackendMutation();
+  const [savingContainerId, setSavingContainerId] = useState<string | null>(null);
+  const [selectionError, setSelectionError] = useState<string | null>(null);
+  const clearingRef = useRef(new Set<string>());
+
+  const savePackageChoice = async (
+    shipmentId: string,
+    containerId: string,
+    choice: PackageChoice | null,
+  ) => {
+    setSavingContainerId(containerId);
+    setSelectionError(null);
+    const result = await saveSelection({
+      path: '/package-selections',
+      method: 'PUT',
+      body: choice
+        ? { organizationId, digitShipmentId: shipmentId, digitContainerId: containerId, ...choice }
+        : { organizationId, digitShipmentId: shipmentId, digitContainerId: containerId, clear: true },
+    });
+    setSavingContainerId(null);
+    if (!result.ok) {
+      setSelectionError(result.error.message);
+      return;
+    }
+    await mapsQuery.refetch();
+  };
+
+  useEffect(() => {
+    if (!organizationId) return;
+    for (const shipment of nodes) {
+      if (packageSelectionLocked(mapsById.get(shipment.id))) continue;
+      const field = effectiveShippingCarrierField(shipment);
+      const resolved = resolveSsServiceFromDigitOption({
+        digitOptionId: field?.id,
+        digitValue: field?.value,
+        mappings: orgSettings?.carrierMappings ?? [],
+        ssCarriers: orgSettings?.ssCarriers ?? [],
+      });
+      for (const selection of selectionsByShipment.get(shipment.id) ?? []) {
+        if (!isStaleCarrierSelection(selection, resolved)) continue;
+        const key = `${shipment.id}:${selection.digitContainerId}`;
+        if (clearingRef.current.has(key)) continue;
+        clearingRef.current.add(key);
+        void saveSelection({
+          path: '/package-selections',
+          method: 'PUT',
+          body: {
+            organizationId,
+            digitShipmentId: shipment.id,
+            digitContainerId: selection.digitContainerId,
+            clear: true,
+          },
+        }).then((result) => {
+          clearingRef.current.delete(key);
+          if (result.ok) void mapsQuery.refetch();
+        });
+      }
+    }
+  }, [mapsById, nodes, orgSettings, organizationId, saveSelection, selectionsByShipment, mapsQuery.refetch]);
 
   const [mutate, { error: pushError, loading: pushing, reset }] = useBackendMutation<PushData>();
   const [downloadLabelMutate, { error: labelError, loading: labelDownloading, reset: resetLabel }] =
@@ -511,6 +612,9 @@ export default function FulfillmentQueue({
     // permissions, so apply each one here and tell the Worker which ones landed.
     let pulled = 0;
     for (const pendingWriteback of result.data?.pendingWritebacks ?? []) {
+      const shipment = nodes.find((node) => node.id === pendingWriteback.digitShipmentId);
+      const shipmentLabel = shipment ? ticketLabel(shipment) : null;
+      const orderLabel = shipment?.order?.documentNumber || shipment?.order?.orderNumber || null;
       const updated = await updateShipmentMutate({
         variables: {
           input: {
@@ -532,6 +636,19 @@ export default function FulfillmentQueue({
           status: 'error',
           ssShipmentId: pendingWriteback.ssShipmentId,
           message: `Could not write label ${pendingWriteback.labelId} to the Sutton shipment: ${updated.error.message}`,
+        });
+        await writebackDoneMutate({
+          path: '/sync/writeback-complete',
+          method: 'POST',
+          body: {
+            organizationId,
+            digitShipmentId: pendingWriteback.digitShipmentId,
+            digitOrderId: pendingWriteback.digitOrderId,
+            recordOnly: true,
+            kind: 'shipment',
+            label: shipmentLabel,
+            message: updated.error.message,
+          },
         });
         continue;
       }
@@ -558,13 +675,31 @@ export default function FulfillmentQueue({
             ssShipmentId: pendingWriteback.ssShipmentId,
             message: `Wrote tracking for label ${pendingWriteback.labelId}, but could not set the ShipStation carrier and shipping fees on the Sutton order: ${fees.error.message}`,
           });
+          await writebackDoneMutate({
+            path: '/sync/writeback-complete',
+            method: 'POST',
+            body: {
+              organizationId,
+              digitShipmentId: pendingWriteback.digitShipmentId,
+              digitOrderId: pendingWriteback.digitOrderId,
+              recordOnly: true,
+              kind: 'order',
+              label: orderLabel,
+              message: fees.error.message,
+            },
+          });
         }
       }
       pulled += 1;
       await writebackDoneMutate({
         path: '/sync/writeback-complete',
         method: 'POST',
-        body: { organizationId, digitShipmentId: pendingWriteback.digitShipmentId },
+        body: {
+          organizationId,
+          digitShipmentId: pendingWriteback.digitShipmentId,
+          shipmentLabel,
+          orderLabel,
+        },
       });
     }
 
@@ -588,7 +723,12 @@ export default function FulfillmentQueue({
               : 'Buy the label in ShipStation, then pull again or wait up to five minutes.',
       ].filter(Boolean),
     });
-    await Promise.all([queue.refetch(), mapsQuery.refetch(), onPushComplete?.()]);
+    await Promise.all([
+      queue.refetch(),
+      mapsQuery.refetch(),
+      typesQuery.refetch(),
+      onPushComplete?.(),
+    ]);
   };
 
   const downloadShippingLabel = async (shipmentId: string) => {
@@ -765,6 +905,23 @@ export default function FulfillmentQueue({
       {mapsQuery.error && (
         <AppErrorAlert error={mapsQuery.error} onRetry={() => void mapsQuery.refetch()} />
       )}
+      {typesQuery.error ? (
+        <AppErrorAlert error={typesQuery.error} onRetry={() => void typesQuery.refetch()} />
+      ) : null}
+      {selectionError ? (
+        <Alert severity="error" onClose={() => setSelectionError(null)}>
+          {selectionError} The package type was not saved. Pick it again.
+        </Alert>
+      ) : null}
+      {(typesQuery.data?.errors ?? []).length > 0 ? (
+        <Alert severity="warning">
+          {(typesQuery.data?.errors ?? [])
+            .map((entry) => entry.message)
+            .filter(Boolean)
+            .join(' ')}{' '}
+          Carrier packages for that account could not be loaded.
+        </Alert>
+      ) : null}
       {pushError && <AppErrorAlert error={pushError} />}
       {pollError && <AppErrorAlert error={pollError} />}
       {slipError && <AppErrorAlert error={slipError} />}
@@ -819,13 +976,32 @@ export default function FulfillmentQueue({
               {nodes.map((shipment) => {
                 const map = mapsById.get(shipment.id);
                 const label = ticketLabel(shipment);
-                const blocked = ineligibilityReason({
-                  shipment,
-                  orgSettings,
-                  mapRow: map ?? null,
-                  apiVersion,
-                  carrierMaps: orgSettings,
+                const field = effectiveShippingCarrierField(shipment);
+                const resolved = resolveSsServiceFromDigitOption({
+                  digitOptionId: field?.id,
+                  digitValue: field?.value,
+                  mappings: orgSettings?.carrierMappings ?? [],
+                  ssCarriers: orgSettings?.ssCarriers ?? [],
                 });
+                const packageReason = missingSelectionReason({
+                  containers: shipment.packContainers,
+                  selections: selectionsByShipment.get(shipment.id) ?? [],
+                  catalog: typesQuery.data,
+                  catalogLoaded: typesQuery.data != null,
+                  locked: packageSelectionLocked(map),
+                  apiVersion,
+                  carrierReady: resolved.status === 'ok',
+                  carrierId: resolved.carrierId,
+                  carrierCode: resolved.carrierCode,
+                });
+                const blocked =
+                  ineligibilityReason({
+                    shipment,
+                    orgSettings,
+                    mapRow: map ?? null,
+                    apiVersion,
+                    carrierMaps: orgSettings,
+                  }) || packageReason;
                 const pushDisplay = queuePushDisplay({
                   blocked,
                   mapRow: map,
@@ -892,21 +1068,21 @@ export default function FulfillmentQueue({
                         {shipment.shippingCarrierField?.value ?? '—'}
                       </Typography>
                     </TableCell>
-                    <TableCell>
-                      <Stack spacing={0.25}>
-                        <Typography variant="body2">
-                          {packageCountLabel(shipment.packContainers)}
-                        </Typography>
-                        {(shipment.packContainers ?? []).map((container, index) => (
-                          <Typography
-                            key={container.id || index}
-                            variant="caption"
-                            sx={{ color: 'text.secondary', whiteSpace: 'nowrap' }}
-                          >
-                            {packageContainerLabel(container, index)}
-                          </Typography>
-                        ))}
-                      </Stack>
+                    <TableCell sx={{ minWidth: 220 }}>
+                      <PackageTypeList
+                        shipment={shipment}
+                        selections={selectionsByShipment.get(shipment.id) ?? []}
+                        orgSettings={orgSettings}
+                        apiVersion={apiVersion}
+                        catalog={typesQuery.data}
+                        catalogLoaded={typesQuery.data != null}
+                        catalogLoading={typesQuery.loading}
+                        locked={packageSelectionLocked(map)}
+                        savingContainerId={savingContainerId}
+                        onChange={(containerId, choice) => {
+                          void savePackageChoice(shipment.id, containerId, choice);
+                        }}
+                      />
                     </TableCell>
                     <TableCell>
                       <QueueStatusDisplay pushDisplay={pushDisplay} />
@@ -1039,6 +1215,14 @@ export default function FulfillmentQueue({
             onDownloadSlip={() => {
               if (!shipment.order?.id) return;
               void downloadPackingSlip(shipment.order.id);
+            }}
+            selections={selectionsByShipment.get(shipment.id) ?? []}
+            catalog={typesQuery.data}
+            catalogLoaded={typesQuery.data != null}
+            catalogLoading={typesQuery.loading}
+            savingContainerId={savingContainerId}
+            onPackageChange={(containerId, choice) => {
+              void savePackageChoice(shipment.id, containerId, choice);
             }}
           />
         ))}

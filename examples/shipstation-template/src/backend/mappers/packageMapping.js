@@ -84,6 +84,27 @@ function dimensionsFromContainer(container) {
     : null;
 }
 
+const PACKAGE_ID_PATTERN = /^se(-[a-z0-9]+)+$/;
+
+function dimensionsFromSelection(selection) {
+  const length = positiveNumber(selection?.dimensions?.length);
+  const width = positiveNumber(selection?.dimensions?.width);
+  const height = positiveNumber(selection?.dimensions?.height);
+  if (length == null || width == null || height == null) return null;
+  const unit = selection.dimensions.unit === 'centimeter' ? 'centimeter' : 'inch';
+  return { length, width, height, unit };
+}
+
+function selectionForContainer(selectionsByContainerId, container) {
+  if (!selectionsByContainerId) return null;
+  const id = String(container?.id ?? '').trim();
+  if (!id) return null;
+  if (typeof selectionsByContainerId.get === 'function') {
+    return selectionsByContainerId.get(id) ?? null;
+  }
+  return selectionsByContainerId[id] ?? null;
+}
+
 export function packageFromOrgSettings(orgSettings) {
   const weightOz = positiveNumber(orgSettings?.defaultWeightOz) ?? DEFAULT_WEIGHT_OZ;
   const pkg = {
@@ -95,33 +116,49 @@ export function packageFromOrgSettings(orgSettings) {
   return pkg;
 }
 
-export function packageFromDigitContainer(container, orgSettings) {
+export function packageFromDigitContainer(container, orgSettings, selection = null) {
   const fallback = packageFromOrgSettings(orgSettings);
   const packageId = String(container?.id ?? '').trim();
+  const chosenCode = String(selection?.packageCode || '').trim();
   const pkg = {
-    package_code: 'package',
+    package_code: chosenCode || 'package',
     weight: {
       value: measurementToOunces(container?.packageGrossWeight) ?? fallback.weight.value,
       unit: 'ounce',
     },
   };
   if (packageId) pkg.external_package_id = packageId;
+  if (chosenCode) {
+    const ssPackageId = String(selection?.packageId || '').trim();
+    if (PACKAGE_ID_PATTERN.test(ssPackageId)) pkg.package_id = ssPackageId;
+    // A chosen type with no catalog dimensions (flat-rate) must not send Sutton dimensions.
+    const dimensions = dimensionsFromSelection(selection);
+    if (dimensions) pkg.dimensions = dimensions;
+    return pkg;
+  }
   const dimensions = dimensionsFromContainer(container) ?? fallback.dimensions;
   if (dimensions) pkg.dimensions = dimensions;
   return pkg;
 }
 
-export function packagesFromDigitShipment(shipment, orgSettings) {
+export function packagesFromDigitShipment(shipment, orgSettings, selectionsByContainerId = null) {
   const containers = shipment?.packContainers ?? [];
   return containers.length > 0
-    ? containers.map((container) => packageFromDigitContainer(container, orgSettings))
+    ? containers.map((container) =>
+        packageFromDigitContainer(
+          container,
+          orgSettings,
+          selectionForContainer(selectionsByContainerId, container),
+        ),
+      )
     : [packageFromOrgSettings(orgSettings)];
 }
 
-export function v1PackageFieldsFromDigitContainer(container, orgSettings) {
-  const pkg = packageFromDigitContainer(container, orgSettings);
+export function v1PackageFieldsFromDigitContainer(container, orgSettings, selection = null) {
+  const pkg = packageFromDigitContainer(container, orgSettings, selection);
+  const units = pkg.dimensions?.unit === 'centimeter' ? 'centimeters' : 'inches';
   return {
-    packageCode: 'package',
+    packageCode: pkg.package_code,
     weight: { value: pkg.weight.value, units: 'ounces' },
     ...(pkg.dimensions
       ? {
@@ -129,7 +166,7 @@ export function v1PackageFieldsFromDigitContainer(container, orgSettings) {
             length: pkg.dimensions.length,
             width: pkg.dimensions.width,
             height: pkg.dimensions.height,
-            units: 'inches',
+            units,
           },
         }
       : {}),

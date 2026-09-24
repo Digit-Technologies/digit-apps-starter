@@ -171,14 +171,17 @@ export default function App() {
     path: `/org-settings?organizationId=${encodeURIComponent(organizationId ?? '')}`,
     skip: !organizationId || !configLoaded,
   });
-  useRefetchWhenVisible(() => orgSettingsQuery.refetch());
+  const activityQuery = useActivityQuery(organizationId ?? '');
+  useRefetchWhenVisible(async () => {
+    await orgSettingsQuery.refetch();
+    await activityQuery.refetch();
+  });
   const connected = Boolean(connectionQuery.data?.connected);
   const credentialsMissing = Boolean(
     connectionQuery.data?.credentialsMissing || connectionQuery.data?.staleConnection,
   );
   /** Secrets removed after connect leave a D1 row — do not show the queue until restored or disconnected. */
   const operable = connected && !credentialsMissing;
-  const activityQuery = useActivityQuery(organizationId ?? '');
 
   const [mutate, { error: mutationError, loading: mutating, reset: resetMutation }] =
     useBackendMutation<ConnectionData>();

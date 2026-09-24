@@ -2,6 +2,47 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { inferActivityOrigin } from './activityOrigin.js';
+import { suttonUpdateMessage } from './activity.js';
+
+test('Sutton sales order and shipment updates name the object', () => {
+  assert.equal(
+    suttonUpdateMessage({
+      kind: 'shipment',
+      label: 'SHP-12',
+      changes: ['shipping status shipped', 'shipping carrier'],
+    }),
+    'Updated Sutton shipment SHP-12: shipping status shipped, shipping carrier.',
+  );
+  assert.equal(
+    suttonUpdateMessage({
+      kind: 'order',
+      label: 'SO25',
+      changes: ['shipping fees 20.98 USD'],
+    }),
+    'Updated Sutton sales order SO25: shipping fees 20.98 USD.',
+  );
+  assert.equal(
+    suttonUpdateMessage({
+      verb: 'Created',
+      kind: 'order',
+      label: 'SO25',
+      ok: false,
+      message: 'Sutton API request failed.',
+    }),
+    'Could not create Sutton sales order SO25: Sutton API request failed.',
+  );
+});
+
+test('catalog pull is recorded by this app', () => {
+  assert.equal(
+    inferActivityOrigin({
+      action: 'catalog_pull',
+      status: 'success',
+      message: 'Pulled 1 new carrier from ShipStation: Stamps.com.',
+    }),
+    'app',
+  );
+});
 
 test('graphql detail and Sutton API wording are Sutton', () => {
   assert.equal(

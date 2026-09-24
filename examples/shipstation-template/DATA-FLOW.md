@@ -187,9 +187,9 @@ Unknown units are dropped, and the field falls back as above.
 | | V2 `packages[]` | V1 order |
 | --- | --- | --- |
 | Cardinality | One entry per Sutton pack container. No containers → one default package. | Order-level `weight` and `dimensions` from the first container. Extra containers make the shipment ineligible. |
-| Code | `package_code: "package"` | `packageCode: "package"` |
-| Weight | `{ value, unit: "ounce" }` | `{ value, units: "ounces" }` |
-| Dimensions | `{ length, width, height, unit: "inch" }` | `{ length, width, height, units: "inches" }` |
+| Code | `package_code` from the queue selection, otherwise `"package"` | `packageCode` from the queue selection, otherwise `"package"` |
+| Weight | Sutton gross weight `{ value, unit: "ounce" }` | Sutton gross weight `{ value, units: "ounces" }` |
+| Dimensions | Catalog dimensions when the selected type has them. Otherwise Sutton/org dimensions for the generic package, omitted for a selected type with no dimensions. | Same, with V1 `units`. |
 | Id | `external_package_id` = Sutton pack-container id | Not sent |
 
 V2 `items[]` stay on the shipment. They are not allocated onto `packages[].products`.

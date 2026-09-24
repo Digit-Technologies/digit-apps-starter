@@ -446,6 +446,7 @@ export function buildCarrierMapPayload({
     ssCarriers: catalog.map((row) => ({
       carrierCode: row.carrierCode,
       name: row.name,
+      shipstationCarrierId: row.shipstationCarrierId || null,
       inCatalog: row.inCatalog,
       digitOptionId: row.digitOptionId,
       digitValue: row.digitValue,
