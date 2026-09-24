@@ -17,8 +17,10 @@ Build Digit custom apps that run inside Digit as **sandboxed iframes** with a lo
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
 support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
-Use `DigitHost.download` for files and `DigitHost.print` for printable HTML.
-See [reference/iframe-constraints.md](reference/iframe-constraints.md).
+Use `DigitHost.invoke` for every host-mediated action: `invoke("download", ...)` for files,
+`invoke("print", ...)` for printable HTML. `DigitHost.download` and `DigitHost.print` are
+deprecated aliases — migrate them to `invoke` in any file you touch. See
+[reference/iframe-constraints.md](reference/iframe-constraints.md).
 
 **Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
@@ -196,7 +198,7 @@ only; still upload the zip **unchanged**. Details:
   `target="_blank"`, browser `alert`/`confirm`/`prompt`, or device/clipboard-read/
   fullscreen APIs — they will not work. Copy buttons (`navigator.clipboard.writeText`
   in a click handler), form `onSubmit` + `preventDefault`, file exports via
-  `DigitHost.download`, and HTML printing via `DigitHost.print` DO work. In-page MUI
+  `invoke("download", ...)`, and HTML printing via `invoke("print", ...)` DO work. In-page MUI
   Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
 - **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
@@ -219,10 +221,10 @@ only; still upload the zip **unchanged**. Details:
 
 #### Printing
 
-When the user wants invoices, labels, packing slips, or reports, call
-`window.DigitHost.print({ title, html })`. Do not use `window.open`, `target="_blank"`,
-blob navigation, or a new print window. Never request `allow-modals`, `allow-popups`, or
-`allow-downloads` on the app iframe.
+When the user wants invoices, labels, packing slips, or reports, print through the host with
+`await window.DigitHost?.invoke("print", { title, html })`. Do not use `window.open`,
+`target="_blank"`, blob navigation, or a new print window. Never request `allow-modals`,
+`allow-popups`, or `allow-downloads` on the app iframe.
 
 Print HTML is a snapshot, not a live app. The host sanitizes it and no JavaScript runs in
 the print document. Build a dedicated receipt/print view or hidden print root and serialize
@@ -248,9 +250,38 @@ rel="stylesheet">`, and the print CSP blocks network CSS.
 - Use a 1-119 character title made from ASCII letters or digits plus spaces, `.`, `_`, `-`,
   `(`, and `)`. It must start with a letter or digit. Accents and emoji are not allowed.
 
-Do not send PDF bytes to `DigitHost.print`. Download a PDF with
-`DigitHost.download({ filename, contentType: 'application/pdf', data })`. Printing only
+Do not send PDF bytes to the print call. Download a PDF instead:
+`invoke("download", { filename, contentType: "application/pdf", data })`. Printing only
 accepts HTML and opens the browser print dialog.
+
+#### Host-mediated actions (`DigitHost.invoke`)
+
+Every host-mediated action goes through one generic call, `DigitHost.invoke(method,
+params?)`, which returns a promise:
+
+- the host succeeded — it **resolves with the result data**.
+- the user dismissed a host UI — it **resolves with `null`**. That is a normal outcome, not
+  a failure; do not surface it as an error.
+- the host refused or failed — it **rejects** with an `Error`. Handle it like any other
+  async failure (`AppErrorAlert`, etc.).
+
+Call `getHostCapabilities` before writing the code — it returns each method's name, params and a
+note on what it does, so you never guess one. Read that note: some capabilities replace the whole
+Digit page, which unmounts your app. Then call `invoke` directly: do not guard it with a runtime
+capability check. The host offers whatever the Digit it runs inside supports, capabilities are
+only ever added, and a method it does not offer simply rejects, like any other failure.
+
+```ts
+const result = await window.DigitHost?.invoke("openModal", { modal: "item", id })
+```
+
+Optional-chain `window.DigitHost` itself — a bundle can run outside the harness (tests, a
+local page) — but never its members: every harness that defines `DigitHost` defines
+`invoke` with it.
+
+`DigitHost.download(...)` and `DigitHost.print(...)` still work — they are thin shims over
+`invoke` — but they are deprecated. Write new code as `invoke("download", ...)` /
+`invoke("print", ...)`, and migrate the calls in any existing file you edit.
 
 ### 5. `manifest.json`
 

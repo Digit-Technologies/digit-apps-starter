@@ -12,6 +12,7 @@ export type {
   DigitHostDownloadOptions,
   DigitHostPrintOptions,
   DigitHostSettings,
+  HostInvokeParams,
 } from "./globals";
 import "./globals";
 
