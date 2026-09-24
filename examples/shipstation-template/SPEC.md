@@ -805,3 +805,35 @@ The activity log should only hold onto entries up to 1 month old. Auto delete en
 - `prune-activity` deletes `activity_log` rows older than one calendar month. The job is
   scheduled every five minutes and performs the delete only from midnight to 12:09 AM
   Pacific.
+
+```
+In shipstation template - improve the search and filtering of the shipment queue. Add a group by push status view as well. Should be able to search/filter by carrier, sales order, shipping order, shipstation id, and tracking number
+```
+
+- The shipping queue search matches carrier, sales order number, shipping order number,
+  ShipStation id, and tracking number. A carrier menu filters the same rows. Sutton
+  `shipments(search:)` finds older sales orders and shipping numbers outside the latest
+  100; ShipStation id and tracking also search saved maps. List stays the default.
+  By push status groups Ready, Blocked, Push failed, In ShipStation, label ready,
+  Imported, and Shipped. Tracking status stays on the row and does not split those groups.
+
+```
+use /frontend-design to make the search, facets and filters more intuative
+```
+
+- The queue find field says it matches carrier, sales order, shipping order, ShipStation id,
+  and tracking. Sutton status, carrier, and push status are tally chips instead of menus.
+  Carrier and push chips show how many shipments are in each choice. Group rows still
+  stacks the list by push status.
+
+```
+Plan for an error handling flow that ensures that when a push to shipstation fails that an error is raised but the row is available to try again once data has been updated.
+
+Once a row fails it requires manual push - make sure that this requirement is raised in an icon hover over so the user knows they need to do this
+```
+
+- A rejected ShipStation create stays `push_status = error` with `last_error`, and the row
+  stays selected. The five-minute job does not send it again. The queue error chip keeps
+  the ShipStation message; an info icon says to update the shipment data, then select the
+  row and push again. That manual push is still allowed, including after the data changes.
+

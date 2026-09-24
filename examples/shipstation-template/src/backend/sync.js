@@ -5,6 +5,7 @@
 import { AppErrorCode } from '@digit/lib-common';
 import { requireEnv } from '@digit/lib-backend';
 
+import { queryMapsBySearch } from './mapSearch.js';
 import { afterDigitShipped } from './channels/index.js';
 import { digitGraphql } from './digitGraphql.js';
 import { appendActivity, suttonUpdateMessage } from './activity.js';
@@ -25,6 +26,7 @@ import {
 } from './digitQueries.js';
 import {
   effectiveShippingCarrierField,
+  failedPushNeedsManualRetry,
   ineligibilityReason,
   skipNeedsAttention,
   skipNextStep,
@@ -215,16 +217,6 @@ const MAP_ROW_SELECT = `SELECT digit_order_id, digit_shipment_id, ss_shipment_id
               CASE WHEN label_pdf_base64 IS NOT NULL AND length(label_pdf_base64) > 0 THEN 1 ELSE 0 END AS has_label_pdf
        FROM shipstation_order_map`;
 
-export const MAP_SEARCH_LIMIT = 25;
-
-/** Bound pattern for a contains match. `%`, `_`, and `\\` in the query stay literal. */
-export function mapSearchLikePattern(query) {
-  const text = String(query ?? '').trim();
-  if (!text) return null;
-  const escaped = text.replace(/[\\%_]/g, (char) => `\\${char}`);
-  return `%${escaped}%`;
-}
-
 export async function mapsForShipments({ db, connectionId, shipmentIds }) {
   if (!shipmentIds.length) return [];
   const placeholders = shipmentIds.map(() => '?').join(',');
@@ -239,21 +231,13 @@ export async function mapsForShipments({ db, connectionId, shipmentIds }) {
 }
 
 export async function mapsMatchingQuery({ db, connectionId, query }) {
-  const pattern = mapSearchLikePattern(query);
-  if (!pattern || !connectionId) return [];
-  const { results } = await db
-    .prepare(
-      `${MAP_ROW_SELECT}
-       WHERE connection_id = ? AND deleted = 0
-         AND (
-           IFNULL(ss_shipment_id, '') LIKE ? ESCAPE '\\'
-           OR IFNULL(tracking_number, '') LIKE ? ESCAPE '\\'
-         )
-       LIMIT ${MAP_SEARCH_LIMIT}`,
-    )
-    .bind(connectionId, pattern, pattern)
-    .all();
-  return (results ?? []).map(publicMapRow);
+  return queryMapsBySearch({
+    db,
+    connectionId,
+    query,
+    selectSql: MAP_ROW_SELECT,
+    mapRow: publicMapRow,
+  });
 }
 
 export async function mapsForOrders({ db, connectionId, orderIds }) {
@@ -667,6 +651,25 @@ export async function fetchDigitShipment({ env, shipmentId }) {
   return { ok: true, data: { shipment, organization } };
 }
 
+/** Eligibility skips must not clear a rejected create, or the next sweep would push it. */
+function skipMapFields(existing) {
+  if (['shipped', 'imported'].includes(existing?.push_status ?? '')) {
+    return { pushStatus: existing.push_status, lastError: null };
+  }
+  if (existing?.ss_shipment_id) {
+    return { pushStatus: 'pushed', lastError: null };
+  }
+  if (
+    failedPushNeedsManualRetry({
+      pushStatus: existing?.push_status,
+      ssShipmentId: existing?.ss_shipment_id,
+    })
+  ) {
+    return { pushStatus: 'error', lastError: existing?.last_error ?? null };
+  }
+  return { pushStatus: 'skipped', lastError: null };
+}
+
 function pushMeaning({ skipped, reason, ssShipmentId, shipmentLabel }) {
   if (skipped) {
     return `${reason} ${skipNextStep(reason)}`.trim();
@@ -831,6 +834,19 @@ export async function pushShipment({
     .bind(secret.connectionId, shipmentId)
     .first();
 
+  if (sweep && failedPushNeedsManualRetry(publicMapRow(existing))) {
+    return {
+      ok: true,
+      data: {
+        shipmentId,
+        orderId: existing?.digit_order_id ?? null,
+        skipped: true,
+        needsAttention: false,
+        message: existing?.last_error ?? null,
+      },
+    };
+  }
+
   const loaded =
     preloaded?.shipment
       ? { ok: true, data: { shipment: preloaded.shipment, organization: preloaded.organization ?? null } }
@@ -882,11 +898,8 @@ export async function pushShipment({
     if (orderId) {
       // Ineligibility is not a failure: keep the ShipStation state and leave lastError clear,
       // otherwise the 5-minute poll paints pushed shipments red and drops the already-pushed guard.
-      const retainedStatus = ['shipped', 'imported'].includes(existing?.push_status ?? '')
-        ? existing.push_status
-        : existing?.ss_shipment_id
-          ? 'pushed'
-          : 'skipped';
+      // A rejected create stays `error` so a later skip does not hand the row back to the sweep.
+      const retained = skipMapFields(existing);
       await upsertMap({
         db,
         connectionId: secret.connectionId,
@@ -894,8 +907,8 @@ export async function pushShipment({
         digitOrderId: orderId,
         digitShipmentId: shipmentId,
         fields: {
-          pushStatus: retainedStatus,
-          lastError: null,
+          pushStatus: retained.pushStatus,
+          lastError: retained.lastError,
           source: existing?.source ?? 'digit',
         },
       });
@@ -963,11 +976,7 @@ export async function pushShipment({
   if (packageChoice.skipReason) {
     const reason = packageChoice.skipReason;
     if (orderId) {
-      const retainedStatus = ['shipped', 'imported'].includes(existing?.push_status ?? '')
-        ? existing.push_status
-        : existing?.ss_shipment_id
-          ? 'pushed'
-          : 'skipped';
+      const retained = skipMapFields(existing);
       await upsertMap({
         db,
         connectionId: secret.connectionId,
@@ -975,8 +984,8 @@ export async function pushShipment({
         digitOrderId: orderId,
         digitShipmentId: shipmentId,
         fields: {
-          pushStatus: retainedStatus,
-          lastError: null,
+          pushStatus: retained.pushStatus,
+          lastError: retained.lastError,
           source: existing?.source ?? 'digit',
         },
       });

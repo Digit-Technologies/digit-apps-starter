@@ -129,6 +129,21 @@ export function ineligibilityReason({
 }
 
 /**
+ * A rejected create with no ShipStation id. The scheduled sweep must leave it alone;
+ * the operator pushes the row again after updating the shipment. Not an eligibility block.
+ */
+export function failedPushNeedsManualRetry(mapRow) {
+  if (!mapRow) return false;
+  const status = mapRow.pushStatus ?? mapRow.push_status ?? null;
+  const ssShipmentId = mapRow.ssShipmentId ?? mapRow.ss_shipment_id ?? null;
+  return status === 'error' && !ssShipmentId;
+}
+
+/** Keep in sync with src/frontend/eligibility.ts */
+export const MANUAL_PUSH_RETRY_MEANING =
+  'The shipment was not created in ShipStation. It will not retry on its own. Update the shipment data, then select this row and push again.';
+
+/**
  * True when a skipped push is the operator's problem to fix. Sweep runs (the five-minute poll)
  * stay quiet about routine skips like already-pushed shipments.
  */

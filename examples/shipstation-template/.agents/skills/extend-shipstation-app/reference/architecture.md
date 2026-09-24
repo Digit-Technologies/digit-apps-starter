@@ -78,7 +78,7 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/frontend/App.tsx` | Connect + Phase 1 settings. |
 | `src/frontend/SetupNeeded.tsx` | Reports missing app-secret keys and directs owners to Sutton's App Secrets UI. |
 | `src/frontend/FeatureStatus.tsx` | Per-feature Working / Limited / Not yet and what each needs. |
-| `src/frontend/FulfillmentQueue.tsx` | Paginated shipping queue; refetches the Sutton `shipments` list on load/visible. Status filter follows SS `tracking_status` mapped to Sutton shipping statuses. |
+| `src/frontend/FulfillmentQueue.tsx` | Shipping queue. Refetches Sutton `shipments` on load and when the iframe is shown again. Sutton status filter uses `shippingStatuses`. Search matches carrier, sales order, shipping order, ShipStation id, and tracking (Sutton `search` plus D1 id/tracking). List view or grouped by push status. |
 | `src/frontend/ActivityLog.tsx` | D1 activity events on the Activity tab (search, type filter, stored message, Sutton vs ShipStation chip). |
 | `src/frontend/eligibility.ts` | Keep in sync with `eligibility.js`. |
 | `manifest.json` | Permissions, D1, schedule. |

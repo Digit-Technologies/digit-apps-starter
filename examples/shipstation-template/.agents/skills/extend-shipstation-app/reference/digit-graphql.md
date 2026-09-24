@@ -31,8 +31,12 @@ Typical starting queries (confirm on MCP; add whatever keys those fields require
 - Queue filters `shipments(shippingStatuses: …)` using Sutton statuses mapped from ShipStation
   label `tracking_status`: `unknown` → `awaiting_pickup`; `in_transit` / `delivered` / `error`
   → `shipped`. Default All is those plus `awaiting_carrier` and `awaiting_drop_off`.
-  Nested `order` includes `shippingCarrierField` as a fallback when the shipment carrier is empty.
+  The queue search box also sends `shipments(search:)` for that same status set, then keeps a row
+  only when the text matches carrier, sales order number, shipping order number, ShipStation id,
+  or tracking number. ShipStation id and map tracking are not on the Sutton shipment: `GET /sync/shipments?q=`
+  finds those maps (max 25) and the queue loads just those shipments with aliased `shipment(shipmentId:)`.
   Do not alias `shipment(shipmentId:)` for every visible row — that exceeds Sutton’s query cost cap.
+  Nested `order` includes `shippingCarrierField` as a fallback when the shipment carrier is empty.
   Outbound poll still uses `SHIPMENT_LIST_QUERY` with `shippingStatuses: [awaiting_carrier]`. Nested `order`
   and packed items (`packContainers.packedItems.pickedItem.orderItem`) need `READ_ORDER`,
   `READ_PACK_CONTAINER`, `READ_PICKED_ITEM`, and `READ_ITEM`.

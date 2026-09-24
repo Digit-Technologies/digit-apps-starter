@@ -2,6 +2,7 @@ import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-comm
 import { err, ok, requireEnv } from '@digit/lib-backend';
 
 import { appendActivity, listActivity } from './activity.js';
+import { MANUAL_PUSH_RETRY_MEANING } from './eligibility.js';
 import { refreshCarriers } from './connection.js';
 import {
   createPackageCatalogCache,
@@ -68,7 +69,7 @@ function pushResultRow(shipmentId, result) {
     ssShipmentId: null,
     ssLabelId: null,
     message,
-    meaning: `${message} The shipment was not created in ShipStation. Fix the error and try again.`,
+    meaning: `${message} ${MANUAL_PUSH_RETRY_MEANING}`,
   };
 }
 

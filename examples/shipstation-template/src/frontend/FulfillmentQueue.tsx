@@ -1,15 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Checkbox from '@mui/material/Checkbox';
-import FormControl from '@mui/material/FormControl';
 import IconButton from '@mui/material/IconButton';
-import InputLabel from '@mui/material/InputLabel';
 import Link from '@mui/material/Link';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
 import Stack from '@mui/material/Stack';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -23,7 +19,6 @@ import Typography from '@mui/material/Typography';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
-import SyncIcon from '@mui/icons-material/Sync';
 
 import {
   AppErrorAlert,
@@ -36,6 +31,7 @@ import {
 import EmptyState from './components/EmptyState';
 import OrderQueueCard from './components/OrderQueueCard';
 import PackageTypeList, { missingSelectionReason } from './components/PackageTypeList';
+import QueueFilterBar from './components/QueueFilterBar';
 import QueueStatusDisplay, { statusTooltipSlotProps } from './components/QueueStatusDisplay';
 import SectionHeader from './components/SectionHeader';
 import StatusChip from './components/StatusChip';
@@ -45,6 +41,8 @@ import {
   effectiveShippingCarrierField,
   ineligibilityReason,
   queuePushDisplay,
+  queuePushGroup,
+  PUSH_STATUS_GROUP_ORDER,
   resolveSsServiceFromDigitOption,
   skipNextStep,
   trackingStatusChip,
@@ -60,9 +58,22 @@ import {
   type PackageChoice,
   type PackageSelection,
 } from './packageSelection';
+import {
+  ALL_CARRIERS,
+  ALL_PUSH,
+  NO_CARRIER,
+  PUSH_FACET_LABELS,
+  carrierOptionValue,
+  matchesCarrierFilter,
+  matchesQueueSearch,
+  queueSearchHaystack,
+  sectionsByPushStatus,
+} from './queueFilters';
 import { useRefetchWhenVisible } from './useRefetchWhenVisible';
 
 const PAGE_SIZE = 100;
+const EXTRA_SHIPMENT_CAP = 25;
+const SEARCH_DEBOUNCE_MS = 300;
 
 /** Active Digit shipping statuses shown in the queue (cancelled is omitted). */
 const QUEUE_SHIPPING_STATUSES = [
@@ -163,6 +174,37 @@ const QUEUE_QUERY = `
   }
 `;
 
+const QUEUE_SEARCH_QUERY = `
+  query ShipStationQueueSearch($connection: ConnectionInput, $shippingStatuses: [ShippingStatus!], $search: String) {
+    shipments(
+      shippingStatuses: $shippingStatuses
+      search: $search
+      connection: $connection
+      order: { by: createdAt, direction: desc }
+    ) {
+      pageInfo { hasNextPage }
+      nodes { ${SHIPMENT_ROW_FIELDS} }
+    }
+  }
+`;
+
+function shipmentsByIdQuery(ids: string[]) {
+  const selections = ids
+    .map((id, index) => `s${index}: shipment(shipmentId: "${id}") { ${SHIPMENT_ROW_FIELDS} }`)
+    .join('\n');
+  return `query ShipStationQueueByIds {\n${selections}\n}`;
+}
+
+function aliasShipments(data: Record<string, ShipmentNode | null> | undefined, count: number) {
+  if (!data || count === 0) return [];
+  const nodes: ShipmentNode[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const node = data[`s${index}`];
+    if (node?.id) nodes.push(node);
+  }
+  return nodes;
+}
+
 function withEffectiveCarrier(shipment: ShipmentNode): ShipmentNode {
   const carrier = effectiveShippingCarrierField(shipment);
   if (carrier === shipment.shippingCarrierField) return shipment;
@@ -206,6 +248,7 @@ type MapRow = {
   lastError?: string | null;
   trackingNumber?: string | null;
   trackingStatus?: string | null;
+  carrierName?: string | null;
 };
 
 const EMPTY_SHIPMENTS: ShipmentNode[] = [];
@@ -411,6 +454,11 @@ export default function FulfillmentQueue({
   onPushComplete?: () => void | Promise<void>;
 }) {
   const [statusFilter, setStatusFilter] = useState<QueueStatusFilter>('all');
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [carrierFilter, setCarrierFilter] = useState(ALL_CARRIERS);
+  const [pushFilter, setPushFilter] = useState(ALL_PUSH);
+  const [queueView, setQueueView] = useState<'list' | 'pushStatus'>('list');
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [copyHint, setCopyHint] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
@@ -421,31 +469,94 @@ export default function FulfillmentQueue({
     details: string[];
   } | null>(null);
 
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(search.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+  }, [search]);
+
+  const shippingStatuses = shippingStatusesForFilter(statusFilter);
   const queue = useDigitApiQuery<QueueData>({
     query: QUEUE_QUERY,
     variables: {
-      shippingStatuses: shippingStatusesForFilter(statusFilter),
+      shippingStatuses,
       connection: { first: PAGE_SIZE },
     },
   });
+  const searchQueue = useDigitApiQuery<QueueData>({
+    query: QUEUE_SEARCH_QUERY,
+    variables: {
+      shippingStatuses,
+      search: debouncedSearch,
+      connection: { first: PAGE_SIZE },
+    },
+    skip: !debouncedSearch,
+  });
 
   const listedNodes = queue.data?.shipments?.nodes ?? EMPTY_SHIPMENTS;
-  const nodes = useMemo(
+  const pageNodes = useMemo(
     () => listedNodes.map((node) => withEffectiveCarrier(node)),
     [listedNodes],
   );
-  const hasV1MultiContainer = apiVersion === 'v1' &&
-    nodes.some((shipment) => (shipment.packContainers?.length ?? 0) > 1);
-  const shipmentIds = nodes.map((node) => node.id).join(',');
+  const searchedListed = debouncedSearch ? (searchQueue.data?.shipments?.nodes ?? EMPTY_SHIPMENTS) : EMPTY_SHIPMENTS;
+  const searchedNodes = useMemo(
+    () => searchedListed.map((node) => withEffectiveCarrier(node)),
+    [searchedListed],
+  );
+  const typedSearch = search.trim();
+  const remoteSearch = typedSearch ? debouncedSearch : '';
+  const mapSearch = useBackendQuery<MapsData>({
+    path: `/sync/shipments?organizationId=${encodeURIComponent(organizationId)}&q=${encodeURIComponent(remoteSearch)}`,
+    skip: !organizationId || !remoteSearch,
+  });
+  const extraIds = useMemo(() => {
+    if (!remoteSearch) return [] as string[];
+    const known = new Set<string>([...pageNodes, ...searchedNodes].map((node) => node.id));
+    const ids: string[] = [];
+    for (const row of mapSearch.data?.maps ?? []) {
+      const id = row.digitShipmentId?.trim() ?? '';
+      if (!id || known.has(id) || ids.includes(id) || !/^[A-Za-z0-9_-]+$/.test(id)) continue;
+      ids.push(id);
+      if (ids.length >= EXTRA_SHIPMENT_CAP) break;
+    }
+    return ids;
+  }, [mapSearch.data, pageNodes, remoteSearch, searchedNodes]);
+  const byId = useDigitApiQuery<Record<string, ShipmentNode | null>>({
+    query: extraIds.length > 0 ? shipmentsByIdQuery(extraIds) : QUEUE_QUERY,
+    skip: extraIds.length === 0,
+  });
+  const extraListed = useMemo(
+    () => (extraIds.length > 0 ? aliasShipments(byId.data, extraIds.length) : EMPTY_SHIPMENTS),
+    [byId.data, extraIds],
+  );
+  const allowedStatuses = useMemo(
+    () => new Set<string>(shippingStatusesForFilter(statusFilter)),
+    [statusFilter],
+  );
+  const combinedNodes = useMemo(() => {
+    const byShipment = new Map<string, ShipmentNode>();
+    for (const node of pageNodes) byShipment.set(node.id, node);
+    if (!remoteSearch) return [...byShipment.values()];
+    for (const node of searchedNodes) {
+      if (!byShipment.has(node.id)) byShipment.set(node.id, node);
+    }
+    const extraIdSet = new Set(extraIds);
+    for (const node of extraListed) {
+      if (!extraIdSet.has(node.id) || byShipment.has(node.id)) continue;
+      if (!node.shippingStatus || !allowedStatuses.has(node.shippingStatus)) continue;
+      byShipment.set(node.id, withEffectiveCarrier(node));
+    }
+    return [...byShipment.values()];
+  }, [allowedStatuses, extraIds, extraListed, pageNodes, remoteSearch, searchedNodes]);
+  const shipmentIds = combinedNodes.map((node) => node.id).join(',');
   const mapsQuery = useBackendQuery<MapsData>({
     path: `/sync/shipments?organizationId=${encodeURIComponent(organizationId)}&shipmentIds=${encodeURIComponent(shipmentIds)}`,
-    skip: !organizationId || nodes.length === 0,
+    skip: !organizationId || combinedNodes.length === 0,
   });
 
   const carrierQuery = useMemo(() => {
     const ids = new Set<string>();
     const codes = new Set<string>();
-    for (const shipment of nodes) {
+    for (const shipment of combinedNodes) {
       const field = effectiveShippingCarrierField(shipment);
       const resolved = resolveSsServiceFromDigitOption({
         digitOptionId: field?.id,
@@ -458,7 +569,7 @@ export default function FulfillmentQueue({
       if (resolved.carrierCode) codes.add(resolved.carrierCode);
     }
     return { ids: [...ids].sort().join(','), codes: [...codes].sort().join(',') };
-  }, [nodes, orgSettings]);
+  }, [combinedNodes, orgSettings]);
 
   const typesQuery = useBackendQuery<PackageCatalog>({
     path: `/package-types?organizationId=${encodeURIComponent(organizationId)}&carrierIds=${encodeURIComponent(carrierQuery.ids)}&carrierCodes=${encodeURIComponent(carrierQuery.codes)}`,
@@ -466,17 +577,29 @@ export default function FulfillmentQueue({
   });
 
   useRefetchWhenVisible(async () => {
-    await Promise.all([queue.refetch(), mapsQuery.refetch(), typesQuery.refetch()]);
+    await Promise.all([
+      queue.refetch(),
+      mapsQuery.refetch(),
+      typesQuery.refetch(),
+      remoteSearch ? searchQueue.refetch() : Promise.resolve(),
+      remoteSearch ? mapSearch.refetch() : Promise.resolve(),
+      extraIds.length > 0 ? byId.refetch() : Promise.resolve(),
+    ]);
     await onPushComplete?.();
   });
 
   const mapsById = useMemo(() => {
     const map = new Map<string, MapRow>();
+    if (remoteSearch) {
+      for (const row of mapSearch.data?.maps ?? []) {
+        if (row.digitShipmentId) map.set(row.digitShipmentId, row);
+      }
+    }
     for (const row of mapsQuery.data?.maps ?? []) {
       if (row.digitShipmentId) map.set(row.digitShipmentId, row);
     }
     return map;
-  }, [mapsQuery.data]);
+  }, [mapSearch.data, mapsQuery.data, remoteSearch]);
 
   const selectionsByShipment = useMemo(() => {
     const map = new Map<string, PackageSelection[]>();
@@ -517,7 +640,7 @@ export default function FulfillmentQueue({
 
   useEffect(() => {
     if (!organizationId) return;
-    for (const shipment of nodes) {
+    for (const shipment of combinedNodes) {
       if (packageSelectionLocked(mapsById.get(shipment.id))) continue;
       const field = effectiveShippingCarrierField(shipment);
       const resolved = resolveSsServiceFromDigitOption({
@@ -546,7 +669,7 @@ export default function FulfillmentQueue({
         });
       }
     }
-  }, [mapsById, nodes, orgSettings, organizationId, saveSelection, selectionsByShipment, mapsQuery.refetch]);
+  }, [mapsById, combinedNodes, orgSettings, organizationId, saveSelection, selectionsByShipment, mapsQuery.refetch]);
 
   const [mutate, { error: pushError, loading: pushing, reset }] = useBackendMutation<PushData>();
   const [downloadLabelMutate, { error: labelError, loading: labelDownloading, reset: resetLabel }] =
@@ -559,11 +682,152 @@ export default function FulfillmentQueue({
   const [updateOrderMutate] = useDigitApiMutation({ mutation: UPDATE_ORDER_MUTATION });
   const [writebackDoneMutate] = useBackendMutation();
 
-  const selectedCount = Object.values(selected).filter(Boolean).length;
+  const matchedNodes = useMemo(
+    () =>
+      combinedNodes.filter((shipment) => {
+        if (!typedSearch) return true;
+        return matchesQueueSearch(
+          queueSearchHaystack(shipment, mapsById.get(shipment.id)),
+          typedSearch,
+        );
+      }),
+    [combinedNodes, mapsById, typedSearch],
+  );
+
+  const carrierFacets = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const shipment of matchedNodes) {
+      const key = carrierOptionValue(shipment);
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+    const named = [...counts.keys()]
+      .filter((key) => key !== NO_CARRIER)
+      .sort((left, right) => left.localeCompare(right));
+    const options = named.map((value) => ({ value, label: value, count: counts.get(value) ?? 0 }));
+    const none = counts.get(NO_CARRIER) ?? 0;
+    if (none > 0) options.push({ value: NO_CARRIER, label: 'No carrier', count: none });
+    return options;
+  }, [matchedNodes]);
+
+  useEffect(() => {
+    if (carrierFilter === ALL_CARRIERS) return;
+    if (carrierFacets.some((option) => option.value === carrierFilter)) return;
+    setCarrierFilter(ALL_CARRIERS);
+  }, [carrierFacets, carrierFilter]);
+
+  const afterCarrier = useMemo(
+    () => matchedNodes.filter((shipment) => matchesCarrierFilter(shipment, carrierFilter)),
+    [carrierFilter, matchedNodes],
+  );
+
+  const blockedReason = useCallback(
+    (shipment: ShipmentNode) => {
+      const map = mapsById.get(shipment.id);
+      const field = effectiveShippingCarrierField(shipment);
+      const resolved = resolveSsServiceFromDigitOption({
+        digitOptionId: field?.id,
+        digitValue: field?.value,
+        mappings: orgSettings?.carrierMappings ?? [],
+        ssCarriers: orgSettings?.ssCarriers ?? [],
+      });
+      const packageReason = missingSelectionReason({
+        containers: shipment.packContainers,
+        selections: selectionsByShipment.get(shipment.id) ?? [],
+        catalog: typesQuery.data,
+        catalogLoaded: typesQuery.data != null,
+        locked: packageSelectionLocked(map),
+        apiVersion,
+        carrierReady: resolved.status === 'ok',
+        carrierId: resolved.carrierId,
+        carrierCode: resolved.carrierCode,
+      });
+      return (
+        ineligibilityReason({
+          shipment,
+          orgSettings,
+          mapRow: map ?? null,
+          apiVersion,
+          carrierMaps: orgSettings,
+        }) || packageReason
+      );
+    },
+    [apiVersion, mapsById, orgSettings, selectionsByShipment, typesQuery.data],
+  );
+
+  const pushFacets = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const shipment of afterCarrier) {
+      const group = queuePushGroup({
+        blocked: blockedReason(shipment),
+        mapRow: mapsById.get(shipment.id) ?? null,
+        shippingStatus: shipment.shippingStatus,
+      });
+      counts.set(group.key, (counts.get(group.key) ?? 0) + 1);
+    }
+    return PUSH_STATUS_GROUP_ORDER.flatMap((key) => {
+      const count = counts.get(key) ?? 0;
+      if (count === 0) return [];
+      return [{ value: key, label: PUSH_FACET_LABELS[key] ?? key, count }];
+    });
+  }, [afterCarrier, blockedReason, mapsById]);
+
+  useEffect(() => {
+    if (pushFilter === ALL_PUSH) return;
+    if (pushFacets.some((option) => option.value === pushFilter)) return;
+    setPushFilter(ALL_PUSH);
+  }, [pushFacets, pushFilter]);
+
+  const filteredNodes = useMemo(() => {
+    if (pushFilter === ALL_PUSH) return afterCarrier;
+    return afterCarrier.filter((shipment) => {
+      const group = queuePushGroup({
+        blocked: blockedReason(shipment),
+        mapRow: mapsById.get(shipment.id) ?? null,
+        shippingStatus: shipment.shippingStatus,
+      });
+      return group.key === pushFilter;
+    });
+  }, [afterCarrier, blockedReason, mapsById, pushFilter]);
+
+  const renderItems = useMemo(() => {
+    if (queueView !== 'pushStatus') {
+      return filteredNodes.map((shipment) => ({ kind: 'shipment' as const, shipment }));
+    }
+    return sectionsByPushStatus(filteredNodes, (shipment) =>
+      queuePushGroup({
+        blocked: blockedReason(shipment),
+        mapRow: mapsById.get(shipment.id) ?? null,
+        shippingStatus: shipment.shippingStatus,
+      }),
+    ).flatMap((section) => [
+      {
+        kind: 'header' as const,
+        key: section.key,
+        label: section.label,
+        count: section.items.length,
+      },
+      ...section.items.map((shipment) => ({ kind: 'shipment' as const, shipment })),
+    ]);
+  }, [blockedReason, filteredNodes, mapsById, queueView]);
+
+  const visibleIds = useMemo(
+    () => new Set(filteredNodes.map((shipment) => shipment.id)),
+    [filteredNodes],
+  );
+  const selectedCount = Object.entries(selected).filter(([id, on]) => on && visibleIds.has(id)).length;
+  const hasV1MultiContainer =
+    apiVersion === 'v1' &&
+    filteredNodes.some((shipment) => (shipment.packContainers?.length ?? 0) > 1);
+  const searchPending = Boolean(typedSearch) && (
+    typedSearch !== debouncedSearch
+    || searchQueue.loading
+    || mapSearch.loading
+    || (extraIds.length > 0 && byId.loading)
+  );
 
   const pushSelected = async () => {
     const shipmentIdsToPush = Object.entries(selected)
-      .filter(([, on]) => on)
+      .filter(([id, on]) => on && visibleIds.has(id))
       .map(([id]) => id);
     if (shipmentIdsToPush.length === 0) return;
     reset();
@@ -593,7 +857,14 @@ export default function FulfillmentQueue({
       }
       return next;
     });
-    await Promise.all([queue.refetch(), mapsQuery.refetch(), onPushComplete?.()]);
+    await Promise.all([
+      queue.refetch(),
+      mapsQuery.refetch(),
+      remoteSearch ? searchQueue.refetch() : Promise.resolve(),
+      remoteSearch ? mapSearch.refetch() : Promise.resolve(),
+      extraIds.length > 0 ? byId.refetch() : Promise.resolve(),
+      onPushComplete?.(),
+    ]);
   };
 
   const pullFromShipStation = async () => {
@@ -612,7 +883,7 @@ export default function FulfillmentQueue({
     // permissions, so apply each one here and tell the Worker which ones landed.
     let pulled = 0;
     for (const pendingWriteback of result.data?.pendingWritebacks ?? []) {
-      const shipment = nodes.find((node) => node.id === pendingWriteback.digitShipmentId);
+      const shipment = combinedNodes.find((node) => node.id === pendingWriteback.digitShipmentId);
       const shipmentLabel = shipment ? ticketLabel(shipment) : null;
       const orderLabel = shipment?.order?.documentNumber || shipment?.order?.orderNumber || null;
       const updated = await updateShipmentMutate({
@@ -727,6 +998,9 @@ export default function FulfillmentQueue({
       queue.refetch(),
       mapsQuery.refetch(),
       typesQuery.refetch(),
+      remoteSearch ? searchQueue.refetch() : Promise.resolve(),
+      remoteSearch ? mapSearch.refetch() : Promise.resolve(),
+      extraIds.length > 0 ? byId.refetch() : Promise.resolve(),
       onPushComplete?.(),
     ]);
   };
@@ -788,42 +1062,51 @@ export default function FulfillmentQueue({
 
   const emptyCopy = emptyQueueCopy(statusFilter);
   const showSelection = canPush && statusFilter !== 'shipped';
+  const columnCount = showSelection ? 11 : 10;
   const truncated = Boolean(queue.data?.shipments?.pageInfo?.hasNextPage);
+  const filtersActive =
+    Boolean(typedSearch) ||
+    carrierFilter !== ALL_CARRIERS ||
+    pushFilter !== ALL_PUSH ||
+    statusFilter !== 'all';
+  const showStatusEmpty =
+    filteredNodes.length === 0 &&
+    !queue.loading &&
+    !searchPending &&
+    !typedSearch &&
+    carrierFilter === ALL_CARRIERS &&
+    pushFilter === ALL_PUSH;
+  const showFilterEmpty = filteredNodes.length === 0 && !queue.loading && !searchPending && !showStatusEmpty;
+
+  const clearFilters = () => {
+    setSearch('');
+    setCarrierFilter(ALL_CARRIERS);
+    setPushFilter(ALL_PUSH);
+    setStatusFilter('all');
+  };
 
   const queueToolbar = (
-    <Stack
-      direction={{ xs: 'column', sm: 'row' }}
-      spacing={1}
-      alignItems={{ sm: 'center' }}
-      justifyContent="space-between"
-      sx={{ pb: 1.5, borderBottom: 1, borderColor: 'divider', flex: '0 0 auto' }}
-    >
-      <FormControl size="small" sx={{ minWidth: 200 }}>
-        <InputLabel id="queue-status-filter-label">Sutton status</InputLabel>
-        <Select
-          labelId="queue-status-filter-label"
-          label="Sutton status"
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as QueueStatusFilter)}
-        >
-          {QUEUE_STATUS_FILTERS.map((option) => (
-            <MenuItem key={option.value} value={option.value}>
-              {option.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
-      <Button
-        variant="outlined"
-        size="small"
-        startIcon={<SyncIcon />}
-        onClick={() => void pullFromShipStation()}
-        disabled={polling || pushing || !organizationId}
-        sx={{ alignSelf: { xs: 'flex-start', sm: 'center' } }}
-      >
-        {polling ? 'Pulling…' : 'Pull from ShipStation'}
-      </Button>
-    </Stack>
+    <QueueFilterBar
+      search={search}
+      onSearch={setSearch}
+      status={statusFilter}
+      onStatus={(value) => setStatusFilter(value as QueueStatusFilter)}
+      statusOptions={QUEUE_STATUS_FILTERS}
+      carrier={carrierFilter}
+      onCarrier={setCarrierFilter}
+      carrierOptions={carrierFacets}
+      push={pushFilter}
+      onPush={setPushFilter}
+      pushOptions={pushFacets}
+      grouped={queueView === 'pushStatus'}
+      onGrouped={(next) => setQueueView(next ? 'pushStatus' : 'list')}
+      onPull={() => void pullFromShipStation()}
+      pulling={polling}
+      pullDisabled={polling || pushing || !organizationId}
+      shown={filteredNodes.length}
+      narrowed={filtersActive}
+      onClear={clearFilters}
+    />
   );
 
   const pushBar = showSelection ? (
@@ -902,9 +1185,18 @@ export default function FulfillmentQueue({
       ) : null}
 
       {queue.error && <AppErrorAlert error={queue.error} onRetry={() => void queue.refetch()} />}
+      {remoteSearch && searchQueue.error ? (
+        <AppErrorAlert error={searchQueue.error} onRetry={() => void searchQueue.refetch()} />
+      ) : null}
       {mapsQuery.error && (
         <AppErrorAlert error={mapsQuery.error} onRetry={() => void mapsQuery.refetch()} />
       )}
+      {remoteSearch && mapSearch.error ? (
+        <AppErrorAlert error={mapSearch.error} onRetry={() => void mapSearch.refetch()} />
+      ) : null}
+      {extraIds.length > 0 && byId.error ? (
+        <AppErrorAlert error={byId.error} onRetry={() => void byId.refetch()} />
+      ) : null}
       {typesQuery.error ? (
         <AppErrorAlert error={typesQuery.error} onRetry={() => void typesQuery.refetch()} />
       ) : null}
@@ -973,35 +1265,28 @@ export default function FulfillmentQueue({
               </TableRow>
             </TableHead>
             <TableBody>
-              {nodes.map((shipment) => {
+              {renderItems.map((item) => {
+                if (item.kind === 'header') {
+                  return (
+                    <TableRow key={`group-${item.key}`}>
+                      <TableCell
+                        colSpan={columnCount}
+                        sx={{ bgcolor: 'action.hover', borderBottom: 1, borderColor: 'divider', py: 1 }}
+                      >
+                        <Typography variant="subtitle2">
+                          {item.label}
+                          <Box component="span" sx={{ ml: 1, color: 'text.secondary', fontWeight: 400 }}>
+                            {item.count}
+                          </Box>
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
+                const shipment = item.shipment;
                 const map = mapsById.get(shipment.id);
                 const label = ticketLabel(shipment);
-                const field = effectiveShippingCarrierField(shipment);
-                const resolved = resolveSsServiceFromDigitOption({
-                  digitOptionId: field?.id,
-                  digitValue: field?.value,
-                  mappings: orgSettings?.carrierMappings ?? [],
-                  ssCarriers: orgSettings?.ssCarriers ?? [],
-                });
-                const packageReason = missingSelectionReason({
-                  containers: shipment.packContainers,
-                  selections: selectionsByShipment.get(shipment.id) ?? [],
-                  catalog: typesQuery.data,
-                  catalogLoaded: typesQuery.data != null,
-                  locked: packageSelectionLocked(map),
-                  apiVersion,
-                  carrierReady: resolved.status === 'ok',
-                  carrierId: resolved.carrierId,
-                  carrierCode: resolved.carrierCode,
-                });
-                const blocked =
-                  ineligibilityReason({
-                    shipment,
-                    orgSettings,
-                    mapRow: map ?? null,
-                    apiVersion,
-                    carrierMaps: orgSettings,
-                  }) || packageReason;
+                const blocked = blockedReason(shipment);
                 const pushDisplay = queuePushDisplay({
                   blocked,
                   mapRow: map,
@@ -1171,10 +1456,33 @@ export default function FulfillmentQueue({
                   </TableRow>
                 );
               })}
-              {nodes.length === 0 && !queue.loading ? (
+              {searchPending && filteredNodes.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={showSelection ? 11 : 10}>
+                  <TableCell colSpan={columnCount}>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', py: 1 }}>
+                      Searching…
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              {showStatusEmpty ? (
+                <TableRow>
+                  <TableCell colSpan={columnCount}>
                     <EmptyState title={emptyCopy.title} description={emptyCopy.description} />
+                  </TableCell>
+                </TableRow>
+              ) : null}
+              {showFilterEmpty ? (
+                <TableRow>
+                  <TableCell colSpan={columnCount}>
+                    <Stack spacing={1} alignItems="flex-start" sx={{ py: 1 }}>
+                      <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                        No shipments match these filters.
+                      </Typography>
+                      <Button size="small" onClick={clearFilters}>
+                        Clear filters
+                      </Button>
+                    </Stack>
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -1193,7 +1501,19 @@ export default function FulfillmentQueue({
           pb: selectedCount > 0 ? 8 : 0,
         }}
       >
-        {nodes.map((shipment) => (
+        {renderItems.map((item) => {
+          if (item.kind === 'header') {
+            return (
+              <Typography key={`group-${item.key}`} variant="subtitle2" sx={{ pt: 0.5 }}>
+                {item.label}
+                <Box component="span" sx={{ ml: 1, color: 'text.secondary', fontWeight: 400 }}>
+                  {item.count}
+                </Box>
+              </Typography>
+            );
+          }
+          const shipment = item.shipment;
+          return (
           <OrderQueueCard
             key={shipment.id}
             shipment={shipment}
@@ -1225,15 +1545,32 @@ export default function FulfillmentQueue({
               void savePackageChoice(shipment.id, containerId, choice);
             }}
           />
-        ))}
-        {nodes.length === 0 && !queue.loading ? (
+          );
+        })}
+        {searchPending && filteredNodes.length === 0 ? (
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            Searching…
+          </Typography>
+        ) : null}
+        {showStatusEmpty ? (
           <EmptyState title={emptyCopy.title} description={emptyCopy.description} />
+        ) : null}
+        {showFilterEmpty ? (
+          <Stack spacing={1} alignItems="flex-start">
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+            No shipments match these filters.
+          </Typography>
+          <Button size="small" onClick={clearFilters}>
+            Clear filters
+          </Button>
+          </Stack>
         ) : null}
       </Stack>
 
       {truncated ? (
         <Typography variant="caption" sx={{ color: 'text.secondary', flex: '0 0 auto' }}>
-          Showing the {PAGE_SIZE} most recent shipments for this filter.
+          Showing the {PAGE_SIZE} most recent shipments for this Sutton status. Search also checks
+          ShipStation ids and tracking beyond this page.
         </Typography>
       ) : null}
     </Stack>

@@ -35,6 +35,9 @@ mixed batch is not a single mutation error.
 
 - `skipped: true` is eligibility (`ineligibilityReason`), not success. Show it.
 - `ok: false` on a result is a ShipStation or Sutton failure; keep that row selected.
+  The queue keeps an info icon beside that error chip. Hovering it says the shipment
+  was not created, it will not retry on its own, and the operator should update the
+  shipment data, then select the row and push again.
 - The UI must read `summary` and `meaning`. Do not treat hook `error === null` as
   “every shipment pushed.”
 
@@ -114,6 +117,10 @@ surprise. Do not duplicate that in a second status column — sync state (`pushe
 - `poll-outbound-push` (300s): outbound push when fulfillment method is `scheduled` (manual is the default), plus
   unlabeled-map label pull. Refresh (`POST /sync/poll`) pulls labels only; outbound push is
   `/sync/push` or the scheduled job when fulfillment method is `scheduled`.
+- A row with `push_status = error` and no ShipStation id is not retried by that job. The sweep
+  returns a quiet skip (no activity row, status unchanged). The operator updates the shipment
+  and pushes that row from the queue. An eligibility skip must not clear that `error` status,
+  or the next sweep would push it.
 - `appendActivity` on poll errors and operator Refresh; skip flooding the log with
   routine eligibility skips.
 - `prune-activity` (300s): deletes `activity_log` rows older than one calendar month.

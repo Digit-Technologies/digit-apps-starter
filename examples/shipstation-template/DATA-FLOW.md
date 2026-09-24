@@ -62,7 +62,7 @@ One Sutton shipment maps to one ShipStation resource.
 | --- | --- |
 | `pending` / `skipped` | Not created in ShipStation, or held back by an eligibility rule |
 | `pushed` | ShipStation accepted the shipment or order; no label yet |
-| `error` | Create call failed; `last_error` has the upstream message |
+| `error` | Create call failed; `last_error` has the upstream message. The scheduled job does not retry it. Update the shipment and push the row again. |
 | `label_ready` | Label or tracking is staged; the iframe still owes `updateShipment` |
 | `shipped` | Sutton shipment was updated and the map is closed for writeback |
 | `imported` | Originated in ShipStation; excluded from push and from tracking refresh |
@@ -74,7 +74,7 @@ One Sutton shipment maps to one ShipStation resource.
 | Trigger | Route | Behavior |
 | --- | --- | --- |
 | Operator pushes selected rows | `POST /sync/push` | Up to 25 Sutton shipment ids. HTTP 200 with per-row `pushed` / `skipped` / `failed`. |
-| Schedule `poll-outbound-push` (every 300s) | `jobs.js` → `pollOutboundPush` | Runs only when org setting `defaultFulfillmentMethod` is `scheduled`. Lists Sutton shipments in `awaiting_carrier`, newest first, up to 25 creates per run. |
+| Schedule `poll-outbound-push` (every 300s) | `jobs.js` → `pollOutboundPush` | Runs only when org setting `defaultFulfillmentMethod` is `scheduled`. Lists Sutton shipments in `awaiting_carrier`, newest first, up to 25 creates per run. Skips rows already in `error` with no ShipStation id. |
 | Manual fulfillment (the default) | — | Schedule skips the push. Operators push from the queue. |
 
 Both paths call `pushShipment` in `sync.js`.
@@ -87,7 +87,7 @@ A shipment is pushed only when all of these hold:
 
 1. `source` is not `shipstation`.
 2. Sutton `shippingStatus` is not `shipped`.
-3. No `ss_shipment_id`, and `push_status` is not `pushed`, `label_ready`, or `shipped`.
+3. No `ss_shipment_id`, and `push_status` is not `pushed`, `label_ready`, or `shipped`. `error` is still eligible: it is not treated as already pushed, so the checkbox stays enabled. The scheduled sweep refuses that row until an operator pushes it.
 4. The shipment has a parent sales order (`order.id`).
 5. At least one packed line resolves to an item (`packContainers → packedItems → pickedItem → orderItem → item`).
 6. V1: exactly one pack container. Several containers need one Sutton shipment each, or a V2 connection.
@@ -198,6 +198,10 @@ V2 `items[]` stay on the shipment. They are not allocated onto `packages[].produ
 
 The map row stores `ss_shipment_id`, `push_status = pushed`, `source = digit`, and clears `last_error`. No label is purchased. The operator buys the label in ShipStation.
 
+### After a failed create
+
+The map row stores `push_status = error` and `last_error`, and does not store a ShipStation id. The activity log records `push_error`. The five-minute job leaves the row alone. The queue shows the ShipStation message and an info icon: update the shipment data, then select the row and push again. A later eligibility skip keeps `error` and `last_error` so the schedule still will not pick the row up.
+
 ## Inbound: ShipStation → Sutton
 
 ### When a pull runs
@@ -270,7 +274,7 @@ V1 has no `tracking_status`. `orderStatus` `shipped`, or any tracking number, be
 | `voided` | `cancelled` |
 | anything else, or empty | `shipped` (writeback fallback) |
 
-The queue's status filter reads Sutton `shippingStatus`, so a label whose ShipStation status is still `unknown` shows under Sutton **Awaiting pickup**, and in-transit, delivered, and error labels show under **Shipped**.
+The queue's status filter reads Sutton `shippingStatus`, so a label whose ShipStation status is still `unknown` shows under Sutton **Awaiting pickup**, and in-transit, delivered, and error labels show under **Shipped**. Search matches carrier, sales order, shipping order, ShipStation id, and tracking. List is the default; **By push status** groups those same rows.
 
 ## Carrier map
 

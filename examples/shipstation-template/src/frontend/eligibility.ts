@@ -392,7 +392,13 @@ export type QueuePushDisplay = {
   tooltip: string;
   showPrimaryAsChip: boolean;
   lastError?: string | null;
+  /** Rejected create: the schedule will not retry; the operator must push the row. */
+  manualRetry?: boolean;
 };
+
+/** Keep in sync with src/backend/eligibility.js */
+export const MANUAL_PUSH_RETRY_MEANING =
+  'The shipment was not created in ShipStation. It will not retry on its own. Update the shipment data, then select this row and push again.';
 
 export type QueueSyncState = 'shipped' | 'imported' | 'label_ready' | 'pushed';
 
@@ -496,13 +502,14 @@ export function queuePushDisplay({
     };
   }
 
-  if (lastError || pushStatus === 'error') {
+  if (lastError || mapRow?.pushStatus === 'error') {
     return {
       primary: lastError ?? pushStatusLabel('error'),
       chipColor: 'error',
       tooltip: lastError ? `Push failed. ${lastError}` : 'Push failed.',
       showPrimaryAsChip: true,
       lastError: null,
+      manualRetry: true,
     };
   }
 

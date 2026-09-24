@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   effectiveShippingCarrierField,
+  failedPushNeedsManualRetry,
   ineligibilityReason,
+  MANUAL_PUSH_RETRY_MEANING,
   NO_DIGIT_CARRIER_REASON,
 } from './eligibility.js';
 
@@ -72,4 +74,27 @@ test('ineligibilityReason still blocks when neither shipment nor order has a car
     carrierMaps: { carrierMappings: [], ssCarriers: [] },
   });
   assert.equal(reason, NO_DIGIT_CARRIER_REASON);
+});
+
+test('a failed push with no ShipStation id stays eligible for a manual retry', () => {
+  const reason = ineligibilityReason({
+    shipment: packedShipment({
+      shippingCarrierField: { id: 'opt-ups-gnd', value: 'UPS Ground' },
+    }),
+    mapRow: { pushStatus: 'error', lastError: 'Invalid address', ssShipmentId: null },
+    carrierMaps: upsMaps,
+  });
+  assert.equal(reason, null);
+});
+
+test('failedPushNeedsManualRetry is only a rejected create with no ShipStation id', () => {
+  assert.equal(failedPushNeedsManualRetry({ pushStatus: 'error', ssShipmentId: null }), true);
+  assert.equal(failedPushNeedsManualRetry({ push_status: 'error', ss_shipment_id: null }), true);
+  assert.equal(failedPushNeedsManualRetry({ pushStatus: 'error', ssShipmentId: 'se-1' }), false);
+  assert.equal(failedPushNeedsManualRetry({ pushStatus: 'pushed', ssShipmentId: null }), false);
+  assert.equal(failedPushNeedsManualRetry(null), false);
+  assert.equal(
+    MANUAL_PUSH_RETRY_MEANING,
+    'The shipment was not created in ShipStation. It will not retry on its own. Update the shipment data, then select this row and push again.',
+  );
 });
