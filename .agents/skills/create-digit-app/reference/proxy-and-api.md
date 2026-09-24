@@ -117,6 +117,39 @@ export default createHandler({
 Import codes / validation from `@digit/lib-common`; Worker Response helpers from
 `@digit/lib-backend` (no re-exports between packages).
 
+## Digit API from the backend
+
+Backend handlers get a `digit` argument for Digit GraphQL — including jobs, schedules and
+webhooks, where no browser is involved. Never ask the user for an API token, org id or
+anything similar: the platform brokers every call.
+
+```js
+import { createHandler, ok } from '@digit/lib-backend';
+
+export default createHandler({
+  fetch: async ({ digit }) => {
+    const result = await digit.query(`{ purchaseOrders(connection: { first: 20 }) { nodes { id } } }`);
+    return ok({ data: result.data });
+  },
+  jobs: {
+    'nightly-sync': async ({ digit }) => {
+      const { data, errors } = await digit.query(`{ items(connection: { first: 50 }) { nodes { id } } }`);
+      if (errors?.length) throw new Error(errors[0].message);
+      return { synced: data.items.nodes.length };
+    },
+  },
+});
+```
+
+- Scope is `manifest.permissions`, exactly as for `/proxy/digit` — declare what the backend needs
+- In `fetch` it acts as **the user making the request**; in jobs, schedules and webhooks it acts
+  as **the app's creator**. Always use the `digit` argument — never `env.__DIGIT` — so a request
+  handler can't act as the creator by mistake
+- Results come back as GraphQL `{ data, errors }` — check `errors`
+- A preview build can only read (`PREVIEW_READ_ONLY` on writes)
+- If the creator leaves the organization, calls fail with `BACKEND_IDENTITY_UNAVAILABLE`
+- There is no Digit access under local `wrangler dev` (`MISSING_CONFIG`)
+
 ## Host display settings
 
 ```ts

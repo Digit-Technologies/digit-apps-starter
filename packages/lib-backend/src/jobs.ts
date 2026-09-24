@@ -4,6 +4,7 @@
 import { AppErrorCode } from '@digit/lib-common';
 
 import { HandlerError } from './createHandler';
+import type { DigitApi } from './digit';
 
 export type DigitJobKind = 'job' | 'schedule';
 
@@ -76,6 +77,8 @@ export type JobArgs = {
   deadlineMs: number;
   env: unknown;
   ctx: unknown;
+  /** The Digit API, acting as the app's creator — no user is behind a job. */
+  digit: DigitApi;
 };
 
 /** The return value (JSON-serialisable) is stored as the run's result; a throw fails the attempt. */
@@ -84,16 +87,17 @@ export type JobHandler = (args: JobArgs) => unknown | Promise<unknown>;
 export type JobHandlers = Record<string, JobHandler>;
 
 /** Platform invocation shape (everything in JobArgs except env/ctx). */
-export type JobInvocation = Omit<JobArgs, 'env' | 'ctx'>;
+export type JobInvocation = Omit<JobArgs, 'env' | 'ctx' | 'digit'>;
 
 /** Body of the entrypoint's `triggerJob` — a throw (including an unregistered name) fails the attempt. */
 export async function runJobHandler(options: {
   invocation: JobInvocation;
   env: unknown;
   ctx: unknown;
+  digit: DigitApi;
   jobs: JobHandlers;
 }): Promise<unknown> {
-  const { invocation, env, ctx, jobs } = options;
+  const { invocation, env, ctx, digit, jobs } = options;
   const name = typeof invocation?.name === 'string' ? invocation.name : '';
   const handler = jobs[name];
   if (!handler) {
@@ -108,5 +112,6 @@ export async function runJobHandler(options: {
     deadlineMs: typeof invocation.deadlineMs === 'number' ? invocation.deadlineMs : 0,
     env,
     ctx,
+    digit,
   });
 }
