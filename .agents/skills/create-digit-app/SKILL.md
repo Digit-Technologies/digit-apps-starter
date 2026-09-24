@@ -324,8 +324,8 @@ Full schema: [reference/manifest.md](reference/manifest.md).
 
 ### 6. Permissions
 
-`permissions` is the **ceiling** for `/proxy/digit`. Digit intersects it with the viewing
-user’s live permissions at runtime.
+`permissions` is the **ceiling** for `/proxy/digit` and the backend's `api.query`. Digit
+intersects it with the acting user’s live permissions at runtime (the viewer).
 
 1. Call MCP **`appPermissions`**
 2. Put each needed permission’s **`key`** into `manifest.permissions`
@@ -395,6 +395,9 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 Always wrap with `createHandler`. Strip `/proxy/backend` via `backendPath`, match
 `method` + `path`, return `ok` / `err`. Prefer `requireEnv` over reading `env.KEY`.
+Digit API: use the `api` argument `fetch` receives (`api.query(...)`) — never an API token;
+it acts as the requesting user, and jobs/schedules/webhooks have no Digit API for now —
+[reference/proxy-and-api.md](reference/proxy-and-api.md#digit-api-from-the-backend).
 Jobs/schedules: `createHandler({ jobs })` + `digitJobs({ env })` —
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md). Webhooks:
 `createHandler({ webhooks })`, verify with `verifyWebhookSignature` before acting —
