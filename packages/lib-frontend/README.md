@@ -38,13 +38,16 @@ createRoot(document.getElementById("root")!).render(
 The provider:
 
 - Builds MUI `createTheme(themeOptions(darkMode))`
-- Syncs light/dark from `window.DigitHost` (falls back to `data-theme` / `prefers-color-scheme`)
+- Syncs light/dark from `AppHost` (falls back to `data-theme` / `prefers-color-scheme`)
 - Applies Digit `CssBaseline`
 
-Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`,
-`DigitHostDownloadOptions`, and `DigitHostPrintOptions`) are exported from this package.
-Importing `@digit/lib-frontend` also augments `Window`. Prefer the data hooks over calling
-`window.DigitProxyClient` yourself. Do not add a local `digit.d.ts` for the harness.
+`AppHost` is the host page's API: `invoke`, `getSettings`, `onSettingsChange` and
+`capabilities`. It works inside the Digit app harness and on a page Digit embeds directly,
+such as a custom side-nav link, where it talks to Digit over the same messages. Its types
+(`AppHostSettings`, `AppHostDownloadOptions`, `AppHostPrintOptions`) are exported too, and
+importing the package augments `Window`. `window.DigitHost` and its `Digit*` types are
+deprecated. Prefer the data hooks over calling `window.AppProxy` yourself. Do not add a local
+`digit.d.ts` for the harness.
 
 Host-mediated printing takes a self-contained HTML snapshot:
 
@@ -60,19 +63,19 @@ const html = `
     <table><tr><th>Item</th><th>Qty</th></tr><tr><td>Widget</td><td>2</td></tr></table>
   </main>`;
 
-window.DigitHost?.print({ title: "Packing Slip 1042", html });
+await AppHost.invoke("print", { title: "Packing Slip 1042", html });
 ```
 
 The print document runs no JavaScript. Inline CSS and convert images or canvases to
-`data:image/...` before calling `print`; remote `http(s)` assets do not load (print CSP
-is `img-src data:`). Keep the result under 10MB. Use `DigitHost.download` for PDF bytes.
+`data:image/...` before calling `invoke("print", ...)`; remote `http(s)` assets do not load (print CSP
+is `img-src data:`). Keep the result under 10MB. Use `invoke("download", ...)` for PDF bytes.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
 
 ## Digit API & backend hooks
 
-Prefer the React hooks — they call the harness `DigitProxyClient` and normalize
+Prefer the React hooks — they call the harness `AppProxy` and normalize
 platform / GraphQL / backend failures for `AppErrorAlert`:
 
 ```tsx
@@ -110,7 +113,7 @@ Error kinds:
 | `platform`    | digit-apps proxy/session (`{ error: { code, message, requestId? } }`) |
 | `graphql`     | HTTP 200 + `errors[]` from Digit GraphQL                              |
 | `backend`     | App Worker result `{ ok: false, error: { code, message } }`           |
-| `unavailable` | Missing `DigitProxyClient` (local Vite without harness)               |
+| `unavailable` | Missing `AppProxy` (local Vite without harness)                       |
 | `unknown`     | Thrown / non-JSON / unexpected shapes                                 |
 
 Platform codes stay distinct from app codes (`AppErrorCode` on `@digit/lib-common`).

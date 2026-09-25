@@ -26,7 +26,7 @@ function isBackendSuccessBody(body: unknown): body is BackendSuccessBody {
 }
 
 /**
- * Normalize the JSON body returned by `DigitProxyClient.callProxy`.
+ * Normalize the JSON body returned by `AppProxy.callProxy`.
  * Platform failures arrive as `{ error: { code, message } }` (any HTTP status).
  * GraphQL field errors arrive as HTTP 200 with `{ data?, errors: [...] }`.
  */
@@ -66,7 +66,7 @@ export function parseProxyBody(body: unknown):
 }
 
 /**
- * Normalize a `DigitProxyClient.callBackend` Response into success data or AppError.
+ * Normalize a `AppProxy.callBackend` Response into success data or AppError.
  * Expects the app Worker result `{ ok: true, data }` / `{ ok: false, error: { code, message } }`.
  * Also recognizes platform proxy error bodies when the platform rejects the call.
  */
@@ -162,7 +162,7 @@ export function unavailableClient(message?: string): AppError {
     code: 'CLIENT_UNAVAILABLE',
     message:
       message ??
-      'DigitProxyClient is unavailable. This page only works inside the Digit app harness.',
+      'AppProxy is unavailable. This page only works inside the Digit app harness.',
     requestId: null,
     status: null,
   };

@@ -53,8 +53,8 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 Confirm root fields and selection sets against `graphql-schema://…` before shipping.
-Types for `window.DigitHost` are exported from `@digit/lib-frontend` (`DigitHost`,
-`DigitHostSettings`). Prefer the hooks over calling `window.DigitProxyClient` yourself.
+`AppHost` and its types (`AppHostSettings`) are exported from `@digit/lib-frontend`. Prefer the
+hooks over calling `window.AppProxy` yourself.
 
 ## Sort, filter, and pagination
 
@@ -120,10 +120,10 @@ Import codes / validation from `@digit/lib-common`; Worker Response helpers from
 ## Host display settings
 
 ```ts
-import type { DigitHostSettings } from '@digit/lib-frontend';
+import { AppHost } from '@digit/lib-frontend';
 
-window.DigitHost?.getSettings(); // DigitHostSettings | null
-window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
+AppHost.getSettings(); // AppHostSettings | null
+AppHost.onSettingsChange((settings) => { /* ... */ });
 ```
 
 `data-theme` and `lang` are also set on `<html>`. Apps using `@digit/lib-frontend` get

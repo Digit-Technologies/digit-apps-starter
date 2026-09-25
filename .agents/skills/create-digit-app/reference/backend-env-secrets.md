@@ -104,7 +104,7 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 | Situation | Backend required? |
 | --- | --- |
 | Pure UI | No |
-| Digit GraphQL via `useDigitApiQuery` / `DigitProxyClient` | No |
+| Digit GraphQL via `useDigitApiQuery` / `AppProxy` | No |
 | Read non-secret config from Digit app settings | Yes |
 | Call third-party APIs with secrets | Yes |
 | App-own persistence (D1) | Yes (`backend.d1`) |
