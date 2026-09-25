@@ -7,7 +7,7 @@ description: >-
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Digit app, editing an app in a local clone
   of this starter, publishing via MCP, or when the user mentions Digit apps,
-  manifest.json, DigitProxyClient, DigitThemeProvider, /proxy/digit, or
+  manifest.json, AppProxy, DigitThemeProvider, /proxy/digit, or
   /proxy/backend.
 ---
 
@@ -17,9 +17,10 @@ Build Digit custom apps that run inside Digit as **sandboxed iframes** with a lo
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
 support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
-Use `DigitHost.invoke` for every host-mediated action: `invoke("download", ...)` for files,
-`invoke("print", ...)` for printable HTML. `DigitHost.download` and `DigitHost.print` are
-deprecated aliases — migrate them to `invoke` in any file you touch. See
+Use `AppHost.invoke` from `@digit/lib-frontend` for every host-mediated action:
+`invoke("download", ...)` for files, `invoke("print", ...)` for printable HTML. `window.DigitHost`
+(including its `download` and `print`) is deprecated — migrate it to `AppHost` in any file you
+touch. See
 [reference/iframe-constraints.md](reference/iframe-constraints.md).
 
 **Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
@@ -183,7 +184,7 @@ apps/my-app/
 ```
 
 Edit `src/frontend` and `src/backend` only. Harness types come from `@digit/lib-frontend`
-— no local `digit.d.ts`. Prefer data hooks over calling `window.DigitProxyClient`.
+— no local `digit.d.ts`. Prefer data hooks over calling `window.AppProxy`.
 
 ```bash
 npm run pack -w apps/my-app     # from repo root → app.zip
@@ -227,7 +228,7 @@ only; still upload the zip **unchanged**. Details:
 #### Printing
 
 When the user wants invoices, labels, packing slips, or reports, print through the host with
-`await window.DigitHost?.invoke("print", { title, html })`. Do not use `window.open`,
+`await AppHost.invoke("print", { title, html })`. Do not use `window.open`,
 `target="_blank"`, blob navigation, or a new print window. Never request `allow-modals`,
 `allow-popups`, or `allow-downloads` on the app iframe.
 
@@ -259,10 +260,10 @@ Do not send PDF bytes to the print call. Download a PDF instead:
 `invoke("download", { filename, contentType: "application/pdf", data })`. Printing only
 accepts HTML and opens the browser print dialog.
 
-#### Host-mediated actions (`DigitHost.invoke`)
+#### Host-mediated actions (`AppHost.invoke`)
 
-Every host-mediated action goes through one generic call, `DigitHost.invoke(method,
-params?)`, which returns a promise:
+Every host-mediated action goes through one generic call, `AppHost.invoke(method, params?)`
+(`import { AppHost } from "@digit/lib-frontend"`), which returns a promise:
 
 - the host succeeded — it **resolves with the result data**.
 - the user dismissed a host UI — it **resolves with `null`**. That is a normal outcome, not
@@ -277,16 +278,14 @@ capability check. The host offers whatever the Digit it runs inside supports, ca
 only ever added, and a method it does not offer simply rejects, like any other failure.
 
 ```ts
-const result = await window.DigitHost?.invoke("openModal", { modal: "item", id })
+const result = await AppHost.invoke("openModal", { modal: "item", id })
 ```
 
-Optional-chain `window.DigitHost` itself — a bundle can run outside the harness (tests, a
-local page) — but never its members: every harness that defines `DigitHost` defines
-`invoke` with it.
+No optional chaining needed: outside Digit (tests, a local page) `invoke` simply rejects.
 
-`DigitHost.download(...)` and `DigitHost.print(...)` still work — they are thin shims over
-`invoke` — but they are deprecated. Write new code as `invoke("download", ...)` /
-`invoke("print", ...)`, and migrate the calls in any existing file you edit.
+`window.DigitHost` still works, including its `download(...)` and `print(...)`, but it is
+deprecated. Write new code against `AppHost`, and migrate `window.DigitHost` calls in any
+existing file you edit.
 
 ### 5. `manifest.json`
 
@@ -402,7 +401,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 ## Additional resources
 
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
-- [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, DigitHost
+- [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key

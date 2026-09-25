@@ -9,7 +9,7 @@ export type BackendFetchArgs = BackendFetchOptions & {
 };
 
 /**
- * Call the app Worker through `/proxy/backend` (`DigitProxyClient.callBackend`)
+ * Call the app Worker through `/proxy/backend` (`AppProxy.callBackend`)
  * and normalize platform / backend results.
  *
  * Used internally by `useBackendQuery` / `useBackendMutation`.
@@ -18,7 +18,7 @@ export async function backendFetch<T = unknown>({
   path,
   ...options
 }: BackendFetchArgs): Promise<DigitResult<T>> {
-  const client = window.DigitProxyClient;
+  const client = window.AppProxy ?? window.DigitProxyClient;
   if (!client?.callBackend) {
     return { ok: false, error: unavailableClient() };
   }
