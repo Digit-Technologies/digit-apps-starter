@@ -54,7 +54,7 @@ API after a failed attempt.
 - Digit proxies and hooks (`useDigitApiQuery`, `useBackendQuery`, …)
 - Forms with `onSubmit` + `preventDefault`, posting JSON via fetch/hooks
 - “Copy” buttons via `navigator.clipboard.writeText(...)` inside a click handler
-- File exports via `DigitHost.invoke("download", { filename, contentType, data })` — the host
+- File exports via `AppHost.invoke("download", { filename, contentType, data })` — the host
   page saves the file. `contentType` must be `text/csv`, `application/json`,
   `text/plain`, `application/pdf` or
   `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (.xlsx only —
@@ -62,15 +62,15 @@ API after a failed attempt.
   `data` is a string or `ArrayBuffer`/`Uint8Array`,
   10MB max; the matching extension is appended automatically. Rejects with a reason
   on invalid input, so surface errors from it like any other failure
-- Browser printing via `DigitHost.invoke("print", { title, html })`. The host sanitizes the
+- Browser printing via `AppHost.invoke("print", { title, html })`. The host sanitizes the
   HTML and opens the print dialog from its own frame. The app iframe never receives
   `allow-modals`
-- Anything else the host offers through `DigitHost.invoke` — call `getHostCapabilities` for the
+- Anything else the host offers through `AppHost.invoke` — call `getHostCapabilities` for the
   live list; it is the only place that knows what this Digit supports
 
-`DigitHost.download(...)` and `DigitHost.print(...)` are deprecated aliases for those two
-calls. They still work, so an app that uses them is not broken — but write new code against
-`invoke`, and migrate the calls in any file you edit.
+`window.DigitHost`, including its `download(...)` and `print(...)`, is deprecated. It still
+works, so an app that uses it is not broken — but write new code against `AppHost.invoke`, and
+migrate the calls in any file you edit.
 
 ## Printing HTML
 
@@ -111,7 +111,7 @@ const html = `
     <table><tr><th>Item</th><th>Qty</th></tr><tr><td>Widget</td><td>2</td></tr></table>
   </main>`;
 
-await window.DigitHost?.invoke("print", { title: "Packing Slip 1042", html });
+await AppHost.invoke("print", { title: "Packing Slip 1042", html });
 ```
 
 Do not use `window.open`, `target="_blank"`, blob navigation, or print-window patterns.

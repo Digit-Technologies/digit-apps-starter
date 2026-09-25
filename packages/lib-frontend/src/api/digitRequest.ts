@@ -14,7 +14,7 @@ export type DigitRequestArgs = {
 };
 
 /**
- * Call Digit GraphQL through the harness (`DigitProxyClient.callProxy`) and
+ * Call Digit GraphQL through the harness (`AppProxy.callProxy`) and
  * normalize platform / GraphQL errors.
  *
  * Used internally by `useDigitApiQuery` / `useDigitApiMutation`.
@@ -23,7 +23,7 @@ export async function digitRequest<T = unknown>({
   query,
   variables,
 }: DigitRequestArgs): Promise<DigitResult<T>> {
-  const client = window.DigitProxyClient;
+  const client = window.AppProxy ?? window.DigitProxyClient;
   if (!client?.callProxy) {
     return { ok: false, error: unavailableClient() };
   }

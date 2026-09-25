@@ -6,8 +6,12 @@
 // Theme
 export { DigitThemeProvider } from "./theme";
 
-// Host / proxy types (importing this package augments Window)
+// Host API + types (importing this package augments Window)
+export { AppHost } from "./host";
 export type {
+  AppHostDownloadOptions,
+  AppHostPrintOptions,
+  AppHostSettings,
   DigitHost,
   DigitHostDownloadOptions,
   DigitHostPrintOptions,

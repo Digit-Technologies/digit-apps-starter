@@ -6,10 +6,10 @@ import { createTheme, ThemeProvider } from "@mui/material/styles"
 import { applyThemeCssVariables } from "./cssVariables"
 import { themeOptions } from "./themeOptions"
 
-import "../globals"
+import { AppHost } from "../host"
 
 function resolveDarkMode(): boolean {
-  const host = window.DigitHost?.getSettings()?.theme
+  const host = AppHost.getSettings()?.theme
   if (host === "dark") return true
   if (host === "light") return false
   const attr = document.documentElement.dataset.theme
@@ -26,14 +26,14 @@ export function DigitThemeProvider({
   const [darkMode, setDarkMode] = useState(resolveDarkMode)
 
   useEffect(() => {
-    const unsub = window.DigitHost?.onSettingsChange((s) => {
+    const unsub = AppHost.onSettingsChange((s) => {
       if (s?.theme === "dark") setDarkMode(true)
       else if (s?.theme === "light") setDarkMode(false)
     })
 
     const media = window.matchMedia("(prefers-color-scheme: dark)")
     const onMediaChange = () => {
-      if (!window.DigitHost?.getSettings()?.theme) {
+      if (!AppHost.getSettings()?.theme) {
         setDarkMode(resolveDarkMode())
       }
     }
@@ -41,7 +41,7 @@ export function DigitThemeProvider({
 
     setDarkMode(resolveDarkMode())
     return () => {
-      unsub?.()
+      unsub()
       media.removeEventListener("change", onMediaChange)
     }
   }, [])
