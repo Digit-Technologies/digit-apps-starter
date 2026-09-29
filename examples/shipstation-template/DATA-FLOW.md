@@ -256,8 +256,9 @@ Rows that already have a label or tracking number, and whose `tracking_status` i
 | `updateShipment.shippingCarrierFieldId` | Sutton option resolved from carrier + service. Omitted when unresolved. |
 | `updateShipment.notes` | `Carrier: {code}` when the carrier did not resolve to a Sutton option. `ShipStation tracking status: error.` when tracking status is `error`. Omitted when both are empty, so an existing Sutton note is left alone. |
 | `updateOrder.shippingFees` | Sum of `shipment_cost_amount` across map rows for that Sutton order, as `{ currencyCode, costAmount }`. Currency is uppercased; missing currency becomes `USD`. |
+| `updateOrder.orderStatus` | Set on `writeback-complete` from the order’s other shipments. `fulfilled` when this is the only shipment or every other shipment is `shipped`. `partially_fulfilled` when another shipment is `awaiting_carrier`, `awaiting_drop_off`, `awaiting_pickup`, or `cancelled`. Omitted when this writeback is a void. The shipment that just received the label is excluded, so a new label mapped to `awaiting_pickup` still fulfills a single-shipment order. |
 
-`writeback-complete` sets `push_status = shipped`. The first time the mapped Sutton status is `shipped`, it also notifies channel adapters (`afterDigitShipped`) with tracking number, carrier name, ship date, and Sutton shipment id. Later tracking-status refreshes do not notify again (`channels_notified`).
+`writeback-complete` sets `push_status = shipped` and sends that `orderStatus` on the same `updateOrder` as postage, including when postage and carrier are omitted. A voided label (`shippingStatus` `cancelled`) does not change the sales order status. The first time the mapped Sutton status is `shipped`, it also notifies channel adapters (`afterDigitShipped`) with tracking number, carrier name, ship date, and Sutton shipment id. Later tracking-status refreshes do not notify again (`channels_notified`), but they do run this order-status decision again when the Sutton shipping status changes, so the order becomes `fulfilled` once the last sibling is `shipped`.
 
 The Worker still has `applyDigitShipmentWriteback`, which can `updateShipment` or `createShipment` itself. The queue does not call it. Pull uses the stage-and-iframe path above.
 
@@ -320,6 +321,7 @@ When nothing matches, `shippingCarrierFieldId` is omitted and the shipment note 
 | Poll label | — | `GET /v2/labels` or `GET /orders/{orderId}` |
 | Write shipment | `updateShipment` (iframe) | — |
 | Write postage | `updateOrder.shippingFees` (iframe on pull; Worker again on complete) | — |
+| Sales order status | `updateOrder.orderStatus` on complete: `fulfilled` or `partially_fulfilled` from sibling shipments | — |
 | Packing slip | `generateSalesOrderPdf` after postage is written | — |
 | Download label | `DigitHost.download` of PDF bytes | V2 `GET /v2/labels/{id}?label_download_type=inline`; V1 uses the PDF stored on the map row |
 | Lookup by Sutton id | — | V2 `GET /v2/shipments/external_shipment_id/{id}`; V1 `GET /orders?orderNumber=` |

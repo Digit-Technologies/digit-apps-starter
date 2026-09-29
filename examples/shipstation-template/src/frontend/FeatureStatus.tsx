@@ -14,7 +14,6 @@ import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 import ApiModeToggle, { type ApiModeChoice } from './components/ApiModeToggle';
 import SectionHeader from './components/SectionHeader';
 import StatusChip from './components/StatusChip';
-import type { ChannelSetupEntry } from './setupTypes';
 
 type FeatureState = 'working' | 'partial' | 'off' | 'inactive';
 
@@ -31,7 +30,6 @@ export type FeatureStatusProps = {
   shipStationKeyPresent: boolean;
   shipStationApiMode?: 'v1' | 'v2' | 'missing';
   shipStationSecretPresent?: boolean;
-  channels?: ChannelSetupEntry[];
 };
 
 const CONNECTION = 'a connected ShipStation account';
@@ -59,10 +57,6 @@ function markInactive(features: Feature[], reason: string): Feature[] {
     needs: [],
     detail: `${feature.detail} ${reason}`,
   }));
-}
-
-function anyOutboundChannel(channels: ChannelSetupEntry[]) {
-  return channels.some((channel) => channel.configured);
 }
 
 function v2Features({
@@ -108,7 +102,7 @@ function v2Features({
     gate({
       title: 'Choose ShipStation package types',
       detail:
-        'Each pack container can use an account custom package or a package from the mapped carrier, including flat-rate boxes such as a FedEx One Rate box. The choice is stored in this app and sent when the shipment is pushed. It is not written to the Sutton sales order or shipment. After push, change the package in ShipStation, then pull from ShipStation or wait for the five-minute poll to refresh the queue.',
+        'Each pack container can use an account custom package or a package from the mapped carrier, including flat-rate boxes such as a FedEx One Rate box. The dropdown reads package types stored in this app. Connecting an account saves the first copy, and a nightly job refreshes them. The choice is stored in this app and sent when the shipment is pushed. It is not written to the Sutton sales order or shipment. After push, change the package in ShipStation, then pull from ShipStation or wait for the five-minute poll to refresh the queue.',
       requires: [
         [shipStationKeyPresent, SS_KEY],
         [connected, CONNECTION],
@@ -162,7 +156,7 @@ function v1Features({
     gate({
       title: 'Choose ShipStation package types',
       detail:
-        'Each pack container can use a carrier package, including flat-rate boxes. Packages saved on the ShipStation account are not available with V1 credentials. Disconnect, remove SHIPSTATION_API_SECRET, and reconnect with a V2 API key to select those saved packages. Carrier package choices are stored in this app and sent on push. They are not written to the Sutton sales order or shipment. After push, change the package in ShipStation, then pull or wait for the five-minute poll to refresh the queue.',
+        'Each pack container can use a carrier package, including flat-rate boxes. The dropdown reads carrier package types stored in this app. Connecting an account saves the first copy, and a nightly job refreshes them. Packages saved on the ShipStation account are not available with V1 credentials. Disconnect, remove SHIPSTATION_API_SECRET, and reconnect with a V2 API key to select those saved packages. Carrier package choices are stored in this app and sent on push. They are not written to the Sutton sales order or shipment. After push, change the package in ShipStation, then pull or wait for the five-minute poll to refresh the queue.',
       requires: [
         [hasV1Creds, `${SS_KEY} and ${SS_SECRET}`],
         [connected, CONNECTION],
@@ -191,42 +185,6 @@ function digitFeatures({ connected }: FeatureStatusProps): Feature[] {
         'Imported ShipStation rows stay in Sutton. The queue lists awaiting-carrier, unknown, and in-transit/delivered shipments.',
       requires: [[connected, CONNECTION]],
     }),
-  ];
-}
-
-function channelFeatures({
-  connected,
-  apiTokenPresent,
-  channels = [],
-}: FeatureStatusProps): Feature[] {
-  const storeFulfillmentConfigured = anyOutboundChannel(channels);
-
-  return [
-    {
-      title: 'Store order import',
-      detail:
-        'Connect a store via Sutton Rutter, or add channel secrets and implement a direct adapter in a clone of this template.',
-      state: 'off' as const,
-      needs: ['Sutton Rutter store connection or channel adapter secrets'],
-    },
-    storeFulfillmentConfigured || (connected && apiTokenPresent)
-      ? {
-          title: 'Tracking to sales channel',
-          detail: storeFulfillmentConfigured
-            ? 'A direct channel adapter can push tracking after Sutton writeback. Sutton Rutter also propagates tracking when the store is connected in Sutton.'
-            : 'When tracking is on the Sutton shipment, Sutton Rutter can notify connected Shopify/WooCommerce stores. Add a channel adapter for stores Rutter does not cover.',
-          state: (storeFulfillmentConfigured ? 'partial' : 'working') as FeatureState,
-          needs: storeFulfillmentConfigured
-            ? ['channel adapter implementation in your clone']
-            : [],
-        }
-      : {
-          title: 'Tracking to sales channel',
-          detail:
-            'Finish ShipStation writeback first, then use Sutton Rutter or a direct channel adapter to notify the store.',
-          state: 'off' as const,
-          needs: [CONNECTION, TOKEN],
-        },
   ];
 }
 
@@ -351,7 +309,6 @@ export default function FeatureStatus(props: FeatureStatusProps) {
   const [viewedMode, setViewedMode] = useState<ApiModeChoice>(mode === 'v1' ? 'v1' : 'v2');
 
   const digit = digitFeatures(props);
-  const channels = channelFeatures(props);
 
   const v2Live = v2Features(props);
   const v1Live = v1Features(props);
@@ -374,7 +331,7 @@ export default function FeatureStatus(props: FeatureStatusProps) {
           : 'Add SHIPSTATION_API_KEY plus SHIPSTATION_API_SECRET, then connect.',
       );
 
-  const scored = [...digit, ...(v2Active ? v2Live : []), ...(v1Active ? v1Live : []), ...channels];
+  const scored = [...digit, ...(v2Active ? v2Live : []), ...(v1Active ? v1Live : [])];
   const workingCount = scored.filter((feature) => feature.state === 'working').length;
   const progress = scored.length > 0 ? (workingCount / scored.length) * 100 : 0;
 
@@ -444,13 +401,6 @@ export default function FeatureStatus(props: FeatureStatusProps) {
             features={v1List}
           />
         )}
-      </Stack>
-
-      <Stack spacing={1}>
-        <Typography variant="overline" sx={{ color: 'text.secondary', letterSpacing: '0.06em' }}>
-          Store channels
-        </Typography>
-        <FeatureGrid features={channels} />
       </Stack>
     </Stack>
   );

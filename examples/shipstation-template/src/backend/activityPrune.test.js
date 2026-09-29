@@ -1,13 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { isActivityPruneWindow, pruneActivityLog } from './activity.js';
+import { isActivityPruneWindow, pacificDate, pruneActivityLog } from './activity.js';
 
 test('the prune window is the first 10 minutes after midnight Pacific', () => {
   assert.equal(isActivityPruneWindow(new Date('2026-09-23T07:00:00.000Z')), true);
   assert.equal(isActivityPruneWindow(new Date('2026-09-23T07:09:00.000Z')), true);
   assert.equal(isActivityPruneWindow(new Date('2026-09-23T07:10:00.000Z')), false);
   assert.equal(isActivityPruneWindow(new Date('2026-09-23T06:59:00.000Z')), false);
+});
+
+test('pacific dates follow the same clock as the nightly window', () => {
+  assert.equal(pacificDate(new Date('2026-09-23T07:00:00.000Z')), '2026-09-23');
+  assert.equal(pacificDate(new Date('2026-09-23T18:00:00.000Z')), '2026-09-23');
+  assert.equal(pacificDate(new Date('2026-01-15T08:02:00.000Z')), '2026-01-15');
 });
 
 test('winter midnight is Pacific standard time', () => {

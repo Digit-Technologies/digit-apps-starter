@@ -18,21 +18,21 @@ function requireCredentials(credentials) {
   return credentials;
 }
 
-export async function listCarriers({ credentials }) {
+export async function listCarriers({ credentials, timeoutMs }) {
   const creds = requireCredentials(credentials);
   if (creds.apiVersion === 'v1') {
-    return ssFetch({ credentials: creds, method: 'GET', path: '/carriers' });
+    return ssFetch({ credentials: creds, method: 'GET', path: '/carriers', timeoutMs });
   }
-  return ssFetch({ credentials: creds, method: 'GET', path: '/v2/carriers' });
+  return ssFetch({ credentials: creds, method: 'GET', path: '/v2/carriers', timeoutMs });
 }
 
 /** Every connected carrier. V2 follows `links.next` so a refresh does not keep only the first page. */
-export async function listAllCarriers({ credentials }) {
+export async function listAllCarriers({ credentials, timeoutMs }) {
   const creds = requireCredentials(credentials);
-  if (creds.apiVersion === 'v1') return listCarriers({ credentials: creds });
+  if (creds.apiVersion === 'v1') return listCarriers({ credentials: creds, timeoutMs });
 
   const carriers = [];
-  let path = '/v2/carriers?page_size=100';
+  let path = '/v2/carriers?page_size=100&include_extended_details=false';
   let absoluteUrl;
   let truncated = false;
   for (let page = 0; page < 20; page += 1) {
@@ -41,6 +41,7 @@ export async function listAllCarriers({ credentials }) {
       method: 'GET',
       path: absoluteUrl ? '/v2/carriers' : path,
       url: absoluteUrl,
+      timeoutMs,
     });
     if (!listed.ok) return listed;
     const pageCarriers = Array.isArray(listed.data?.carriers) ? listed.data.carriers : [];
@@ -57,16 +58,16 @@ export async function listAllCarriers({ credentials }) {
 }
 
 /** Account custom packages. V1 has no list endpoint; returns an empty list. */
-export async function listCustomPackageTypes({ credentials }) {
+export async function listCustomPackageTypes({ credentials, timeoutMs }) {
   const creds = requireCredentials(credentials);
   if (creds.apiVersion === 'v1') {
     return { ok: true, data: { packages: [] } };
   }
-  return ssFetch({ credentials: creds, method: 'GET', path: '/v2/packages' });
+  return ssFetch({ credentials: creds, method: 'GET', path: '/v2/packages', timeoutMs });
 }
 
 /** V2: GET /v2/carriers/{carrier_id}/packages. V1: GET /carriers/listpackages?carrierCode=. */
-export async function listCarrierPackageTypes({ credentials, carrierId, carrierCode }) {
+export async function listCarrierPackageTypes({ credentials, carrierId, carrierCode, timeoutMs }) {
   const creds = requireCredentials(credentials);
   if (creds.apiVersion === 'v1') {
     const code = String(carrierCode || '').trim();
@@ -82,6 +83,7 @@ export async function listCarrierPackageTypes({ credentials, carrierId, carrierC
       credentials: creds,
       method: 'GET',
       path: `/carriers/listpackages?carrierCode=${encodeURIComponent(code)}`,
+      timeoutMs,
     });
   }
   const id = String(carrierId || '').trim();
@@ -97,6 +99,7 @@ export async function listCarrierPackageTypes({ credentials, carrierId, carrierC
     credentials: creds,
     method: 'GET',
     path: `/v2/carriers/${encodeURIComponent(id)}/packages`,
+    timeoutMs,
   });
 }
 

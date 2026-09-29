@@ -451,6 +451,40 @@ Also include API updates to Sutton objects like SOs and SHPs
 Indicate that packages types are loading in the drop down. Currently it makes it look like there are no carrier package types.
 ```
 
+```
+The SoundSkins/Elite Marketing shipstation integration is showing this error
+
+Backend unavailable
+The app backend is temporarily unavailable. Try again shortly.
+
+Support info
+code=BACKEND_UNAVAILABLE status=502 kind=platform detail=App backend is not available.
+
+It doesn't seem to be able to pull package types from shipstation. No error is logged when the error is shown
+```
+
+```
+why is the shipstation carrier pull failing
+```
+
+```
+add a stored package catalog that feeds the drop down. Every night run a worker that pulls in package types and updates the table as needed.
+```
+
+```
+This warning is not useful: Package types are stored in this app and refresh every night. The first copy has not been saved yet. Those package types are missing from the dropdown. Retry, or use Sutton dimensions.
+```
+
+```
+Packages are not proliferating into the dropdown
+```
+
+```
+9/24/2026, 2:02:42 PM schedule catalog_pull error
+In app
+D1_ERROR: too many SQL variables at offset 562: SQLITE_ERROR
+```
+
 ## Context supplied
 
 - Work stays on git branch `shipstation-template` tracking `fork/shipstation-template`
@@ -836,4 +870,22 @@ Once a row fails it requires manual push - make sure that this requirement is ra
   stays selected. The five-minute job does not send it again. The queue error chip keeps
   the ShipStation message; an info icon says to update the shipment data, then select the
   row and push again. That manual push is still allowed, including after the data changes.
+
+```
+When a label is returned it currently marks the sales order as fulfilled. However since multiple shipments can be applied to a single sales order this is not always true. Update the logic to the following: 
+- When a label is returned and if there is only one shipment for that sales order, mark the sales order fulfilled
+- When a label is returned and if there are multiple shipments for a sales order, check if other shipments have all been marked as shipped. If the are all shipped, mark the sales order as fulfilled. If there are still other unshipped shipments (awaiting carrier, awaiting drop off, awaiting pick up, cancelled), mark the sales order as partially fulfilled.
+```
+
+- After the label is written onto the shipment, `writeback-complete` sets the sales order
+  status from the other shipments. One shipment, or every other shipment already shipped,
+  is fulfilled. Another shipment still awaiting carrier, drop off, or pickup, or cancelled,
+  is partially fulfilled. A voided label does not change the sales order status.
+
+```
+Remove this from the shipstation settings
+```
+
+- The capabilities panel no longer shows Store channels (Store order import and Tracking
+  to sales channel). Those cards no longer count toward the features-ready progress.
 

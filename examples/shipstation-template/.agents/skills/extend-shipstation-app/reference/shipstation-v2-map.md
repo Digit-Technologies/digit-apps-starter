@@ -18,8 +18,8 @@ Confirm request/response bodies on ShipStation docs MCP before changing helpers.
 | `GET` | `/v2/shipments/external_shipment_id/{id}` | Lookup by Sutton shipment id |
 | `GET` | `/v2/labels` | Poll unlabeled maps (`shipment_id` / `external_shipment_id`); `tracking_status` drives Sutton `shippingStatus` |
 | `GET` | `/v2/labels/{id}` | Queue PDF download (`label_download_type=inline`) |
-| `GET` | `/v2/carriers/{id}/packages` | Carrier package types for the picker (flat-rate and carrier boxes). Not custom packages. |
-| `GET` | `/v2/packages` | Account custom package types for the picker. |
+| `GET` | `/v2/carriers/{id}/packages` | Carrier package types. The nightly catalog job calls this. The dropdown reads the stored catalog. |
+| `GET` | `/v2/packages` | Account custom package types. The nightly catalog job calls this. The dropdown reads the stored catalog. |
 
 `POST /v2/shipments` keeps one ShipStation shipment per Sutton shipment and sends one
 `packages[]` entry per Sutton pack container. With no queue selection, each package uses the

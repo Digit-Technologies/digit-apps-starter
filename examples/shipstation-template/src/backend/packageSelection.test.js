@@ -3,10 +3,12 @@ import test from 'node:test';
 
 import { skipNeedsAttention, skipNextStep } from './eligibility.js';
 import {
+  catalogFailureMessage,
   catalogPullMessage,
   packageListTargets,
   packageSeenKey,
   pulledPackagesFromRecord,
+  unresolvedCarrierCodes,
   unseenPackages,
 } from './packageCatalog.js';
 import {
@@ -165,6 +167,31 @@ test('resolves V2 carrier package lists from carrier codes when the queue has no
       storedCarriers: stored,
     }),
     [{ carrierId: null, carrierCode: 'stamps_com' }],
+  );
+});
+
+test('unresolved carrier codes are the ones missing from the stored catalog', () => {
+  const stored = [{ shipstation_carrier_id: 'se-ups', carrier_code: 'ups', name: 'UPS' }];
+  assert.deepEqual(unresolvedCarrierCodes({ carrierCodes: ['ups', 'fedex'], storedCarriers: stored }), [
+    'fedex',
+  ]);
+  assert.deepEqual(unresolvedCarrierCodes({ carrierCodes: ['se-ups'], storedCarriers: stored }), []);
+});
+
+test('catalog failure message names the ShipStation error', () => {
+  assert.equal(
+    catalogFailureMessage([
+      {
+        scope: 'carrier',
+        carrierName: 'UPS',
+        message: 'ShipStation did not respond in time. Try again in a moment.',
+      },
+    ]),
+    'Could not pull UPS package types from ShipStation: ShipStation did not respond in time. Try again in a moment.',
+  );
+  assert.match(
+    catalogFailureMessage([{ scope: 'custom', message: 'Could not list custom packages.' }]),
+    /custom package types/,
   );
 });
 

@@ -143,9 +143,10 @@ function resolveTarget({ credentials, path, absoluteUrl }) {
  *   path: string,
  *   body?: unknown,
  *   url?: string,
+ *   timeoutMs?: number,
  * }} args
  */
-export async function ssFetch({ credentials, method, path, body, url: absoluteUrl }) {
+export async function ssFetch({ credentials, method, path, body, url: absoluteUrl, timeoutMs }) {
   const isV1 = credentials.apiVersion === 'v1';
   const target = resolveTarget({ credentials, path, absoluteUrl });
 
@@ -166,12 +167,16 @@ export async function ssFetch({ credentials, method, path, body, url: absoluteUr
       method,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined,
     });
-  } catch {
+  } catch (error) {
+    const timedOut = error?.name === 'TimeoutError' || error?.name === 'AbortError';
     return {
       ok: false,
       code: AppErrorCode.UPSTREAM_ERROR,
-      message: 'Could not reach ShipStation. Try again in a moment.',
+      message: timedOut
+        ? 'ShipStation did not respond in time. Try again in a moment.'
+        : 'Could not reach ShipStation. Try again in a moment.',
       status: 502,
     };
   }

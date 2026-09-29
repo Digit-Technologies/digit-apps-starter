@@ -3,15 +3,7 @@ import { err, ok, requireEnv } from '@digit/lib-backend';
 
 import { appendActivity, listActivity } from './activity.js';
 import { MANUAL_PUSH_RETRY_MEANING } from './eligibility.js';
-import { refreshCarriers } from './connection.js';
-import {
-  createPackageCatalogCache,
-  catalogPullMessage,
-  loadAccountCustomPackages,
-  loadPushCatalog,
-  packageListTargets,
-  recordNewPackages,
-} from './packageCatalog.js';
+import { ensurePackageCatalog } from './packageCatalog.js';
 import {
   clearPackageSelection,
   selectionsForShipments,
@@ -143,7 +135,6 @@ export async function handleSync({ request, env, path, method }) {
         status: 400,
       });
     }
-    const packageCatalog = createPackageCatalogCache();
     const results = [];
     for (const shipmentId of shipmentIds) {
       const result = await pushShipment({
@@ -153,7 +144,6 @@ export async function handleSync({ request, env, path, method }) {
         shipmentId,
         actor: 'user',
         recordActivity: true,
-        packageCatalog,
       });
       results.push(pushResultRow(shipmentId, result));
     }
@@ -362,105 +352,30 @@ export async function handleSync({ request, env, path, method }) {
         status: 400,
       });
     }
-    const carrierIds = (url.searchParams.get('carrierIds') || '')
+    const carrierIds = String(url.searchParams.get('carrierIds') || '')
       .split(',')
-      .map((id) => id.trim())
-      .filter(Boolean)
-      .slice(0, 20);
-    const carrierCodes = (url.searchParams.get('carrierCodes') || '')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const carrierCodes = String(url.searchParams.get('carrierCodes') || '')
       .split(',')
-      .map((code) => code.trim())
-      .filter(Boolean)
-      .slice(0, 20);
-    const cache = createPackageCatalogCache();
-    await refreshCarriers({ db, connectionId: secret.connectionId, credentials });
-    const custom = await loadAccountCustomPackages({ credentials, cache });
-    if (!custom.ok) {
-      return err({
-        code: AppErrorCode.UPSTREAM_ERROR,
-        message: custom.message || 'Could not list custom packages.',
-        status: 502,
-      });
-    }
-    const { results: storedCarriers } = await db
-      .prepare(
-        `SELECT shipstation_carrier_id, carrier_code, name
-         FROM shipstation_carrier
-         WHERE connection_id = ? AND deleted = 0`,
-      )
-      .bind(secret.connectionId)
-      .all();
-    const targets = packageListTargets({
-      apiVersion: credentials.apiVersion,
-      carrierIds,
-      carrierCodes,
-      storedCarriers: storedCarriers ?? [],
-    });
-    const carrierPackages = [];
-    const errors = [];
-    for (const target of targets) {
-      const loaded = await loadPushCatalog({ credentials, ...target, cache });
-      if (!loaded.ok) {
-        errors.push({
-          carrierId: target.carrierId,
-          carrierCode: target.carrierCode,
-          message: loaded.message,
-        });
-        continue;
-      }
-      carrierPackages.push({
-        carrierId: target.carrierId,
-        carrierCode: target.carrierCode,
-        packages: loaded.carrierPackages,
-      });
-    }
-    const carrierName = (carrierId, carrierCode) => {
-      const row = (storedCarriers ?? []).find(
-        (carrier) =>
-          (carrierId && carrier.shipstation_carrier_id === carrierId) ||
-          (carrierCode && carrier.carrier_code === carrierCode),
-      );
-      return row?.name || carrierCode || carrierId || null;
-    };
-    const pulledPackages = [
-      ...(custom.packages ?? []),
-      ...carrierPackages.flatMap((group) =>
-        (group.packages ?? []).map((pkg) => ({
-          ...pkg,
-          carrierName: carrierName(group.carrierId, group.carrierCode),
-        })),
-      ),
-    ];
-    const newPackages = await recordNewPackages({
+      .map((value) => value.trim())
+      .filter(Boolean);
+    const stored = await ensurePackageCatalog({
       db,
       connectionId: secret.connectionId,
-      packages: pulledPackages,
+      organizationId: org.organizationId,
+      credentials,
+      carrierIds,
+      carrierCodes,
+      actor: 'user',
+      force: url.searchParams.get('refresh') === '1',
     });
-    if (newPackages.length > 0) {
-      await appendActivity({
-        db,
-        organizationId: org.organizationId,
-        actor: 'user',
-        action: 'catalog_pull',
-        status: 'success',
-        message: catalogPullMessage({ kind: 'packages', items: newPackages }),
-        detail: {
-          packages: newPackages.slice(0, 40).map((pkg) => ({
-            name: pkg.name,
-            packageCode: pkg.packageCode,
-            source: pkg.source,
-            carrierCode: pkg.carrierCode || null,
-            carrierName: pkg.carrierName || null,
-          })),
-        },
-      });
-    }
     return ok({
       data: {
         apiVersion: credentials.apiVersion,
-        customPackages: custom.packages,
-        carrierPackages,
-        errors,
+        customPackages: stored.customPackages,
+        carrierPackages: stored.carrierPackages,
+        errors: stored.errors,
       },
     });
   }

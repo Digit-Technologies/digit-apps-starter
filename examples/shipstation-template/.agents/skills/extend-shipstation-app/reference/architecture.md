@@ -71,7 +71,7 @@ blocks the app — the UI degrades feature by feature instead.
 | `src/backend/connection.js` | Connect/disconnect, org settings, carriers. |
 | `src/backend/labels.js` | Label download helpers. |
 | `src/backend/handleSync.js` | `/sync/shipments`, `/sync/push`, `/sync/label`, `/sync/activity`, `/sync/poll`. |
-| `src/backend/jobs.js` | `poll-outbound-push`, `prune-activity` (midnight Pacific, drop activity older than 1 month). |
+| `src/backend/jobs.js` | `poll-outbound-push`, `prune-activity` (midnight Pacific, drop activity older than 1 month), `refresh-package-catalog` (same window, plus one bootstrap for a connection that has never stored package types). |
 | `src/backend/runtimeConfig.js` | Sutton-injected app secrets (`env`); `ENCRYPTION_KEY` in D1. |
 | `src/backend/setup.js` | `GET /setup` status only (no writes). |
 | `src/backend/migrations/*.sql` | New files only after `0001_init.sql` has been published. |

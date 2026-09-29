@@ -24,6 +24,21 @@ export function pacificClock(date = new Date(), timeZone = ACTIVITY_PRUNE_TIME_Z
   return { hour: Number(parts.hour), minute: Number(parts.minute) };
 }
 
+/** Calendar date in America/Los_Angeles, `YYYY-MM-DD`. */
+export function pacificDate(date = new Date(), timeZone = ACTIVITY_PRUNE_TIME_ZONE) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    })
+      .formatToParts(date)
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
 /** True from 12:00 AM through 12:09 AM Pacific, wide enough for a 5-minute schedule to land. */
 export function isActivityPruneWindow(date = new Date()) {
   const { hour, minute } = pacificClock(date);

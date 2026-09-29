@@ -323,7 +323,6 @@ export default function App() {
     shipStationKeyPresent,
     shipStationApiMode: setupData?.shipStationApiMode,
     shipStationSecretPresent: Boolean(setupData?.shipStationSecretPresent),
-    channels: setupData?.channels ?? [],
   };
 
   return (

@@ -8,13 +8,11 @@ dist/
 .env.*
 .cursor/
 
-# Digit app build outputs (pack into app.zip only — not committed)
-# Sibling to package.json; do not match src/frontend or src/backend.
-apps/*/frontend/
-apps/*/backend/
+# Local Digit apps (created with new-app). Not committed.
+apps/
 
-# CutThat WooCommerce fulfillment — source lives in digit-ai-projects/woocommerce-fulfillment-module
-apps/woocommerce-fulfillment/
+# Campos Fabrications BOM-to-PO — extracted source (customer-specific)
+campos-bom-to-po/
 examples/*/frontend/
 examples/*/backend/
 .claude/*

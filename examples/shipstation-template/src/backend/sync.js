@@ -37,6 +37,7 @@ import {
   digitShippingStatusFromSs,
   digitShippingStatusFromTrackingStatus,
 } from './mappers/digitShippingStatus.js';
+import { salesOrderStatusAfterLabelReturn } from './mappers/salesOrderStatus.js';
 import {
   normalizeSsRecord,
   normalizedToImportShipment,
@@ -52,7 +53,7 @@ import {
 import { resolveShipStationCredentials } from './runtimeConfig.js';
 import { pdfBase64FromV2Label } from './labels.js';
 import { resolveDigitCarrier, resolveSsServiceForDigitShipment } from './matchDigitCarrier.js';
-import { createPackageCatalogCache, loadPushCatalog, pulledPackagesFromRecord } from './packageCatalog.js';
+import { pulledPackagesFromRecord, storedPushCatalog } from './packageCatalog.js';
 import {
   clearPackageSelection,
   matchPulledPackages,
@@ -271,8 +272,9 @@ async function applyOrderShippingFees({
   orderId,
   shippingFees,
   shippingCarrierFieldId = null,
+  orderStatus = null,
 }) {
-  if (!orderId || (!shippingFees && !shippingCarrierFieldId)) {
+  if (!orderId || (!shippingFees && !shippingCarrierFieldId && !orderStatus)) {
     return { ok: true, data: { skipped: true } };
   }
   return digitGraphql({
@@ -281,6 +283,7 @@ async function applyOrderShippingFees({
     variables: {
       input: {
         orderId,
+        ...(orderStatus ? { orderStatus } : {}),
         ...(shippingFees ? { shippingFees } : {}),
         ...(shippingCarrierFieldId ? { shippingCarrierFieldId } : {}),
       },
@@ -552,8 +555,9 @@ async function mapBySsShipment({ db, connectionId, ssShipmentId }) {
     .first();
 }
 
-function orderFeeChanges({ shippingFees, shippingCarrierFieldId }) {
+function orderFeeChanges({ shippingFees, shippingCarrierFieldId, orderStatus = null }) {
   const changes = [];
+  if (orderStatus) changes.push(`order status ${String(orderStatus).replaceAll('_', ' ')}`);
   if (shippingFees?.costAmount != null) {
     const currency = shippingFees.currencyCode ? ` ${shippingFees.currencyCode}` : '';
     changes.push(`shipping fees ${shippingFees.costAmount}${currency}`);
@@ -724,11 +728,9 @@ async function packageOverridesForPush({
   db,
   organizationId,
   connectionId,
-  credentials,
   shipment,
   shipmentLabel: label,
   ssService,
-  packageCatalog,
   actor,
   recordActivity,
 }) {
@@ -740,11 +742,11 @@ async function packageOverridesForPush({
   if (!selections.length) {
     return { ok: true, overrides: null, v1Selection: null };
   }
-  const catalog = await loadPushCatalog({
-    credentials,
+  const catalog = await storedPushCatalog({
+    db,
+    connectionId,
     carrierId: ssService?.carrierId,
     carrierCode: ssService?.carrierCode,
-    cache: packageCatalog || createPackageCatalogCache(),
   });
   if (!catalog.ok) {
     return {
@@ -796,7 +798,6 @@ export async function pushShipment({
   recordActivity = true,
   preloaded = null,
   sweep = false,
-  packageCatalog = null,
 }) {
   const secret = await liveCredentials({ db, env, organizationId });
   const credentials = credentialsForApi(secret);
@@ -946,11 +947,9 @@ export async function pushShipment({
     db,
     organizationId,
     connectionId: secret.connectionId,
-    credentials,
     shipment,
     shipmentLabel: label,
     ssService,
-    packageCatalog,
     actor,
     recordActivity,
   });
@@ -1308,7 +1307,6 @@ export async function pollOutboundPush({ env, db, organizationId = null, source 
     }
     const orgSettings = await loadOrgSettings({ db, organizationId });
     if (source === 'schedule' && orgSettings.defaultFulfillmentMethod === 'manual') continue;
-    const packageCatalog = createPackageCatalogCache();
 
     let after = null;
     for (let page = 0; page < MAX_POLL_PAGES; page += 1) {
@@ -1332,7 +1330,6 @@ export async function pollOutboundPush({ env, db, organizationId = null, source 
           recordActivity: true,
           preloaded: { shipment, organization },
           sweep: true,
-          packageCatalog,
         });
         if (!result.ok || !result.data) continue;
         if (!result.data.skipped) {
@@ -2423,7 +2420,7 @@ export async function completeShipmentWriteback({
   });
   const shippingCarrierFieldId = carrier.shippingCarrierFieldId;
   const shipmentChanges = [
-    `shipping status ${digitShippingStatusFromTrackingStatus(map.tracking_status) || 'shipped'}`,
+    `shipping status ${digitStatus || 'shipped'}`,
   ];
   if (map.ship_date) shipmentChanges.push('drop-off date');
   if (map.carrier_name || map.service_code) shipmentChanges.push('shipping carrier');
@@ -2435,11 +2432,38 @@ export async function completeShipmentWriteback({
     digitOrderId: map.digit_order_id,
     changes: shipmentChanges,
   });
+
+  // A voided label is not a fulfillment. Leave the sales order status alone.
+  let loadedOrder = null;
+  let orderStatus = null;
+  if (digitStatus !== 'cancelled' && map.digit_order_id) {
+    const loaded = await fetchDigitOrder({ env, orderId: map.digit_order_id });
+    if (!loaded.ok) {
+      await logSuttonUpdate({
+        db,
+        organizationId,
+        kind: 'order',
+        label: orderLabel,
+        digitOrderId: map.digit_order_id,
+        ok: false,
+        message: loaded.message,
+        changes: ['order status'],
+      });
+      return loaded;
+    }
+    loadedOrder = loaded.data.order;
+    orderStatus = salesOrderStatusAfterLabelReturn({
+      shipments: loadedOrder.shipments,
+      currentShipmentId: digitShipmentId,
+    });
+  }
+
   const fees = await applyOrderShippingFees({
     env,
     orderId: map.digit_order_id,
     shippingFees,
     shippingCarrierFieldId,
+    orderStatus,
   });
   if (!fees.ok || !fees.data?.skipped) {
     await logSuttonUpdate({
@@ -2450,7 +2474,7 @@ export async function completeShipmentWriteback({
       digitOrderId: map.digit_order_id,
       ok: fees.ok,
       message: fees.ok ? null : fees.message,
-      changes: orderFeeChanges({ shippingFees, shippingCarrierFieldId }),
+      changes: orderFeeChanges({ shippingFees, shippingCarrierFieldId, orderStatus }),
     });
   }
   if (!fees.ok) return fees;
@@ -2466,21 +2490,18 @@ export async function completeShipmentWriteback({
     ssShipmentId: map.ss_shipment_id,
   });
 
-  if (notifyChannels) {
-    const loaded = await fetchDigitOrder({ env, orderId: map.digit_order_id });
-    if (loaded.ok) {
-      await afterDigitShipped({
-        env,
-        organizationId,
-        order: loaded.data.order,
-        shipment: {
-          trackingNumber: map.tracking_number,
-          carrierName: map.carrier_name,
-          shipDate: map.ship_date,
-          digitShipmentId,
-        },
-      });
-    }
+  if (notifyChannels && loadedOrder) {
+    await afterDigitShipped({
+      env,
+      organizationId,
+      order: loadedOrder,
+      shipment: {
+        trackingNumber: map.tracking_number,
+        carrierName: map.carrier_name,
+        shipDate: map.ship_date,
+        digitShipmentId,
+      },
+    });
   }
 
   return { ok: true, data: { digitShipmentId, trackingNumber: map.tracking_number } };

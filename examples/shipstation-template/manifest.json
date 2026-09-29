@@ -33,6 +33,10 @@
       {
         "name": "prune-activity",
         "everySeconds": 300
+      },
+      {
+        "name": "refresh-package-catalog",
+        "everySeconds": 300
       }
     ]
   }

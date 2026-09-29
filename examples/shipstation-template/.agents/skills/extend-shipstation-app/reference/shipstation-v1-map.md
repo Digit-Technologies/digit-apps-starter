@@ -16,7 +16,7 @@ V2 paths: [shipstation-v2-map.md](shipstation-v2-map.md). Dispatch lives in
 | --- | --- | --- |
 | `GET` | `/carriers` | Validate credentials; carrier sync on connect and again when settings or the queue refresh |
 | `GET` | `/carriers/listservices?carrierCode=` | Services when the carrier list has none |
-| `GET` | `/carriers/listpackages?carrierCode=` | Carrier package types for the queue picker. V1 has no account custom-package list. |
+| `GET` | `/carriers/listpackages?carrierCode=` | Carrier package types. The nightly catalog job calls this. The dropdown reads the stored catalog. V1 has no account custom-package list. |
 | `POST` | `/orders/createorder` | Push Sutton shipment (V1 order; `orderKey` = Sutton shipment id). Always includes `carrierCode` + `serviceCode` from the Sutton shipping-carrier → ShipStation service map. |
 | `GET` | `/orders/{orderId}` | Writeback, unlabeled-map poll, and queue package-type refresh |
 | `GET` | `/orders?orderNumber=` | Lookup by Sutton document number / order key |

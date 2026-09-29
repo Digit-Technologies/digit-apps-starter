@@ -571,10 +571,26 @@ export default function FulfillmentQueue({
     return { ids: [...ids].sort().join(','), codes: [...codes].sort().join(',') };
   }, [combinedNodes, orgSettings]);
 
+  const [forceCatalogRefresh, setForceCatalogRefresh] = useState(false);
   const typesQuery = useBackendQuery<PackageCatalog>({
-    path: `/package-types?organizationId=${encodeURIComponent(organizationId)}&carrierIds=${encodeURIComponent(carrierQuery.ids)}&carrierCodes=${encodeURIComponent(carrierQuery.codes)}`,
+    path: `/package-types?organizationId=${encodeURIComponent(organizationId)}&carrierIds=${encodeURIComponent(carrierQuery.ids)}&carrierCodes=${encodeURIComponent(carrierQuery.codes)}&refresh=${forceCatalogRefresh ? '1' : '0'}`,
     skip: !organizationId,
   });
+  useEffect(() => {
+    if (forceCatalogRefresh) setForceCatalogRefresh(false);
+  }, [forceCatalogRefresh]);
+  const notifyActivityRef = useRef(onPushComplete);
+  notifyActivityRef.current = onPushComplete;
+  const catalogErrorKey = typesQuery.error
+    ? `request:${typesQuery.error.code ?? ''}:${typesQuery.error.message}`
+    : (typesQuery.data?.errors ?? [])
+        .map((entry) => entry.message)
+        .filter(Boolean)
+        .join('\n');
+  useEffect(() => {
+    if (!catalogErrorKey) return;
+    void notifyActivityRef.current?.();
+  }, [catalogErrorKey]);
 
   useRefetchWhenVisible(async () => {
     await Promise.all([
@@ -1206,12 +1222,18 @@ export default function FulfillmentQueue({
         </Alert>
       ) : null}
       {(typesQuery.data?.errors ?? []).length > 0 ? (
-        <Alert severity="warning">
+        <Alert
+          severity="warning"
+          action={
+            <Button color="inherit" size="small" onClick={() => setForceCatalogRefresh(true)}>
+              Retry
+            </Button>
+          }
+        >
           {(typesQuery.data?.errors ?? [])
             .map((entry) => entry.message)
             .filter(Boolean)
-            .join(' ')}{' '}
-          Carrier packages for that account could not be loaded.
+            .join(' ')}
         </Alert>
       ) : null}
       {pushError && <AppErrorAlert error={pushError} />}

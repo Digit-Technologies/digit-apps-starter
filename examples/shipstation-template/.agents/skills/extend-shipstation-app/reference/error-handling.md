@@ -67,7 +67,9 @@ status, `error_code`s, GraphQL `extensions.code`).
 payloads. Scheduled poll should not flood the log with routine eligibility
 skips (those are user-visible on an explicit push). A carrier or package refresh writes
 `catalog_pull` only when ShipStation returns a carrier or package this connection has not
-seen before. Repeat refreshes of the same catalog stay out of the log. Sutton sales-order
+seen before. Repeat refreshes of the same catalog stay out of the log. A failed package-type
+pull writes `catalog_pull` with status `error` and the ShipStation message. The same error
+text is not written again for 15 minutes. Sutton sales-order
 and shipment mutations write `sutton_update` with the object number and the fields that
 changed (shipping status, carrier, drop-off date, shipping fees). Failures use the same
 action with status `error`.
@@ -126,3 +128,7 @@ surprise. Do not duplicate that in a second status column — sync state (`pushe
 - `prune-activity` (300s): deletes `activity_log` rows older than one calendar month.
   The platform schedule is an interval, so the handler runs only from 12:00–12:09 AM
   Pacific (`America/Los_Angeles`) and skips every other tick.
+- `refresh-package-catalog` (300s): pulls ShipStation package types into `package_catalog`
+  during that same Pacific window, and once for a connection that has never been attempted.
+  The dropdown reads the table. Failures are `catalog_pull` activity rows. New package
+  types are logged once.

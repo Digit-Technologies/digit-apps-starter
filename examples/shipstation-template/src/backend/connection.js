@@ -10,8 +10,8 @@ import { AppErrorCode, parseJsonResponse, requiredString } from '@digit/lib-comm
 import { err, ok, requireEnv } from '@digit/lib-backend';
 
 import { FULFILLMENT_METHODS, normalizeFulfillmentMethod } from './eligibility.js';
-import { appendActivity } from './activity.js';
-import { catalogPullMessage } from './packageCatalog.js';
+import { appendActivity, pacificDate, truncateMessage } from './activity.js';
+import { catalogPullMessage, syncConnectionPackageCatalog } from './packageCatalog.js';
 import { loadShipStationApiKey, resolveShipStationCredentials } from './runtimeConfig.js';
 import {
   listCarrierServices,
@@ -72,14 +72,14 @@ function carrierIdentity(carrier) {
 async function upsertCarrierServices({ db, connectionId, carrierRowId, services }) {
   const { results } = await db
     .prepare(
-      `SELECT id, shipstation_service_code
+      `SELECT id, shipstation_service_code, name, deleted
        FROM shipstation_service
        WHERE connection_id = ? AND carrier_id = ?`,
     )
     .bind(connectionId, carrierRowId)
     .all();
   const existing = new Map(
-    (results ?? []).map((row) => [String(row.shipstation_service_code), row.id]),
+    (results ?? []).map((row) => [String(row.shipstation_service_code), row]),
   );
   const seen = new Set();
   for (const service of services) {
@@ -87,16 +87,18 @@ async function upsertCarrierServices({ db, connectionId, carrierRowId, services 
     if (!code || seen.has(code)) continue;
     seen.add(code);
     const serviceName = String(service.name ?? code);
-    const existingId = existing.get(code);
-    if (existingId) {
-      await db
-        .prepare(
-          `UPDATE shipstation_service
-           SET name = ?, deleted = 0, updated_at = datetime('now')
-           WHERE id = ?`,
-        )
-        .bind(serviceName, existingId)
-        .run();
+    const current = existing.get(code);
+    if (current) {
+      if (current.deleted || current.name !== serviceName) {
+        await db
+          .prepare(
+            `UPDATE shipstation_service
+             SET name = ?, deleted = 0, updated_at = datetime('now')
+             WHERE id = ?`,
+          )
+          .bind(serviceName, current.id)
+          .run();
+      }
     } else {
       await db
         .prepare(
@@ -108,15 +110,15 @@ async function upsertCarrierServices({ db, connectionId, carrierRowId, services 
         .run();
     }
   }
-  for (const [code, id] of existing) {
-    if (seen.has(code)) continue;
+  for (const [code, row] of existing) {
+    if (seen.has(code) || row.deleted) continue;
     await db
       .prepare(
         `UPDATE shipstation_service
          SET deleted = 1, updated_at = datetime('now')
          WHERE id = ? AND deleted = 0`,
       )
-      .bind(id)
+      .bind(row.id)
       .run();
   }
 }
@@ -218,13 +220,48 @@ async function syncCarriers({ db, connectionId, credentials, carriers, pruneMiss
 const carrierRefreshInflight = new Map();
 
 /** Re-pull the connected carrier catalog from ShipStation and upsert it. */
-export async function refreshCarriers({ db, connectionId, credentials }) {
+export async function refreshCarriers({ db, connectionId, credentials, timeoutMs }) {
   const key = String(connectionId);
   const pending = carrierRefreshInflight.get(key);
   if (pending) return pending;
   const job = (async () => {
-    const listed = await listAllCarriers({ credentials });
-    if (!listed.ok) return listed;
+    const listed = await listAllCarriers({ credentials, timeoutMs });
+    if (!listed.ok) {
+      try {
+        const org = await db
+          .prepare(`SELECT organization_id FROM shipstation_connection WHERE id = ?`)
+          .bind(connectionId)
+          .first();
+        if (org?.organization_id) {
+          const message = truncateMessage(
+            `Could not pull carriers from ShipStation: ${listed.message || 'ShipStation did not return carriers.'}`,
+          );
+          const recent = await db
+            .prepare(
+              `SELECT id FROM activity_log
+               WHERE organization_id = ? AND action = 'catalog_pull' AND status = 'error'
+                 AND message = ? AND created_at > datetime('now', '-15 minutes')
+               LIMIT 1`,
+            )
+            .bind(org.organization_id, message)
+            .first();
+          if (!recent) {
+            await appendActivity({
+              db,
+              organizationId: org.organization_id,
+              actor: 'user',
+              action: 'catalog_pull',
+              status: 'error',
+              message,
+              detail: listed.detail || null,
+            });
+          }
+        }
+      } catch {
+        // Return the ShipStation error even if the activity write fails.
+      }
+      return listed;
+    }
     const added = await syncCarriers({
       db,
       connectionId,
@@ -334,6 +371,13 @@ async function retireConnectionLocal({ db, connectionId }) {
     .run();
   await db
     .prepare(
+      `UPDATE package_catalog SET deleted = 1, updated_at = datetime('now')
+       WHERE connection_id = ? AND deleted = 0`,
+    )
+    .bind(connectionId)
+    .run();
+  await db
+    .prepare(
       `UPDATE shipstation_connection
        SET deleted = 1, updated_at = datetime('now')
        WHERE id = ?`,
@@ -403,7 +447,12 @@ export async function handleConnection({ request, env, path, method }) {
       const secret = await liveCredentials({ db, env, organizationId });
       const credentials = credentialsForApi(secret);
       if (credentials) {
-        await refreshCarriers({ db, connectionId: row.id, credentials });
+        await refreshCarriers({
+          db,
+          connectionId: row.id,
+          credentials,
+          timeoutMs: 12000,
+        });
       }
     }
     const carrierPayload = await loadCarrierMapPayload({
@@ -492,6 +541,19 @@ export async function handleConnection({ request, env, path, method }) {
       carriers: normalizeCarrierList(listed.data),
       pruneMissing: !listed.truncated,
     });
+
+    try {
+      await syncConnectionPackageCatalog({
+        db,
+        connectionId: inserted.id,
+        organizationId,
+        credentials,
+        actor: 'user',
+        pulledOn: pacificDate(new Date()),
+      });
+    } catch {
+      // Connect still succeeds. The nightly job retries the catalog.
+    }
 
     const count = await carrierCount({ db, connectionId: inserted.id });
     const versionLabel = credentials.apiVersion === 'v1' ? 'V1' : 'V2';

@@ -15,12 +15,13 @@ import { handleChannels } from './handleChannels.js';
 import { handleConnection } from './connection.js';
 import { handleSetup } from './setup.js';
 import { handleSync } from './handleSync.js';
-import { pollSync, pruneActivity } from './jobs.js';
+import { pollSync, pruneActivity, refreshPackageCatalog } from './jobs.js';
 
 export default createHandler({
   jobs: {
     'poll-outbound-push': pollSync,
     'prune-activity': pruneActivity,
+    'refresh-package-catalog': refreshPackageCatalog,
   },
   fetch: async ({ request, env }) => {
     const path = backendPath(request);
