@@ -48,21 +48,21 @@ createRoot(rootEl).render(
 
 `DigitThemeProvider`:
 
-1. Reads light/dark from `window.DigitHost` (types: `DigitHost` / `DigitHostSettings`
-   exported from `@digit/lib-frontend`; importing the package augments `Window`)
+1. Reads light/dark from `AppHost` (exported from `@digit/lib-frontend` with its
+   `AppHostSettings` type; importing the package augments `Window`)
 2. Falls back to `document.documentElement.dataset.theme`, then `prefers-color-scheme`
 3. Calls `createTheme(themeOptions(darkMode))` and renders MUI `CssBaseline`
 
-Do not add a local `digit.d.ts` for `DigitHost`. Prefer hooks over calling
-`window.DigitProxyClient` yourself.
+Do not add a local `digit.d.ts` for the harness globals. Prefer hooks over calling
+`window.AppProxy` yourself.
 
 ## Host settings
 
 ```ts
-import type { DigitHostSettings } from '@digit/lib-frontend';
+import { AppHost } from '@digit/lib-frontend';
 
-window.DigitHost?.getSettings(); // DigitHostSettings | null
-window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
+AppHost.getSettings(); // AppHostSettings | null
+AppHost.onSettingsChange((settings) => { /* ... */ });
 ```
 
 The harness also sets `data-theme` and `lang` on `<html>`, and may inject self-hosted
