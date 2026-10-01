@@ -16,7 +16,9 @@ description: >-
 Build Digit custom apps that run inside Digit as **sandboxed iframes** with a locked-down
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
-support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
+support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.). The
+host can do some of these on the app's behalf (scanning, for example), so call
+`getHostCapabilities` before telling the user a feature can't be built.
 Use `AppHost.invoke` from `@digit/lib-frontend` for every host-mediated action:
 `invoke("download", ...)` for files, `invoke("print", ...)` for printable HTML. `window.DigitHost`
 (including its `download` and `print`) is deprecated — migrate it to `AppHost` in any file you
@@ -205,7 +207,9 @@ only; still upload the zip **unchanged**. Details:
   fullscreen APIs — they will not work. Copy buttons (`navigator.clipboard.writeText`
   in a click handler), form `onSubmit` + `preventDefault`, file exports via
   `invoke("download", ...)`, and HTML printing via `invoke("print", ...)` DO work. In-page MUI
-  Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Full
+  Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Where the
+  iframe can't do something itself (camera, scanning, navigating Digit), check
+  `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
 - **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
   hard-coded colors or custom CSS. See [reference/theming.md](reference/theming.md).
@@ -271,7 +275,8 @@ Every host-mediated action goes through one generic call, `AppHost.invoke(method
 - the host refused or failed — it **rejects** with an `Error`. Handle it like any other
   async failure (`AppErrorAlert`, etc.).
 
-Call `getHostCapabilities` before writing the code — it returns each method's name, params and a
+Call `getHostCapabilities` before writing the code, and before ruling out a feature the iframe
+can't do itself — it returns each method's name, params and a
 note on what it does, so you never guess one. Read that note: some capabilities replace the whole
 Digit page, which unmounts your app. Then call `invoke` directly: do not guard it with a runtime
 capability check. The host offers whatever the Digit it runs inside supports, capabilities are
