@@ -40,11 +40,12 @@ always intercept and post JSON.
 | Navigating the parent Digit page (`top.location`, etc.)                    | No top-navigation flags — ask the host instead (`getHostCapabilities`)                    |
 | Fullscreen API                                                             | `fullscreen 'none'`                                                                       |
 | Reading the clipboard (`navigator.clipboard.read*`, paste APIs)            | `clipboard-read 'none'`                                                                   |
-| Camera, mic, geolocation, USB, WebAuthn get, payment, PiP, wake lock, etc. | Permissions Policy `'none'`                                                               |
+| Camera, mic, geolocation, USB, WebAuthn get, payment, PiP, wake lock, etc. | Permissions Policy `'none'` — the host may offer it instead (e.g. scanning, see `getHostCapabilities`) |
 | Autoplay media                                                             | `autoplay 'none'`                                                                         |
 
 Do not build UI that depends on these working, and do not “fall back” to a blocked
-API after a failed attempt.
+API after a failed attempt. Before ruling a feature out, call `getHostCapabilities`: the
+host can do some of these on the app's behalf (scanning, for example).
 
 ## Do use (works in-frame)
 
@@ -126,6 +127,7 @@ Before shipping UI:
 2. Printing only via `invoke("print", ...)` with self-contained HTML under 10MB
 3. No new-tab / popup / `window.open` flows
 4. No `alert` / `confirm` / `prompt` — use MUI Dialog / `AppErrorAlert` instead
-5. No camera, mic, geo, clipboard-read, fullscreen, or other device APIs
+5. No camera, mic, geo, clipboard-read, fullscreen, or other device APIs in the iframe — use a
+   host method from `getHostCapabilities` where one exists
 6. Every form submit handler calls `preventDefault`
 7. Keep all interaction inside the app iframe
