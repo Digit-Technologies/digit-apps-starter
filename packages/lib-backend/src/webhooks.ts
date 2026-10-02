@@ -2,6 +2,8 @@
 // are platform-originated by construction — but the SENDER is an untrusted third party.
 // Always verify the provider's signature over `body` before acting on a webhook.
 
+import type { DigitApi } from './digit';
+
 /** Argument of the platform's `triggerWebhook(invocation)` RPC call, plus the Worker env/ctx. */
 export type WebhookArgs = {
   /** The manifest-declared path segment this arrived on (e.g. "woocommerce"). */
@@ -15,6 +17,8 @@ export type WebhookArgs = {
   body: Uint8Array;
   env: unknown;
   ctx: unknown;
+  /** The Digit API, acting as the app's creator — no user is behind a webhook. */
+  digit: DigitApi;
 };
 
 /** Returned to the provider: statuses drive their retry behaviour (non-2xx is usually retried). */
@@ -29,16 +33,17 @@ export type WebhookHandler = (args: WebhookArgs) => WebhookResponse | Promise<We
 export type WebhookHandlers = Record<string, WebhookHandler>;
 
 /** Platform invocation shape (everything in WebhookArgs except env/ctx). */
-export type WebhookInvocation = Omit<WebhookArgs, 'env' | 'ctx'>;
+export type WebhookInvocation = Omit<WebhookArgs, 'env' | 'ctx' | 'digit'>;
 
 /** Body of the entrypoint's `triggerWebhook` — an unregistered path answers 404 to the provider. */
 export async function runWebhookHandler(options: {
   invocation: WebhookInvocation;
   env: unknown;
   ctx: unknown;
+  digit: DigitApi;
   webhooks: WebhookHandlers;
 }): Promise<WebhookResponse> {
-  const { invocation, env, ctx, webhooks } = options;
+  const { invocation, env, ctx, digit, webhooks } = options;
   const path = typeof invocation?.path === 'string' ? invocation.path : '';
   const handler = webhooks[path];
   if (!handler) {
@@ -56,6 +61,7 @@ export async function runWebhookHandler(options: {
     body: invocation.body instanceof Uint8Array ? invocation.body : new Uint8Array(0),
     env,
     ctx,
+    digit,
   });
 }
 
