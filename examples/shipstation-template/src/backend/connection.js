@@ -19,6 +19,30 @@ import {
 } from './shipstation.js';
 import { credentialsForApi, liveCredentials, publicConnection, loadOrgSettings } from './sync.js';
 import { loadCarrierMapPayload, saveManualCarrierMaps } from './matchDigitCarrier.js';
+import { MAX_SOURCE_FILTER_KEYS } from './sourceFilter.js';
+
+/** Request body `sourceFilter` → `{ ok, value }` or `{ ok: false, message }`. */
+function parseSourceFilterBody(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return { ok: false, message: 'sourceFilter must be an object with enabled and keys.' };
+  }
+  const enabled = Boolean(raw.enabled);
+  const rawKeys = raw.keys ?? [];
+  if (!Array.isArray(rawKeys) || rawKeys.some((key) => typeof key !== 'string' || !key.trim())) {
+    return { ok: false, message: 'sourceFilter.keys must be an array of non-empty strings.' };
+  }
+  const keys = [...new Set(rawKeys.map((key) => key.trim()))];
+  if (keys.length > MAX_SOURCE_FILTER_KEYS) {
+    return { ok: false, message: `Select at most ${MAX_SOURCE_FILTER_KEYS} sources.` };
+  }
+  if (enabled && keys.length === 0) {
+    return {
+      ok: false,
+      message: 'Select at least one source, or turn off the source filter to route every source.',
+    };
+  }
+  return { ok: true, value: { enabled, keys } };
+}
 
 async function liveConnection({ db, organizationId }) {
   return db
@@ -617,19 +641,42 @@ export async function handleConnection({ request, env, path, method }) {
         status: 400,
       });
     }
+
+    let sourceFilter = current.sourceFilter;
+    if (body.sourceFilter !== undefined && body.sourceFilter !== null) {
+      const parsedFilter = parseSourceFilterBody(body.sourceFilter);
+      if (!parsedFilter.ok) {
+        return err({
+          code: AppErrorCode.VALIDATION_ERROR,
+          message: parsedFilter.message,
+          status: 400,
+        });
+      }
+      sourceFilter = parsedFilter.value;
+    }
+
     await db
       .prepare(
         `INSERT INTO org_settings (
            organization_id, default_fulfillment_method, sync_mode, push_when, lane_tag_id,
-           default_weight_oz, default_length_in, default_width_in, default_height_in, rate_strategy
+           default_weight_oz, default_length_in, default_width_in, default_height_in, rate_strategy,
+           source_filter_enabled, source_filter_keys
          )
-         VALUES (?, ?, 'digit_to_ss', 'fully_packed', NULL, ?, NULL, NULL, NULL, 'cheapest')
+         VALUES (?, ?, 'digit_to_ss', 'fully_packed', NULL, ?, NULL, NULL, NULL, 'cheapest', ?, ?)
          ON CONFLICT(organization_id) DO UPDATE SET
            default_fulfillment_method = excluded.default_fulfillment_method,
            default_weight_oz = excluded.default_weight_oz,
+           source_filter_enabled = excluded.source_filter_enabled,
+           source_filter_keys = excluded.source_filter_keys,
            updated_at = datetime('now')`,
       )
-      .bind(organizationId, defaultFulfillmentMethod, defaultWeightOz)
+      .bind(
+        organizationId,
+        defaultFulfillmentMethod,
+        defaultWeightOz,
+        sourceFilter.enabled ? 1 : 0,
+        JSON.stringify(sourceFilter.keys),
+      )
       .run();
 
     if (Array.isArray(body.mappings)) {
@@ -649,7 +696,12 @@ export async function handleConnection({ request, env, path, method }) {
       actor: 'user',
       action: 'settings',
       status: 'success',
-      message: `Saved settings (push ${defaultFulfillmentMethod}, default weight ${defaultWeightOz} oz).`,
+      message: `Saved settings (push ${defaultFulfillmentMethod}, default weight ${defaultWeightOz} oz, ${
+        sourceFilter.enabled
+          ? `routing ${sourceFilter.keys.length} selected source(s)`
+          : 'routing every source'
+      }).`,
+      detail: sourceFilter.enabled ? { sourceFilterKeys: sourceFilter.keys } : null,
     });
     const carrierPayload = await loadCarrierMapPayload({
       env,

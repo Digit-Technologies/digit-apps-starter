@@ -69,6 +69,12 @@ import {
   queueSearchHaystack,
   sectionsByPushStatus,
 } from './queueFilters';
+import {
+  shipmentSourceConnection,
+  sourceExcluded,
+  sourceLabel,
+  type SourceConnection,
+} from './sourceFilter';
 import { useRefetchWhenVisible } from './useRefetchWhenVisible';
 
 const PAGE_SIZE = 100;
@@ -158,6 +164,7 @@ const SHIPMENT_ROW_FIELDS = `
           orderNumber
           customer { name }
           shippingCarrierField { id value }
+          externalOrder { id connection { id platform storeUniqueName } }
         }
 `;
 
@@ -225,6 +232,7 @@ type ShipmentNode = {
     orderNumber?: string | null;
     customer?: { name?: string | null } | null;
     shippingCarrierField?: { id?: string | null; value?: string | null } | null;
+    externalOrder?: { id?: string | null; connection?: SourceConnection | null } | null;
   } | null;
 };
 
@@ -698,16 +706,31 @@ export default function FulfillmentQueue({
   const [updateOrderMutate] = useDigitApiMutation({ mutation: UPDATE_ORDER_MUTATION });
   const [writebackDoneMutate] = useBackendMutation();
 
+  const sourceFilter = orgSettings?.sourceFilter ?? null;
+  const routedNodes = useMemo(
+    () =>
+      combinedNodes.filter(
+        (shipment) =>
+          !sourceExcluded({ shipment, sourceFilter, mapRow: mapsById.get(shipment.id) ?? null }),
+      ),
+    [combinedNodes, mapsById, sourceFilter],
+  );
+  const hiddenBySourceCount = combinedNodes.length - routedNodes.length;
+  const showSource = useMemo(
+    () => combinedNodes.some((shipment) => Boolean(shipmentSourceConnection(shipment))),
+    [combinedNodes],
+  );
+
   const matchedNodes = useMemo(
     () =>
-      combinedNodes.filter((shipment) => {
+      routedNodes.filter((shipment) => {
         if (!typedSearch) return true;
         return matchesQueueSearch(
           queueSearchHaystack(shipment, mapsById.get(shipment.id)),
           typedSearch,
         );
       }),
-    [combinedNodes, mapsById, typedSearch],
+    [routedNodes, mapsById, typedSearch],
   );
 
   const carrierFacets = useMemo(() => {
@@ -1253,6 +1276,13 @@ export default function FulfillmentQueue({
 
       {queueToolbar}
 
+      {hiddenBySourceCount > 0 ? (
+        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+          {hiddenBySourceCount} shipment{hiddenBySourceCount === 1 ? '' : 's'} hidden by the source
+          filter in Settings.
+        </Typography>
+      ) : null}
+
       {selectedCount > 0 || showSelection ? pushBar : null}
 
       <Box sx={{ display: { xs: 'none', md: 'flex' }, flex: 1, minHeight: 0, flexDirection: 'column' }}>
@@ -1362,7 +1392,16 @@ export default function FulfillmentQueue({
                         ) : null}
                       </Stack>
                     </TableCell>
-                    <TableCell>{shipment.order?.customer?.name ?? '—'}</TableCell>
+                    <TableCell>
+                      <Stack spacing={0.25}>
+                        <span>{shipment.order?.customer?.name ?? '—'}</span>
+                        {showSource ? (
+                          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                            {sourceLabel(shipmentSourceConnection(shipment))}
+                          </Typography>
+                        ) : null}
+                      </Stack>
+                    </TableCell>
                     <TableCell>
                       <Typography
                         variant="body2"
@@ -1566,6 +1605,7 @@ export default function FulfillmentQueue({
             onPackageChange={(containerId, choice) => {
               void savePackageChoice(shipment.id, containerId, choice);
             }}
+            showSource={showSource}
           />
           );
         })}

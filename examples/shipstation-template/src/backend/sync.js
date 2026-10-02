@@ -51,6 +51,12 @@ import {
   ssShipToLocationInput,
 } from './mappers/shipStationToDigit.js';
 import { resolveShipStationCredentials } from './runtimeConfig.js';
+import {
+  normalizeSourceFilter,
+  SOURCE_EXCLUDED_REASON,
+  shipmentSourceKey,
+  sourceExcluded,
+} from './sourceFilter.js';
 import { pdfBase64FromV2Label } from './labels.js';
 import { resolveDigitCarrier, resolveSsServiceForDigitShipment } from './matchDigitCarrier.js';
 import { pulledPackagesFromRecord, storedPushCatalog } from './packageCatalog.js';
@@ -170,6 +176,7 @@ export function normalizeOrgSettings(row, organizationId, { includeLegacyDimensi
     defaultFulfillmentMethod:
       row?.default_fulfillment_method === 'scheduled' ? 'scheduled' : 'manual',
     defaultWeightOz: Number.isFinite(weight) && weight > 0 ? weight : 16,
+    sourceFilter: normalizeSourceFilter(row?.source_filter_enabled, row?.source_filter_keys),
     ...(includeLegacyDimensions
       ? {
           defaultLengthIn: Number.isFinite(length) && length > 0 ? length : null,
@@ -184,7 +191,8 @@ export async function loadOrgSettings({ db, organizationId, includeLegacyDimensi
   const row = await db
     .prepare(
       `SELECT organization_id, default_fulfillment_method, default_weight_oz,
-              default_length_in, default_width_in, default_height_in
+              default_length_in, default_width_in, default_height_in,
+              source_filter_enabled, source_filter_keys
        FROM org_settings WHERE organization_id = ?`,
     )
     .bind(organizationId)
@@ -870,6 +878,38 @@ export async function pushShipment({
   const { shipment, organization } = loaded.data;
   const orderId = shipment?.order?.id ?? null;
   const label = shipmentLabel(shipment, shipmentId);
+
+  // No map write: an excluded shipment has no ShipStation state to keep or clear.
+  if (sourceExcluded({ shipment, orgSettings, mapRow: existing ? publicMapRow(existing) : null })) {
+    const reason = SOURCE_EXCLUDED_REASON;
+    const meaning = pushMeaning({ skipped: true, reason, ssShipmentId: null, shipmentLabel: label });
+    await recordPushActivity({
+      db,
+      organizationId,
+      actor,
+      recordActivity,
+      skipped: true,
+      ok: true,
+      orderId,
+      ssShipmentId: null,
+      message: meaning,
+      detail: { sourceKey: shipmentSourceKey(shipment) },
+      quiet: sweep,
+    });
+    return {
+      ok: true,
+      data: {
+        shipmentId,
+        orderId,
+        skipped: true,
+        needsAttention: false,
+        shipmentLabel: label,
+        reason,
+        message: reason,
+        meaning,
+      },
+    };
+  }
 
   const carrierField = effectiveShippingCarrierField(shipment);
   const ssService = await resolveSsServiceForDigitShipment({

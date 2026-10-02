@@ -5,6 +5,7 @@
 
 export type OrgSettingsForEligibility = {
   defaultFulfillmentMethod?: string | null;
+  sourceFilter?: { enabled: boolean; keys: string[] } | null;
 };
 
 export type MapRowForEligibility = {
@@ -247,6 +248,9 @@ export function ineligibilityReason({
 
 export function skipNextStep(reason: string | null | undefined) {
   if (!reason) return 'Fix the issue, then try again.';
+  if (reason.includes('source is not selected in Settings')) {
+    return 'Enable this source in Settings, or push it outside this app.';
+  }
   if (reason.includes('imported from ShipStation')) {
     return 'Fulfill it in ShipStation; this app will not create a second shipment.';
   }

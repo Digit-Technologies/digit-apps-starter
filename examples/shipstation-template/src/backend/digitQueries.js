@@ -58,6 +58,7 @@ const SHIPMENT_NODE_FIELDS = `
     shippingAddress { ${ADDRESS_FIELDS} }
     billingAddress { ${ADDRESS_FIELDS} }
     shippingCarrierField { id value }
+    externalOrder { id connection { id platform storeUniqueName } }
   }
 `;
 

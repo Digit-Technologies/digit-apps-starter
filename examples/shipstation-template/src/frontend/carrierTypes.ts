@@ -1,3 +1,5 @@
+import type { SourceFilterSettings } from './sourceFilter';
+
 export type DigitCarrierOption = { id: string; value: string };
 
 export type SsServiceRow = {
@@ -52,6 +54,7 @@ export type OrgSettingsData = {
   organizationId: string;
   defaultFulfillmentMethod: string;
   defaultWeightOz?: number;
+  sourceFilter?: SourceFilterSettings;
   digitCarriers?: DigitCarrierOption[];
   digitCarrierMaps?: DigitCarrierMapRow[];
   ssCarriers?: SsCarrierRow[];

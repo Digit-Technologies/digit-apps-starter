@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "pack": "digit-app pack",
+    "sandbox-viewer": "node --env-file=tools/sandbox-viewer/.env.local tools/sandbox-viewer/server.mjs",
     "test": "node --test"
   },
   "dependencies": {

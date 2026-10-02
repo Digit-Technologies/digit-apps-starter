@@ -889,3 +889,50 @@ Remove this from the shipstation settings
 - The capabilities panel no longer shows Store channels (Store order import and Tracking
   to sales channel). Those cards no longer count toward the features-ready progress.
 
+```
+Using the shipstation mcp build me a simple UI for viewing shipments sent to the sandbox. I need an easy way to view my testing shipments and the sandbox doesn't show up in my shipstation profile UI.
+```
+
+- The sandbox is a V2 key prefixed `TEST_` on the same endpoints as production, so it is
+  invisible in the ShipStation web UI. `tools/sandbox-viewer/` is a local dev-only Node
+  server plus one static page that lists sandbox shipments (`listShipments` →
+  `GET /v2/shipments`, newest first, Prev/Next paging) and buys a label per row
+  (`createLabelForShipment` → `POST /v2/labels/shipment/{id}`), then shows the tracking
+  number and label PDF link. Run with `npm run sandbox-viewer` and a local
+  `tools/sandbox-viewer/.env.local`; a non-`TEST_` key warns in the console and in a page
+  banner. It is not part of the published app — `digit-app pack` never copies `tools/`, and
+  it does not touch D1, Sutton, or app secrets. The browser never calls ShipStation.
+
+
+```
+include the ability to void purchased labels
+```
+
+- The sandbox viewer now voids labels (`voidLabel` → `PUT /v2/labels/{label_id}/void`) via
+  `POST /api/labels/:labelId/void`, behind a confirm prompt. `GET /v2/shipments` has no
+  label id, so `GET /api/shipments` also joins `GET /v2/labels` onto each shipment; that
+  fills the Tracking column and gives purchased shipments a label PDF link. A void answered
+  with HTTP 200 and `approved: false` is shown as a failure with its message and
+  `reason_code`. A voided shipment shows "Label voided" and can buy a label again.
+
+```
+For the soundskins shipstation integration the app needs to be able to filter out shipments from specific sources. Source should be listed in the sales order table. Source is an optional column so ensure that it is not expected. But if it exists give the user the option to only route specified sources to the queue.
+```
+
+- Source is the sales order's commerce integration (`order.externalOrder.connection`), the
+  same value as the Source column on the Sutton sales order table. Labels lead with the
+  platform (Shopify, WooCommerce, eBay, Amazon) and then the store name, so a Shopify
+  store named Soundskins reads "Shopify · Soundskins". A sales order with no
+  external order is **Manual Entry**. Nothing requires the field: a missing or null
+  `externalOrder` is Manual Entry, and orgs without a commerce integration never see the
+  setting.
+- ShipStation settings has a **Sales order sources** section, shown only when the org has a
+  Shopify, WooCommerce, eBay, or Amazon connection. A switch, "Only route selected sources
+  to the queue", reveals a checkbox per connection plus Manual Entry. It is off by default.
+  Saving with the switch on and nothing selected is rejected.
+- With the filter on, shipments from other sources are hidden from the queue and never
+  pushed, by an operator or the five-minute schedule. Shipments already in ShipStation stay
+  visible so labels and tracking remain reachable. The queue shows how many shipments the
+  filter hides, and each row shows its source when any loaded order has one.
+- Stored in `org_settings.source_filter_enabled` / `source_filter_keys` (migration
+  `0019_source_filter.sql`). The manifest adds `READ_INTEGRATION` for the connection list.

@@ -34,6 +34,7 @@ import {
   type PackageChoice,
   type PackageSelection,
 } from '../packageSelection';
+import { shipmentSourceConnection, sourceLabel, type SourceConnection } from '../sourceFilter';
 
 type ShipmentNode = Omit<ShipmentForEligibility, 'packContainers'> & {
   id: string;
@@ -45,6 +46,7 @@ type ShipmentNode = Omit<ShipmentForEligibility, 'packContainers'> & {
     documentNumber?: string | null;
     orderNumber?: string | null;
     customer?: { name?: string | null } | null;
+    externalOrder?: { connection?: SourceConnection | null } | null;
   } | null;
 };
 
@@ -118,6 +120,7 @@ export default function OrderQueueCard({
   catalogLoading = false,
   savingContainerId = null,
   onPackageChange,
+  showSource = false,
 }: {
   shipment: ShipmentNode;
   map?: MapRow;
@@ -137,6 +140,8 @@ export default function OrderQueueCard({
   catalogLoading?: boolean;
   savingContainerId?: string | null;
   onPackageChange: (containerId: string, choice: PackageChoice | null) => void;
+  /** True when any loaded sales order came from a commerce integration. */
+  showSource?: boolean;
 }) {
   const label = ticketLabel(shipment);
   const locked = packageSelectionLocked(map);
@@ -216,6 +221,7 @@ export default function OrderQueueCard({
               <DigitLink path={shipmentPath(shipment.id)} label={label} />
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                 {shipment.order?.customer?.name ?? 'No customer'}
+                {showSource ? ` · ${sourceLabel(shipmentSourceConnection(shipment))}` : ''}
               </Typography>
               {shipment.order?.id ? (
                 <DigitLink

@@ -207,6 +207,35 @@ export async function getShipmentByExternalId({ credentials, externalShipmentId 
   });
 }
 
+/**
+ * V2: GET /v2/shipments (newest first by default). V1 has no equivalent paged
+ * shipment list, so this is V2-only.
+ */
+export async function listShipments({
+  credentials,
+  page = 1,
+  pageSize = 25,
+  sortBy = 'created_at',
+  sortDir = 'desc',
+}) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion === 'v1') {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'Listing shipments requires V2 credentials. Use getShipment for a V1 order.',
+      status: 400,
+    };
+  }
+  const params = new URLSearchParams({
+    page: String(Math.max(1, Number(page) || 1)),
+    page_size: String(Math.min(100, Math.max(1, Number(pageSize) || 25))),
+    sort_by: sortBy,
+    sort_dir: sortDir,
+  });
+  return ssFetch({ credentials: creds, method: 'GET', path: `/v2/shipments?${params.toString()}` });
+}
+
 export async function getLabel({ credentials, labelId, downloadType = 'url', format = 'pdf' }) {
   const creds = requireCredentials(credentials);
   if (creds.apiVersion === 'v1') {
@@ -239,6 +268,77 @@ export async function listLabels({ credentials, query = '' }) {
   }
   const path = query ? `/v2/labels?${query}` : '/v2/labels';
   return ssFetch({ credentials: creds, method: 'GET', path });
+}
+
+/**
+ * V2: POST /v2/labels/shipment/{shipment_id} — buys a label for a shipment that
+ * already exists. V1 buys labels through its own order flow, so this is V2-only.
+ */
+export async function createLabelForShipment({
+  credentials,
+  shipmentId,
+  labelFormat = 'pdf',
+  labelLayout = '4x6',
+  labelDownloadType = 'url',
+}) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion === 'v1') {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'Buying a label from a shipment id requires V2 credentials.',
+      status: 400,
+    };
+  }
+  const id = String(shipmentId || '').trim();
+  if (!id) {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'shipmentId is required to buy a label.',
+      status: 400,
+    };
+  }
+  return ssFetch({
+    credentials: creds,
+    method: 'POST',
+    path: `/v2/labels/shipment/${encodeURIComponent(id)}`,
+    body: {
+      label_format: labelFormat,
+      label_layout: labelLayout,
+      label_download_type: labelDownloadType,
+    },
+  });
+}
+
+/**
+ * V2: PUT /v2/labels/{label_id}/void. ShipStation can answer HTTP 200 with
+ * `approved: false` (plus `message` / `reason_code`), so callers must check `approved`.
+ */
+export async function voidLabel({ credentials, labelId }) {
+  const creds = requireCredentials(credentials);
+  if (creds.apiVersion === 'v1') {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'Voiding a label by label id requires V2 credentials.',
+      status: 400,
+    };
+  }
+  const id = String(labelId || '').trim();
+  if (!id) {
+    return {
+      ok: false,
+      code: 'VALIDATION_ERROR',
+      message: 'labelId is required to void a label.',
+      status: 400,
+    };
+  }
+  return ssFetch({
+    credentials: creds,
+    method: 'PUT',
+    path: `/v2/labels/${encodeURIComponent(id)}/void`,
+  });
 }
 
 export async function fetchLabelPdfBytes({ credentials, url }) {

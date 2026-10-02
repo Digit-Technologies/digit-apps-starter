@@ -18,7 +18,8 @@
     "CREATE_COMPANY",
     "READ_CONTACT",
     "READ_ORGANIZATION_LOCATION",
-    "READ_ORGANIZATION_DYNAMIC_FIELD"
+    "READ_ORGANIZATION_DYNAMIC_FIELD",
+    "READ_INTEGRATION"
   ],
   "backend": {
     "kind": "cloudflare-worker",

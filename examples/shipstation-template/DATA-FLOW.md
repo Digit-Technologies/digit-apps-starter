@@ -95,6 +95,8 @@ A shipment is pushed only when all of these hold:
 
 The carrier used for that check is `shipment.shippingCarrierField`, or the parent order's `shippingCarrierField` when the shipment field is empty.
 
+Before those checks, `pushShipment` applies the optional source filter (`sourceFilter.js`). A shipment's source is `order.externalOrder.connection.id` (the Source column on the Sutton sales order table), or `manual` when the sales order has no external order. When org settings `source_filter_enabled = 1` and the source is not in `source_filter_keys`, the push is skipped with no map write. The scheduled sweep stays quiet; an operator push logs `push_skip`. Rows already in ShipStation are never excluded. The queue hides the same shipments. The settings picker lists commerce connections with `rutterConnections` (`READ_INTEGRATION`).
+
 ### Sutton read
 
 `SHIPMENT_BY_ID_QUERY` / `SHIPMENT_LIST_QUERY` in `digitQueries.js` load the shipment, its order, addresses, pack containers, and packed lines. The scheduled list filters `shippingStatuses: [awaiting_carrier]`.

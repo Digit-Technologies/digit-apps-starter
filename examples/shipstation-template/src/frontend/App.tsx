@@ -44,6 +44,8 @@ import CarrierSettingsDialog from './components/CarrierSettingsDialog';
 import ConnectionBar, { ConnectPanel, NonAdminNotice } from './components/ConnectionBar';
 import SectionHeader from './components/SectionHeader';
 import SetupCapabilitiesDialog from './components/SetupCapabilitiesDialog';
+import SourceFilterField, { sourceFilterInvalid } from './components/SourceFilterField';
+import type { SourceFilterSettings } from './sourceFilter';
 import FulfillmentQueue from './FulfillmentQueue';
 import type { SetupData } from './setupTypes';
 import { useRefetchWhenVisible } from './useRefetchWhenVisible';
@@ -69,6 +71,8 @@ const SETTING_HINTS = {
     'Manual push (the default) only sends eligible awaiting-carrier shipments when you click Push to ShipStation. Scheduled push also sends them every five minutes.',
   defaultWeightOz:
     'Package weight sent to ShipStation on push. Sutton shipments have no weight field, so this default applies to every push.',
+  sourceFilter:
+    'Source is the Source column on the Sutton sales order table. When on, shipments from other sources are hidden from the queue and never pushed. Shipments already in ShipStation stay visible.',
 } as const;
 
 const settingTooltipSlotProps = {
@@ -130,6 +134,7 @@ type ConnectionData = {
 type SettingsDraft = {
   defaultFulfillmentMethod: string;
   defaultWeightOz: string;
+  sourceFilter: SourceFilterSettings;
 };
 
 function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
@@ -137,6 +142,10 @@ function draftFromOrg(orgSettings: OrgSettingsData | undefined): SettingsDraft {
     defaultFulfillmentMethod:
       orgSettings?.defaultFulfillmentMethod === 'scheduled' ? 'scheduled' : 'manual',
     defaultWeightOz: String(orgSettings?.defaultWeightOz ?? 16),
+    sourceFilter: {
+      enabled: Boolean(orgSettings?.sourceFilter?.enabled),
+      keys: [...(orgSettings?.sourceFilter?.keys ?? [])],
+    },
   };
 }
 
@@ -263,6 +272,7 @@ export default function App() {
         organizationId,
         defaultFulfillmentMethod: draft.defaultFulfillmentMethod,
         defaultWeightOz: Number(draft.defaultWeightOz),
+        sourceFilter: draft.sourceFilter,
       },
     });
     if (!orgResult.ok) return;
@@ -553,13 +563,23 @@ export default function App() {
                   inputProps={{ min: 0.1, step: 0.1 }}
                 />
               </SettingField>
+              <SourceFilterField
+                value={draft.sourceFilter}
+                onChange={(sourceFilter) => setDraft({ ...draft, sourceFilter })}
+                description={SETTING_HINTS.sourceFilter}
+                skip={!settingsOpen}
+              />
               {mutationError && <AppErrorAlert error={mutationError} />}
             </Stack>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSettingsOpen(false)}>Cancel</Button>
-          <Button variant="contained" onClick={() => void saveSettings()} disabled={mutating}>
+          <Button
+            variant="contained"
+            onClick={() => void saveSettings()}
+            disabled={mutating || (draft != null && sourceFilterInvalid(draft.sourceFilter))}
+          >
             {mutating ? 'Saving…' : 'Save changes'}
           </Button>
         </DialogActions>
