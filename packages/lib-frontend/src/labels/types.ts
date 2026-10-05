@@ -39,5 +39,3 @@ export type RenderedLabel = {
   heightIn: number;
   copies: number;
 };
-
-export type PrintLabelArgs = RenderLabelArgs;

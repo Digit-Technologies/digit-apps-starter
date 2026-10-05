@@ -424,7 +424,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, label print HTML |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, label helpers |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |

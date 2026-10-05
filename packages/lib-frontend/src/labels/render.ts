@@ -1,5 +1,5 @@
 import { AppHost } from "../host";
-import type { PrintLabelArgs, RenderLabelArgs, RenderedLabel } from "./types";
+import type { RenderLabelArgs, RenderedLabel } from "./types";
 
 const MAX_COPIES = 50;
 
@@ -46,7 +46,7 @@ export async function renderLabel({
 }
 
 /** Renders the label on the host, then prints it through `AppHost.invoke("print", ...)`. */
-export async function printLabel(args: PrintLabelArgs): Promise<void> {
+export async function printLabel(args: RenderLabelArgs): Promise<void> {
   const label = await renderLabel(args);
   await (args.host ?? AppHost).invoke("print", { title: label.title, html: label.html });
 }

@@ -37,7 +37,6 @@ export type { DigitResult } from "./api";
 export {
   renderLabel,
   printLabel,
-  labelPrintTitle,
   LabelPreview,
 } from "./labels";
 export type {
@@ -45,6 +44,5 @@ export type {
   LabelPrintRecord,
   RenderLabelArgs,
   RenderedLabel,
-  PrintLabelArgs,
   LabelPreviewProps,
 } from "./labels";
