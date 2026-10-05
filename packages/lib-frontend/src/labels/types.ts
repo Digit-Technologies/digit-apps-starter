@@ -3,8 +3,10 @@
  *
  * Native Digit labels are designed in digit-web (Fabric canvas) and stored on
  * the API as `layoutJson`. This package does not ship the designer; it turns
- * that stored config plus a record into HTML for `DigitHost.print`.
+ * that stored config plus a record into HTML for `AppHost.invoke("print", ...)`.
  */
+
+import type { AppHost } from "../globals";
 
 /** Loose configuration object from the Digit API (plus optional size fields). */
 export type LabelPrintConfig = {
@@ -107,7 +109,6 @@ export type PrintLabelArgs = RenderLabelPrintHtmlArgs & {
    * 1–119 chars. Defaults to the config name or `Label`.
    */
   title?: string;
-  host?: {
-    print: (options: { title: string; html: string }) => void;
-  };
+  /** Host to print through. Defaults to `AppHost`; override in tests. */
+  host?: Pick<AppHost, "invoke">;
 };

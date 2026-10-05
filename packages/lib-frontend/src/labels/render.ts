@@ -7,6 +7,7 @@ import type {
   PrintLabelArgs,
   RenderLabelPrintHtmlArgs,
 } from "./types";
+import { AppHost } from "../host";
 import { barcodeSvg, inferBarcodeKind } from "./barcodes";
 
 const DEFAULT_WIDTH_IN = 4;
@@ -525,11 +526,7 @@ export async function printLabel({
   ...renderArgs
 }: PrintLabelArgs): Promise<void> {
   const html = await renderLabelPrintHtml(renderArgs);
-  const printHost = host ?? (typeof window !== "undefined" ? window.DigitHost : undefined);
-  if (!printHost?.print) {
-    throw new Error("DigitHost.print is not available. Call this from a published Digit app.");
-  }
-  printHost.print({
+  await (host ?? AppHost).invoke("print", {
     title: labelPrintTitle({ name: title ?? renderArgs.config.name }),
     html,
   });

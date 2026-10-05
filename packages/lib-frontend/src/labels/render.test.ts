@@ -6,6 +6,7 @@ import {
   bindRecordValue,
   labelPrintTitle,
   parseLabelLayout,
+  printLabel,
   renderLabelPrintHtml,
 } from "./render";
 
@@ -125,8 +126,36 @@ test("renderLabelPrintHtml binds values and sizes the page", async () => {
   assert.doesNotMatch(html, /<script/i);
 });
 
-test("labelPrintTitle matches DigitHost rules", () => {
+test("labelPrintTitle matches AppHost print title rules", () => {
   assert.equal(labelPrintTitle({ name: "FG ticket #12" }), "FG ticket 12");
   assert.equal(labelPrintTitle({ name: "***" }), "Label");
   assert.ok(labelPrintTitle({ name: "A".repeat(200) }).length <= 119);
+});
+
+test("printLabel sends the rendered snapshot through host.invoke('print')", async () => {
+  const calls: Array<{ method: string; params: unknown }> = [];
+  await printLabel({
+    title: "Inventory Label",
+    config: {
+      layoutJson: {
+        labelWidthIn: 4,
+        labelHeightIn: 2,
+        objects: [
+          { type: "textbox", stampType: "text", bindingKey: "item.sku", left: 0, top: 0, width: 100, height: 20, fontSize: 12 },
+        ],
+      },
+    },
+    record: { item: { sku: "WIDGET-9" } },
+    host: {
+      invoke: async (method, params) => {
+        calls.push({ method, params });
+        return null;
+      },
+    },
+  });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, "print");
+  const params = calls[0].params as { title: string; html: string };
+  assert.equal(params.title, "Inventory Label");
+  assert.match(params.html, /WIDGET-9/);
 });

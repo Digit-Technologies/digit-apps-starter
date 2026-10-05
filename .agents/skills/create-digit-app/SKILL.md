@@ -280,7 +280,7 @@ await printLabel({
 ```
 
 `printLabel` calls `renderLabelPrintHtml` (composer layout → `@page`-sized HTML with
-inline SVG barcodes/QR) then `DigitHost.print`. Look up the configuration query and
+inline SVG barcodes/QR) then `AppHost.invoke("print", ...)`. Look up the configuration query and
 `appPermissions` keys via Digit MCP; do not invent field names. Keep the designer
 itself native-only.
 

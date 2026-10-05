@@ -9,7 +9,7 @@ export type LabelPreviewProps = RenderLabelPrintHtmlArgs & {
 };
 
 /**
- * On-screen preview of the same HTML `printLabel` sends to `DigitHost.print`.
+ * On-screen preview of the same HTML `printLabel` sends to `AppHost.invoke("print", ...)`.
  * Styles are isolated in a shadow root so `@page` / label CSS cannot leak.
  */
 export function LabelPreview({

@@ -33,7 +33,7 @@ export {
 } from "./api";
 export type { DigitResult } from "./api";
 
-// Label print HTML for DigitHost.print (composer layoutJson + record → snapshot)
+// Label print HTML for AppHost.invoke("print", ...) (composer layoutJson + record → snapshot)
 export {
   renderLabelPrintHtml,
   printLabel,
