@@ -8,7 +8,9 @@ import type {
   RenderLabelPrintHtmlArgs,
 } from "./types";
 import { AppHost } from "../host";
-import { barcodeSvg, inferBarcodeKind } from "./barcodes";
+import { barcodeSvg, inferBarcodeKind, type BarcodeKind } from "./barcodes";
+import { buildLabelBindings, normalizeLabelRecord } from "./bindings";
+import { gs1BarcodePayload, resolveGs1128Identifiers, type Gs1Context, type Gs1Inventory } from "./gs1";
 
 const DEFAULT_WIDTH_IN = 4;
 const DEFAULT_HEIGHT_IN = 2;
@@ -340,17 +342,72 @@ function boxStyle(box: Box, layout: ParsedLabelLayout, extra?: string): string {
   return parts.join(";");
 }
 
-function resolveStampText(obj: LabelLayoutObject, record: LabelPrintRecord): string {
-  const bound = bindRecordValue({ record, bindingKey: obj.bindingKey });
+type StampContext = {
+  record: LabelPrintRecord;
+  /** Native binding-key values derived from the record. */
+  bindings: Record<string, string>;
+  gs1: Gs1Context;
+  gs1128ApplicationIdentifiers: string[];
+  /** Page px per canvas px, so type and strokes scale with the stamp boxes. */
+  pxScale: number;
+};
+
+/** Stamps sharing a key carry a suffix (`item-2`); the key is the part before it. */
+const bindingRoot = (bindingKey: string): string => bindingKey.split("-")[0] ?? bindingKey;
+
+function bindingValue(ctx: StampContext, bindingKey?: string): string {
+  if (!bindingKey) return "";
+  const derived = ctx.bindings[bindingKey] || ctx.bindings[bindingRoot(bindingKey)];
+  if (derived) return derived;
+  return bindRecordValue({ record: ctx.record, bindingKey });
+}
+
+function resolveStampText(obj: LabelLayoutObject, ctx: StampContext): string {
+  const bound = bindingValue(ctx, obj.bindingKey);
   const rawText = asString(obj.text) ?? "";
-  if (rawText.includes("{{")) return interpolateText(rawText, record);
+  if (rawText.includes("{{")) return interpolateText(rawText, ctx.record);
   if (bound) {
     if (obj.includeLabel && obj.label) return `${obj.label}: ${bound}`;
     return bound;
   }
-  if (rawText) return interpolateText(rawText, record);
+  if (rawText) return interpolateText(rawText, ctx.record);
   if (obj.includeLabel && obj.label) return obj.label;
   return "";
+}
+
+type CodeStamp = { value: string; kind: BarcodeKind };
+
+/** The payload and symbology native print draws for a barcode stamp, by binding key. */
+function codeStamp(obj: LabelLayoutObject, ctx: StampContext, fallbackKind: BarcodeKind): CodeStamp | null {
+  const key = bindingRoot(obj.bindingKey ?? "");
+  const serial = ctx.gs1.serialNumber?.trim() ?? "";
+  const stampChain = (obj.dataMatrixApplicationIdentifiers ?? obj.gs1128ApplicationIdentifiers) as string[] | undefined;
+
+  if (key === "barCode") return serial ? { value: serial, kind: "code128" } : null;
+  if (key === "qrCode") return serial ? { value: serial, kind: "qr" } : null;
+  if (key === "gs1128") {
+    const payload = gs1BarcodePayload("gs1128", ctx.gs1128ApplicationIdentifiers, ctx.gs1);
+    if (!payload.encodedValue) return null;
+    return payload.symbology === "gs1_128"
+      ? { value: payload.caption, kind: "gs1-128" }
+      : { value: payload.encodedValue, kind: "code128" };
+  }
+  if (key === "dataMatrix") {
+    const payload = gs1BarcodePayload("dataMatrix", stampChain, ctx.gs1);
+    return payload.symbology === "gs1_datamatrix" && payload.encodedValue.trim()
+      ? { value: payload.encodedValue, kind: "datamatrix" }
+      : null;
+  }
+  if (key === "dataMatrixUrl") {
+    const base = typeof obj.dataMatrixUrlBaseUrl === "string" ? obj.dataMatrixUrlBaseUrl : "";
+    const payload = gs1BarcodePayload("dataMatrixUrl", stampChain, { ...ctx.gs1, dataMatrixUrlBaseUrl: base });
+    return payload.symbology === "gs1_datamatrix_url" && payload.encodedValue.trim()
+      ? { value: payload.encodedValue, kind: "qr" }
+      : null;
+  }
+
+  const value = resolveStampText(obj, ctx);
+  return value ? { value, kind: fallbackKind } : null;
 }
 
 function asBomRows(record: LabelPrintRecord, obj: LabelLayoutObject): Array<{ name: string; qty: string }> {
@@ -371,8 +428,9 @@ function asBomRows(record: LabelPrintRecord, obj: LabelLayoutObject): Array<{ na
   }).filter((row) => row.name);
 }
 
-function imageSrc(obj: LabelLayoutObject, record: LabelPrintRecord): string {
-  const bound = bindRecordValue({ record, bindingKey: obj.bindingKey });
+function imageSrc(obj: LabelLayoutObject, ctx: StampContext): string {
+  const { record } = ctx;
+  const bound = bindingValue(ctx, obj.bindingKey);
   if (bound.startsWith("data:") || bound.startsWith("http")) return bound;
   const src = asString(obj.src) ?? "";
   if (src) return src;
@@ -404,12 +462,12 @@ async function defaultInlineImage(url: string): Promise<string | null> {
 async function stampHtml({
   obj,
   layout,
-  record,
+  ctx,
   inlineImage,
 }: {
   obj: LabelLayoutObject;
   layout: ParsedLabelLayout;
-  record: LabelPrintRecord;
+  ctx: StampContext;
   inlineImage: (url: string) => Promise<string | null>;
 }): Promise<string> {
   if (obj.visible === false) return "";
@@ -417,25 +475,30 @@ async function stampHtml({
   const box = objectBox(obj);
   const fill = asString(obj.fill) ?? "#111111";
   const align = asString(obj.textAlign) ?? "left";
-  const fontSize = obj.fontSize ?? 12;
+  const { record } = ctx;
+  const fontSize = (obj.fontSize ?? 12) * ctx.pxScale;
   const fontFamily = asString(obj.fontFamily) ?? "Helvetica, Arial, sans-serif";
   const fontWeight = obj.fontWeight ?? "normal";
   const fontStyle = asString(obj.fontStyle) ?? "normal";
 
   if (kind === "barcode" || kind === "gs1" || kind === "qr" || kind === "datamatrix" || kind === "upc") {
-    const value = resolveStampText(obj, record);
-    if (!value) return "";
-    const barcodeKind = inferBarcodeKind({
+    const fallbackKind = inferBarcodeKind({
       stampType: `${obj.stampType ?? ""} ${kind}`,
       barcodeFormat: obj.barcodeFormat,
-      value,
+      value: "",
     });
-    const svg = barcodeSvg({ kind: barcodeKind, value, fill });
+    const code = codeStamp(obj, ctx, fallbackKind);
+    if (!code) return "";
+    const kindForValue = code.kind === fallbackKind
+      ? inferBarcodeKind({ stampType: `${obj.stampType ?? ""} ${kind}`, barcodeFormat: obj.barcodeFormat, value: code.value })
+      : code.kind;
+    const svg = barcodeSvg({ kind: kindForValue, value: code.value, fill });
+    if (!svg) return "";
     return `<div class="digit-label-stamp" style="${boxStyle(box, layout)}">${svg}</div>`;
   }
 
   if (kind === "image" || kind === "logo" || kind === "photo") {
-    const src = await inlineImage(imageSrc(obj, record));
+    const src = await inlineImage(imageSrc(obj, ctx));
     if (!src) return "";
     return `<div class="digit-label-stamp" style="${boxStyle(box, layout)}"><img src="${escapeHtml(src)}" alt="" style="width:100%;height:100%;object-fit:contain"/></div>`;
   }
@@ -445,49 +508,48 @@ async function stampHtml({
     const cells = rows.map((row) =>
       `<tr><td>${escapeHtml(row.name)}</td><td style="text-align:right">${escapeHtml(row.qty)}</td></tr>`
     ).join("");
-    return `<div class="digit-label-stamp" style="${boxStyle(box, layout, `font:${fontSize}px/1.2 ${fontFamily};color:${fill}`)}"><table style="width:100%;border-collapse:collapse;font:inherit">${cells}</table></div>`;
+    return `<div class="digit-label-stamp" style="${boxStyle(box, layout, `font:${fontSize.toFixed(3)}px/1.2 ${fontFamily};color:${fill}`)}"><table style="width:100%;border-collapse:collapse;font:inherit">${cells}</table></div>`;
   }
 
   if (kind === "status") {
-    const value = resolveStampText(obj, record);
+    const value = resolveStampText(obj, ctx);
     if (!value) return "";
-    const extra = `display:flex;align-items:center;justify-content:center;border-radius:999px;background:${asString(obj.backgroundColor) ?? "#111"};color:#fff;font:${fontSize}px/1 ${fontFamily};padding:0 6px`;
+    const extra = `display:flex;align-items:center;justify-content:center;border-radius:999px;background:${asString(obj.backgroundColor) ?? "#111"};color:#fff;font:${fontSize.toFixed(3)}px/1 ${fontFamily};padding:0 ${(6 * ctx.pxScale).toFixed(3)}px`;
     return `<div class="digit-label-stamp" style="${boxStyle(box, layout, extra)}">${escapeHtml(value)}</div>`;
   }
 
   if (kind === "shape") {
     const type = (obj.type ?? "").toLowerCase();
     const stroke = asString(obj.stroke) ?? fill;
-    const strokeWidth = obj.strokeWidth ?? 1;
+    const strokeWidth = (obj.strokeWidth ?? 1) * ctx.pxScale;
     if (type === "line") {
       return `<div class="digit-label-stamp" style="${boxStyle(box, layout, `background:${stroke};height:${Math.max(strokeWidth, 1)}px`)}"></div>`;
     }
-    const radius = obj.rx ?? obj.ry ?? (type === "circle" ? 999 : 0);
+    const radius = (obj.rx ?? obj.ry ?? (type === "circle" ? 999 : 0)) * ctx.pxScale;
     const extra = `background:${asString(obj.fill) ?? "transparent"};border:${strokeWidth}px solid ${stroke};border-radius:${radius}px`;
     return `<div class="digit-label-stamp" style="${boxStyle(box, layout, extra)}"></div>`;
   }
 
-  const text = resolveStampText(obj, record);
+  const text = resolveStampText(obj, ctx);
   if (!text && kind !== "text") return "";
   const extra = [
-    `font-size:${fontSize}px`,
+    `font-size:${fontSize.toFixed(3)}px`,
+    `line-height:${asNumber(obj.lineHeight) ?? 1.16}`,
     `font-family:${fontFamily}`,
     `font-weight:${fontWeight}`,
     `font-style:${fontStyle}`,
     `color:${fill}`,
     `text-align:${align}`,
-    "display:flex",
-    "align-items:flex-start",
     "white-space:pre-wrap",
-    "overflow:hidden",
+    "overflow-wrap:anywhere",
   ].join(";");
-  return `<div class="digit-label-stamp" style="${boxStyle(box, layout, extra)}">${escapeHtml(text)}</div>`;
+  return `<div class="digit-label-stamp digit-label-text" style="${boxStyle(box, layout, extra)}">${escapeHtml(text)}</div>`;
 }
 
 function printCss(layout: ParsedLabelLayout): string {
   const w = layout.widthIn;
   const h = layout.heightIn;
-  return `@page{size:${w}in ${h}in;margin:0}html,body{margin:0;padding:0;background:#fff}*{box-sizing:border-box}.digit-label-page{width:${w}in;height:${h}in;position:relative;overflow:hidden;background:${layout.background};color:#111;page-break-after:always;break-after:page;-webkit-print-color-adjust:exact;print-color-adjust:exact}.digit-label-page:last-child{page-break-after:auto;break-after:auto}.digit-label-stamp{position:absolute;overflow:hidden}.digit-label-stamp svg,.digit-label-stamp img{display:block;width:100%;height:100%}`;
+  return `@page{size:${w}in ${h}in;margin:0}html,body{margin:0;padding:0;background:#fff}*{box-sizing:border-box}.digit-label-page{width:${w}in;height:${h}in;position:relative;overflow:hidden;background:${layout.background};color:#111;page-break-after:always;break-after:page;-webkit-print-color-adjust:exact;print-color-adjust:exact}.digit-label-page:last-child{page-break-after:auto;break-after:auto}.digit-label-stamp{position:absolute;overflow:hidden}.digit-label-text{overflow:visible;height:auto!important}.digit-label-stamp svg,.digit-label-stamp img{display:block;width:100%;height:100%}`;
 }
 
 export async function renderLabelPrintHtml({
@@ -497,8 +559,25 @@ export async function renderLabelPrintHtml({
   inlineImage = defaultInlineImage,
 }: RenderLabelPrintHtmlArgs): Promise<string> {
   const layout = parseLabelLayout(config);
+  const gs1128ApplicationIdentifiers = resolveGs1128Identifiers(
+    layout.objects,
+    Array.isArray(config.options) ? (config.options as Parameters<typeof resolveGs1128Identifiers>[1]) : null,
+  );
+  const normalized = normalizeLabelRecord(record);
+  const ctx: StampContext = {
+    record,
+    bindings: buildLabelBindings(record, { gs1128ApplicationIdentifiers }),
+    gs1: {
+      serialNumber: normalized.serialNumber,
+      inventory: normalized.inventory as Gs1Inventory,
+      item: normalized.item as Gs1Context["item"],
+      job: normalized.job as Gs1Context["job"],
+    },
+    gs1128ApplicationIdentifiers,
+    pxScale: (layout.widthIn * 96) / layout.canvasWidth,
+  };
   const stamps = (await Promise.all(
-    layout.objects.map((obj) => stampHtml({ obj, layout, record, inlineImage })),
+    layout.objects.map((obj) => stampHtml({ obj, layout, ctx, inlineImage })),
   )).join("");
   const count = Math.max(1, Math.min(50, Math.floor(copies) || 1));
   const pages = Array.from({ length: count }, () =>

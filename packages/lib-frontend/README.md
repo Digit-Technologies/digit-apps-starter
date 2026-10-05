@@ -98,6 +98,13 @@ QR as inline SVG. Native digit-web print stays on its own renderer; this is the
 studio-safe path. Look up the configuration query and permissions via Digit MCP
 before shipping.
 
+Values come from the record the way native print derives them: pass an inventory object
+with its `item` embedded (`{ item, ...inventory }`), or the full `{ inventory, item, org,
+job, purchaseOrder, shipment }` shape. Text, dates, weights, label # and lot are formatted for
+you, and the serial, GS1-128, GS1 Data Matrix and QR payloads are built from the record. Barcodes
+are drawn with `@bwip-js/browser`, the same encoder native uses. Text boxes grow with their
+content instead of clipping.
+
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
 

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { encodeCode128Values, inferBarcodeKind, barcodeSvg } from "./barcodes";
+import { inferBarcodeKind, barcodeSvg } from "./barcodes";
 import {
   bindRecordValue,
   labelPrintTitle,
@@ -10,35 +10,25 @@ import {
   renderLabelPrintHtml,
 } from "./render";
 
-test("encodeCode128Values checksum for ABC", () => {
-  const values = encodeCode128Values("ABC");
-  // Start B, A, B, C, checksum
-  assert.equal(values[0], 104);
-  assert.equal(values[1], 33);
-  assert.equal(values[2], 34);
-  assert.equal(values[3], 35);
-  assert.equal(values[4], (104 + 33 + 68 + 105) % 103);
-});
-
-test("GS1-128 prefixes FNC1", () => {
-  const values = encodeCode128Values("(01)12345678901231", { gs1: true });
-  assert.equal(values[0], 105); // Start C for digit-heavy payload
-  assert.equal(values[1], 102); // FNC1
-});
-
 test("inferBarcodeKind maps stamp types", () => {
   assert.equal(inferBarcodeKind({ stampType: "qrCode", value: "x" }), "qr");
   assert.equal(inferBarcodeKind({ stampType: "barcode", barcodeFormat: "GS1-128", value: "01" }), "gs1-128");
   assert.equal(inferBarcodeKind({ stampType: "barcode", value: "abc" }), "code128");
 });
 
-test("barcodeSvg returns inline svg", () => {
-  const svg = barcodeSvg({ kind: "code128", value: "SKU-1" });
-  assert.match(svg, /<svg /);
-  assert.match(svg, /<rect /);
-  const qr = barcodeSvg({ kind: "qr", value: "SKU-1" });
-  assert.match(qr, /<svg /);
-  assert.match(qr, /<path /);
+test("barcodeSvg returns inline svg for every symbology", () => {
+  for (const [kind, value] of [
+    ["code128", "SKU-1"],
+    ["gs1-128", "(01)00012345678905(21)891"],
+    ["qr", "SKU-1"],
+    ["datamatrix", "(01)00012345678905(10)LOT1(21)891"],
+    ["upc", "036000291452"],
+  ] as const) {
+    const svg = barcodeSvg({ kind, value });
+    assert.match(svg, /<svg /, kind);
+    assert.match(svg, /<path /, kind);
+  }
+  assert.equal(barcodeSvg({ kind: "code128", value: "  " }), "");
 });
 
 test("bindRecordValue walks dotted paths and item fallbacks", () => {

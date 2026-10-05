@@ -284,6 +284,23 @@ inline SVG barcodes/QR) then `AppHost.invoke("print", ...)`. Look up the configu
 `appPermissions` keys via Digit MCP; do not invent field names. Keep the designer
 itself native-only.
 
+`printLabel` derives every value the layout binds (item, SKU, lot, quantity, weights, dates,
+label #, serial, and the Code 128 / GS1-128 / Data Matrix / QR payloads) from the record the
+same way native print does. Pass the loaded records as they come from the API; do not format
+values or build barcode strings yourself. Query these fields (only ones `appPermissions` grants;
+a field you can't read prints blank):
+
+- inventory: `scanCodeNumber`, `scanCodeSerialNumber`, `lotNumber`, `createdAt`,
+  `expirationDate`, `grossWeight`, `tareWeight`, `quantityInStock`, `receivingStatus`, `notes`,
+  `tags { value }`, `scanCodeCategory { value }`, `customFields`
+- item (as `record.item`): `name`, `sku`, `gtin`, `defaultStockUom { symbol }`, `itemImages { url }`
+- optional, as `record.org`, `record.job`, `record.purchaseOrder`, `record.shipment`: only for
+  layouts that bind org / vendor / customer / job / shipment fields
+
+The `barCode`, `qrCode` and `detailSerialNumber` stamps print the inventory's serial
+(`scanCodeSerialNumber`), so a record without one prints no code there. Pass the configuration
+object whole (`layoutJson` plus any `options`); GS1-128 reads its application identifiers from it.
+
 #### Host-mediated actions (`AppHost.invoke`)
 
 Every host-mediated action goes through one generic call, `AppHost.invoke(method, params?)`

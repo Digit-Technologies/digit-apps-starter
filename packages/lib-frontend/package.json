@@ -9,8 +9,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@digit/lib-common": "file:../lib-common",
-    "uqr": "^0.1.3"
+    "@bwip-js/browser": "^4.11.1",
+    "@digit/lib-common": "file:../lib-common"
   },
   "peerDependencies": {
     "@emotion/react": "^11",
