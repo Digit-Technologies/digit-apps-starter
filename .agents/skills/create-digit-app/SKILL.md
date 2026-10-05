@@ -292,7 +292,10 @@ a field you can't read prints blank):
 
 - inventory: `scanCodeNumber`, `scanCodeSerialNumber`, `lotNumber`, `createdAt`,
   `expirationDate`, `grossWeight`, `tareWeight`, `quantityInStock`, `receivingStatus`, `notes`,
-  `tags { value }`, `scanCodeCategory { value }`, `customFields`
+  `tags { value }`, `scanCodeCategory { value }`, and `customFields { fieldId fieldName fieldType
+  fieldValueText fieldValueNumber fieldValueDate fieldValueDateTime fieldValueIdentifier
+  fieldValueOption { id value } fieldValueOptions { id value } }` (object fields need a
+  sub-selection; check the schema before writing the query)
 - item (as `record.item`): `name`, `sku`, `gtin`, `defaultStockUom { symbol }`, `itemImages { url }`
 - optional, as `record.org`, `record.job`, `record.purchaseOrder`, `record.shipment`: only for
   layouts that bind org / vendor / customer / job / shipment fields
