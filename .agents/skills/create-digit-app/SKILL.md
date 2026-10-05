@@ -297,8 +297,11 @@ a field you can't read prints blank):
   fieldValueOption { id value } fieldValueOptions { id value } }` (object fields need a
   sub-selection; check the schema before writing the query)
 - item (as `record.item`): `name`, `sku`, `gtin`, `defaultStockUom { symbol }`, `itemImages { url }`
-- optional, as `record.org`, `record.job`, `record.purchaseOrder`, `record.shipment`: only for
-  layouts that bind org / vendor / customer / job / shipment fields
+- `record.org` with `name`, `logo` and `addresses { addressLineOne addressLineTwo city state zip
+  country isShippingDefault }`: most layouts bind the org name or logo, so include it. Without it
+  the layout's stored placeholder text prints instead of the org name
+- optional, as `record.job`, `record.purchaseOrder`, `record.shipment`: only for layouts that bind
+  vendor / customer / job / shipment fields
 
 The `barCode`, `qrCode` and `detailSerialNumber` stamps print the inventory's serial
 (`scanCodeSerialNumber`), so a record without one prints no code there. Pass the configuration

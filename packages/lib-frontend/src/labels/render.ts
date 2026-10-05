@@ -12,6 +12,8 @@ import { barcodeSvg, inferBarcodeKind, type BarcodeKind } from "./barcodes";
 import { buildLabelBindings, normalizeLabelRecord } from "./bindings";
 import { gs1BarcodePayload, resolveGs1128Identifiers, type Gs1Context, type Gs1Inventory } from "./gs1";
 
+/** Native prints the field-name line at this size (document field label). */
+const FIELD_LABEL_FONT_SIZE = 10;
 const DEFAULT_WIDTH_IN = 4;
 const DEFAULT_HEIGHT_IN = 2;
 
@@ -281,6 +283,9 @@ function interpolateText(template: string, record: LabelPrintRecord): string {
 }
 
 function stampKind(obj: LabelLayoutObject): LabelStampType {
+  // A `customImage` stamp saved as a Textbox prints its text; only a real Image draws a picture.
+  if (obj.stampType === "customImage" && /textbox/i.test(obj.type ?? "")) return "text";
+  if (obj.stampType === "boundImage" || obj.stampType === "customImage") return "image";
   const token = `${obj.stampType ?? ""} ${obj.type ?? ""} ${obj.barcodeFormat ?? ""}`.toLowerCase();
   if (token.includes("gs1")) return "gs1";
   if (token.includes("datamatrix") || token.includes("data-matrix")) return "datamatrix";
@@ -430,6 +435,9 @@ function asBomRows(record: LabelPrintRecord, obj: LabelLayoutObject): Array<{ na
 
 function imageSrc(obj: LabelLayoutObject, ctx: StampContext): string {
   const { record } = ctx;
+  if (obj.stampType === "customImage") {
+    return asString(obj.imageUrl) ?? asString(obj.src) ?? "";
+  }
   const bound = bindingValue(ctx, obj.bindingKey);
   if (bound.startsWith("data:") || bound.startsWith("http")) return bound;
   const src = asString(obj.src) ?? "";
@@ -532,18 +540,47 @@ async function stampHtml({
 
   const text = resolveStampText(obj, ctx);
   if (!text && kind !== "text") return "";
+
+  // Fabric textboxes keep their natural width and are stretched by scaleX/scaleY.
+  const scaleX = obj.scaleX ?? 1;
+  const scaleY = obj.scaleY ?? 1;
+  const natural: Box = { ...box, width: Math.max(obj.width ?? 0, 1), height: Math.max(obj.height ?? 0, 1), angle: 0 };
+  const highContrast = obj.highContrast === true;
+  const background = asString(obj.backgroundColor) || (highContrast ? "#000000" : "");
+  const textColor = highContrast ? "#ffffff" : fill;
+  const transform = [box.angle ? `rotate(${box.angle}deg)` : "", scaleX !== 1 || scaleY !== 1 ? `scale(${scaleX},${scaleY})` : ""]
+    .filter(Boolean)
+    .join(" ");
+  const decoration = [obj.underline ? "underline" : "", obj.linethrough ? "line-through" : "", obj.overline ? "overline" : ""]
+    .filter(Boolean)
+    .join(" ");
   const extra = [
     `font-size:${fontSize.toFixed(3)}px`,
     `line-height:${asNumber(obj.lineHeight) ?? 1.16}`,
     `font-family:${fontFamily}`,
     `font-weight:${fontWeight}`,
     `font-style:${fontStyle}`,
-    `color:${fill}`,
+    `color:${textColor}`,
     `text-align:${align}`,
     "white-space:pre-wrap",
-    "overflow-wrap:anywhere",
-  ].join(";");
-  return `<div class="digit-label-stamp digit-label-text" style="${boxStyle(box, layout, extra)}">${escapeHtml(text)}</div>`;
+    // Fabric only splits inside a word when the stamp asks for it (`splitByGrapheme`).
+    `overflow-wrap:${obj.splitByGrapheme === true ? "anywhere" : "normal"}`,
+    transform ? `transform:${transform};transform-origin:0 0` : "",
+    background ? `background:${background}` : "",
+    // Fabric `padding` grows the painted box outward without moving the text.
+    highContrast ? `box-shadow:0 0 0 ${(6 * ctx.pxScale).toFixed(3)}px ${background}` : "",
+    decoration ? `text-decoration:${decoration}` : "",
+    asNumber(obj.charSpacing) ? `letter-spacing:${((asNumber(obj.charSpacing) ?? 0) / 1000).toFixed(4)}em` : "",
+  ].filter(Boolean).join(";");
+
+  // "Show field name" prints the field label as a small first line above the value.
+  const fieldLabel = asString(obj.fieldLabel) ?? asString(obj.fieldName) ?? "";
+  const bound = bindingValue(ctx, obj.bindingKey);
+  const captioned = obj.showFieldName === true && fieldLabel && bound;
+  const inner = captioned
+    ? `<div style="font-size:${(FIELD_LABEL_FONT_SIZE * ctx.pxScale).toFixed(3)}px">${escapeHtml(fieldLabel)}</div><div>${escapeHtml(bound)}</div>`
+    : escapeHtml(text);
+  return `<div class="digit-label-stamp digit-label-text" style="${boxStyle(natural, layout, extra)}">${inner}</div>`;
 }
 
 function printCss(layout: ParsedLabelLayout): string {

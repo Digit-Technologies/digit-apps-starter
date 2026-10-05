@@ -83,3 +83,23 @@ test("native-shaped layouts draw every barcode stamp and let text grow", async (
   assert.match(html, /\.digit-label-text\{overflow:visible;height:auto!important\}/);
   assert.doesNotMatch(html, /overflow:hidden;[^"]*Label #891/);
 });
+
+test("text keeps Fabric semantics: scale stretch, high-contrast bar, field caption, whole words", async () => {
+  const stamp = (extra: Record<string, unknown>) => ({
+    type: "Textbox", stampType: "text", left: 10, top: 10, width: 30, height: 15, fontSize: 12, ...extra,
+  });
+  const html = await renderLabelPrintHtml({
+    config: { layoutJson: { labelWidthIn: 4, labelHeightIn: 6, objects: [
+      stamp({ bindingKey: "item", scaleX: 1.5, scaleY: 1.25, fill: "#ffffff", highContrast: true }),
+      stamp({ bindingKey: "lotNumber", showFieldName: true, fieldLabel: "Lot number", top: 60 }),
+      stamp({ bindingKey: "internalSku", splitByGrapheme: true, top: 110 }),
+    ] } },
+    record: { ...inventory },
+  });
+  assert.match(html, /transform:scale\(1\.5,1\.25\);transform-origin:0 0/);
+  assert.match(html, /background:#000000/);
+  assert.match(html, /color:#ffffff/);
+  assert.match(html, /<div style="font-size:10\.000px">Lot number<\/div><div>LOT-7<\/div>/);
+  assert.match(html, /overflow-wrap:normal/);
+  assert.match(html, /overflow-wrap:anywhere/);
+});
