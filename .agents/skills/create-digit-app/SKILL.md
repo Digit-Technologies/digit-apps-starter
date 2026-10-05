@@ -305,7 +305,9 @@ a field you can't read prints blank):
 
 The `barCode`, `qrCode` and `detailSerialNumber` stamps print the inventory's serial
 (`scanCodeSerialNumber`), so a record without one prints no code there. Pass the configuration
-object whole (`layoutJson` plus any `options`); GS1-128 reads its application identifiers from it.
+object whole: select `layoutJson` and `options { key gs1128ApplicationIdentifiers }` (GS1-128 reads
+its application identifiers from `options`). Every object field needs a sub-selection, so check
+each one against the schema before you deploy.
 
 #### Host-mediated actions (`AppHost.invoke`)
 
