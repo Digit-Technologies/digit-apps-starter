@@ -44,7 +44,6 @@ export function LabelPreview({ className, style, config, record, copies, host }:
       clearTimeout(timer);
     };
     // inputKey carries the content of config / record / copies.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputKey, host]);
 
   return <div ref={ref} className={className} style={style} data-digit-label-preview="" />;
