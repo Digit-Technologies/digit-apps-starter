@@ -226,8 +226,7 @@ only; still upload the zip **unchanged**. Details:
   paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
   unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `AppErrorAlert` + label print helpers
-  (`printLabel` / `renderLabel` / `LabelPreview`). Pair hook `error` with
+- **Public surface:** hooks + theme + `AppErrorAlert` + `printLabel`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -265,43 +264,28 @@ Do not send PDF bytes to the print call. Download a PDF instead:
 `invoke("download", { filename, contentType: "application/pdf", data })`. Printing only
 accepts HTML and opens the browser print dialog.
 
-**Digit labels (inventory / item / container):** do not rebuild the native designer, and do not
-draw labels yourself. The host renders them with the same code native label print uses, so a
-studio label prints exactly like a native one. Load the label configuration and the records from
-the Digit API, then:
+**Digit labels (inventory and item):** do not rebuild the native designer, and do not draw labels
+yourself or load the records a label binds. Name the label and the record by id; the host loads
+both, renders them with the same code native label print uses, shows a preview and prints when the
+user confirms, so a studio label prints exactly like a native one.
 
 ```tsx
-import { LabelPreview, printLabel } from '@digit/lib-frontend';
+import { printLabel } from '@digit/lib-frontend';
 
-// config: the custom label configuration; record: what the label binds
-<LabelPreview config={config} record={record} />
-
-await printLabel({ title: 'Inventory Label', config, record, copies });
+// labelId: a custom label configuration; entityId: the inventory record or item it prints
+const printed = await printLabel({ labelId, entityType: 'inventory', entityId: inventory.id, copies });
 ```
 
-`printLabel` asks the host to render the label (`AppHost.invoke("renderLabel", ...)`) and then
-prints the result, so a host that predates `renderLabel` rejects like any other failure. Surface
-that with `AppErrorAlert`. A label with no composer `layoutJson` also rejects.
+`printLabel` resolves `true` once printing starts and `false` if the user closed the preview.
+Pass `preview: false` to open the browser print dialog directly. It rejects when the label has no
+composer `layoutJson`, doesn't match the record type, or can't be loaded, and on a host that
+predates `printLabel`; surface that with `AppErrorAlert`. The app never receives the rendered
+label or the record behind it, so there is nothing to preview inside the app.
 
-Pass the records as the API returns them; do not format values or build barcode strings. Select
-`layoutJson` and `options { key gs1128ApplicationIdentifiers }` on the configuration, plus
-`labelName labelWidth labelHeight`. `record` is `{ inventory, item, org }`, plus `job`,
-`purchaseOrder` or `shipment` for layouts that bind them. Query only fields `appPermissions`
-grants (a field you can't read prints blank):
-
-- `inventory`: `scanCodeNumber`, `scanCodeSerialNumber`, `lotNumber`, `createdAt`,
-  `expirationDate`, `grossWeight`, `tareWeight`, `quantityInStock`, `receivingStatus`, `notes`,
-  `tags { value }`, `scanCodeCategory { value }`, and `customFields { fieldId fieldName fieldType
-  fieldValueText fieldValueNumber fieldValueDate fieldValueDateTime fieldValueIdentifier
-  fieldValueOption { id value } fieldValueOptions { id value } }`
-- `item`: `name`, `sku`, `gtin`, `defaultStockUom { symbol }`, `itemImages { url }`, `customFields`
-  (same selection)
-- `org`: `name`, `logo`, `addresses { addressLineOne addressLineTwo city state zip country
-  isShippingDefault }`. Most layouts bind the org name or logo, so include it
-
-Every object field needs a sub-selection, so check each one against the schema before you deploy.
-The `barCode`, `qrCode` and serial stamps print `inventory.scanCodeSerialNumber`, so a record
-without one prints no code there.
+Look the label up through the Digit API: query the custom label configurations
+(`id labelName type isDefault`) and match `type` to the record. `inventory` takes `production`,
+`receiving` and `manual_inventory` labels; `item` takes `item` labels. Container and customer
+labels aren't supported. Check each field against the schema before you deploy.
 
 #### Host-mediated actions (`AppHost.invoke`)
 
@@ -424,7 +408,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, label helpers |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel` |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
