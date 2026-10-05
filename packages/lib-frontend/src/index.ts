@@ -33,21 +33,18 @@ export {
 } from "./api";
 export type { DigitResult } from "./api";
 
-// Label print HTML for AppHost.invoke("print", ...) (composer layoutJson + record → snapshot)
+// Labels designed in Sutton, rendered by the host (AppHost.invoke("renderLabel")) and printed
 export {
-  renderLabelPrintHtml,
+  renderLabel,
   printLabel,
   labelPrintTitle,
-  parseLabelLayout,
-  bindRecordValue,
   LabelPreview,
 } from "./labels";
 export type {
   LabelPrintConfig,
   LabelPrintRecord,
-  LabelLayoutObject,
-  ParsedLabelLayout,
-  RenderLabelPrintHtmlArgs,
+  RenderLabelArgs,
+  RenderedLabel,
   PrintLabelArgs,
   LabelPreviewProps,
 } from "./labels";

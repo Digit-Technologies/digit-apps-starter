@@ -9,7 +9,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@bwip-js/browser": "^4.11.1",
     "@digit/lib-common": "file:../lib-common"
   },
   "peerDependencies": {

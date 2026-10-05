@@ -115,9 +115,9 @@ const html = `
 await AppHost.invoke("print", { title: "Packing Slip 1042", html });
 ```
 
-For labels designed in Digit, prefer `printLabel` / `renderLabelPrintHtml` from
-`@digit/lib-frontend` instead of hand-building the layout. Those helpers turn API
-`layoutJson` plus the record into this same kind of snapshot.
+For labels designed in Sutton, use `printLabel` / `renderLabel` from `@digit/lib-frontend`
+instead of hand-building the layout. The host renders the label with the code native label print
+uses and returns this same kind of snapshot.
 
 Do not use `window.open`, `target="_blank"`, blob navigation, or print-window patterns.
 Never ask for more sandbox flags. For PDF bytes, call `invoke("download", ...)` with

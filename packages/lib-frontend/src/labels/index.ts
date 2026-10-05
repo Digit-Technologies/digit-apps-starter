@@ -1,11 +1,10 @@
-export { renderLabelPrintHtml, printLabel, labelPrintTitle, parseLabelLayout, bindRecordValue } from "./render";
+export { renderLabel, printLabel, labelPrintTitle } from "./render";
 export { LabelPreview } from "./LabelPreview";
 export type {
   LabelPrintConfig,
   LabelPrintRecord,
-  LabelLayoutObject,
-  ParsedLabelLayout,
-  RenderLabelPrintHtmlArgs,
+  RenderLabelArgs,
+  RenderedLabel,
   PrintLabelArgs,
 } from "./types";
 export type { LabelPreviewProps } from "./LabelPreview";

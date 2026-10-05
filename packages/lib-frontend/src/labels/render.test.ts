@@ -1,151 +1,71 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { inferBarcodeKind, barcodeSvg } from "./barcodes";
-import {
-  bindRecordValue,
-  labelPrintTitle,
-  parseLabelLayout,
-  printLabel,
-  renderLabelPrintHtml,
-} from "./render";
+import { labelPrintTitle, printLabel, renderLabel } from "./render";
 
-test("inferBarcodeKind maps stamp types", () => {
-  assert.equal(inferBarcodeKind({ stampType: "qrCode", value: "x" }), "qr");
-  assert.equal(inferBarcodeKind({ stampType: "barcode", barcodeFormat: "GS1-128", value: "01" }), "gs1-128");
-  assert.equal(inferBarcodeKind({ stampType: "barcode", value: "abc" }), "code128");
-});
+type Call = { method: string; params: Record<string, unknown> | undefined };
 
-test("barcodeSvg returns inline svg for every symbology", () => {
-  for (const [kind, value] of [
-    ["code128", "SKU-1"],
-    ["gs1-128", "(01)00012345678905(21)891"],
-    ["qr", "SKU-1"],
-    ["datamatrix", "(01)00012345678905(10)LOT1(21)891"],
-    ["upc", "036000291452"],
-  ] as const) {
-    const svg = barcodeSvg({ kind, value });
-    assert.match(svg, /<svg /, kind);
-    assert.match(svg, /<path /, kind);
-  }
-  assert.equal(barcodeSvg({ kind: "code128", value: "  " }), "");
-});
-
-test("bindRecordValue walks dotted paths and item fallbacks", () => {
-  const record = { item: { sku: "ABC-1" }, lotNumber: "L9" };
-  assert.equal(bindRecordValue({ record, bindingKey: "item.sku" }), "ABC-1");
-  assert.equal(bindRecordValue({ record, bindingKey: "sku" }), "ABC-1");
-  assert.equal(bindRecordValue({ record, bindingKey: "lotNumber" }), "L9");
-});
-
-test("parseLabelLayout reads composer layoutJson", () => {
-  const layout = parseLabelLayout({
-    layoutJson: JSON.stringify({
-      labelWidthIn: 3,
-      labelHeightIn: 2,
-      width: 900,
-      height: 600,
-      objects: [
-        {
-          type: "textbox",
-          stampType: "text",
-          bindingKey: "item.sku",
-          left: 10,
-          top: 12,
-          width: 200,
-          height: 24,
-          fontSize: 14,
-        },
-      ],
-    }),
-  });
-  assert.equal(layout.widthIn, 3);
-  assert.equal(layout.heightIn, 2);
-  assert.equal(layout.legacy, false);
-  assert.equal(layout.objects[0]?.bindingKey, "item.sku");
-});
-
-test("legacy fields stack when layoutJson is missing", () => {
-  const layout = parseLabelLayout({
-    fields: [
-      { key: "sku", label: "SKU", visible: true, fontSize: 12, barcode: true },
-    ],
-  });
-  assert.equal(layout.legacy, true);
-  assert.equal(layout.objects.length, 2);
-  assert.equal(layout.objects[1]?.stampType, "barcode");
-});
-
-test("renderLabelPrintHtml binds values and sizes the page", async () => {
-  const html = await renderLabelPrintHtml({
-    config: {
-      name: "FG ticket",
-      layoutJson: {
-        labelWidthIn: 4,
-        labelHeightIn: 2,
-        objects: [
-          {
-            type: "textbox",
-            stampType: "text",
-            bindingKey: "item.sku",
-            left: 20,
-            top: 20,
-            width: 200,
-            height: 30,
-            fontSize: 16,
-          },
-          {
-            type: "image",
-            stampType: "barcode",
-            bindingKey: "item.sku",
-            left: 20,
-            top: 60,
-            width: 240,
-            height: 48,
-          },
-        ],
+const fakeHost = (reply: (method: string) => unknown) => {
+  const calls: Call[] = [];
+  return {
+    calls,
+    host: {
+      invoke: async (method: string, params?: Record<string, unknown>) => {
+        calls.push({ method, params });
+        return reply(method);
       },
     },
-    record: { item: { sku: "WIDGET-9" } },
-    copies: 2,
+  };
+};
+
+const rendered = { html: "<section>label</section>", title: "Widget", widthIn: 4, heightIn: 6, copies: 1 };
+const config = { labelName: "Inventory", layoutJson: { objects: [] }, options: [] };
+
+test("renderLabel sends the host every key, as JSON strings, with null for the ones not given", async () => {
+  const { host, calls } = fakeHost(() => rendered);
+  const label = await renderLabel({ config, host });
+  assert.deepEqual(label, rendered);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].method, "renderLabel");
+  assert.deepEqual(calls[0].params, { template: JSON.stringify(config), record: null, copies: null, title: null });
+});
+
+test("renderLabel serializes the record, clamps copies and sanitizes the title", async () => {
+  const { host, calls } = fakeHost(() => rendered);
+  const record = { inventory: { scanCodeNumber: 891 }, item: { name: "Widget" } };
+  await renderLabel({ config, record, copies: 500, title: "Étiquette #1", host });
+  assert.deepEqual(calls[0].params, {
+    template: JSON.stringify(config),
+    record: JSON.stringify(record),
+    copies: 50,
+    title: "Etiquette 1",
   });
-  assert.match(html, /@page\{size:4in 2in/);
-  assert.match(html, /WIDGET-9/);
-  assert.equal(html.match(/<section class="digit-label-page">/g)?.length, 2);
-  assert.match(html, /<svg /);
-  assert.doesNotMatch(html, /<script/i);
+  await renderLabel({ config, copies: 0.4, host });
+  assert.equal(calls[1].params?.copies, 1);
+});
+
+test("renderLabel rejects when the host replies with no label", async () => {
+  const { host } = fakeHost(() => null);
+  await assert.rejects(renderLabel({ config, host }), /returned no label/);
+});
+
+test("renderLabel passes the host's rejection through", async () => {
+  const host = { invoke: async () => { throw new Error("This label has no composer layoutJson."); } };
+  await assert.rejects(renderLabel({ config, host }), /no composer layoutJson/);
+});
+
+test("printLabel renders on the host, then prints that snapshot", async () => {
+  const { host, calls } = fakeHost((method) => (method === "renderLabel" ? rendered : {}));
+  await printLabel({ config, host });
+  assert.deepEqual(calls.map((c) => c.method), ["renderLabel", "print"]);
+  assert.deepEqual(calls[1].params, { title: "Widget", html: "<section>label</section>" });
 });
 
 test("labelPrintTitle matches AppHost print title rules", () => {
-  assert.equal(labelPrintTitle({ name: "FG ticket #12" }), "FG ticket 12");
-  assert.equal(labelPrintTitle({ name: "***" }), "Label");
-  assert.ok(labelPrintTitle({ name: "A".repeat(200) }).length <= 119);
-});
-
-test("printLabel sends the rendered snapshot through host.invoke('print')", async () => {
-  const calls: Array<{ method: string; params: unknown }> = [];
-  await printLabel({
-    title: "Inventory Label",
-    config: {
-      layoutJson: {
-        labelWidthIn: 4,
-        labelHeightIn: 2,
-        objects: [
-          { type: "textbox", stampType: "text", bindingKey: "item.sku", left: 0, top: 0, width: 100, height: 20, fontSize: 12 },
-        ],
-      },
-    },
-    record: { item: { sku: "WIDGET-9" } },
-    host: {
-      invoke: async (method, params) => {
-        calls.push({ method, params });
-        return null;
-      },
-    },
-  });
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].method, "print");
-  const params = calls[0].params as { title: string; html: string };
-  assert.equal(params.title, "Inventory Label");
-  assert.match(params.html, /WIDGET-9/);
+  assert.equal(labelPrintTitle({ name: "Inventory Label" }), "Inventory Label");
+  assert.equal(labelPrintTitle({ name: "  ✨ " }), "Label");
+  assert.equal(labelPrintTitle({ name: "#42" }), "42");
+  assert.equal(labelPrintTitle({ name: "._-" }), "Label ._-");
+  assert.equal(labelPrintTitle({ name: "a".repeat(200) }).length, 119);
+  assert.equal(labelPrintTitle({ name: null, fallback: "Fallback" }), "Fallback");
 });

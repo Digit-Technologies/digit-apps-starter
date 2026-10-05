@@ -8,7 +8,7 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 
 Import from the package root only. Theme tokens, error parsers, and other modules
 under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
-`AppErrorAlert`, and the label print helpers (`printLabel`, `renderLabelPrintHtml`,
+`AppErrorAlert`, and the label helpers (`printLabel`, `renderLabel`,
 `LabelPreview`).
 
 ## Why a copy (not an import from digit-web)
@@ -71,39 +71,28 @@ The print document runs no JavaScript. Inline CSS and convert images or canvases
 `data:image/...` before calling `invoke("print", ...)`; remote `http(s)` assets do not load (print CSP
 is `img-src data:`). Keep the result under 10MB. Use `invoke("download", ...)` for PDF bytes.
 
-For inventory / item / container labels designed in Digit, do not rebuild the layout
-in the app. Load the configuration from the API and pass it through
-`renderLabelPrintHtml` / `printLabel`:
+For inventory / item / container labels designed in Sutton, do not rebuild the layout in the app.
+Load the label configuration and the records from the API and let the host render them with the
+same code native label print uses:
 
-```ts
-import { AppHost, printLabel, renderLabelPrintHtml } from "@digit/lib-frontend";
+```tsx
+import { LabelPreview, printLabel } from "@digit/lib-frontend";
+
+<LabelPreview config={labelConfiguration} record={{ inventory, item, org }} />
 
 await printLabel({
   title: "Inventory Label",
-  config: labelConfiguration, // includes layoutJson from the API
-  record: { item, ...inventory },
+  config: labelConfiguration, // layoutJson and options from the API
+  record: { inventory, item, org },
+  copies: 2,
 });
-
-// Or build the snapshot yourself:
-const html = await renderLabelPrintHtml({
-  config: labelConfiguration,
-  record: { item, ...inventory },
-});
-await AppHost.invoke("print", { title: "Inventory Label", html });
 ```
 
-`layoutJson` is the composer canvas blob Digit already stores. This helper binds
-`bindingKey`s onto that layout and emits `@page`-sized HTML with Code 128 / GS1-128 /
-QR as inline SVG. Native digit-web print stays on its own renderer; this is the
-studio-safe path. Look up the configuration query and permissions via Digit MCP
+`renderLabel` returns the printable `{ html, title, widthIn, heightIn, copies }` if you want to
+print it yourself with `AppHost.invoke("print", { title, html })`. `printLabel` and `renderLabel`
+call `AppHost.invoke("renderLabel", ...)`, so they reject on a host that doesn't offer it, and for a
+label with no composer `layoutJson`. Look up the configuration query and permissions via Digit MCP
 before shipping.
-
-Values come from the record the way native print derives them: pass an inventory object
-with its `item` embedded (`{ item, ...inventory }`), or the full `{ inventory, item, org,
-job, purchaseOrder, shipment }` shape. Text, dates, weights, label # and lot are formatted for
-you, and the serial, GS1-128, GS1 Data Matrix and QR payloads are built from the record. Barcodes
-are drawn with `@bwip-js/browser`, the same encoder native uses. Text boxes grow with their
-content instead of clipping.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.

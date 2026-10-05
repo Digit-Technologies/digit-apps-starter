@@ -227,7 +227,7 @@ only; still upload the zip **unchanged**. Details:
   unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
 - **Public surface:** hooks + theme + `AppErrorAlert` + label print helpers
-  (`printLabel` / `renderLabelPrintHtml`). Pair hook `error` with
+  (`printLabel` / `renderLabel` / `LabelPreview`). Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -265,49 +265,43 @@ Do not send PDF bytes to the print call. Download a PDF instead:
 `invoke("download", { filename, contentType: "application/pdf", data })`. Printing only
 accepts HTML and opens the browser print dialog.
 
-**Digit labels (inventory / item / container):** do not rebuild the native designer
-in the app. Load the label configuration from the Digit API (`layoutJson` plus the
-inventory/item record), then:
+**Digit labels (inventory / item / container):** do not rebuild the native designer, and do not
+draw labels yourself. The host renders them with the same code native label print uses, so a
+studio label prints exactly like a native one. Load the label configuration and the records from
+the Digit API, then:
 
-```ts
-import { printLabel } from '@digit/lib-frontend';
+```tsx
+import { LabelPreview, printLabel } from '@digit/lib-frontend';
 
-await printLabel({
-  title: 'Inventory Label',
-  config: labelConfiguration,
-  record: { item, ...inventory },
-});
+// config: the custom label configuration; record: what the label binds
+<LabelPreview config={config} record={record} />
+
+await printLabel({ title: 'Inventory Label', config, record, copies });
 ```
 
-`printLabel` calls `renderLabelPrintHtml` (composer layout → `@page`-sized HTML with
-inline SVG barcodes/QR) then `AppHost.invoke("print", ...)`. Look up the configuration query and
-`appPermissions` keys via Digit MCP; do not invent field names. Keep the designer
-itself native-only.
+`printLabel` asks the host to render the label (`AppHost.invoke("renderLabel", ...)`) and then
+prints the result, so a host that predates `renderLabel` rejects like any other failure. Surface
+that with `AppErrorAlert`. A label with no composer `layoutJson` also rejects.
 
-`printLabel` derives every value the layout binds (item, SKU, lot, quantity, weights, dates,
-label #, serial, and the Code 128 / GS1-128 / Data Matrix / QR payloads) from the record the
-same way native print does. Pass the loaded records as they come from the API; do not format
-values or build barcode strings yourself. Query these fields (only ones `appPermissions` grants;
-a field you can't read prints blank):
+Pass the records as the API returns them; do not format values or build barcode strings. Select
+`layoutJson` and `options { key gs1128ApplicationIdentifiers }` on the configuration, plus
+`labelName labelWidth labelHeight`. `record` is `{ inventory, item, org }`, plus `job`,
+`purchaseOrder` or `shipment` for layouts that bind them. Query only fields `appPermissions`
+grants (a field you can't read prints blank):
 
-- inventory: `scanCodeNumber`, `scanCodeSerialNumber`, `lotNumber`, `createdAt`,
+- `inventory`: `scanCodeNumber`, `scanCodeSerialNumber`, `lotNumber`, `createdAt`,
   `expirationDate`, `grossWeight`, `tareWeight`, `quantityInStock`, `receivingStatus`, `notes`,
   `tags { value }`, `scanCodeCategory { value }`, and `customFields { fieldId fieldName fieldType
   fieldValueText fieldValueNumber fieldValueDate fieldValueDateTime fieldValueIdentifier
-  fieldValueOption { id value } fieldValueOptions { id value } }` (object fields need a
-  sub-selection; check the schema before writing the query)
-- item (as `record.item`): `name`, `sku`, `gtin`, `defaultStockUom { symbol }`, `itemImages { url }`
-- `record.org` with `name`, `logo` and `addresses { addressLineOne addressLineTwo city state zip
-  country isShippingDefault }`: most layouts bind the org name or logo, so include it. Without it
-  the layout's stored placeholder text prints instead of the org name
-- optional, as `record.job`, `record.purchaseOrder`, `record.shipment`: only for layouts that bind
-  vendor / customer / job / shipment fields
+  fieldValueOption { id value } fieldValueOptions { id value } }`
+- `item`: `name`, `sku`, `gtin`, `defaultStockUom { symbol }`, `itemImages { url }`, `customFields`
+  (same selection)
+- `org`: `name`, `logo`, `addresses { addressLineOne addressLineTwo city state zip country
+  isShippingDefault }`. Most layouts bind the org name or logo, so include it
 
-The `barCode`, `qrCode` and `detailSerialNumber` stamps print the inventory's serial
-(`scanCodeSerialNumber`), so a record without one prints no code there. Pass the configuration
-object whole: select `layoutJson` and `options { key gs1128ApplicationIdentifiers }` (GS1-128 reads
-its application identifiers from `options`). Every object field needs a sub-selection, so check
-each one against the schema before you deploy.
+Every object field needs a sub-selection, so check each one against the schema before you deploy.
+The `barCode`, `qrCode` and serial stamps print `inventory.scanCodeSerialNumber`, so a record
+without one prints no code there.
 
 #### Host-mediated actions (`AppHost.invoke`)
 
