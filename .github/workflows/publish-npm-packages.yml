@@ -1,8 +1,10 @@
 name: Publish NPM packages
 
+# Manual only. Automatic publish runs in release-please.yml when
+# releases_created is true. A `release: published` trigger does not run here:
+# Release Please creates releases with GITHUB_TOKEN, and GitHub does not start
+# workflows from events that token produces.
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       dry_run:

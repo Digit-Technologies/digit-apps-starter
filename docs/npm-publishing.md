@@ -17,8 +17,9 @@ to wire authentication for the **`heysutton`** npm org in GitHub Actions. Pick o
 | **OIDC trusted publishing** | npm trusted publisher for `Digit-Technologies/digit-apps-starter` on the `heysutton` org (GitHub Actions OIDC). The workflow already sets `id-token: write` for provenance. Trusted publishing is **not configured** on npm or in the job today — wiring it means Sean links the repo/workflow on npm and updates the publish step so it no longer depends on a long-lived token. |
 
 Until one of those is done, `workflow_dispatch` with the default **`dry_run: true`** is the only
-safe Actions path. A `release: published` event would fail closed without `NPM_TOKEN`. This
-repo does not contain a token.
+safe Actions path. Merging a Release Please PR runs the publish job in
+[`release-please.yml`](../.github/workflows/release-please.yml) only when `releases_created`
+is `true`; that job fails closed without `NPM_TOKEN`. This repo does not contain a token.
 
 ## Packages
 
@@ -76,31 +77,45 @@ so Release Please can infer semver bumps (`feat:` → minor, `fix:` → patch, `
 
 ## Publish workflow (release time only)
 
-The `publish-npm-packages` workflow is **not** wired to run on every merge. It runs when:
+Day-to-day pushes to `main` run Release Please and do **not** publish to npm. A real
+publish is a second job in [`release-please.yml`](../.github/workflows/release-please.yml).
+That job runs only when Release Please sets `releases_created` to `true` (the Release PR
+was merged and GitHub releases were created). Feature merges leave `releases_created`
+false, and the publish job is skipped.
 
-1. A GitHub **Release** is published (typically by Release Please after the Release PR merges), or
-2. A maintainer triggers **workflow_dispatch** (defaults to `dry_run: true`).
+Release Please creates those releases with `secrets.GITHUB_TOKEN`. GitHub does not start
+a separate workflow on `release: published` for events that token produces, so publish
+is not wired to that event. [`publish-npm-packages.yml`](../.github/workflows/publish-npm-packages.yml)
+is manual `workflow_dispatch` only (default `dry_run: true`).
 
-Steps:
+The publish job sets `permissions: id-token: write` and `contents: read`.
+`npm publish --provenance` needs the Actions OIDC token; without `id-token: write` the
+first real publish fails.
+
+Steps (automatic job, and the manual workflow):
 
 1. Install dependencies from the repo root (`npm ci`).
 2. `npm run build:packages` — compile TS libraries to `dist/` (`lib-build` ships plain JS from `src/`).
 3. `npm run verify:packages` — smoke-test that `hello-world` still packs.
 4. For each package under `packages/*` with a `"name": "@heysutton/..."`:
-   - `npm publish --dry-run --access public` when `dry_run=true`
-   - `npm publish --provenance --access public` when `dry_run=false`
+   - `npm publish --dry-run --access public` when `dry_run=true` (manual workflow only)
+   - `npm publish --provenance --access public` when publishing for real
 
 Scoped packages require an explicit `--access public` on first publish (also set in each
 package's `publishConfig.access`). CI and local dry-runs use the same flag so publish
 behavior matches release time.
 
+Pull requests and pushes to `main` also run [`test-lib-frontend.yml`](../.github/workflows/test-lib-frontend.yml)
+(`npm test -w @heysutton/lib-frontend`), which covers the shared UI wrappers.
+
 ### Who triggers publish?
 
 | Step | Actor |
 | --- | --- |
-| Day-to-day merges to `main` | Release Please bot (opens Release PR only) |
-| Merge Release PR | Maintainer (creates GitHub release + tag) |
-| NPM publish | GitHub Actions on `release: published`, using `NPM_TOKEN` |
+| Day-to-day merges to `main` | Release Please bot (opens Release PR only; `releases_created` is false, so no npm publish) |
+| Merge Release PR | Maintainer. Release Please creates the GitHub release and tags, then the **same workflow** publishes to npm |
+| NPM publish | `release-please.yml` job `publish`, gated on `releases_created == 'true'`, using `NPM_TOKEN` and `id-token: write` |
+| Manual dry-run or emergency republish | `publish-npm-packages.yml` via `workflow_dispatch` |
 
 Use workflow_dispatch with `dry_run: false` only for emergency republish/debug after the
 Release exists.
@@ -161,7 +176,7 @@ npm publish --dry-run --access public -w @heysutton/lib-common
 
 | Setting | Value |
 | --- | --- |
-| **Secret name** | `NPM_TOKEN` (must match [`.github/workflows/publish-npm-packages.yml`](../.github/workflows/publish-npm-packages.yml) — workflow maps it to `NODE_AUTH_TOKEN`) |
+| **Secret name** | `NPM_TOKEN` (must match the publish job in [`.github/workflows/release-please.yml`](../.github/workflows/release-please.yml) and the manual [`.github/workflows/publish-npm-packages.yml`](../.github/workflows/publish-npm-packages.yml) — both map it to `NODE_AUTH_TOKEN`) |
 | **Secret value** | The npm token from step 2 |
 
 **Where to store it:**
@@ -176,34 +191,33 @@ npm publish --dry-run --access public -w @heysutton/lib-common
 
 ### 4. Publish workflow gates (dry-run vs real)
 
-Two workflows chain together; only the second touches npm.
+Release Please and npm publish are one workflow. The publish job is skipped unless
+`releases_created` is true. The manual workflow never runs from a GitHub Release event.
 
 ```mermaid
 flowchart LR
   merge[Merge to main] --> rp[release-please.yml]
-  rp --> rpr[Release PR opened/updated]
-  rpr --> mergeRP[Maintainer merges Release PR]
-  mergeRP --> ghRel[GitHub Release published]
-  ghRel --> pub[publish-npm-packages.yml real publish]
+  rp --> gate{releases_created}
+  gate -->|false| rpr[Release PR opened or updated]
+  gate -->|true| pub["publish job: npm publish --provenance"]
   manual[workflow_dispatch] --> dry{dry_run input}
   dry -->|true default| dryRun[npm publish --dry-run]
-  dry -->|false| pub
+  dry -->|false| emergency[emergency republish]
 ```
 
-| Trigger | Workflow | `DRY_RUN` | npm registry |
-| --- | --- | --- | --- |
-| Push to `main` | `release-please.yml` | n/a | **No publish** — opens/updates Release PR only |
-| Merge Release Please PR | `release-please.yml` (via GitHub Release) | n/a | Creates GitHub Release + tags; **does not** publish to npm by itself |
-| **`release: published`** | `publish-npm-packages.yml` | `false` | **Real publish** — requires `NPM_TOKEN` |
-| **`workflow_dispatch`** (default) | `publish-npm-packages.yml` | `true` | **Dry-run only** — safe to run without `NPM_TOKEN` |
-| **`workflow_dispatch`** (`dry_run: false`) | `publish-npm-packages.yml` | `false` | **Real publish** — emergency/debug; requires `NPM_TOKEN` |
+| Trigger | Workflow | npm registry |
+| --- | --- | --- |
+| Push to `main`, no release created | `release-please.yml` | **No publish** — `releases_created` is false; publish job skipped |
+| Merge Release Please PR | `release-please.yml` job `publish` | **Real publish** — requires `NPM_TOKEN` and `id-token: write` |
+| **`workflow_dispatch`** (default) | `publish-npm-packages.yml` | **Dry-run only** — safe to run without `NPM_TOKEN` |
+| **`workflow_dispatch`** (`dry_run: false`) | `publish-npm-packages.yml` | **Real publish** — emergency/debug; requires `NPM_TOKEN` |
 
 **Recommended validation order after adding `NPM_TOKEN`:**
 
 1. Actions → **Publish NPM packages** → **Run workflow** → leave **dry_run: true** → confirm build + dry-run passes.
-2. Merge the first Release Please PR (or publish a GitHub Release manually for bootstrap) → confirm **`release: published`** job succeeds and packages appear on npm.
+2. Merge the first Release Please PR → confirm the **`publish` job in the Release Please workflow** succeeds and packages appear on npm. That job is in the same run as Release Please. A `release: published` workflow will not start, because the release was created with `GITHUB_TOKEN`.
 
-**Release Please gate:** day-to-day feature merges do **not** publish. Only merging the **Release PR** (or an explicit GitHub Release) triggers a real npm upload.
+**Release Please gate:** day-to-day feature merges do **not** publish. Only a run where Release Please sets `releases_created` to true uploads to npm. Creating a GitHub Release by hand does not publish; use `workflow_dispatch` with `dry_run: false` for that case.
 
 ### 5. First-publish checklist
 
