@@ -29,7 +29,7 @@ that toolchain into the **workspace root** `node_modules`, not the app's — so 
 
 | Input | Output |
 | --- | --- |
-| `src/frontend/main.tsx` | `frontend/index.js` (IIFE — the entry, by convention) |
+| `src/frontend/main.tsx` | `frontend/index.js` (IIFE — the entry) plus `frontend/assets/` (self-hosted Inter) |
 | `src/backend/index.js` (optional) | `backend/index.js` (+ `backend/migrations/*.sql`) |
 | Root `manifest.json` | `manifest.json` at the zip root |
 | `SPEC.md` + source/tooling | `project/` inside `app.zip` (vendored `@digit/lib-*`) |

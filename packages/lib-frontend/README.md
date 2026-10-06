@@ -16,8 +16,31 @@ under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
 agents and customers can build Digit-looking apps without access to the web
 monorepo.
 
-When web theme changes, update the files under `src/` (manual PR or sync script
-from the private repo) — do not reintroduce imports from private packages.
+When web theme changes, update the files under `src/theme` from that branch —
+do not reintroduce imports from private packages, and do not edit the shared
+tokens here without recording the reason below.
+
+### Intentional diffs from digit-web
+
+Source of truth: `digit-web` `staging`, `src/providers/AppThemeProvider` plus
+`src/constants/colors.ts`, `shadows.ts`, `transitions.ts`, and
+`theme-extensions.ts`.
+
+- `DigitThemeProvider` replaces `AppThemeProvider`. It follows `AppHost` theme
+  settings. It does not use web’s view-mode storage, Lucide provider, or Clerk.
+  It does restore the autofill `@keyframes` web puts on the provider, because
+  `MuiInputBase` sets `disableInjectingGlobalStyles`.
+- `cssVariables.ts` is starter-only (`data-theme` on `<html>`).
+- `mobileScaleFactor` is its own module. The value matches web (`1.25`).
+- Typography variant augmentations live in `types.ts`. Web declares
+  `TypographyPropsVariantOverrides` on the provider module.
+- `MuiMenu` uses MUI 9 `slotProps.backdrop`. Web’s `BackdropProps` prop is not
+  on MUI 9. Both hide the menu backdrop.
+- Left on web (private or host-only): Clerk rules in `MuiCssBaseline`,
+  detail-inset form styles, `MuiPickers*`, and the `MuiAlert` warning icon that
+  renders `IconWrapper`.
+- Inter loads from `inter-ui/inter-variable.css` (`inter-ui@4.1.1`, same
+  package as digit-web). Pack rewrites the font files to `/app/assets/…`.
 
 ## Theme usage
 
@@ -140,5 +163,6 @@ so peers resolve from the app’s `node_modules` when the package is linked via 
 
 See also [`@digit/lib-backend`](../lib-backend) for Worker helpers.
 
-Styling is MUI + `DigitThemeProvider` only — do not add parallel CSS variable themes.
-The Digit harness may inject Inter on the shell HTML.
+Styling is MUI + `DigitThemeProvider` only — do not add a parallel CSS design
+system or restyle MUI from scratch. `DigitThemeProvider` bundles self-hosted
+Inter (`inter-ui`). Do not add a font CDN `<link>`.

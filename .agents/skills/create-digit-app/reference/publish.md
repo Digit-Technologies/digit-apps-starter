@@ -84,7 +84,8 @@ Upload **`app.zip` as produced**:
 app.zip
 ├── manifest.json
 ├── frontend/
-│   └── index.js
+│   ├── index.js
+│   └── assets/          # self-hosted Inter; served at /app/assets/
 ├── backend/                  # when manifest.backend is set
 │   ├── index.js
 │   └── migrations/
