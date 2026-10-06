@@ -38,6 +38,12 @@ lib-frontend, lib-backend
 lib-build (standalone tooling)
 ```
 
+`lib-frontend` and `lib-backend` depend on `@heysutton/lib-common` with a plain
+version, `"1.0.0"`. That is what gets published. Do not use `file:` or
+`workspace:` in those dependency fields: npm does not rewrite `workspace:` on
+publish, and `file:` breaks registry installs. npm workspaces still link the
+local package during monorepo installs because the version matches.
+
 ## Versioning — Release Please (manifest mode, grouped)
 
 We use [Release Please](https://github.com/googleapis/release-please) in **manifest mode**

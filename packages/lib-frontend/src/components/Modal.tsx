@@ -128,6 +128,8 @@ export function Modal({
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down("md"))
   const descriptionId = useId()
+  const titleId = useId()
+  const mainCtaButtonId = useId()
 
   const horizontalPadding = MODAL_HORIZONTAL_PADDING
 
@@ -190,7 +192,7 @@ export function Modal({
   return (
     <Dialog
       aria-describedby={hasError ? descriptionId : undefined}
-      aria-labelledby="scroll-dialog-title"
+      aria-labelledby={titleId}
       data-testid="dialog"
       onClose={(_event, reason) => {
         if (disableEscapeKeyDown && reason === "escapeKeyDown") return
@@ -233,7 +235,7 @@ export function Modal({
       }}
     >
       <DialogTitle
-        id="scroll-dialog-title"
+        id={titleId}
         sx={{
           alignItems: "center",
           display: "flex",
@@ -324,6 +326,7 @@ export function Modal({
           {menuButtonOptions ? (
             <>
               <Button
+                id={mainCtaButtonId}
                 color={danger ? "error" : buttonColor}
                 disabled={disabled}
                 startIcon={mainCtaButtonStartIcon}
@@ -345,7 +348,7 @@ export function Modal({
                 onClose={handleClose}
                 slotProps={{
                   list: {
-                    "aria-labelledby": "modal-main-cta-button",
+                    "aria-labelledby": mainCtaButtonId,
                   },
                 }}
               >

@@ -25,17 +25,19 @@
       "import": "./dist/index.js"
     }
   },
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@heysutton/lib-common": "file:../lib-common",
-    "@hookform/error-message": "^2.0.1",
+    "@heysutton/lib-common": "1.0.0",
     "currency-symbol-map": "^5.1.0",
     "inter-ui": "4.1.1",
-    "lucide-react": "^1.21.0",
-    "react-hook-form": "^7.82.0"
+    "lucide-react": "^1.21.0"
   },
   "peerDependencies": {
     "@emotion/react": "^11",
@@ -55,7 +57,13 @@
     }
   },
   "devDependencies": {
+    "@hookform/error-message": "^2.0.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19",
-    "typescript": "^7.0.2"
+    "jsdom": "^26.1.0",
+    "react-hook-form": "^7.82.0",
+    "typescript": "^7.0.2",
+    "vitest": "^3.2.4"
   }
 }

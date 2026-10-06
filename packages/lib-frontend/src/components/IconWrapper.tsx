@@ -13,6 +13,11 @@ export interface IconWrapperProps {
   size?: number
   sx?: SxProps<Theme>
   testId?: string
+  /**
+   * Decorative by default. Set false only when the icon itself is the
+   * accessible name (the parent control has no text or aria-label).
+   */
+  ariaHidden?: boolean
 }
 
 type IconElementProps = {
@@ -34,9 +39,11 @@ export function IconWrapper({
   color,
   testId,
   sx,
+  ariaHidden = true,
 }: IconWrapperProps) {
   return (
     <Box
+      aria-hidden={ariaHidden}
       sx={{
         color: (theme) => {
           if (typeof color === "string") return color

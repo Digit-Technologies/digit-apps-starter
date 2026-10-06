@@ -453,7 +453,7 @@ export function InputTextField({
               autoComplete="off"
               data-testid="textfield-input"
               disabled={disabled}
-              error={Boolean(fieldErrors[name])}
+              error={Boolean(fieldError)}
               multiline={multiline}
               onKeyDown={onKeyDown}
               placeholder={placeholder}

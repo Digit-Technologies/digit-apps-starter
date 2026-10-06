@@ -110,8 +110,10 @@ from `@heysutton/lib-frontend` (this package once published):
 | `IconWrapper` | Size, color, and Lucide stroke (`1.25`) for an icon. |
 | `InvisibleButton` | Accessible link-styled actions. |
 
-`InputTextField` needs `react-hook-form` and `@hookform/error-message` (optional
-peers; also dependencies of this package so the field resolves). Detail-inset
+`InputTextField` needs `react-hook-form` and `@hookform/error-message` as
+optional peers. They are not dependencies of this package, so an app that
+uses the field installs them once and the form context stays a single copy.
+Detail-inset
 helpers (`getDetailInsetProps`, `resolveDetailInsetMode`,
 `detailInsetGlobalStyleOverrides`, and the `detailInset*` / `detailPaper*` style
 objects) are exported from the package root.
