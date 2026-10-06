@@ -1,6 +1,7 @@
 import { AppErrorCode, type AppErrorCode as AppErrorCodeType } from '@digit/lib-common';
 import { WorkerEntrypoint } from 'cloudflare:workers';
 
+import { digitApi, type DigitApi } from './digit';
 import { runJobHandler, type JobHandlers, type JobInvocation } from './jobs';
 import { err } from './respond';
 import {
@@ -40,6 +41,8 @@ export type HandlerFetchArgs = {
   env: unknown;
   /** Cloudflare `ExecutionContext` (`waitUntil`, …) — not an application context bag. */
   ctx: unknown;
+  /** The Digit API, acting as the user this request is for. */
+  digit: DigitApi;
 };
 
 export type FetchHandler = (args: HandlerFetchArgs) => Response | Promise<Response>;
@@ -155,7 +158,12 @@ export function createHandler({ fetch: handleFetch, jobs, webhooks }: CreateHand
   return class extends WorkerEntrypoint {
     async fetch(request: Request): Promise<Response> {
       try {
-        return await handleFetch({ request, env: this.env, ctx: this.ctx });
+        return await handleFetch({
+          request,
+          env: this.env,
+          ctx: this.ctx,
+          digit: digitApi({ env: this.env, request }),
+        });
       } catch (error) {
         if (error instanceof HandlerError) {
           return err({
@@ -174,7 +182,13 @@ export function createHandler({ fetch: handleFetch, jobs, webhooks }: CreateHand
     }
 
     async triggerJob(invocation: JobInvocation): Promise<unknown> {
-      return runJobHandler({ invocation, env: this.env, ctx: this.ctx, jobs: jobs ?? {} });
+      return runJobHandler({
+        invocation,
+        env: this.env,
+        ctx: this.ctx,
+        digit: digitApi({ env: this.env }),
+        jobs: jobs ?? {},
+      });
     }
 
     async triggerWebhook(invocation: WebhookInvocation): Promise<WebhookResponse> {
@@ -183,6 +197,7 @@ export function createHandler({ fetch: handleFetch, jobs, webhooks }: CreateHand
           invocation,
           env: this.env,
           ctx: this.ctx,
+          digit: digitApi({ env: this.env }),
           webhooks: webhooks ?? {},
         });
       } catch (error) {
