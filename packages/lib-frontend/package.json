@@ -1,15 +1,39 @@
 {
-  "name": "@digit/lib-frontend",
-  "version": "0.1.0",
-  "private": true,
+  "name": "@heysutton/lib-frontend",
+  "version": "1.0.0",
+  "description": "Digit custom app host bridge, API hooks, and AppErrorAlert. DigitThemeProvider is a temporary re-export; theme and UI source of truth is @heysutton/ui from digit-web (not published from this repo).",
+  "license": "MIT",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Digit-Technologies/digit-apps-starter.git",
+    "directory": "packages/lib-frontend"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@digit/lib-common": "file:../lib-common",
+    "@heysutton/lib-common": "1.0.0",
     "inter-ui": "4.1.1"
   },
   "peerDependencies": {

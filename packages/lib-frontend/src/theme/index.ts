@@ -1,6 +1,8 @@
 /**
- * Theme module. Public apps should import `DigitThemeProvider` from
- * `@digit/lib-frontend` only.
+ * Temporary vendored theme. Public starter apps import `DigitThemeProvider`
+ * from `@heysutton/lib-frontend` until they depend on `@heysutton/ui`.
+ * Do not add design-system wrappers here. `@heysutton/ui` (digit-web) is the
+ * source of truth and is not published from this repo.
  */
 export { DigitThemeProvider } from "./DigitThemeProvider"
 export { themeOptions, mobileScaleFactor } from "./themeOptions"

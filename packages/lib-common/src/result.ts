@@ -1,4 +1,4 @@
-import type { AppErrorDetail } from './codes';
+import type { AppErrorDetail } from './codes.js';
 
 /** Standard JSON success body returned by app Workers. */
 export type SuccessResult<T = unknown> = {

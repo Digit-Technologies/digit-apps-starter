@@ -2,7 +2,7 @@
 name: create-digit-app
 description: >-
   Build, preview, and publish Digit custom apps (React + MUI + Digit theme via
-  @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
+  @heysutton/lib-frontend, optional Cloudflare Worker backends via @heysutton/lib-backend,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Digit app, editing an app in a local clone
@@ -19,16 +19,20 @@ mount targets, stacks, or publish flows, and do not build features the iframe ca
 support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.). The
 host can do some of these on the app's behalf (scanning, for example), so call
 `getHostCapabilities` before telling the user a feature can't be built.
-Use `AppHost.invoke` from `@digit/lib-frontend` for every host-mediated action:
+Use `AppHost.invoke` from `@heysutton/lib-frontend` for every host-mediated action:
 `invoke("download", ...)` for files, `invoke("print", ...)` for printable HTML. `window.DigitHost`
 (including its `download` and `print`) is deprecated — migrate it to `AppHost` in any file you
 touch. See
 [reference/iframe-constraints.md](reference/iframe-constraints.md).
 
-**Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
+**Default stack (required):** React + MUI + `@heysutton/lib-frontend` (`DigitThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
-package. Users are often non-developers — one path keeps apps looking and behaving
-like Digit.
+provider. Users are often non-developers — one path keeps apps looking and behaving
+like Digit. Theme and UI source of truth is `@heysutton/ui` from digit-web. This
+starter does not publish that package. `DigitThemeProvider` in
+`@heysutton/lib-frontend` is a temporary vendored copy for the starter zip — keep
+using it here, and do not add `Modal` / `InputTextField` / `IconWrapper` /
+`InvisibleButton` wrappers to this package.
 
 **Digit platform tools are required.** Use Digit MCP for standalone schema lookup,
 permissions, app discovery, and publishing. When this skill runs inside Digit App Builder,
@@ -113,15 +117,15 @@ npm run new-app -- my-app       # copies examples/full-featured → apps/my-app
 do not invent a new project shape.
 
 The template covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API, secrets,
-D1 via the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Keep the
-`@digit/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
+D1 via the Worker (`useBackendQuery` / `@heysutton/lib-backend`), and env config. Keep the
+`@heysutton/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
 configs, a local pack script, or a per-app `npm install`.
 
-**Always install from the repo root.** `@digit/lib-build` is a `file:` link, so npm puts
+**Always install from the repo root.** `@heysutton/lib-build` is a `file:` link, so npm puts
 its build toolchain (Vite) in the root `node_modules`, not the app's. Running `npm install`
 only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
-All apps share React + MUI + `@digit/lib-frontend` and the same folder conventions.
+All apps share React + MUI + `@heysutton/lib-frontend` and the same folder conventions.
 There is no local Digit runtime preview (Worker, env/secrets, and D1 are platform-injected).
 `npm run pack` produces the same channel-neutral `app.zip` for a remote preview or a live
 deployment.
@@ -176,7 +180,7 @@ then resolve its `id` with MCP **`apps`** (or have the user paste it).
 
 ```
 apps/my-app/
-├── package.json            # @digit/lib-* ; "pack": "digit-app pack"
+├── package.json            # @heysutton/lib-* ; "pack": "digit-app pack"
 ├── manifest.json           # staged at zip root by digit-app pack
 ├── SPEC.md
 ├── src/frontend/           # main.tsx → #root + DigitThemeProvider; App.tsx
@@ -185,7 +189,7 @@ apps/my-app/
 └── backend/                # BUILD when Worker present — gitignored
 ```
 
-Edit `src/frontend` and `src/backend` only. Harness types come from `@digit/lib-frontend`
+Edit `src/frontend` and `src/backend` only. Harness types come from `@heysutton/lib-frontend`
 — no local `digit.d.ts`. Prefer data hooks over calling `window.AppProxy`.
 
 ```bash
@@ -193,7 +197,7 @@ npm run pack -w apps/my-app     # from repo root → app.zip
 ```
 
 `app.zip` has root `manifest.json`, `frontend/` (+ `backend/` when declared), and
-`project/` (source + vendored `@digit/lib-*`). Digit deploys `frontend/` / `backend/`
+`project/` (source + vendored `@heysutton/lib-*`). Digit deploys `frontend/` / `backend/`
 only; still upload the zip **unchanged**. Details:
 [reference/manifest.md](reference/manifest.md), [reference/publish.md](reference/publish.md).
 
@@ -216,7 +220,7 @@ only; still upload the zip **unchanged**. Details:
   restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
-- **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
+- **Entry is IIFE `frontend/index.js`.** `@heysutton/lib-build` packs it — no alternate bundler.
 - **Digit API:** `useDigitApiQuery` / `useDigitApiMutation`. Look up operations via
   `graphql-schema://…` first. Never call Digit GraphQL with a bearer token from the browser.
 - **Sort / filter / page via the API:** When the GraphQL field (or backend route) accepts
@@ -268,7 +272,7 @@ accepts HTML and opens the browser print dialog.
 #### Host-mediated actions (`AppHost.invoke`)
 
 Every host-mediated action goes through one generic call, `AppHost.invoke(method, params?)`
-(`import { AppHost } from "@digit/lib-frontend"`), which returns a promise:
+(`import { AppHost } from "@heysutton/lib-frontend"`), which returns a promise:
 
 - the host succeeded — it **resolves with the result data**.
 - the user dismissed a host UI — it **resolves with `null`**. That is a normal outcome, not
@@ -376,20 +380,20 @@ upstream starter.
 | ------------------------------------- | --------------------------------------------------------------- |
 | Any new app                           | Copy `full-featured`, delete unused tabs/routes                 |
 | Digit GraphQL                         | Schema resources → hooks + `appPermissions` → `key` in manifest |
-| Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
-| Codes / JSON validation               | `@digit/lib-common`                                             |
+| Env / secrets / D1 / third-party HTTP | Worker + `@heysutton/lib-backend`                                |
+| Codes / JSON validation               | `@heysutton/lib-common`                                          |
 
 ## Packages (`lib-*`)
 
 Import from each package **root only**. Helpers use **named arguments**. Runtime packages
-do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
+do **not** re-export each other. Use `@heysutton/lib-build` only via `npm run pack`.
 
-| Package               | When                            | Role                                                           |
-| --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`              |
-| `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
-| `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
-| `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
+| Package                   | When                            | Role                                                                      |
+| ------------------------- | ------------------------------- | ------------------------------------------------------------------------- |
+| `@heysutton/lib-frontend` | Always                          | Host bridge, data hooks, `AppErrorAlert`; temporary `DigitThemeProvider` |
+| `@heysutton/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs            |
+| `@heysutton/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                                  |
+| `@heysutton/lib-build`    | Always (devDependency)          | `digit-app pack`                                                          |
 
 ### Backend Worker
 
