@@ -53,8 +53,8 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 Confirm root fields and selection sets against `graphql-schema://…` before shipping.
-Types for `window.DigitHost` are exported from `@heysutton/lib-frontend` (`DigitHost`,
-`DigitHostSettings`). Prefer the hooks over calling `window.DigitProxyClient` yourself.
+`AppHost` and its types (`AppHostSettings`) are exported from `@heysutton/lib-frontend`. Prefer the
+hooks over calling `window.AppProxy` yourself.
 
 ## Sort, filter, and pagination
 
@@ -76,6 +76,12 @@ tables.
 - Your query must be covered by `manifest.permissions` ∩ the user's live permissions
 - Do **not** call Digit GraphQL with a bearer token from app JS
 - Do **not** invent a different proxy URL
+
+On a preview Host, the platform may allow reads using the viewer's live permissions, but
+preview sessions are not a safe way to test writes to Digit organization data: preview grants
+are narrowed to read-only GraphQL access, and attempted writes return `PREVIEW_READ_ONLY`.
+This is an expected preview restriction, not a missing `manifest.permissions` entry. Put
+app-owned test writes in the preview D1/R2 resources instead.
 
 ## App backend
 
@@ -114,10 +120,10 @@ Import codes / validation from `@heysutton/lib-common`; Worker Response helpers 
 ## Host display settings
 
 ```ts
-import type { DigitHostSettings } from '@heysutton/lib-frontend';
+import { AppHost } from '@heysutton/lib-frontend';
 
-window.DigitHost?.getSettings(); // DigitHostSettings | null
-window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
+AppHost.getSettings(); // AppHostSettings | null
+AppHost.onSettingsChange((settings) => { /* ... */ });
 ```
 
 `data-theme` and `lang` are also set on `<html>`. Apps using `@heysutton/lib-frontend` get

@@ -1,11 +1,11 @@
 /** Display settings pushed host → frame by digit-web. */
-export type DigitHostSettings = {
+export type AppHostSettings = {
   theme?: "light" | "dark";
   language?: string;
 };
 
-/** Options for `DigitHost.download` — the only way an app can save a file to disk. */
-export type DigitHostDownloadOptions = {
+/** Params for `invoke("download", ...)` — the only way an app can save a file to disk. */
+export type AppHostDownloadOptions = {
   /** Letters, digits, spaces, dots, hyphens, underscores or parentheses; extension optional. */
   filename: string;
   contentType:
@@ -18,28 +18,49 @@ export type DigitHostDownloadOptions = {
   data: string | ArrayBuffer | Uint8Array;
 };
 
-/** Options for `DigitHost.print`. The host sanitizes and prints this HTML snapshot. */
-export type DigitHostPrintOptions = {
+/** Params for `invoke("print", ...)`. The host sanitizes and prints this HTML snapshot. */
+export type AppHostPrintOptions = {
   /** ASCII letters/digits, spaces, dots, hyphens, underscores or parentheses; 119 chars max. */
   title: string;
   /** Self-contained printable HTML, 10MB max after inlining styles and assets. */
   html: string;
 };
 
-/** Read-only host display channel plus host-mediated actions (`window.DigitHost`). */
-export type DigitHost = {
-  getSettings: () => DigitHostSettings | null;
+/** Params passed to `AppHost.invoke` — a plain JSON-serializable object, `{}` when a capability takes none. */
+export type HostInvokeParams = Record<string, unknown>;
+
+/** Read-only host display channel plus host-mediated actions. */
+export type AppHost = {
+  getSettings: () => AppHostSettings | null;
   onSettingsChange: (
-    cb: (settings: DigitHostSettings | null) => void,
+    cb: (settings: AppHostSettings | null) => void,
   ) => () => void;
-  /** Saves a file via the host page. Throws on invalid options (message says why). */
+  /**
+   * Calls a host capability: resolves with data, `null` if the user cancelled, rejects on
+   * error — including when this host does not offer the method.
+   */
+  invoke: (method: string, params?: HostInvokeParams) => Promise<unknown>;
+  /** The method names this host offers. Diagnostics only — just call `invoke`. */
+  readonly capabilities: readonly string[];
+};
+
+/** @deprecated Use `AppHostSettings`. */
+export type DigitHostSettings = AppHostSettings;
+/** @deprecated Use `AppHostDownloadOptions`. */
+export type DigitHostDownloadOptions = AppHostDownloadOptions;
+/** @deprecated Use `AppHostPrintOptions`. */
+export type DigitHostPrintOptions = AppHostPrintOptions;
+
+/** @deprecated Use `AppHost` from this package. Older harness global, kept for existing apps. */
+export type DigitHost = AppHost & {
+  /** @deprecated Use `invoke("download", ...)`. Saves a file via the host page; throws on invalid options. */
   download: (options: DigitHostDownloadOptions) => void;
-  /** Opens the browser print dialog for a sanitized HTML snapshot. */
+  /** @deprecated Use `invoke("print", ...)`. Opens the browser print dialog for a sanitized HTML snapshot. */
   print: (options: DigitHostPrintOptions) => void;
 };
 
-/** Harness credential proxy (`window.DigitProxyClient`) — used by data hooks; not a public app API. */
-export type DigitProxyClient = {
+/** Harness credential proxy (`window.AppProxy`) — used by data hooks; not a public app API. */
+export type AppProxy = {
   callProxy: (payload: {
     query: string;
     variables?: Record<string, unknown>;
@@ -50,8 +71,13 @@ export type DigitProxyClient = {
   ) => Promise<Response>;
 };
 
+/** @deprecated Use `AppProxy`. */
+export type DigitProxyClient = AppProxy;
+
 declare global {
   interface Window {
+    AppHost?: AppHost;
+    AppProxy?: AppProxy;
     DigitHost?: DigitHost;
     DigitProxyClient?: DigitProxyClient;
   }

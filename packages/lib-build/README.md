@@ -2,8 +2,10 @@
 
 Shared Digit app tooling. **v1 public CLI:** `digit-app pack` only.
 
-Local Digit preview is not supported yet (Worker, env/secrets, and D1 are injected on
-the platform). Pack builds deploy assets and writes `app.zip` for MCP publish.
+Local Digit runtime preview is not supported (Worker, env/secrets, and D1 are injected by
+the platform). Pack builds the channel-neutral deploy assets and writes `app.zip` for a
+remote preview or live deployment. See the create-digit-app skill for the preview → publish
+flow.
 
 ## Install (app)
 
@@ -27,7 +29,7 @@ that toolchain into the **workspace root** `node_modules`, not the app's — so 
 
 | Input | Output |
 | --- | --- |
-| `src/frontend/main.tsx` | `frontend/index.js` (IIFE — the entry, by convention) |
+| `src/frontend/main.tsx` | `frontend/index.js` (IIFE — the entry) plus `frontend/assets/` (self-hosted Inter) |
 | `src/backend/index.js` (optional) | `backend/index.js` (+ `backend/migrations/*.sql`) |
 | Root `manifest.json` | `manifest.json` at the zip root |
 | `SPEC.md` + source/tooling | `project/` inside `app.zip` (vendored `@heysutton/lib-*`) |

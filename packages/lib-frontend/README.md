@@ -16,8 +16,31 @@ under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
 agents and customers can build Digit-looking apps without access to the web
 monorepo.
 
-When web theme changes, update the files under `src/` (manual PR or sync script
-from the private repo) — do not reintroduce imports from private packages.
+When web theme changes, update the files under `src/theme` from that branch —
+do not reintroduce imports from private packages, and do not edit the shared
+tokens here without recording the reason below.
+
+### Intentional diffs from digit-web
+
+Source of truth: `digit-web` `staging`, `src/providers/AppThemeProvider` plus
+`src/constants/colors.ts`, `shadows.ts`, `transitions.ts`, and
+`theme-extensions.ts`.
+
+- `DigitThemeProvider` replaces `AppThemeProvider`. It follows `AppHost` theme
+  settings. It does not use web’s view-mode storage, Lucide provider, or Clerk.
+  It does restore the autofill `@keyframes` web puts on the provider, because
+  `MuiInputBase` sets `disableInjectingGlobalStyles`.
+- `cssVariables.ts` is starter-only (`data-theme` on `<html>`).
+- `mobileScaleFactor` is its own module. The value matches web (`1.25`).
+- Typography variant augmentations live in `types.ts`. Web declares
+  `TypographyPropsVariantOverrides` on the provider module.
+- `MuiMenu` uses MUI 9 `slotProps.backdrop`. Web’s `BackdropProps` prop is not
+  on MUI 9. Both hide the menu backdrop.
+- Left on web (private or host-only): Clerk rules in `MuiCssBaseline`,
+  detail-inset form styles, `MuiPickers*`, and the `MuiAlert` warning icon that
+  renders `IconWrapper`.
+- Inter loads from `inter-ui/inter-variable.css` (`inter-ui@4.1.1`, same
+  package as digit-web). Pack rewrites the font files to `/app/assets/…`.
 
 ## Theme usage
 
@@ -38,13 +61,16 @@ createRoot(document.getElementById("root")!).render(
 The provider:
 
 - Builds MUI `createTheme(themeOptions(darkMode))`
-- Syncs light/dark from `window.DigitHost` (falls back to `data-theme` / `prefers-color-scheme`)
+- Syncs light/dark from `AppHost` (falls back to `data-theme` / `prefers-color-scheme`)
 - Applies Digit `CssBaseline`
 
-Harness types for `window.DigitHost` (`DigitHost`, `DigitHostSettings`,
-`DigitHostDownloadOptions`, and `DigitHostPrintOptions`) are exported from this package.
-Importing `@heysutton/lib-frontend` also augments `Window`. Prefer the data hooks over calling
-`window.DigitProxyClient` yourself. Do not add a local `digit.d.ts` for the harness.
+`AppHost` is the host page's API: `invoke`, `getSettings`, `onSettingsChange` and
+`capabilities`. It works inside the Digit app harness and on a page Digit embeds directly,
+such as a custom side-nav link, where it talks to Digit over the same messages. Its types
+(`AppHostSettings`, `AppHostDownloadOptions`, `AppHostPrintOptions`) are exported too, and
+importing the package augments `Window`. `window.DigitHost` and its `Digit*` types are
+deprecated. Prefer the data hooks over calling `window.AppProxy` yourself. Do not add a local
+`digit.d.ts` for the harness.
 
 Host-mediated printing takes a self-contained HTML snapshot:
 
@@ -60,19 +86,19 @@ const html = `
     <table><tr><th>Item</th><th>Qty</th></tr><tr><td>Widget</td><td>2</td></tr></table>
   </main>`;
 
-window.DigitHost?.print({ title: "Packing Slip 1042", html });
+await AppHost.invoke("print", { title: "Packing Slip 1042", html });
 ```
 
 The print document runs no JavaScript. Inline CSS and convert images or canvases to
-`data:image/...` before calling `print`; remote `http(s)` assets do not load (print CSP
-is `img-src data:`). Keep the result under 10MB. Use `DigitHost.download` for PDF bytes.
+`data:image/...` before calling `invoke("print", ...)`; remote `http(s)` assets do not load (print CSP
+is `img-src data:`). Keep the result under 10MB. Use `invoke("download", ...)` for PDF bytes.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
 
 ## Digit API & backend hooks
 
-Prefer the React hooks — they call the harness `DigitProxyClient` and normalize
+Prefer the React hooks — they call the harness `AppProxy` and normalize
 platform / GraphQL / backend failures for `AppErrorAlert`:
 
 ```tsx
@@ -110,7 +136,7 @@ Error kinds:
 | `platform`    | digit-apps proxy/session (`{ error: { code, message, requestId? } }`) |
 | `graphql`     | HTTP 200 + `errors[]` from Digit GraphQL                              |
 | `backend`     | App Worker result `{ ok: false, error: { code, message } }`           |
-| `unavailable` | Missing `DigitProxyClient` (local Vite without harness)               |
+| `unavailable` | Missing `AppProxy` (local Vite without harness)                       |
 | `unknown`     | Thrown / non-JSON / unexpected shapes                                 |
 
 Platform codes stay distinct from app codes (`AppErrorCode` on `@heysutton/lib-common`).
@@ -137,5 +163,6 @@ so peers resolve from the app’s `node_modules` when the package is linked via 
 
 See also [`@heysutton/lib-backend`](../lib-backend) for Worker helpers.
 
-Styling is MUI + `DigitThemeProvider` only — do not add parallel CSS variable themes.
-The Digit harness may inject Inter on the shell HTML.
+Styling is MUI + `DigitThemeProvider` only — do not add a parallel CSS design
+system or restyle MUI from scratch. `DigitThemeProvider` bundles self-hosted
+Inter (`inter-ui`). Do not add a font CDN `<link>`.

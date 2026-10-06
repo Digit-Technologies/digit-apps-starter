@@ -32,19 +32,20 @@ always intercept and post JSON.
 
 | Pattern                                                                    | Why                                                                                       |
 | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Direct file downloads (`<a download>`, blob download links)                | No `allow-downloads` — use `DigitHost.download` (below)                                   |
-| Direct `window.print()` / print windows                                    | No `allow-modals` or `allow-popups` — use `DigitHost.print` (below)                       |
+| Direct file downloads (`<a download>`, blob download links)                | No `allow-downloads` — use `invoke("download", ...)` (below)                              |
+| Direct `window.print()` / print windows                                    | No `allow-modals` or `allow-popups` — use `invoke("print", ...)` (below)                  |
 | `window.open`, `target="_blank"`, “Open in new tab”                        | No `allow-popups`                                                                         |
 | `alert` / `confirm` / `prompt`                                             | No `allow-modals`                                                                         |
 | Native HTML form submission (no `preventDefault`)                          | Navigates the frame to a proxy error — always `onSubmit` + `preventDefault` + fetch/hooks |
-| Navigating the parent Digit page (`top.location`, etc.)                    | No top-navigation flags                                                                   |
+| Navigating the parent Digit page (`top.location`, etc.)                    | No top-navigation flags — ask the host instead (`getHostCapabilities`)                    |
 | Fullscreen API                                                             | `fullscreen 'none'`                                                                       |
 | Reading the clipboard (`navigator.clipboard.read*`, paste APIs)            | `clipboard-read 'none'`                                                                   |
-| Camera, mic, geolocation, USB, WebAuthn get, payment, PiP, wake lock, etc. | Permissions Policy `'none'`                                                               |
+| Camera, mic, geolocation, USB, WebAuthn get, payment, PiP, wake lock, etc. | Permissions Policy `'none'` — the host may offer it instead (e.g. scanning, see `getHostCapabilities`) |
 | Autoplay media                                                             | `autoplay 'none'`                                                                         |
 
 Do not build UI that depends on these working, and do not “fall back” to a blocked
-API after a failed attempt.
+API after a failed attempt. Before ruling a feature out, call `getHostCapabilities`: the
+host can do some of these on the app's behalf (scanning, for example).
 
 ## Do use (works in-frame)
 
@@ -54,17 +55,23 @@ API after a failed attempt.
 - Digit proxies and hooks (`useDigitApiQuery`, `useBackendQuery`, …)
 - Forms with `onSubmit` + `preventDefault`, posting JSON via fetch/hooks
 - “Copy” buttons via `navigator.clipboard.writeText(...)` inside a click handler
-- File exports via `DigitHost.download({ filename, contentType, data })` — the host
+- File exports via `AppHost.invoke("download", { filename, contentType, data })` — the host
   page saves the file. `contentType` must be `text/csv`, `application/json`,
   `text/plain`, `application/pdf` or
   `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` (.xlsx only —
   legacy `.xls` and macro-enabled types are refused);
   `data` is a string or `ArrayBuffer`/`Uint8Array`,
-  10MB max; the matching extension is appended automatically. Throws with a reason
+  10MB max; the matching extension is appended automatically. Rejects with a reason
   on invalid input, so surface errors from it like any other failure
-- Browser printing via `DigitHost.print({ title, html })`. The host sanitizes the HTML
-  and opens the print dialog from its own frame. The app iframe never receives
+- Browser printing via `AppHost.invoke("print", { title, html })`. The host sanitizes the
+  HTML and opens the print dialog from its own frame. The app iframe never receives
   `allow-modals`
+- Anything else the host offers through `AppHost.invoke` — call `getHostCapabilities` for the
+  live list; it is the only place that knows what this Digit supports
+
+`window.DigitHost`, including its `download(...)` and `print(...)`, is deprecated. It still
+works, so an app that uses it is not broken — but write new code against `AppHost.invoke`, and
+migrate the calls in any file you edit.
 
 ## Printing HTML
 
@@ -73,7 +80,7 @@ dedicated receipt/print view or hidden print root and serialize it with `outerHT
 Avoid `document.documentElement.outerHTML`, which includes app chrome and usually wastes
 the 10MB payload limit.
 
-Prepare the snapshot before calling `DigitHost.print`:
+Prepare the snapshot before printing:
 
 1. Inline CSS in `<style>` or `style` attributes. `<link rel="stylesheet">` is stripped,
    and network CSS is blocked.
@@ -105,21 +112,22 @@ const html = `
     <table><tr><th>Item</th><th>Qty</th></tr><tr><td>Widget</td><td>2</td></tr></table>
   </main>`;
 
-window.DigitHost?.print({ title: "Packing Slip 1042", html });
+await AppHost.invoke("print", { title: "Packing Slip 1042", html });
 ```
 
 Do not use `window.open`, `target="_blank"`, blob navigation, or print-window patterns.
-Never ask for more sandbox flags. For PDF bytes, call `DigitHost.download` with
-`application/pdf`; `DigitHost.print` accepts HTML only.
+Never ask for more sandbox flags. For PDF bytes, call `invoke("download", ...)` with
+`application/pdf`; printing accepts HTML only.
 
 ## Agent checklist
 
 Before shipping UI:
 
-1. File exports only via `DigitHost.download` — never `<a download>` / blob links
-2. Printing only via `DigitHost.print` with self-contained HTML under 10MB
+1. File exports only via `invoke("download", ...)` — never `<a download>` / blob links
+2. Printing only via `invoke("print", ...)` with self-contained HTML under 10MB
 3. No new-tab / popup / `window.open` flows
 4. No `alert` / `confirm` / `prompt` — use MUI Dialog / `AppErrorAlert` instead
-5. No camera, mic, geo, clipboard-read, fullscreen, or other device APIs
+5. No camera, mic, geo, clipboard-read, fullscreen, or other device APIs in the iframe — use a
+   host method from `getHostCapabilities` where one exists
 6. Every form submit handler calls `preventDefault`
 7. Keep all interaction inside the app iframe

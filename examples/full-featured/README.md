@@ -27,7 +27,9 @@ Scripts:
 
 - `npm run pack` — `digit-app pack`: build + `app.zip` for Digit upload
 
-Local Digit preview is not supported yet (no local Worker / env / D1 harness).
+Local Digit runtime preview is not supported (there is no local Worker / env / D1 harness).
+Pack this example for a remote Digit preview first — preview isolates Worker/D1/R2 from live
+but shares live env vars and secrets; schedules and inbound webhooks stay live-only.
 
 ### What `pack` puts in `app.zip`
 
@@ -45,10 +47,17 @@ project/                  # Required in the zip — source, SPEC, tooling (not d
 1. Create the app in Digit
 2. Add env var `WELCOME_MESSAGE`
 3. Add env var `API_BASE_URL` (e.g. `https://httpbin.org`) and secret `THIRD_PARTY_API_KEY`
-4. `npm run pack` and publish via MCP (see the create-digit-app skill)
+4. `npm run pack`, deploy a preview, and promote it only through the explicit Publish action
+   (see the create-digit-app skill). Standalone MCP clients can choose a publish channel.
 
-D1 migrations in `src/backend/migrations/` run during **publish** (before the Worker goes
-live) when the manifest declares a `database` binding — no manual apply step.
+D1 migrations in `src/backend/migrations/` run during the platform deployment when the manifest
+declares a `database` binding. Preview migrations apply to preview D1; promotion applies pending
+migrations to live D1 — no manual apply step.
+
+The example's secret-backed HTTP call uses the **same live env and live secrets** as
+production. Digit Settings edits update live only. There is no documented app-facing
+`isPreview()` helper yet, so do not add irreversible external side effects without an explicit
+guard. Preview schedules and inbound webhooks stay off.
 
 ## Notes
 

@@ -33,7 +33,7 @@ permissions:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       # PRs and non-main refs always dry-run. Real releases only from main
       # (push or workflow_dispatch with dry_run=false).

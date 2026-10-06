@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import cssInjectedByJsPlugin from 'vite-plugin-css-injected-by-js';
 
 import { inlineBundleLicenses } from './inlineBundleLicenses.js';
+import { rewritePublishedAssetUrls } from './publishedAssetUrls.js';
 
 /**
  * Internal Vite config: Digit loads the entry as a classic <script> (no type="module"),
@@ -16,7 +17,12 @@ export function frontendViteConfig({ root }) {
     publicDir: false,
     // file: linked @heysutton/lib-* peer-depend on react/MUI — resolve from the app.
     resolve: { preserveSymlinks: true },
-    plugins: [react(), cssInjectedByJsPlugin(), inlineBundleLicenses()],
+    plugins: [
+      react(),
+      cssInjectedByJsPlugin(),
+      rewritePublishedAssetUrls(),
+      inlineBundleLicenses(),
+    ],
     build: {
       outDir: path.join(root, 'frontend'),
       emptyOutDir: true,

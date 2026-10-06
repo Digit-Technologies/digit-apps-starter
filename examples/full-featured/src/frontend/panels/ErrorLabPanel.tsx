@@ -54,7 +54,7 @@ const FIXTURES: Record<string, AppError> = {
   unavailable: {
     kind: 'unavailable',
     code: 'CLIENT_UNAVAILABLE',
-    message: 'DigitProxyClient is unavailable. This page only works inside the Digit app harness.',
+    message: 'AppProxy is unavailable. This page only works inside the Digit app harness.',
     requestId: null,
     status: null,
   },

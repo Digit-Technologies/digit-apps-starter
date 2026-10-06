@@ -1,13 +1,13 @@
 ---
 name: create-digit-app
 description: >-
-  Build and publish Digit custom apps (React + MUI + Digit theme via
+  Build, preview, and publish Digit custom apps (React + MUI + Digit theme via
   @heysutton/lib-frontend, optional Cloudflare Worker backends via @heysutton/lib-backend,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Digit app, editing an app in a local clone
   of this starter, publishing via MCP, or when the user mentions Digit apps,
-  manifest.json, DigitProxyClient, DigitThemeProvider, /proxy/digit, or
+  manifest.json, AppProxy, DigitThemeProvider, /proxy/digit, or
   /proxy/backend.
 ---
 
@@ -16,18 +16,24 @@ description: >-
 Build Digit custom apps that run inside Digit as **sandboxed iframes** with a locked-down
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,
 mount targets, stacks, or publish flows, and do not build features the iframe cannot
-support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.).
-Use `DigitHost.download` for files and `DigitHost.print` for printable HTML.
-See [reference/iframe-constraints.md](reference/iframe-constraints.md).
+support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.). The
+host can do some of these on the app's behalf (scanning, for example), so call
+`getHostCapabilities` before telling the user a feature can't be built.
+Use `AppHost.invoke` from `@heysutton/lib-frontend` for every host-mediated action:
+`invoke("download", ...)` for files, `invoke("print", ...)` for printable HTML. `window.DigitHost`
+(including its `download` and `print`) is deprecated — migrate it to `AppHost` in any file you
+touch. See
+[reference/iframe-constraints.md](reference/iframe-constraints.md).
 
 **Default stack (required):** React + MUI + `@heysutton/lib-frontend` (`DigitThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
 package. Users are often non-developers — one path keeps apps looking and behaving
 like Digit.
 
-**Digit MCP is required.** Use it for schema lookup, permissions, listing apps, and
-publish. If MCP is not connected, stop and ask the user to connect Digit MCP before
-continuing.
+**Digit platform tools are required.** Use Digit MCP for standalone schema lookup,
+permissions, app discovery, and publishing. When this skill runs inside Digit App Builder,
+use the builder's platform tools for those same operations. If neither surface is available,
+stop and ask the user to connect the Digit tools before continuing.
 
 ## When to use
 
@@ -45,7 +51,8 @@ continuing.
 | Public GraphQL schema     | MCP resources `graphql-schema://index`, `graphql-schema://type/{TypeName}`, `graphql-schema://search/{query}` |
 | Manifest permissions      | MCP tool **`appPermissions`** — put each permission’s **`key`** in `manifest.json`                            |
 | Find an existing app’s id | MCP tool **`apps`**                                                                                           |
-| Publish                   | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** → poll **`appPublish`**                        |
+| Standalone publish       | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** (`channel`) → poll **`appPublish`**       |
+| App Builder deploy       | **`publishAppZip`** → preview; the Digit web app's Publish action promotes it to live                  |
 
 There are **no** MCP tools to create, update, or delete apps, or to manage env/secrets —
 those stay in the Digit UI. Do not invent them.
@@ -70,14 +77,20 @@ Digit app progress:
 - [ ] 7. Check manifest.permissions against appPermissions — confirm it covers every Digit API call the app makes
 - [ ] 8. Write/update SPEC.md
 - [ ] 9. npm run pack -w apps/<name> → app.zip
-- [ ] 10. Publish via MCP (upload zip out-of-band)
-- [ ] 11. Keep app source under apps/ — not build outputs; no upstream PRs
+- [ ] 10. Deploy a preview (App Builder: `publishAppZip`; standalone MCP: `publishApp` with `channel: preview`)
+- [ ] 11. If the user explicitly asks to ship, promote the current preview from the Digit web app
+- [ ] 12. Keep app source under apps/ — not build outputs; no upstream PRs
 ```
 
 Schema and permission lookup (steps 5–7) must happen **before publish**. Do them as soon
 as you know which Digit API calls the app makes — inventing fields or permission strings
 fails at runtime or publish validation. Re-check step 7 whenever you add or change a Digit
 API call.
+
+The checklist tracks progress, not tool calls — a step is not one call. Batch whatever your
+harness lets you batch: several schema lookups together, several file reads together, several
+edits together, and search with a shell `grep -rn` rather than a walk per file. Spending a
+round trip per file is the slowest way to work through this.
 
 ### 1. Scaffold the app
 
@@ -109,8 +122,43 @@ its build toolchain (Vite) in the root `node_modules`, not the app's. Running `n
 only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
 All apps share React + MUI + `@heysutton/lib-frontend` and the same folder conventions.
-There is no local Digit preview (Worker / env / D1 are platform-injected) — pack + publish
-is the path.
+There is no local Digit runtime preview (Worker, env/secrets, and D1 are platform-injected).
+`npm run pack` produces the same channel-neutral `app.zip` for a remote preview or a live
+deployment.
+
+### Preview and production
+
+The Digit App Builder is preview-first:
+
+- Pack the app, then call `publishAppZip` to deploy the zip to the owner's preview. A
+  successful preview deploy does **not** change the live app.
+- Talk about that result as “built a preview,” never “published.” Keep iterating by packing
+  and deploying another preview.
+- The Digit web app's explicit Publish action promotes the current preview build to live.
+  Publish ships the reviewed build and applies pending live migrations only — it is not a
+  config promote. **Promote does not wipe live env/secrets** — preview shares live env and
+  secrets, and Digit Settings write live only. Nothing is copied from preview onto live for
+  env or secrets.
+
+Standalone MCP clients use `publishApp` directly and may choose `channel: "preview"` or
+`channel: "live"`. Omitting `channel` remains the backwards-compatible live behavior, so do
+not omit it when a standalone workflow is meant to preview. Preview and live have separate
+Workers, D1 databases, R2 buckets, and bundle pointers; preview is owner-only.
+
+Preview is not production-equivalent for every backend feature:
+
+- Preview sessions may read Digit data, but Digit GraphQL writes are not a valid preview
+  test; app-owned D1/R2 writes stay in preview resources.
+- **Schedules are live only.** Preview cron, inbound webhooks, and other timer/webhook side
+  effects stay off. On-demand jobs are scoped to the preview job namespace when invoked, but
+  should not be treated as a production run.
+- Preview uses the **live env vars and live secrets**. Digit Settings that edit env or
+  secrets update **live only**. Guard or
+  disable external side effects; do not seed live data into preview by default.
+
+Full deployment details and safety notes: [reference/publish.md](reference/publish.md),
+[reference/backend-env-secrets.md](reference/backend-env-secrets.md), and
+[reference/preview-and-publish.md](reference/preview-and-publish.md).
 
 **Debugging a published app.** The harness forwards uncaught errors, unhandled rejections,
 `console.error` / `console.warn`, bundle load failures and failed Digit API / backend calls
@@ -138,7 +186,7 @@ apps/my-app/
 ```
 
 Edit `src/frontend` and `src/backend` only. Harness types come from `@heysutton/lib-frontend`
-— no local `digit.d.ts`. Prefer data hooks over calling `window.DigitProxyClient`.
+— no local `digit.d.ts`. Prefer data hooks over calling `window.AppProxy`.
 
 ```bash
 npm run pack -w apps/my-app     # from repo root → app.zip
@@ -158,11 +206,14 @@ only; still upload the zip **unchanged**. Details:
   `target="_blank"`, browser `alert`/`confirm`/`prompt`, or device/clipboard-read/
   fullscreen APIs — they will not work. Copy buttons (`navigator.clipboard.writeText`
   in a click handler), form `onSubmit` + `preventDefault`, file exports via
-  `DigitHost.download`, and HTML printing via `DigitHost.print` DO work. In-page MUI
-  Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Full
+  `invoke("download", ...)`, and HTML printing via `invoke("print", ...)` DO work. In-page MUI
+  Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Where the
+  iframe can't do something itself (camera, scanning, navigating Digit), check
+  `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
 - **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
-  hard-coded colors or custom CSS. See [reference/theming.md](reference/theming.md).
+  hard-coded colors or custom CSS. Do not invent a parallel CSS design system or
+  restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@heysutton/lib-build` packs it — no alternate bundler.
@@ -181,10 +232,10 @@ only; still upload the zip **unchanged**. Details:
 
 #### Printing
 
-When the user wants invoices, labels, packing slips, or reports, call
-`window.DigitHost.print({ title, html })`. Do not use `window.open`, `target="_blank"`,
-blob navigation, or a new print window. Never request `allow-modals`, `allow-popups`, or
-`allow-downloads` on the app iframe.
+When the user wants invoices, labels, packing slips, or reports, print through the host with
+`await AppHost.invoke("print", { title, html })`. Do not use `window.open`,
+`target="_blank"`, blob navigation, or a new print window. Never request `allow-modals`,
+`allow-popups`, or `allow-downloads` on the app iframe.
 
 Print HTML is a snapshot, not a live app. The host sanitizes it and no JavaScript runs in
 the print document. Build a dedicated receipt/print view or hidden print root and serialize
@@ -210,9 +261,37 @@ rel="stylesheet">`, and the print CSP blocks network CSS.
 - Use a 1-119 character title made from ASCII letters or digits plus spaces, `.`, `_`, `-`,
   `(`, and `)`. It must start with a letter or digit. Accents and emoji are not allowed.
 
-Do not send PDF bytes to `DigitHost.print`. Download a PDF with
-`DigitHost.download({ filename, contentType: 'application/pdf', data })`. Printing only
+Do not send PDF bytes to the print call. Download a PDF instead:
+`invoke("download", { filename, contentType: "application/pdf", data })`. Printing only
 accepts HTML and opens the browser print dialog.
+
+#### Host-mediated actions (`AppHost.invoke`)
+
+Every host-mediated action goes through one generic call, `AppHost.invoke(method, params?)`
+(`import { AppHost } from "@heysutton/lib-frontend"`), which returns a promise:
+
+- the host succeeded — it **resolves with the result data**.
+- the user dismissed a host UI — it **resolves with `null`**. That is a normal outcome, not
+  a failure; do not surface it as an error.
+- the host refused or failed — it **rejects** with an `Error`. Handle it like any other
+  async failure (`AppErrorAlert`, etc.).
+
+Call `getHostCapabilities` before writing the code, and before ruling out a feature the iframe
+can't do itself — it returns each method's name, params and a
+note on what it does, so you never guess one. Read that note: some capabilities replace the whole
+Digit page, which unmounts your app. Then call `invoke` directly: do not guard it with a runtime
+capability check. The host offers whatever the Digit it runs inside supports, capabilities are
+only ever added, and a method it does not offer simply rejects, like any other failure.
+
+```ts
+const result = await AppHost.invoke("openModal", { modal: "item", id })
+```
+
+No optional chaining needed: outside Digit (tests, a local page) `invoke` simply rejects.
+
+`window.DigitHost` still works, including its `download(...)` and `print(...)`, but it is
+deprecated. Write new code against `AppHost`, and migrate `window.DigitHost` calls in any
+existing file you edit.
 
 ### 5. `manifest.json`
 
@@ -236,11 +315,11 @@ Omit `backend` when the app is UI-only / Digit API only. `bindings` maps
 file/blob storage, max 10). Names are `UPPER_SNAKE_CASE` and must not start with
 `DIGIT_`.
 
-Optional `backend.schedules` and on-demand jobs:
+Optional `backend.schedules` are **live only** (preview cron stays off) — see
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md).
-Optional `backend.webhooks` — public inbound POST endpoints at `/webhooks/{path}`; the
-handler MUST verify the provider's signature over the raw bytes:
-[reference/webhooks.md](reference/webhooks.md).
+Optional `backend.webhooks` — public inbound POST endpoints at `/webhooks/{path}`
+(**live only**; preview Hosts 404); the handler MUST verify the provider's signature over
+the raw bytes: [reference/webhooks.md](reference/webhooks.md).
 Full schema: [reference/manifest.md](reference/manifest.md).
 
 ### 6. Permissions
@@ -260,19 +339,25 @@ operations need. Details: [reference/permissions.md](reference/permissions.md).
 
 ### 7. Env vars and secrets
 
-Configured on the app in the Digit UI. Injected only into the Worker as `env.KEY`. Read
-with `requireEnv` / `optionalEnv` inside `createHandler`. Frontend never embeds secrets —
-read env-backed data via backend hooks.
+Configured on the app in Digit Settings (UI only). Injected only into the Worker as
+`env.KEY`. Read with `requireEnv` / `optionalEnv` inside `createHandler`. Frontend never
+embeds secrets — read env-backed data via backend hooks.
+
+Preview uses the **same live env vars and live secrets**. Settings edits update live only.
+**Promote does not wipe live env/secrets.** Nothing is copied from preview onto live for env
+or secrets — preview already shares live, and promote is not a config copy. Details:
 [reference/backend-env-secrets.md](reference/backend-env-secrets.md).
 
-### 8. Publish via MCP
+### 8. Deploy or publish
 
 ```
-apps → generateAppUploadLink → POST zip to uploadUrl → publishApp → poll appPublish
+pack → preview (App Builder: publishAppZip; standalone MCP: publishApp channel=preview)
+preview → explicit Digit web Publish action → live
 ```
 
-The zip does **not** travel through MCP. If you cannot HTTP POST the zip, stop and tell the
-user. Run `npm run pack`, then upload **`app.zip` unchanged**.
+The zip does **not** travel through standalone MCP. If you cannot upload it, stop and tell the
+user. Run `npm run pack`, then use **`app.zip` unchanged**. Do not call a live publish just to
+make a preview, and do not describe a successful preview deploy as production.
 Full steps: [reference/publish.md](reference/publish.md).
 
 ### 9. SPEC.md and local source
@@ -322,7 +407,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 ## Additional resources
 
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
-- [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, DigitHost
+- [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key
@@ -330,6 +415,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md) — jobs, schedules, DIGIT_JOBS
 - [reference/webhooks.md](reference/webhooks.md) — inbound webhooks, signature verification
 - [reference/d1-migrations.md](reference/d1-migrations.md) — database SQL applied on publish
-- [reference/publish.md](reference/publish.md) — MCP publish workflow and zip rules
+- [reference/publish.md](reference/publish.md) — preview/live deployment workflows and zip rules
+- [reference/preview-and-publish.md](reference/preview-and-publish.md) — channel behavior and preview safety
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context
 - [`packages/lib-build`](../../../packages/lib-build) — `digit-app pack` shared tooling

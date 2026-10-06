@@ -48,7 +48,7 @@ export const typography = ({
 }: ThemeProps): ThemeOptions["typography"] => {
   return {
     fontFamily:
-      "Inter var, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji",
+      "InterVariable, Inter var, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji",
     h1: createTypography({
       desktopSize: 2, // 32px
       desktopLineHeight: 2.25, // 36px
@@ -152,9 +152,10 @@ export const typography = ({
     buttonSm: {
       ...createTypography({
         desktopSize: 0.8125, // 13px
-        desktopLineHeight: 0.75, // 12px
+        // Keep line-height >= font-size so descenders (g/y/p) aren't clipped.
+        desktopLineHeight: 1, // 16px
         mobileSize: 0.6875 * mobileScaleFactor,
-        mobileLineHeight: 0.75 * mobileScaleFactor,
+        mobileLineHeight: 1 * mobileScaleFactor,
         fontWeight: 500,
       }),
       textTransform: "none", // Regular capitalization
