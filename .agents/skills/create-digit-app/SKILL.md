@@ -212,7 +212,8 @@ only; still upload the zip **unchanged**. Details:
   `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
 - **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
-  hard-coded colors or custom CSS. See [reference/theming.md](reference/theming.md).
+  hard-coded colors or custom CSS. Do not invent a parallel CSS design system or
+  restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.

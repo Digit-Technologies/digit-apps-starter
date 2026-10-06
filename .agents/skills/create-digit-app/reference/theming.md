@@ -65,19 +65,22 @@ AppHost.getSettings(); // AppHostSettings | null
 AppHost.onSettingsChange((settings) => { /* ... */ });
 ```
 
-The harness also sets `data-theme` and `lang` on `<html>`, and may inject self-hosted
-Inter before the bundle loads. App look-and-feel comes from MUI + `DigitThemeProvider`,
-not a parallel CSS-variable theme.
+`DigitThemeProvider` bundles self-hosted Inter (`inter-ui`, same package as
+digit-web). Do not add a Google Fonts or other CDN stylesheet. The harness sets
+`data-theme` and `lang` on `<html>`. App look-and-feel comes from MUI +
+`DigitThemeProvider`, not a parallel CSS design system.
 
 ## UI rules for agents
 
 - Prefer MUI components styled by the theme (`Button`, `TextField`, `Typography`,
   `Stack`, `Box`, `Table`, `Alert`, …)
 - Prefer `theme.palette.*` / typography variants over hard-coded hex colors
+- Do not restyle MUI from scratch, and do not invent a parallel CSS design system
 - Do not reintroduce cream/teal “starter” palettes or IBM Plex / decorative
   gradients from older vanilla examples
 - Do not invent a CSS custom-property theme — use MUI + `DigitThemeProvider`
 - Stay inside the host iframe: no downloads, new tabs/popups, or
   `alert`/`confirm`/`prompt`. MUI Dialog/Drawer are fine. See
   [iframe-constraints.md](iframe-constraints.md).
-- Do not assume the harness injects React or MUI — only fonts and host APIs
+- Do not assume the harness injects React, MUI, or fonts — only host APIs.
+  Inter comes from `DigitThemeProvider`

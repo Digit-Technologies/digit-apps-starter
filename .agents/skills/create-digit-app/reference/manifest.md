@@ -95,6 +95,7 @@ Produced by `digit-app pack`. Upload that zip **unchanged**.
 manifest.json            # zip root — Digit publish config
 frontend/                # Digit deploy — required
   index.js               # the entry, by convention
+  assets/                # self-hosted Inter (.woff2); served at /app/assets/
 backend/                 # Digit deploy — when manifest.backend is set
   index.js               # single-file Worker ESM, by convention
   migrations/
