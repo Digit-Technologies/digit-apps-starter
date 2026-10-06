@@ -1,14 +1,16 @@
-# `@digit/lib-frontend`
+# `@heysutton/lib-frontend`
 
 Digit frontend kit for custom apps: MUI theme (`DigitThemeProvider`), React data
-hooks for the Digit API and app backend, and error normalization/display.
+hooks for the Digit API and app backend, shared UI wrappers, and error
+normalization/display.
 Snapshot of Digit web’s theme adapted for the public apps starter.
 
 ## Public API
 
 Import from the package root only. Theme tokens, error parsers, and other modules
-under `src/` are implementation details — use `DigitThemeProvider`, the hooks, and
-`AppErrorAlert`.
+under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
+`AppErrorAlert`, and the shared UI components (`Modal`, `InputTextField`,
+`IconWrapper`, `InvisibleButton`).
 
 ## Why a copy (not an import from digit-web)
 
@@ -36,9 +38,12 @@ Source of truth: `digit-web` `staging`, `src/providers/AppThemeProvider` plus
   `TypographyPropsVariantOverrides` on the provider module.
 - `MuiMenu` uses MUI 9 `slotProps.backdrop`. Web’s `BackdropProps` prop is not
   on MUI 9. Both hide the menu backdrop.
+- Detail-inset form styles ship in `MuiCssBaseline` with the shared field
+  components. `IconWrapper` sets Lucide `strokeWidth` to `1.25` (web's
+  `LUCIDE_STROKE_WIDTH`). `DigitThemeProvider` still does not mount
+  `LucideProvider`.
 - Left on web (private or host-only): Clerk rules in `MuiCssBaseline`,
-  detail-inset form styles, `MuiPickers*`, and the `MuiAlert` warning icon that
-  renders `IconWrapper`.
+  `MuiPickers*`, and the `MuiAlert` warning icon that renders `IconWrapper`.
 - Inter loads from `inter-ui/inter-variable.css` (`inter-ui@4.1.1`, same
   package as digit-web). Pack rewrites the font files to `/app/assets/…`.
 
@@ -48,7 +53,7 @@ Every app template wraps its UI in `DigitThemeProvider`:
 
 ```tsx
 import { createRoot } from "react-dom/client";
-import { DigitThemeProvider } from "@digit/lib-frontend";
+import { DigitThemeProvider } from "@heysutton/lib-frontend";
 import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
@@ -93,8 +98,28 @@ The print document runs no JavaScript. Inline CSS and convert images or canvases
 `data:image/...` before calling `invoke("print", ...)`; remote `http(s)` assets do not load (print CSP
 is `img-src data:`). Keep the result under 10MB. Use `invoke("download", ...)` for PDF bytes.
 
-Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
-tokens over hard-coded colors.
+## Shared UI
+
+Prefer these over raw MUI `Dialog`, `TextField`, and `IconButton`. Import them
+from `@heysutton/lib-frontend` (this package once published):
+
+| Component | Use |
+| --- | --- |
+| `Modal` | Dialogs. English error string, no Sentry, no page-table context. |
+| `InputTextField` | Labeled react-hook-form text fields, including detail-inset layout. |
+| `IconWrapper` | Size, color, and Lucide stroke (`1.25`) for an icon. |
+| `InvisibleButton` | Accessible link-styled actions. |
+
+`InputTextField` needs `react-hook-form` and `@hookform/error-message` as
+optional peers. They are not dependencies of this package, so an app that
+uses the field installs them once and the form context stays a single copy.
+Detail-inset
+helpers (`getDetailInsetProps`, `resolveDetailInsetMode`,
+`detailInsetGlobalStyleOverrides`, and the `detailInset*` / `detailPaper*` style
+objects) are exported from the package root.
+
+Use other MUI components (`Button`, `Typography`, …) styled by the theme. Prefer
+palette tokens over hard-coded colors.
 
 ## Digit API & backend hooks
 
@@ -108,7 +133,7 @@ import {
   useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
-} from "@digit/lib-frontend";
+} from "@heysutton/lib-frontend";
 
 // Digit GraphQL API
 const { data, error, loading, refetch } = useDigitApiQuery({
@@ -139,8 +164,8 @@ Error kinds:
 | `unavailable` | Missing `AppProxy` (local Vite without harness)                       |
 | `unknown`     | Thrown / non-JSON / unexpected shapes                                 |
 
-Platform codes stay distinct from app codes (`AppErrorCode` on `@digit/lib-common`).
-Pair with `@digit/lib-backend` on the Worker so result shapes match.
+Platform codes stay distinct from app codes (`AppErrorCode` on `@heysutton/lib-common`).
+Pair with `@heysutton/lib-backend` on the Worker so result shapes match.
 
 `AppErrorAlert` maps known platform / backend codes to a title, safe message, optional
 next-step guidance (e.g. `MISSING_CONFIG` → set env/secrets in Digit), visible support
@@ -152,7 +177,7 @@ info for debugging, and Retry when the error looks transient. Prefer rendering
 ```json
 {
   "dependencies": {
-    "@digit/lib-frontend": "file:../../packages/lib-frontend"
+    "@heysutton/lib-frontend": "file:../../packages/lib-frontend"
   }
 }
 ```
@@ -161,7 +186,7 @@ Apps must also depend on the peer packages (`react`, `react-dom`, `@mui/material
 `@emotion/react`, `@emotion/styled`). Vite configs need `resolve.preserveSymlinks: true`
 so peers resolve from the app’s `node_modules` when the package is linked via `file:`.
 
-See also [`@digit/lib-backend`](../lib-backend) for Worker helpers.
+See also [`@heysutton/lib-backend`](../lib-backend) for Worker helpers.
 
 Styling is MUI + `DigitThemeProvider` only — do not add a parallel CSS design
 system or restyle MUI from scratch. `DigitThemeProvider` bundles self-hosted

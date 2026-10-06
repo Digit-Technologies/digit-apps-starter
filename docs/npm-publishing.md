@@ -1,0 +1,339 @@
+# Publishing `@heysutton/*` libraries to NPM
+
+This document describes how shared Digit app-builder libraries leave this monorepo and
+land on NPM. **All `@heysutton/*` packages publish as public** on [npmjs.com](https://www.npmjs.com/)
+(MIT license). The **initial release is `1.0.0`** for all four packages. **Nothing in this
+repo publishes automatically until release secrets and org access are configured.**
+
+## First publish is blocked on npm auth
+
+**Do not publish from this branch.** Release Please, the publish workflow, and local
+`npm publish --dry-run` gates are in place, but the first real upload still needs **Sean**
+to wire authentication for the **`heysutton`** npm org in GitHub Actions. Pick one:
+
+| Option | What Sean wires |
+| --- | --- |
+| **`NPM_TOKEN`** | Granular or Automation token with publish rights to `@heysutton/*`, stored as the GitHub Actions secret `NPM_TOKEN`. The publish job maps it to `NODE_AUTH_TOKEN` and refuses a real publish when the secret is empty. |
+| **OIDC trusted publishing** | npm trusted publisher for `Digit-Technologies/digit-apps-starter` on the `heysutton` org (GitHub Actions OIDC). The workflow already sets `id-token: write` for provenance. Trusted publishing is **not configured** on npm or in the job today — wiring it means Sean links the repo/workflow on npm and updates the publish step so it no longer depends on a long-lived token. |
+
+Until one of those is done, `workflow_dispatch` with the default **`dry_run: true`** is the only
+safe Actions path. Merging a Release Please PR runs the publish job in
+[`release-please.yml`](../.github/workflows/release-please.yml) only when `releases_created`
+is `true`; that job fails closed without `NPM_TOKEN`. This repo does not contain a token.
+
+## Packages
+
+| NPM name | Path | Purpose |
+| --- | --- | --- |
+| `@heysutton/lib-common` | `packages/lib-common` | Error codes, result types, pure validation |
+| `@heysutton/lib-frontend` | `packages/lib-frontend` | MUI theme, shared UI (`Modal`, `InputTextField`, `IconWrapper`, `InvisibleButton`), harness types, React data hooks, error UI |
+| `@heysutton/lib-backend` | `packages/lib-backend` | Worker handler helpers, env/secrets, jobs, webhooks |
+| `@heysutton/lib-build` | `packages/lib-build` | `digit-app pack` CLI and shared Vite configs |
+
+Dependency graph:
+
+```
+lib-common (no internal deps)
+    ↑
+lib-frontend, lib-backend
+lib-build (standalone tooling)
+```
+
+`lib-frontend` and `lib-backend` depend on `@heysutton/lib-common` with a plain
+version, `"1.0.0"`. That is what gets published. Do not use `file:` or
+`workspace:` in those dependency fields: npm does not rewrite `workspace:` on
+publish, and `file:` breaks registry installs. npm workspaces still link the
+local package during monorepo installs because the version matches.
+
+## Versioning — Release Please (manifest mode, grouped)
+
+We use [Release Please](https://github.com/googleapis/release-please) in **manifest mode**
+(same family of tooling used on `digit-api`):
+
+- `release-please-config.json` — per-package release settings, plugins, and grouped release PR title
+- `.release-please-manifest.json` — last released version for each package path
+
+**Grouped versioning (decided):** all four `@heysutton/*` packages share **one semver** and bump
+together. Release Please uses the `node-workspace` plugin (updates local dependency refs in
+`package.json`) plus the `linked-versions` plugin (group `@heysutton/libraries`) so
+`lib-common`, `lib-frontend`, `lib-backend`, and `lib-build` always release at the same
+version (for example `1.2.0` on all four).
+
+On every push to `main`, the `release-please` workflow opens or updates a **single Release PR**
+that bumps all linked versions, updates changelogs, and refreshes the manifest. Merging that PR
+creates GitHub releases and tags (for example `lib-common-v1.2.0`, all at the same version).
+
+Commit messages on `main` should follow [Conventional Commits](https://www.conventionalcommits.org/)
+so Release Please can infer semver bumps (`feat:` → minor, `fix:` → patch, `feat!:` / `BREAKING CHANGE:` → major).
+
+### Why Release Please (vs alternatives)
+
+| Option | Fit for this repo |
+| --- | --- |
+| **Release Please (chosen)** | Already familiar on `digit-api`; manifest mode with `node-workspace` + `linked-versions` keeps all four `@heysutton/lib-*` packages on one shared semver; generates changelogs and a single release PR with no manual version edits. |
+| Changesets | Excellent for independent per-package semver, but adds author overhead (changeset files on every PR) and a second merge step. Not needed now that grouped versioning is decided. |
+| Manual tags + `npm version` | Minimal tooling, but error-prone in a monorepo and no changelog discipline. |
+| Lerna / Nx release | Heavier infra than needed for four small packages with no build graph orchestration beyond `npm run build:packages`. |
+
+## Publish workflow (release time only)
+
+Day-to-day pushes to `main` run Release Please and do **not** publish to npm. A real
+publish is a second job in [`release-please.yml`](../.github/workflows/release-please.yml).
+That job runs only when Release Please sets `releases_created` to `true` (the Release PR
+was merged and GitHub releases were created). Feature merges leave `releases_created`
+false, and the publish job is skipped.
+
+Release Please creates those releases with `secrets.GITHUB_TOKEN`. GitHub does not start
+a separate workflow on `release: published` for events that token produces, so publish
+is not wired to that event. [`publish-npm-packages.yml`](../.github/workflows/publish-npm-packages.yml)
+is manual `workflow_dispatch` only (default `dry_run: true`).
+
+The publish job sets `permissions: id-token: write` and `contents: read`.
+`npm publish --provenance` needs the Actions OIDC token; without `id-token: write` the
+first real publish fails.
+
+Steps (automatic job, and the manual workflow):
+
+1. Install dependencies from the repo root (`npm ci`).
+2. `npm run build:packages` — compile TS libraries to `dist/` (`lib-build` ships plain JS from `src/`).
+3. `npm run verify:packages` — smoke-test that `hello-world` still packs.
+4. For each package under `packages/*` with a `"name": "@heysutton/..."`:
+   - `npm publish --dry-run --access public` when `dry_run=true` (manual workflow only)
+   - `npm publish --provenance --access public` when publishing for real
+
+Scoped packages require an explicit `--access public` on first publish (also set in each
+package's `publishConfig.access`). CI and local dry-runs use the same flag so publish
+behavior matches release time.
+
+Pull requests and pushes to `main` also run [`test-lib-frontend.yml`](../.github/workflows/test-lib-frontend.yml)
+(`npm test -w @heysutton/lib-frontend`), which covers the shared UI wrappers.
+
+### Who triggers publish?
+
+| Step | Actor |
+| --- | --- |
+| Day-to-day merges to `main` | Release Please bot (opens Release PR only; `releases_created` is false, so no npm publish) |
+| Merge Release PR | Maintainer. Release Please creates the GitHub release and tags, then the **same workflow** publishes to npm |
+| NPM publish | `release-please.yml` job `publish`, gated on `releases_created == 'true'`, using `NPM_TOKEN` and `id-token: write` |
+| Manual dry-run or emergency republish | `publish-npm-packages.yml` via `workflow_dispatch` |
+
+Use workflow_dispatch with `dry_run: false` only for emergency republish/debug after the
+Release exists.
+
+## NPM org and `NPM_TOKEN` setup (runbook)
+
+**Status:** documented — **awaiting Sean to provision**. This repo does not include credentials
+and the `@heysutton` npm organization may not exist yet. Follow the steps below before the first
+real publish.
+
+### 1. Create or claim the `@heysutton` npm organization
+
+| Item | Guidance |
+| --- | --- |
+| **Who should own it?** | **Recommendation:** a shared npm user or billing account owned by Digit engineering (e.g. `digit-engineering@…` or an existing platform admin), not an individual developer laptop account. **Placeholder if unknown:** assign an **npm org Owner** (Sean or delegated platform admin) to create the org and invite maintainers. |
+| **Create the org** | Log in at [npmjs.com](https://www.npmjs.com/) → avatar → **Add an Organization** → choose the **free** plan unless npm Teams is required → set the org slug to **`heysutton`** (publishes as `@heysutton/…`). |
+| **Confirm the slug** | After creation, the org URL should be `https://www.npmjs.com/org/heysutton`. If `@heysutton` is already taken by someone else, stop and pick a different scope — **do not change package names in this repo without a product decision.** |
+| **Membership** | Add at least two **Owners** or **Admins** (bus factor). Developers who only need to publish from CI do **not** need personal publish tokens once `NPM_TOKEN` is in GitHub. |
+| **2FA** | Enable **two-factor authentication** on all owner accounts (npm requires this for publishing). |
+
+### 2. Create an automation token with publish access
+
+Use a **Granular Access Token** (preferred) or an **Automation** classic token for CI.
+
+#### Option A — Granular Access Token (recommended)
+
+1. npm → avatar → **Access Tokens** → **Generate New Token** → **Granular Access Token**.
+2. **Token name:** e.g. `github-digit-apps-starter-publish`.
+3. **Expiration:** set a rotation policy (e.g. 90 days) or maximum allowed; calendar a renewal.
+4. **Permissions:**
+   - **Organizations:** select **`heysutton`** → **Read and write** (or **Publish** if shown).
+   - **Packages and scopes:** limit to **`@heysutton/*`** with **Read and write** if the UI allows scope restriction.
+5. **Bypass 2FA for automation:** allow only if npm presents this option for granular tokens used in CI (required for unattended publishes).
+6. **Generate** → copy the token once (`npm_…`). Store it only in GitHub Secrets — never commit it.
+
+#### Option B — Classic Automation token
+
+1. npm → **Access Tokens** → **Generate New Token** → **Classic Token** → type **Automation**.
+2. Scope: publish access to the `@heysutton` org (automation tokens are publish-oriented and bypass 2FA for CI).
+3. Copy and store in GitHub Secrets only.
+
+**Minimum capability:** the token must be able to `npm publish` all four packages:
+
+- `@heysutton/lib-common`
+- `@heysutton/lib-frontend`
+- `@heysutton/lib-backend`
+- `@heysutton/lib-build`
+
+**Verify locally (optional, on a maintainer machine):**
+
+```bash
+export NPM_TOKEN="npm_…"   # paste once; do not commit
+npm whoami --registry=https://registry.npmjs.org
+npm publish --dry-run --access public -w @heysutton/lib-common
+```
+
+### 3. Add `NPM_TOKEN` to GitHub
+
+| Setting | Value |
+| --- | --- |
+| **Secret name** | `NPM_TOKEN` (must match the publish job in [`.github/workflows/release-please.yml`](../.github/workflows/release-please.yml) and the manual [`.github/workflows/publish-npm-packages.yml`](../.github/workflows/publish-npm-packages.yml) — both map it to `NODE_AUTH_TOKEN`) |
+| **Secret value** | The npm token from step 2 |
+
+**Where to store it:**
+
+| Location | When to use |
+| --- | --- |
+| **Repository secret** (default) | `Digit-Technologies/digit-apps-starter` → **Settings → Secrets and variables → Actions → New repository secret**. Sufficient for this repo alone. |
+| **Organization secret** | If multiple Digit repos will publish `@heysutton/*`, create an org secret and allow access to selected repositories. |
+| **Environment secret** (optional hardening) | Create a GitHub Environment (e.g. `npm-publish`) with **Required reviewers** and put `NPM_TOKEN` there; then add `environment: npm-publish` to the publish job. **Not configured in this PR** — recommended before enabling real publishes. |
+
+**Do not** use repository **Variables** for the token (variables are not secret). No other secrets are required for publish today.
+
+### 4. Publish workflow gates (dry-run vs real)
+
+Release Please and npm publish are one workflow. The publish job is skipped unless
+`releases_created` is true. The manual workflow never runs from a GitHub Release event.
+
+```mermaid
+flowchart LR
+  merge[Merge to main] --> rp[release-please.yml]
+  rp --> gate{releases_created}
+  gate -->|false| rpr[Release PR opened or updated]
+  gate -->|true| pub["publish job: npm publish --provenance"]
+  manual[workflow_dispatch] --> dry{dry_run input}
+  dry -->|true default| dryRun[npm publish --dry-run]
+  dry -->|false| emergency[emergency republish]
+```
+
+| Trigger | Workflow | npm registry |
+| --- | --- | --- |
+| Push to `main`, no release created | `release-please.yml` | **No publish** — `releases_created` is false; publish job skipped |
+| Merge Release Please PR | `release-please.yml` job `publish` | **Real publish** — requires `NPM_TOKEN` and `id-token: write` |
+| **`workflow_dispatch`** (default) | `publish-npm-packages.yml` | **Dry-run only** — safe to run without `NPM_TOKEN` |
+| **`workflow_dispatch`** (`dry_run: false`) | `publish-npm-packages.yml` | **Real publish** — emergency/debug; requires `NPM_TOKEN` |
+
+**Recommended validation order after adding `NPM_TOKEN`:**
+
+1. Actions → **Publish NPM packages** → **Run workflow** → leave **dry_run: true** → confirm build + dry-run passes.
+2. Merge the first Release Please PR → confirm the **`publish` job in the Release Please workflow** succeeds and packages appear on npm. That job is in the same run as Release Please. A `release: published` workflow will not start, because the release was created with `GITHUB_TOKEN`.
+
+**Release Please gate:** day-to-day feature merges do **not** publish. Only a run where Release Please sets `releases_created` to true uploads to npm. Creating a GitHub Release by hand does not publish; use `workflow_dispatch` with `dry_run: false` for that case.
+
+### 5. First-publish checklist
+
+Complete before merging the first Release Please release or running `workflow_dispatch` with `dry_run: false`:
+
+- [ ] `@heysutton` npm org exists; owners/admins invited; 2FA enabled
+- [ ] Org slug confirmed (`https://www.npmjs.com/org/heysutton`) — package scope matches repo (`@heysutton/lib-*`)
+- [ ] No conflicting packages already published under the same names (check npm search / `@heysutton/lib-common`)
+- [ ] **Auth for the `heysutton` org** — either a Granular/Automation token stored as GitHub **`NPM_TOKEN`**, or npm **OIDC trusted publishing** for `Digit-Technologies/digit-apps-starter` with the publish job updated to use it. The workflow today expects `NPM_TOKEN` and fails closed when it is missing. OIDC is not wired yet.
+- [ ] **Dry-run workflow** green (`workflow_dispatch`, `dry_run: true`)
+- [ ] All four `package.json` files at intended version (**`1.0.0`**) and `.release-please-manifest.json` aligned
+- [ ] **`publishConfig.access: "public"`** present on each package (already in repo)
+- [ ] CI uses **`npm publish --access public`** (already in workflow — required for scoped first publish)
+- [ ] **Provenance:** workflow passes `--provenance` and sets `id-token: write`; confirm the npm org allows GitHub Actions provenance. Trusted publishing setup is the OIDC option in the auth item above ([npm docs](https://docs.npmjs.com/generating-provenances))
+- [ ] Post-publish: verify `npm view @heysutton/lib-common version` and install smoke test from a clean directory
+- [ ] Phase 1 vendoring unchanged — apps still work if npm is down (see phased cutover below)
+
+### Optional hardening (later)
+
+- GitHub **Environment** `npm-publish` with required reviewers on the publish job
+- If the first publish used `NPM_TOKEN`, switch later to npm **trusted publishing** (OIDC) and retire the long-lived token
+- Token rotation calendar reminder before granular token expiry
+
+## Local dry-run
+
+```bash
+npm ci
+npm run build:packages
+npm publish --dry-run --access public -w @heysutton/lib-common
+npm publish --dry-run --access public -w @heysutton/lib-frontend
+npm publish --dry-run --access public -w @heysutton/lib-backend
+npm publish --dry-run --access public -w @heysutton/lib-build
+```
+
+## Pack legacy dependency scopes
+
+`digit-app pack` recognizes dependency names when deciding what to vendor into
+`project/packages/`:
+
+| Scope | Status |
+| --- | --- |
+| **`@heysutton/lib-*`** | **Canonical** — use in all new apps, examples, and templates |
+| **`@digit/lib-*`** | **Legacy alias** — older starter archives and pre-registry apps; pack still vendors these folders |
+| **`@sutton/lib-*`** | **Not supported** — interim name used during PR review only; never published to npm. No pack alias (prefer clean `@heysutton`). Update any in-flight branches to `@heysutton`. |
+
+Implementation: [`packages/lib-build/src/pack.js`](../packages/lib-build/src/pack.js) (`LIB_SCOPES`).
+
+## Phased vendoring cutover (proposal for review)
+
+Today, `digit-app pack` copies `@heysutton/lib-*` (and legacy `@digit/lib-*`) into
+`project/packages/` inside every `app.zip`. Registry publish does **not** require an immediate
+stop to vendoring. The plan below is a **proposal for Sean to review** — no phase dates or
+stop-at-first-publish assumption.
+
+### Risks to manage across all phases
+
+| Risk | Mitigation |
+| --- | --- |
+| **Version skew** — vendored copy in zip ≠ semver in `package.json` | Grouped `@heysutton/*` releases (one shared version); in Phase 2+, pack should pin vendored copies to the same version as registry deps when both paths exist |
+| **Dual-publish drift** — starter zip, Studio, and NPM disagree on lib versions | Record `starterRelease` / app manifest lib version; smoke-test pack after each  `@heysutton` release |
+| **Offline / air-gapped zip rebuild** — no registry in some agent sessions | Keep vendoring through Phase 2; only remove in Phase 3 when consumers can install from NPM |
+| **Breaking changes** — app pinned to old vendored libs while registry moved on | Semver + changelog on Release PR; major bumps require explicit Studio/template updates |
+
+### Phase 1 — Registry live, vendoring unchanged (default after first publish)
+
+**Goal:** `@heysutton/*` exists on NPM at the grouped semver (starting **1.0.0**); generated apps
+still get vendored libs in `app.zip` exactly as today.
+
+| | |
+| --- | --- |
+| **Pack behavior** | Continue copying all depended `@heysutton/lib-*` (+ `lib-build`) into `project/packages/` |
+| **App `package.json`** | Examples / starter still use `file:../../packages/...` in monorepo; published apps keep vendored `file:./packages/...` after pack |
+| **Optional dual-path** | Early adopters may add registry semver ranges in source *before* pack (allowlist / feature flag in Studio) — pack still vendors for zip portability unless explicitly opted out |
+| **Success criteria** | `npm publish` dry-run green; `npm run verify:packages` passes; at least one manual install of `@heysutton/lib-frontend@1.0.0` from npmjs.com in a clean project |
+| **Rollback** | Unpublish is not reliable on NPM — rollback = publish a patch release or document “do not use” version; vendoring path unchanged so apps keep working without registry |
+
+### Phase 2 — Registry-first templates, vendored fallback
+
+**Goal:** New apps and Digit Studio scaffolds declare **`@heysutton/*` semver ranges** (e.g.
+`"@heysutton/lib-frontend": "^1.0.0"`) as the source of truth; pack still vendors matching
+versions into the zip for offline re-pack and agent iteration.
+
+| | |
+| --- | --- |
+| **Templates / skill** | `create-digit-app` skill + `examples/*` + starter `apps/app` use registry semver in `package.json` (not `file:` to monorepo packages) |
+| **Pack behavior** | Resolve registry version at pack time (or pin to lockfile), **then** copy those exact versions into `project/packages/` so vendored tree matches declared semver |
+| **Starter zip** | May still ship `packages/` source for monorepo dev, but consumer apps target NPM |
+| **Success criteria** | Fresh scaffold → `npm install` → `npm run pack` with no monorepo `file:` links; vendored folders in zip match `package-lock.json` / pinned `@heysutton/*` versions; Studio builder session smoke test |
+| **Rollback** | Revert templates to `file:` / full vendoring-only deps; pack ignore registry resolution flag |
+
+### Phase 3 — Stop bundling vendored libs into `app.zip`
+
+**Goal:** `project/` inside `app.zip` contains source + tooling only; libs come from NPM at
+Digit deploy or agent restore time.
+
+| | |
+| --- | --- |
+| **Pack behavior** | Stop copying `project/packages/`; `package.json` + lockfile (or shrinkwrap) list `@heysutton/*` registry deps only |
+| **Prerequisites** | Digit Studio and starter consumers install from NPM in the harness; migration note for existing apps (“re-pack with registry deps”); network/registry available in builder sessions |
+| **Success criteria** | `app.zip` has no `project/packages/lib-*`; unpack → `npm ci` → `npm run pack` succeeds; no duplicate React/MUI from vendored + hoisted installs |
+| **Rollback** | Re-enable Phase 2 vendoring in `lib-build` behind a manifest or pack flag (`"vendorLibs": true`) until all active apps migrate |
+
+### What stays open (not decided in this PR)
+
+- **Phase timing and gates** — proposal only; Sean to confirm when to enter Phase 2 / 3
+
+## Production-readiness checklist
+
+- [ ] **NPM org + auth** — [setup runbook documented](#npm-org-and-npm_token-setup-runbook); **first publish blocked** until Sean wires `NPM_TOKEN` or OIDC trusted publishing for the `heysutton` org
+- [x] **Public** package visibility on npmjs.com (decided)
+- [x] **Initial semver baseline `1.0.0`** for all four packages (decided)
+- [x] **Grouped versioning** — one shared semver across all four packages via `linked-versions` (decided)
+- [ ] Breaking-change policy documented for app authors
+- [ ] Changelog review gate on Release PR merges
+- [ ] CI test gate before publish (pack smoke test today; add unit tests if/when added)
+- [ ] npm provenance enabled (workflow uses `--provenance`; confirm org setting)
+- [ ] **Phased vendoring cutover** — proposal documented above; awaiting review (no stop date)
+- [ ] Update `create-digit-app` skill and starter asset when Phase 2 begins
+- [ ] Dependabot / Renovate for consumer repos after migration

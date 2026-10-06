@@ -16,6 +16,11 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - '.github/workflows/publish-starter-asset.yml'
+      - '.github/workflows/publish-npm-packages.yml'
+      - '.github/workflows/release-please.yml'
+      - 'release-please-config.json'
+      - '.release-please-manifest.json'
+      - 'docs/**'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -102,6 +107,7 @@ jobs:
           cd "$CHECK"
 
           npm install --no-audit --no-fund
+          npm run build:packages
 
           # A second copy means the seed's pins disagree with lib-frontend's peers, and
           # every app built from it bundles two Reacts.

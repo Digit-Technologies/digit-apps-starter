@@ -1,9 +1,9 @@
-# `@digit/lib-backend`
+# `@heysutton/lib-backend`
 
 Helpers for Digit app Cloudflare Workers (bundled into `backend/index.js`).
 
-Depends on [`@digit/lib-common`](../lib-common) internally. Apps should also depend on
-`@digit/lib-common` and import codes / validation from there — this package does **not**
+Depends on [`@heysutton/lib-common`](../lib-common) internally. Apps should also depend on
+`@heysutton/lib-common` and import codes / validation from there — this package does **not**
 re-export them.
 
 ## Public API
@@ -24,8 +24,8 @@ Wrap the Worker with `createHandler`. Use `backendPath(request)`, then match wit
 `method` + `path` checks:
 
 ```js
-import { AppErrorCode } from '@digit/lib-common';
-import { backendPath, createHandler, requireEnv, ok, err } from '@digit/lib-backend';
+import { AppErrorCode } from '@heysutton/lib-common';
+import { backendPath, createHandler, requireEnv, ok, err } from '@heysutton/lib-backend';
 
 export default createHandler({
   fetch: async ({ request, env }) => {
@@ -53,8 +53,8 @@ export default createHandler({
 ## Result responses
 
 ```js
-import { AppErrorCode } from '@digit/lib-common';
-import { ok, err } from '@digit/lib-backend';
+import { AppErrorCode } from '@heysutton/lib-common';
+import { ok, err } from '@heysutton/lib-backend';
 
 ok({ data: { notes: [] } }); // Response.json({ ok: true, data })
 err({ code: AppErrorCode.VALIDATION_ERROR, message: 'title is required.', status: 400 });
@@ -62,11 +62,11 @@ err({ code: AppErrorCode.VALIDATION_ERROR, message: 'title is required.', status
 
 ## Validation
 
-Import parsers from `@digit/lib-common`, then map failures with `err` from this package:
+Import parsers from `@heysutton/lib-common`, then map failures with `err` from this package:
 
 ```js
-import { parseJsonResponse, requiredString, optionalString } from '@digit/lib-common';
-import { err, ok } from '@digit/lib-backend';
+import { parseJsonResponse, requiredString, optionalString } from '@heysutton/lib-common';
+import { err, ok } from '@heysutton/lib-backend';
 
 const parsed = await parseJsonResponse({
   value: request.json(),
@@ -97,7 +97,7 @@ ticks and jobs submitted via `digitJobs({ env }).submit(...)`); the platform inv
 over RPC via the `triggerJob` method on the WorkerEntrypoint class `createHandler` returns:
 
 ```js
-import { createHandler, digitJobs, ok } from '@digit/lib-backend';
+import { createHandler, digitJobs, ok } from '@heysutton/lib-backend';
 
 export default createHandler({
   jobs: {
@@ -121,7 +121,7 @@ RPC via the `triggerWebhook` method. The endpoint is public — ALWAYS verify th
 signature over the raw `body` bytes before acting:
 
 ```js
-import { createHandler, requireEnv, verifyWebhookSignature } from '@digit/lib-backend';
+import { createHandler, requireEnv, verifyWebhookSignature } from '@heysutton/lib-backend';
 
 export default createHandler({
   webhooks: {
@@ -146,7 +146,7 @@ Handler args: `{ path, method, query, headers, body, env, ctx }`; return
 
 ## Bundle
 
-Use `@digit/lib-build` (`digit-app pack`) — do not add a per-app Vite backend config.
+Use `@heysutton/lib-build` (`digit-app pack`) — do not add a per-app Vite backend config.
 See `examples/full-featured`.
 
 ## Depend
@@ -154,8 +154,8 @@ See `examples/full-featured`.
 ```json
 {
   "dependencies": {
-    "@digit/lib-backend": "file:../../packages/lib-backend",
-    "@digit/lib-common": "file:../../packages/lib-common"
+    "@heysutton/lib-backend": "file:../../packages/lib-backend",
+    "@heysutton/lib-common": "file:../../packages/lib-common"
   }
 }
 ```

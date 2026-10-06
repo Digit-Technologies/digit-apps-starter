@@ -25,6 +25,43 @@ import "./globals";
 export { AppErrorAlert } from "./errors";
 export type { AppError } from "./errors";
 
+// Shared Digit UI (sanitized from digit-web)
+export {
+  Modal,
+  MODAL_HORIZONTAL_PADDING,
+  InputTextField,
+  InputContainerDiv,
+  IconWrapper,
+  LUCIDE_STROKE_WIDTH,
+  InvisibleButton,
+  getDetailInsetProps,
+  resolveDetailInsetMode,
+  detailInsetGlobalStyleOverrides,
+  DETAIL_INSET_FIELD_HEIGHT_SPACING,
+  detailPaperSectionStackSx,
+  detailPaperIconRowSx,
+  detailPaperLeadingIconSx,
+  detailPaperLeadingIconColor,
+  detailPaperFieldStackSx,
+  detailPaperDetailLinesStackSx,
+  detailPaperCompactTextSx,
+  detailPaperSwitchRowSx,
+  detailPaperSectionLabelSx,
+  detailInsetSectionStackSx,
+  detailInsetFieldRowSx,
+  detailInsetFieldColumnSx,
+  getDetailContentHorizontalPadding,
+  detailInsetSectionContainerSx,
+  detailPaperColumnBoxSx,
+} from "./components";
+export type {
+  ModalProps,
+  InputTextFieldProps,
+  IconWrapperProps,
+  InvisibleButtonProps,
+  DetailInsetMode,
+} from "./components";
+
 // Digit API + app backend (hooks only — imperative fetch helpers are internal)
 export {
   useDigitApiQuery,

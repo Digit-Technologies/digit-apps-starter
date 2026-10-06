@@ -33,8 +33,21 @@ async function resolvePackagesDir({ root }) {
     return monorepo;
   }
   throw new Error(
-    'cannot find @digit/lib-* packages (expected ./packages or monorepo packages/ next to lib-build)',
+    'cannot find @heysutton/lib-* packages (expected ./packages or monorepo packages/ next to lib-build)',
   );
+}
+
+/** Canonical scope plus legacy aliases pack accepts when vendoring (see docs/npm-publishing.md). */
+const LIB_SCOPES = ['@heysutton', '@digit'];
+
+function libFolderFromDepName(name) {
+  for (const scope of LIB_SCOPES) {
+    const prefix = `${scope}/`;
+    if (!name.startsWith(prefix)) continue;
+    const folder = name.slice(prefix.length);
+    if (folder.startsWith('lib-')) return folder;
+  }
+  return null;
 }
 
 function digitLibFoldersFromPackageJson(pkg) {
@@ -43,8 +56,8 @@ function digitLibFoldersFromPackageJson(pkg) {
     const deps = pkg[section];
     if (!deps) continue;
     for (const name of Object.keys(deps)) {
-      if (!name.startsWith('@digit/lib-')) continue;
-      folders.add(name.slice('@digit/'.length));
+      const folder = libFolderFromDepName(name);
+      if (folder) folders.add(folder);
     }
   }
   // Always vendor the build tooling used to re-pack.
@@ -57,8 +70,8 @@ function rewriteDigitLibDeps(pkg) {
     const deps = pkg[section];
     if (!deps) continue;
     for (const name of Object.keys(deps)) {
-      if (!name.startsWith('@digit/lib-')) continue;
-      const folder = name.slice('@digit/'.length);
+      const folder = libFolderFromDepName(name);
+      if (!folder) continue;
       deps[name] = `file:./packages/${folder}`;
     }
   }
