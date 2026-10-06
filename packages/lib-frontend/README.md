@@ -7,8 +7,9 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 ## Public API
 
 Import from the package root only. Theme tokens, error parsers, and other modules
-under `src/` are implementation details — use `DigitThemeProvider`, the hooks, and
-`AppErrorAlert`.
+under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
+`AppErrorAlert`, and the shared UI components (`Modal`, `InputTextField`,
+`IconWrapper`, `InvisibleButton`).
 
 ## Why a copy (not an import from digit-web)
 
@@ -36,9 +37,12 @@ Source of truth: `digit-web` `staging`, `src/providers/AppThemeProvider` plus
   `TypographyPropsVariantOverrides` on the provider module.
 - `MuiMenu` uses MUI 9 `slotProps.backdrop`. Web’s `BackdropProps` prop is not
   on MUI 9. Both hide the menu backdrop.
+- Detail-inset form styles now ship in `MuiCssBaseline` with the shared field
+  components. `IconWrapper` sets Lucide `strokeWidth` to `1.25` (web's
+  `LUCIDE_STROKE_WIDTH`). `DigitThemeProvider` still does not mount
+  `LucideProvider`.
 - Left on web (private or host-only): Clerk rules in `MuiCssBaseline`,
-  detail-inset form styles, `MuiPickers*`, and the `MuiAlert` warning icon that
-  renders `IconWrapper`.
+  `MuiPickers*`, and the `MuiAlert` warning icon that renders `IconWrapper`.
 - Inter loads from `inter-ui/inter-variable.css` (`inter-ui@4.1.1`, same
   package as digit-web). Pack rewrites the font files to `/app/assets/…`.
 
@@ -93,8 +97,25 @@ The print document runs no JavaScript. Inline CSS and convert images or canvases
 `data:image/...` before calling `invoke("print", ...)`; remote `http(s)` assets do not load (print CSP
 is `img-src data:`). Keep the result under 10MB. Use `invoke("download", ...)` for PDF bytes.
 
-Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
-tokens over hard-coded colors.
+## Shared UI
+
+Prefer these over raw MUI `Dialog`, `TextField`, and `IconButton`:
+
+| Component | Use |
+| --- | --- |
+| `Modal` | Dialogs. English error string, no Sentry, no page-table context. |
+| `InputTextField` | Labeled react-hook-form text fields, including detail-inset layout. |
+| `IconWrapper` | Size, color, and Lucide stroke (`1.25`) for an icon. |
+| `InvisibleButton` | Accessible link-styled actions. |
+
+`InputTextField` needs `react-hook-form` and `@hookform/error-message` (optional
+peers; also dependencies of this package so the field resolves). Detail-inset
+helpers (`getDetailInsetProps`, `resolveDetailInsetMode`,
+`detailInsetGlobalStyleOverrides`, and the `detailInset*` / `detailPaper*` style
+objects) are exported from the package root.
+
+Use other MUI components (`Button`, `Typography`, …) styled by the theme. Prefer
+palette tokens over hard-coded colors.
 
 ## Digit API & backend hooks
 

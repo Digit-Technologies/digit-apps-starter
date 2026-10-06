@@ -206,12 +206,15 @@ only; still upload the zip **unchanged**. Details:
   `target="_blank"`, browser `alert`/`confirm`/`prompt`, or device/clipboard-read/
   fullscreen APIs — they will not work. Copy buttons (`navigator.clipboard.writeText`
   in a click handler), form `onSubmit` + `preventDefault`, file exports via
-  `invoke("download", ...)`, and HTML printing via `invoke("print", ...)` DO work. In-page MUI
-  Dialog/Drawer/Snackbar are fine. Never ask to loosen the iframe sandbox. Where the
+  `invoke("download", ...)`, and HTML printing via `invoke("print", ...)` DO work. In-page
+  overlays: use `Modal` from `@digit/lib-frontend` for dialogs. MUI Drawer and Snackbar
+  are fine. Never ask to loosen the iframe sandbox. Where the
   iframe can't do something itself (camera, scanning, navigating Digit), check
   `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
-- **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
+- **Stack:** React + MUI + `DigitThemeProvider`. Prefer `@digit/lib-frontend`
+  `Modal`, `InputTextField`, `IconWrapper`, and `InvisibleButton` over raw MUI
+  `Dialog`, `TextField`, and `IconButton`. Prefer theme palette / typography over
   hard-coded colors or custom CSS. Do not invent a parallel CSS design system or
   restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
@@ -227,7 +230,8 @@ only; still upload the zip **unchanged**. Details:
   paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
   unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `AppErrorAlert` only. Pair hook `error` with
+- **Public surface:** hooks + theme + `AppErrorAlert` + `Modal`, `InputTextField`,
+  `IconWrapper`, and `InvisibleButton`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -407,7 +411,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 ## Additional resources
 
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
-- [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
+- [reference/theming.md](reference/theming.md) — DigitThemeProvider, Modal, InputTextField, IconWrapper, InvisibleButton, MUI theme, AppHost settings
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key

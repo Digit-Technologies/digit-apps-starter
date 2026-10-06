@@ -72,7 +72,35 @@ digit-web). Do not add a Google Fonts or other CDN stylesheet. The harness sets
 
 ## UI rules for agents
 
-- Prefer MUI components styled by the theme (`Button`, `TextField`, `Typography`,
+Prefer these `@digit/lib-frontend` components over the raw MUI equivalents:
+
+| Instead of | Use |
+| --- | --- |
+| MUI `Dialog` | `Modal` |
+| MUI `TextField` for a labeled form field | `InputTextField` |
+| MUI `IconButton` as a hand-rolled icon control | `IconWrapper` around a Lucide icon, or `InvisibleButton` for a link-styled action |
+
+`IconWrapper` sets Lucide's stroke to `1.25` (digit-web's stroke) unless the icon
+already sets `strokeWidth`. `InputTextField` is a react-hook-form field: the app
+must depend on `react-hook-form` and `@hookform/error-message`. Pass `removeBorder`
+for digit-web's detail-inset layout (`getDetailInsetProps` /
+`resolveDetailInsetMode`). Those rules are already in `DigitThemeProvider`.
+
+```tsx
+import { useForm } from 'react-hook-form';
+import { IconWrapper, InputTextField, InvisibleButton, Modal } from '@digit/lib-frontend';
+import { Pencil } from 'lucide-react';
+
+const { control } = useForm({ defaultValues: { name: '' } });
+
+<InvisibleButton onClick={() => setOpen(true)}>Edit name</InvisibleButton>
+<Modal open={open} setOpen={setOpen} title="Name" mainCtaText="Save" mainCtaAction={submit}>
+  <InputTextField control={control} name="name" label="Name" />
+</Modal>
+<IconWrapper size={16}><Pencil /></IconWrapper>
+```
+
+- Prefer other MUI components styled by the theme (`Button`, `Typography`,
   `Stack`, `Box`, `Table`, `Alert`, …)
 - Prefer `theme.palette.*` / typography variants over hard-coded hex colors
 - Do not restyle MUI from scratch, and do not invent a parallel CSS design system
@@ -80,7 +108,7 @@ digit-web). Do not add a Google Fonts or other CDN stylesheet. The harness sets
   gradients from older vanilla examples
 - Do not invent a CSS custom-property theme — use MUI + `DigitThemeProvider`
 - Stay inside the host iframe: no downloads, new tabs/popups, or
-  `alert`/`confirm`/`prompt`. MUI Dialog/Drawer are fine. See
+  `alert`/`confirm`/`prompt`. Use `Modal` for confirmations. MUI Drawer is fine. See
   [iframe-constraints.md](iframe-constraints.md).
 - Do not assume the harness injects React, MUI, or fonts — only host APIs.
   Inter comes from `DigitThemeProvider`

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -8,10 +10,15 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import { Pencil } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+
+import { IconWrapper, InputTextField, InvisibleButton, Modal } from '@digit/lib-frontend';
 
 export default function ThemePanel() {
+  const [open, setOpen] = useState(false);
+  const { control, handleSubmit, reset } = useForm({ defaultValues: { name: '' } });
   return (
     <Stack spacing={3}>
       <Box>
@@ -20,8 +27,9 @@ export default function ThemePanel() {
         </Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary' }}>
           MUI components styled by <code>DigitThemeProvider</code> from{' '}
-          <code>@digit/lib-frontend</code>. Prefer palette / typography tokens over hard-coded
-          colors.
+          <code>@digit/lib-frontend</code>. Prefer <code>Modal</code>, <code>InputTextField</code>,{' '}
+          <code>IconWrapper</code>, and <code>InvisibleButton</code> over raw Dialog, TextField, and
+          IconButton. Prefer palette / typography tokens over hard-coded colors.
         </Typography>
       </Box>
 
@@ -58,7 +66,31 @@ export default function ThemePanel() {
 
       <Stack spacing={1}>
         <Typography variant="overline">Fields & chips</Typography>
-        <TextField label="Sample field" placeholder="Type here" size="small" sx={{ maxWidth: 280 }} />
+        <InputTextField
+          control={control}
+          name="name"
+          label="Sample field"
+          placeholder="Type here"
+          sx={{ maxWidth: 280 }}
+        />
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <IconWrapper size={16}>
+            <Pencil />
+          </IconWrapper>
+          <InvisibleButton onClick={() => setOpen(true)}>Open modal</InvisibleButton>
+        </Stack>
+        <Modal
+          open={open}
+          setOpen={setOpen}
+          title="Sample modal"
+          mainCtaText="Done"
+          mainCtaAction={handleSubmit(() => {
+            setOpen(false);
+            reset();
+          })}
+        >
+          <InputTextField control={control} name="name" label="Name" />
+        </Modal>
         <Stack direction="row" spacing={1}>
           <Chip label="Default" />
           <Chip label="Primary" color="primary" />
