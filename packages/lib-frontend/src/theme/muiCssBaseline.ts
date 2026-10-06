@@ -1,16 +1,18 @@
 import darkScrollbar from "@mui/material/darkScrollbar"
 import { Components, Theme } from "@mui/material/styles"
 
+import { detailInsetGlobalStyleOverrides } from "../components/detailInsetGlobalStyles"
 import { neutralAlpha } from "./colors"
 import { ThemeProps } from "./types"
 
 // Shared html/body rules match digit-web. Omitted on purpose: Clerk's
-// `.cl-organizationSwitcher-root` overrides and detail-inset form styles
-// (those need private web components).
+// `.cl-organizationSwitcher-root` overrides. Detail-inset rules ship with
+// the shared field components.
 export const muiCssBaseline = ({
   darkMode,
 }: ThemeProps): Components<Omit<Theme, "components">>["MuiCssBaseline"] => ({
-  styleOverrides: () => ({
+  styleOverrides: (theme) => ({
+    ...detailInsetGlobalStyleOverrides(theme),
     html: {
       // Set explicit base font size for consistent rem calculations
       fontSize: "16px", // 1rem = 16px

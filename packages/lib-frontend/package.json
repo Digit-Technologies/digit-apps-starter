@@ -1,7 +1,7 @@
 {
   "name": "@heysutton/lib-frontend",
   "version": "1.0.0",
-  "description": "Digit custom app frontend helpers — MUI theme, harness types, React data hooks, error UI",
+  "description": "Digit custom app frontend helpers — MUI theme, shared UI, harness types, React data hooks, error UI",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -31,14 +31,28 @@
   },
   "dependencies": {
     "@heysutton/lib-common": "file:../lib-common",
-    "inter-ui": "4.1.1"
+    "@hookform/error-message": "^2.0.1",
+    "currency-symbol-map": "^5.1.0",
+    "inter-ui": "4.1.1",
+    "lucide-react": "^1.21.0",
+    "react-hook-form": "^7.82.0"
   },
   "peerDependencies": {
     "@emotion/react": "^11",
     "@emotion/styled": "^11",
+    "@hookform/error-message": "^2.0.1",
     "@mui/material": "^9",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "react-hook-form": "^7.82.0"
+  },
+  "peerDependenciesMeta": {
+    "@hookform/error-message": {
+      "optional": true
+    },
+    "react-hook-form": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/react": "^19",

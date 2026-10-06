@@ -12,9 +12,12 @@
     "@heysutton/lib-frontend": "file:../../packages/lib-frontend",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@hookform/error-message": "^2.0.1",
     "@mui/material": "^9.3.1",
+    "lucide-react": "^1.21.0",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "react-hook-form": "^7.82.0"
   },
   "devDependencies": {
     "@heysutton/lib-build": "file:../../packages/lib-build",

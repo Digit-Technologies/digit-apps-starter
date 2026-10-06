@@ -5,12 +5,27 @@ land on NPM. **All `@heysutton/*` packages publish as public** on [npmjs.com](ht
 (MIT license). The **initial release is `1.0.0`** for all four packages. **Nothing in this
 repo publishes automatically until release secrets and org access are configured.**
 
+## First publish is blocked on npm auth
+
+**Do not publish from this branch.** Release Please, the publish workflow, and local
+`npm publish --dry-run` gates are in place, but the first real upload still needs **Sean**
+to wire authentication for the **`heysutton`** npm org in GitHub Actions. Pick one:
+
+| Option | What Sean wires |
+| --- | --- |
+| **`NPM_TOKEN`** | Granular or Automation token with publish rights to `@heysutton/*`, stored as the GitHub Actions secret `NPM_TOKEN`. The publish job maps it to `NODE_AUTH_TOKEN` and refuses a real publish when the secret is empty. |
+| **OIDC trusted publishing** | npm trusted publisher for `Digit-Technologies/digit-apps-starter` on the `heysutton` org (GitHub Actions OIDC). The workflow already sets `id-token: write` for provenance. Trusted publishing is **not configured** on npm or in the job today — wiring it means Sean links the repo/workflow on npm and updates the publish step so it no longer depends on a long-lived token. |
+
+Until one of those is done, `workflow_dispatch` with the default **`dry_run: true`** is the only
+safe Actions path. A `release: published` event would fail closed without `NPM_TOKEN`. This
+repo does not contain a token.
+
 ## Packages
 
 | NPM name | Path | Purpose |
 | --- | --- | --- |
 | `@heysutton/lib-common` | `packages/lib-common` | Error codes, result types, pure validation |
-| `@heysutton/lib-frontend` | `packages/lib-frontend` | MUI theme, harness types, React data hooks, error UI |
+| `@heysutton/lib-frontend` | `packages/lib-frontend` | MUI theme, shared UI (`Modal`, `InputTextField`, `IconWrapper`, `InvisibleButton`), harness types, React data hooks, error UI |
 | `@heysutton/lib-backend` | `packages/lib-backend` | Worker handler helpers, env/secrets, jobs, webhooks |
 | `@heysutton/lib-build` | `packages/lib-build` | `digit-app pack` CLI and shared Vite configs |
 
@@ -191,20 +206,19 @@ Complete before merging the first Release Please release or running `workflow_di
 - [ ] `@heysutton` npm org exists; owners/admins invited; 2FA enabled
 - [ ] Org slug confirmed (`https://www.npmjs.com/org/heysutton`) — package scope matches repo (`@heysutton/lib-*`)
 - [ ] No conflicting packages already published under the same names (check npm search / `@heysutton/lib-common`)
-- [ ] Granular or Automation token created with **publish** rights to `@heysutton/*`
-- [ ] GitHub **`NPM_TOKEN`** secret set on `digit-apps-starter` (or org/environment per step 3)
+- [ ] **Auth for the `heysutton` org** — either a Granular/Automation token stored as GitHub **`NPM_TOKEN`**, or npm **OIDC trusted publishing** for `Digit-Technologies/digit-apps-starter` with the publish job updated to use it. The workflow today expects `NPM_TOKEN` and fails closed when it is missing. OIDC is not wired yet.
 - [ ] **Dry-run workflow** green (`workflow_dispatch`, `dry_run: true`)
 - [ ] All four `package.json` files at intended version (**`1.0.0`**) and `.release-please-manifest.json` aligned
 - [ ] **`publishConfig.access: "public"`** present on each package (already in repo)
 - [ ] CI uses **`npm publish --access public`** (already in workflow — required for scoped first publish)
-- [ ] **Provenance:** workflow passes `--provenance` and sets `id-token: write`; confirm npm org allows provenance for GitHub Actions (npm → org → publishing settings). If provenance fails on first run, check npm docs for [trusted publishing](https://docs.npmjs.com/generating-provenances) — OIDC can replace long-lived tokens later
+- [ ] **Provenance:** workflow passes `--provenance` and sets `id-token: write`; confirm the npm org allows GitHub Actions provenance. Trusted publishing setup is the OIDC option in the auth item above ([npm docs](https://docs.npmjs.com/generating-provenances))
 - [ ] Post-publish: verify `npm view @heysutton/lib-common version` and install smoke test from a clean directory
 - [ ] Phase 1 vendoring unchanged — apps still work if npm is down (see phased cutover below)
 
 ### Optional hardening (later)
 
 - GitHub **Environment** `npm-publish` with required reviewers on the publish job
-- npm **trusted publishing** (OIDC) linked to `Digit-Technologies/digit-apps-starter` to retire long-lived `NPM_TOKEN`
+- If the first publish used `NPM_TOKEN`, switch later to npm **trusted publishing** (OIDC) and retire the long-lived token
 - Token rotation calendar reminder before granular token expiry
 
 ## Local dry-run
@@ -292,7 +306,7 @@ Digit deploy or agent restore time.
 
 ## Production-readiness checklist
 
-- [ ] **NPM org + `NPM_TOKEN`** — [setup runbook documented](#npm-org-and-npm_token-setup-runbook); awaiting Sean to provision
+- [ ] **NPM org + auth** — [setup runbook documented](#npm-org-and-npm_token-setup-runbook); **first publish blocked** until Sean wires `NPM_TOKEN` or OIDC trusted publishing for the `heysutton` org
 - [x] **Public** package visibility on npmjs.com (decided)
 - [x] **Initial semver baseline `1.0.0`** for all four packages (decided)
 - [x] **Grouped versioning** — one shared semver across all four packages via `linked-versions` (decided)

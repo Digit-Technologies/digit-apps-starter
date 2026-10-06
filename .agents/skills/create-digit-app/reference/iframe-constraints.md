@@ -50,8 +50,8 @@ host can do some of these on the app's behalf (scanning, for example).
 ## Do use (works in-frame)
 
 - SPA navigation and in-iframe links (same document / React Router-style)
-- MUI **Dialog**, Drawer, Menu, Popover, Snackbar — these are in-page overlays, not
-  browser `window.alert`-style modals
+- `Modal` from `@heysutton/lib-frontend` for dialogs. MUI Drawer, Menu, Popover, and
+  Snackbar are in-page overlays, not browser `window.alert`-style modals
 - Digit proxies and hooks (`useDigitApiQuery`, `useBackendQuery`, …)
 - Forms with `onSubmit` + `preventDefault`, posting JSON via fetch/hooks
 - “Copy” buttons via `navigator.clipboard.writeText(...)` inside a click handler
@@ -126,7 +126,7 @@ Before shipping UI:
 1. File exports only via `invoke("download", ...)` — never `<a download>` / blob links
 2. Printing only via `invoke("print", ...)` with self-contained HTML under 10MB
 3. No new-tab / popup / `window.open` flows
-4. No `alert` / `confirm` / `prompt` — use MUI Dialog / `AppErrorAlert` instead
+4. No `alert` / `confirm` / `prompt` — use `Modal` from `@heysutton/lib-frontend` / `AppErrorAlert` instead
 5. No camera, mic, geo, clipboard-read, fullscreen, or other device APIs in the iframe — use a
    host method from `getHostCapabilities` where one exists
 6. Every form submit handler calls `preventDefault`
