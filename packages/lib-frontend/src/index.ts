@@ -33,6 +33,13 @@ export {
 } from "./api";
 export type { DigitResult } from "./api";
 
-// Labels designed in Sutton, previewed and printed by the host (AppHost.invoke("printLabel"))
-export { printLabel } from "./labels";
-export type { LabelEntityType, PrintLabelArgs } from "./labels";
+// Labels designed in Sutton. The host renders them; the app previews the HTML, then prints.
+export { LabelPreview, LabelPrintDialog, printLabel } from "./labels";
+export type {
+  LabelEntityType,
+  LabelPreviewDocument,
+  LabelPreviewProps,
+  LabelPrintDialogProps,
+  PrintLabelArgs,
+  PrintLabelMode,
+} from "./labels";

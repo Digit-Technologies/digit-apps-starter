@@ -8,7 +8,7 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 
 Import from the package root only. Theme tokens, error parsers, and other modules
 under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
-`AppErrorAlert`, and `printLabel`.
+`AppErrorAlert`, `printLabel`, and `LabelPrintDialog`.
 
 ## Why a copy (not an import from digit-web)
 
@@ -71,25 +71,40 @@ The print document runs no JavaScript. Inline CSS and convert images or canvases
 is `img-src data:`). Keep the result under 10MB. Use `invoke("download", ...)` for PDF bytes.
 
 For inventory and item labels designed in Sutton, do not rebuild the layout in the app. Name the
-label and the record by id and let the host load, render, preview and print them with the same code
-native label print uses:
+label and the record by id. `LabelPrintDialog` asks the host to render with the same code native
+label print uses, shows the HTML in a sandboxed iframe, and prints only after the user confirms:
 
 ```tsx
-import { printLabel } from "@digit/lib-frontend";
+import { useState } from "react";
+import Button from "@mui/material/Button";
+import { LabelPrintDialog } from "@digit/lib-frontend";
 
-const printed = await printLabel({
-  labelId, // custom label configuration id, from the API
-  entityType: "inventory", // or "item"
-  entityId: inventory.id,
-  copies: 2,
-});
+function PrintInventoryLabel({ labelId, inventoryId }: { labelId: string; inventoryId: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button onClick={() => setOpen(true)}>Print label</Button>
+      <LabelPrintDialog
+        open={open}
+        onClose={() => setOpen(false)}
+        labelId={labelId}
+        entityType="inventory"
+        entityId={inventoryId}
+        copies={2}
+      />
+    </>
+  );
+}
 ```
 
-`printLabel` resolves `true` once printing starts and `false` if the user closed the host's preview;
-pass `preview: false` to open the print dialog directly. It calls `AppHost.invoke("printLabel", ...)`,
-so it rejects on a host that doesn't offer it, for a label with no composer `layoutJson`, and when the
-label doesn't match the record type. The host loads the records, so the app doesn't query them and
-never receives the rendered label. Look up the label id via Digit MCP before shipping.
+`printLabel({ labelId, entityType, entityId, copies?, mode })` calls
+`AppHost.invoke("printLabel", ...)`. `mode: "preview"` resolves
+`{ html, title, widthIn, heightIn, copies }` and prints nothing — show it with `LabelPreview`.
+`mode: "print"` resolves `{ printed: true }` after the host opens the print dialog. Do not pass
+`preview: boolean`, and do not treat any non-null result as printed. Calls are spaced to the host's
+limit of one per second. It rejects on a host that doesn't offer it, for a label with no composer
+`layoutJson`, when the label doesn't match the record type, and when the document is too large. The
+host loads the records. Look up the label id via Digit MCP before shipping.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.
