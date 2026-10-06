@@ -1,20 +1,44 @@
-# `@digit/lib-frontend`
+# `@heysutton/lib-frontend`
 
-Digit frontend kit for custom apps: MUI theme (`DigitThemeProvider`), React data
-hooks for the Digit API and app backend, and error normalization/display.
-Snapshot of Digit web’s theme adapted for the public apps starter.
+Digit frontend kit for custom apps:
+
+- Host bridge (`AppHost`)
+- React data hooks for the Digit API and the app backend
+- `AppErrorAlert`
+
+`DigitThemeProvider` is still exported so starter apps and the curated zip keep
+compiling. That export is **temporary**. The design-system source of truth is
+`@heysutton/ui`, published from **digit-web**. This repo does not publish
+`@heysutton/ui`, and it does not publish `Modal`, `InputTextField`,
+`IconWrapper`, or `InvisibleButton`.
 
 ## Public API
 
-Import from the package root only. Theme tokens, error parsers, and other modules
-under `src/` are implementation details — use `DigitThemeProvider`, the hooks, and
-`AppErrorAlert`.
+Import from the package root only.
 
-## Why a copy (not an import from digit-web)
+Long-term surface:
 
-`digit-web` is private; this starter is public. Tokens and helpers live here so
-agents and customers can build Digit-looking apps without access to the web
-monorepo.
+- `AppHost` and host types
+- `useDigitApiQuery`, `useDigitApiMutation`, `useBackendQuery`, `useBackendMutation`
+- `AppErrorAlert` / `AppError`
+
+Temporary, until starter apps depend on `@heysutton/ui`:
+
+- `DigitThemeProvider`
+
+Theme tokens, error parsers, and other modules under `src/` are implementation
+details.
+
+## Theme cutover
+
+`digit-web` publishes `@heysutton/ui`. This starter stays public and still
+vendors a theme copy so agents can build Digit-looking apps without that
+package. Do not treat this copy as a second design system, and do not add UI
+wrappers here.
+
+When starter apps take a dependency on `@heysutton/ui`, delete `src/theme` and
+the `DigitThemeProvider` re-export from this package. Until then, keep the
+re-export so `file:` apps and the starter zip keep working.
 
 When web theme changes, update the files under `src/theme` from that branch —
 do not reintroduce imports from private packages, and do not edit the shared
@@ -22,9 +46,11 @@ tokens here without recording the reason below.
 
 ### Intentional diffs from digit-web
 
-Source of truth: `digit-web` `staging`, `src/providers/AppThemeProvider` plus
-`src/constants/colors.ts`, `shadows.ts`, `transitions.ts`, and
-`theme-extensions.ts`.
+Design-system source of truth: `@heysutton/ui` from digit-web, not this
+package. The temporary snapshot under `src/theme` tracks digit-web `staging`
+(`src/providers/AppThemeProvider` plus `src/constants/colors.ts`, `shadows.ts`,
+`transitions.ts`, and `theme-extensions.ts`) until starter apps depend on
+`@heysutton/ui`.
 
 - `DigitThemeProvider` replaces `AppThemeProvider`. It follows `AppHost` theme
   settings. It does not use web’s view-mode storage, Lucide provider, or Clerk.
@@ -48,7 +74,7 @@ Every app template wraps its UI in `DigitThemeProvider`:
 
 ```tsx
 import { createRoot } from "react-dom/client";
-import { DigitThemeProvider } from "@digit/lib-frontend";
+import { DigitThemeProvider } from "@heysutton/lib-frontend";
 import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
@@ -108,7 +134,7 @@ import {
   useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
-} from "@digit/lib-frontend";
+} from "@heysutton/lib-frontend";
 
 // Digit GraphQL API
 const { data, error, loading, refetch } = useDigitApiQuery({
@@ -139,8 +165,8 @@ Error kinds:
 | `unavailable` | Missing `AppProxy` (local Vite without harness)                       |
 | `unknown`     | Thrown / non-JSON / unexpected shapes                                 |
 
-Platform codes stay distinct from app codes (`AppErrorCode` on `@digit/lib-common`).
-Pair with `@digit/lib-backend` on the Worker so result shapes match.
+Platform codes stay distinct from app codes (`AppErrorCode` on `@heysutton/lib-common`).
+Pair with `@heysutton/lib-backend` on the Worker so result shapes match.
 
 `AppErrorAlert` maps known platform / backend codes to a title, safe message, optional
 next-step guidance (e.g. `MISSING_CONFIG` → set env/secrets in Digit), visible support
@@ -152,7 +178,7 @@ info for debugging, and Retry when the error looks transient. Prefer rendering
 ```json
 {
   "dependencies": {
-    "@digit/lib-frontend": "file:../../packages/lib-frontend"
+    "@heysutton/lib-frontend": "file:../../packages/lib-frontend"
   }
 }
 ```
@@ -161,7 +187,7 @@ Apps must also depend on the peer packages (`react`, `react-dom`, `@mui/material
 `@emotion/react`, `@emotion/styled`). Vite configs need `resolve.preserveSymlinks: true`
 so peers resolve from the app’s `node_modules` when the package is linked via `file:`.
 
-See also [`@digit/lib-backend`](../lib-backend) for Worker helpers.
+See also [`@heysutton/lib-backend`](../lib-backend) for Worker helpers.
 
 Styling is MUI + `DigitThemeProvider` only — do not add a parallel CSS design
 system or restyle MUI from scratch. `DigitThemeProvider` bundles self-hosted

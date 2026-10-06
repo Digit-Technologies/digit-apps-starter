@@ -1,8 +1,10 @@
 // Minimal shim — this repo deliberately has no @cloudflare/workers-types dependency.
 declare module 'cloudflare:workers' {
   abstract class WorkerEntrypoint {
-    protected env: unknown;
-    protected ctx: unknown;
+    // Public so declaration emit can name the exported handler class.
+    // Cloudflare still provides these on the instance.
+    env: unknown;
+    ctx: unknown;
   }
   export { WorkerEntrypoint };
 }

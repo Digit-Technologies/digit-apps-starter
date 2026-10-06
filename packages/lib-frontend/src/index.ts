@@ -4,7 +4,11 @@
  * Only import from this package root — other files are implementation details.
  */
 
-// Theme
+// Temporary re-export. Theme and UI source of truth is `@heysutton/ui`
+// (published from digit-web). This package does not publish that design
+// system, and it does not export Modal / InputTextField / IconWrapper /
+// InvisibleButton. Remove this export once starter apps depend on
+// `@heysutton/ui`.
 export { DigitThemeProvider } from "./theme";
 
 // Host API + types (importing this package augments Window)

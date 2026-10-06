@@ -1,5 +1,5 @@
-import { AppErrorCode } from './codes';
-import { err, ok, type ParseResult } from './result';
+import { AppErrorCode } from './codes.js';
+import { err, ok, type ParseResult } from './result.js';
 
 /** Require a non-null, non-array object. Returns a typed `ParseResult`. */
 function parsePlainObject({

@@ -9,7 +9,7 @@
  * D1 binding: FULL_FEATURED_DB (manifest.json). Migrations in migrations/ run on publish.
  */
 
-import { AppErrorCode, parseJsonResponse } from '@digit/lib-common';
+import { AppErrorCode, parseJsonResponse } from '@heysutton/lib-common';
 import {
   backendPath,
   createHandler,
@@ -17,7 +17,7 @@ import {
   err,
   ok,
   requireEnv,
-} from '@digit/lib-backend';
+} from '@heysutton/lib-backend';
 
 import { noteStats, pruneNotes } from './jobs.js';
 import { noteCreated } from './webhooks.js';

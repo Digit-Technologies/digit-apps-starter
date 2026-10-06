@@ -1,4 +1,4 @@
-# `@digit/lib-build`
+# `@heysutton/lib-build`
 
 Shared Digit app tooling. **v1 public CLI:** `digit-app pack` only.
 
@@ -15,7 +15,7 @@ flow.
     "pack": "digit-app pack"
   },
   "devDependencies": {
-    "@digit/lib-build": "file:../../packages/lib-build"
+    "@heysutton/lib-build": "file:../../packages/lib-build"
   }
 }
 ```
@@ -32,7 +32,7 @@ that toolchain into the **workspace root** `node_modules`, not the app's — so 
 | `src/frontend/main.tsx` | `frontend/index.js` (IIFE — the entry) plus `frontend/assets/` (self-hosted Inter) |
 | `src/backend/index.js` (optional) | `backend/index.js` (+ `backend/migrations/*.sql`) |
 | Root `manifest.json` | `manifest.json` at the zip root |
-| `SPEC.md` + source/tooling | `project/` inside `app.zip` (vendored `@digit/lib-*`) |
+| `SPEC.md` + source/tooling | `project/` inside `app.zip` (vendored `@heysutton/lib-*`) |
 
 Zip root: `manifest.json` + `frontend/` (+ `backend/`) for Digit deploy, plus required
 `project/` (source, SPEC, vendored libs — not what Digit deploys).

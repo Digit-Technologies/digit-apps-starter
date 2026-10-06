@@ -29,7 +29,7 @@ wired to a real host).
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code. Preview
 uses live env and live secrets (Settings edits update live only); schedules do not run on
 preview, and inbound webhooks are live-only.
-`@digit/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@digit/lib-build`)
+`@heysutton/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@heysutton/lib-build`)
 vendors those packages (including `lib-build`) under `project/packages/` in `app.zip`.
 Local Digit runtime preview is not supported; remote preview is the platform deployment path.
 
@@ -42,7 +42,7 @@ UI, Digit GraphQL, a Worker calling a public API, secrets-backed third-party HTT
 CRUD, and env-driven config — as separate tabs so someone can copy the example and delete
 what they don't need.
 
-Use the shared @digit/lib-frontend / lib-backend / lib-common helpers instead of
+Use the shared @heysutton/lib-frontend / lib-backend / lib-common helpers instead of
 hand-rolling proxy fetches and Worker response shapes. Keep the stack React + MUI +
 DigitThemeProvider.
 

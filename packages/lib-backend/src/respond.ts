@@ -2,13 +2,13 @@ import {
   type AppErrorCode as AppErrorCodeType,
   type ErrorResult,
   type SuccessResult,
-} from '@digit/lib-common';
+} from '@heysutton/lib-common';
 
 export type OkArgs = { data: unknown } & ResponseInit;
 
 /**
  * JSON success Response for Digit app Workers.
- * Result shape comes from `@digit/lib-common`.
+ * Result shape comes from `@heysutton/lib-common`.
  */
 export function ok({ data, ...init }: OkArgs): Response {
   const status = init.status ?? 200;

@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import { buildBackend } from './buildBackend.js';
 import { buildFrontend } from './buildFrontend.js';
-import { copyPath, pathExists, rmrf } from './fsutils.js';
+import { copyDir, copyPath, pathExists, rmrf } from './fsutils.js';
 import { buildInfo } from './buildInfo.js';
 
 const PROJECT_ALLOWLIST = [
@@ -33,8 +33,21 @@ async function resolvePackagesDir({ root }) {
     return monorepo;
   }
   throw new Error(
-    'cannot find @digit/lib-* packages (expected ./packages or monorepo packages/ next to lib-build)',
+    'cannot find @heysutton/lib-* packages (expected ./packages or monorepo packages/ next to lib-build)',
   );
+}
+
+/** Canonical scope plus the legacy alias pack still vendors. `@heysutton/ui` is not a lib. */
+export const LIB_SCOPES = ['@heysutton', '@digit'];
+
+export function libFolderFromDepName(name) {
+  for (const scope of LIB_SCOPES) {
+    const prefix = `${scope}/`;
+    if (!name.startsWith(prefix)) continue;
+    const folder = name.slice(prefix.length);
+    if (folder.startsWith('lib-')) return folder;
+  }
+  return null;
 }
 
 function digitLibFoldersFromPackageJson(pkg) {
@@ -43,8 +56,8 @@ function digitLibFoldersFromPackageJson(pkg) {
     const deps = pkg[section];
     if (!deps) continue;
     for (const name of Object.keys(deps)) {
-      if (!name.startsWith('@digit/lib-')) continue;
-      folders.add(name.slice('@digit/'.length));
+      const folder = libFolderFromDepName(name);
+      if (folder) folders.add(folder);
     }
   }
   // Always vendor the build tooling used to re-pack.
@@ -57,8 +70,8 @@ function rewriteDigitLibDeps(pkg) {
     const deps = pkg[section];
     if (!deps) continue;
     for (const name of Object.keys(deps)) {
-      if (!name.startsWith('@digit/lib-')) continue;
-      const folder = name.slice('@digit/'.length);
+      const folder = libFolderFromDepName(name);
+      if (!folder) continue;
       deps[name] = `file:./packages/${folder}`;
     }
   }
@@ -98,7 +111,10 @@ async function stageProject({ root, staging, packagesDir }) {
       }
       continue;
     }
-    await copyPath(src, path.join(packagesOut, folder));
+    // Source only. dist/ is rebuilt by prepare; tests are not part of the app archive.
+    await copyDir(src, path.join(packagesOut, folder), {
+      exclude: new Set(['node_modules', '.git', '.vite', 'dist', 'test']),
+    });
   }
 
   const rewritten = rewriteDigitLibDeps(pkg);

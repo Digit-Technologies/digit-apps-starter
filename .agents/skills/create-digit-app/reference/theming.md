@@ -2,23 +2,29 @@
 
 Digit apps should look like Digit. Use **one stack only**:
 
-**React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`)**
+**React + MUI + `@heysutton/lib-frontend` (`DigitThemeProvider`)**
 
 Do not invent a parallel design system, skip the frontend package, or ship vanilla
 HTML/CSS UI for new apps.
 
+Theme and UI source of truth is `@heysutton/ui`, published from digit-web. This
+starter does **not** publish `@heysutton/ui` or Modal / field / icon wrappers.
+`DigitThemeProvider` below is a temporary re-export so starter apps keep
+compiling until they depend on `@heysutton/ui`.
+
 ## Package
 
-[`packages/lib-frontend`](../../../../packages/lib-frontend) is a public snapshot of
-Digit web’s MUI theme (palette, typography, component overrides). The private
-`digit-web` repo is **not** a dependency — keep this package self-contained.
+[`packages/lib-frontend`](../../../../packages/lib-frontend) vendors a temporary
+MUI theme snapshot so starter apps can render `DigitThemeProvider` without a
+digit-web checkout. Do not extend that snapshot into a second design system.
+`@heysutton/ui` is the source of truth and is not a dependency of this starter.
 
 Depend on it from an app:
 
 ```json
 {
   "dependencies": {
-    "@digit/lib-frontend": "file:../../packages/lib-frontend",
+    "@heysutton/lib-frontend": "file:../../packages/lib-frontend",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/material": "^9.3.1",
@@ -31,13 +37,13 @@ Use `file:../packages/lib-frontend` when the app sits at the repo root (not unde
 `examples/`).
 
 For Worker helpers (`createHandler`, `backendPath`, `ok`/`err`, `requireEnv`), depend on
-[`@digit/lib-backend`](../../../../packages/lib-backend). Bundling is handled by
-`@digit/lib-build` (`digit-app pack`) — see `examples/full-featured`.
+[`@heysutton/lib-backend`](../../../../packages/lib-backend). Bundling is handled by
+`@heysutton/lib-build` (`digit-app pack`) — see `examples/full-featured`.
 
 ## Provider
 
 ```tsx
-import { DigitThemeProvider } from '@digit/lib-frontend';
+import { DigitThemeProvider } from '@heysutton/lib-frontend';
 
 createRoot(rootEl).render(
   <DigitThemeProvider>
@@ -48,7 +54,7 @@ createRoot(rootEl).render(
 
 `DigitThemeProvider`:
 
-1. Reads light/dark from `AppHost` (exported from `@digit/lib-frontend` with its
+1. Reads light/dark from `AppHost` (exported from `@heysutton/lib-frontend` with its
    `AppHostSettings` type; importing the package augments `Window`)
 2. Falls back to `document.documentElement.dataset.theme`, then `prefers-color-scheme`
 3. Calls `createTheme(themeOptions(darkMode))` and renders MUI `CssBaseline`
@@ -59,7 +65,7 @@ Do not add a local `digit.d.ts` for the harness globals. Prefer hooks over calli
 ## Host settings
 
 ```ts
-import { AppHost } from '@digit/lib-frontend';
+import { AppHost } from '@heysutton/lib-frontend';
 
 AppHost.getSettings(); // AppHostSettings | null
 AppHost.onSettingsChange((settings) => { /* ... */ });

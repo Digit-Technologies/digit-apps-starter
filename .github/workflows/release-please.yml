@@ -1,0 +1,95 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+# contents + pull-requests: Release Please opens the Release PR and creates the
+# GitHub Release. The publish job replaces these with its own permissions.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    outputs:
+      # "true" only when this run created GitHub releases (Release PR merged).
+      # Feature merges leave this "false" and do not publish.
+      releases_created: ${{ steps.release.outputs.releases_created }}
+    steps:
+      - uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
+        id: release
+        with:
+          # Releases created with GITHUB_TOKEN do not trigger a separate
+          # `release: published` workflow. The publish job below runs in this
+          # same workflow when releases_created is true.
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Library tags (lib-*-v*) must not replace the starter zip at
+      # /releases/latest. release-please does not pass make_latest: false.
+      - name: Keep the starter zip as the latest GitHub release
+        if: steps.release.outputs.releases_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="$(gh release list --limit 100 --json tagName,isDraft,publishedAt --jq '
+            [.[] | select(.isDraft == false) | select(.tagName | startswith("starter-"))]
+            | sort_by(.publishedAt)
+            | last
+            | .tagName // empty
+          ')"
+          if [ -z "${tag}" ]; then
+            echo "No starter-* release found; leaving GitHub latest unchanged"
+            exit 0
+          fi
+          echo "Restoring GitHub latest release to ${tag}"
+          gh release edit "${tag}" --latest --repo "${GITHUB_REPOSITORY}"
+
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.releases_created == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      # npm publish --provenance needs the Actions OIDC token. Without
+      # id-token: write the first real publish fails.
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Build @heysutton packages
+        run: npm run build:packages
+
+      - name: Test @heysutton packages
+        run: npm test
+
+      - name: Verify pack smoke test
+        run: npm run verify:packages
+
+      - name: Publish @heysutton platform libraries
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::error::NPM_TOKEN secret is required for real publish"
+            exit 1
+          fi
+          # lib-common first: lib-frontend and lib-backend depend on it.
+          # @heysutton/ui is not in this list. Theme/UI publish from digit-web.
+          for pkg in lib-common lib-frontend lib-backend lib-build; do
+            echo "=== npm publish @heysutton/${pkg} ==="
+            npm publish --provenance --access public -w "@heysutton/${pkg}"
+          done
