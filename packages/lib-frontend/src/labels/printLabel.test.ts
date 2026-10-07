@@ -12,6 +12,7 @@ const preview: LabelPreviewDocument = {
   widthIn: 4,
   heightIn: 6,
   copies: 2,
+  withheldPermissions: [],
 };
 
 const fakeHost = (reply: unknown) => {
@@ -133,4 +134,17 @@ test("printLabel previews, then prints only on a later call, at most once a seco
   } finally {
     mock.timers.reset();
   }
+});
+
+test("printLabel preview reports the permissions the host left data off for", async () => {
+  const { host } = fakeHost({ ...preview, withheldPermissions: ["READ_JOB", "READ_ITEM_CUSTOMER"] });
+  const result = await printLabel({ ...args, mode: "preview", host });
+  assert.deepEqual(result.withheldPermissions, ["READ_JOB", "READ_ITEM_CUSTOMER"]);
+});
+
+test("printLabel preview reports none from a host that predates the field", async () => {
+  const { withheldPermissions: _omitted, ...withoutField } = preview;
+  const { host } = fakeHost(withoutField);
+  const result = await printLabel({ ...args, mode: "preview", host });
+  assert.deepEqual(result.withheldPermissions, []);
 });

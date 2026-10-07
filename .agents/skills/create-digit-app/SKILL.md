@@ -300,12 +300,22 @@ function PrintInventoryLabel({ labelId, inventoryId }: { labelId: string; invent
 requires: `labelId`, `entityType`, `entityId`, `copies` (`null` when it was not given), and `mode`.
 Do not send template or record JSON, and do not pass `preview: boolean`.
 
-- `mode: "preview"` resolves `{ html, title, widthIn, heightIn, copies }` — self-contained,
+- `mode: "preview"` resolves `{ html, title, widthIn, heightIn, copies, withheldPermissions }` — self-contained,
   script-free HTML. Nothing prints. Show it with `LabelPreview` (a sandboxed iframe). Do not inject
   the HTML into the app page.
 - `mode: "print"` sends the same ids, the host opens the print dialog, and the call resolves
   `{ printed: true }`. Call it only after the user confirms the preview. A non-null result is not
   success; print must be `{ printed: true }`.
+- **Declare the permissions the label needs in `manifest.json`.** The host loads records with the
+  user's session but only prints what the app's manifest covers. Always declare
+  `READ_CUSTOM_LABEL_CONFIGURATION`, `READ_INVENTORY` and `READ_ITEM` (for item labels:
+  `READ_CUSTOM_LABEL_CONFIGURATION` and `READ_ITEM`), or the call rejects. A label also prints
+  blanks for data the manifest doesn't cover, so add `READ_JOB` for production labels (MO number,
+  bill of materials, customer), `READ_ITEM_CUSTOMER` for customer SKUs, `READ_PURCHASE_ORDER` for
+  receiving labels, plus `READ_COMPANY_DETAILS` and `READ_ITEM_VENDOR` for vendor fields.
+  `withheldPermissions` lists the ones the label left blank; `LabelPrintDialog` shows it and
+  disables Print until the manifest declares them. If you build your own UI, do the same: a
+  physical label that is missing its MO number is worse than none.
 - The host allows one `printLabel` call per second. `printLabel` waits so a print right after a
   preview is not rejected. Do not fire a burst of previews.
 - It rejects when the label has no composer `layoutJson`, doesn't match the record type, can't be

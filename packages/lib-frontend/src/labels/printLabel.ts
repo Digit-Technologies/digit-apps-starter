@@ -49,7 +49,11 @@ const clampCopies = (copies: number | undefined): number | null => {
   return Math.min(MAX_COPIES, Math.max(1, Math.floor(copies)));
 };
 
-const isPreviewDocument = (value: unknown): value is LabelPreviewDocument => {
+const isPreviewDocument = (
+  value: unknown,
+): value is Omit<LabelPreviewDocument, "withheldPermissions"> & {
+  withheldPermissions?: unknown;
+} => {
   if (typeof value !== "object" || value === null) return false;
   const label = value as Record<string, unknown>;
   return (
@@ -69,7 +73,8 @@ const isPrinted = (value: unknown): value is { printed: true } =>
 /**
  * Asks the host to render a label for a record, by id only.
  *
- * `mode: "preview"` resolves with `{ html, title, widthIn, heightIn, copies }` and prints nothing.
+ * `mode: "preview"` resolves with `{ html, title, widthIn, heightIn, copies, withheldPermissions }`
+ * and prints nothing.
  * Show `html` in a sandboxed iframe. `mode: "print"` opens the browser print dialog on the host and
  * resolves `{ printed: true }`. Call it only after the user confirms that preview.
  *
@@ -108,6 +113,11 @@ export async function printLabel(
       widthIn: result.widthIn,
       heightIn: result.heightIn,
       copies: result.copies,
+      withheldPermissions: Array.isArray(result.withheldPermissions)
+        ? result.withheldPermissions.filter(
+            (permission): permission is string => typeof permission === "string",
+          )
+        : [],
     };
   }
 

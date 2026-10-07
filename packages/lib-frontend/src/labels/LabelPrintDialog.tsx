@@ -25,6 +25,15 @@ export type LabelPrintDialogProps = {
   onPrinted?: () => void;
 };
 
+/**
+ * Why a label is incomplete, or null when the host left nothing off. The host leaves off data the
+ * app's manifest does not declare, and a label shipped without its MO number is worse than none.
+ */
+export const withheldMessage = (withheld: readonly string[]): string | null =>
+  withheld.length === 0
+    ? null
+    : `Some fields on this label are blank because this app doesn't declare ${withheld.join(", ")} in its manifest permissions. Add them and redeploy before printing.`;
+
 const messageOf = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message ? error.message : fallback;
 
@@ -106,14 +115,31 @@ export function LabelPrintDialog({
             {error}
           </Alert>
         ) : null}
-        {preview ? <LabelPreview {...preview} /> : null}
+        {preview && withheldMessage(preview.withheldPermissions) ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            {withheldMessage(preview.withheldPermissions)}
+          </Alert>
+        ) : null}
+        {preview ? (
+          <LabelPreview
+            html={preview.html}
+            title={preview.title}
+            widthIn={preview.widthIn}
+            heightIn={preview.heightIn}
+            copies={preview.copies}
+          />
+        ) : null}
         {loading && !preview ? <CircularProgress /> : null}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={printing}>
           Close
         </Button>
-        <Button variant="contained" onClick={confirmPrint} disabled={!preview || printing}>
+        <Button
+          variant="contained"
+          onClick={confirmPrint}
+          disabled={!preview || printing || preview.withheldPermissions.length > 0}
+        >
           Print
         </Button>
       </DialogActions>
