@@ -9,7 +9,8 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@digit/lib-common": "file:../lib-common"
+    "@digit/lib-common": "file:../lib-common",
+    "inter-ui": "4.1.1"
   },
   "peerDependencies": {
     "@emotion/react": "^11",

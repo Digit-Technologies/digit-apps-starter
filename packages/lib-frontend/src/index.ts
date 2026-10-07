@@ -1,3 +1,4 @@
+/// <reference path="./css.d.ts" />
 /**
  * Public API for Digit custom apps.
  * Only import from this package root — other files are implementation details.
