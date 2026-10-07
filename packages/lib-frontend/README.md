@@ -100,9 +100,10 @@ function PrintInventoryLabel({ labelId, inventoryId }: { labelId: string; invent
 `printLabel({ labelId, entityType, entityId, copies?, mode })` calls
 `AppHost.invoke("printLabel", ...)`. `mode: "preview"` resolves
 `{ html, title, widthIn, heightIn, copies, withheldPermissions }` and prints nothing — show it with
-`LabelPreview`. `withheldPermissions` lists manifest permissions whose data the label left blank (for
-example `READ_JOB` for the MO number); declare them in `manifest.json` or the label prints
-incomplete. `LabelPrintDialog` shows the list and disables Print until it is empty.
+`LabelPreview`. Declare the full label permission set in `manifest.json` up front (`READ_CUSTOM_LABEL_CONFIGURATION`,
+`READ_INVENTORY`, `READ_ITEM`, `READ_JOB`, `READ_ITEM_CUSTOMER`, `READ_PURCHASE_ORDER`,
+`READ_COMPANY_DETAILS`, `READ_ITEM_VENDOR`): a label prints blanks for data the manifest doesn't
+cover. `withheldPermissions` lists what was left off (for example `READ_JOB` for the MO number). `LabelPrintDialog` shows the list and disables Print until it is empty.
 `mode: "print"` resolves `{ printed: true }` after the host opens the print dialog. Do not pass
 `preview: boolean`, and do not treat any non-null result as printed. Calls are spaced to the host's
 limit of one per second. It rejects on a host that doesn't offer it, for a label with no composer
