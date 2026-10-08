@@ -13,7 +13,6 @@ const preview: LabelPreviewDocument = {
   widthIn: 4,
   heightIn: 6,
   copies: 1,
-  withheldPermissions: [],
 };
 
 const render = (state: Partial<typeof initialLabelPrintState>) =>
@@ -33,12 +32,6 @@ test("the Print button is enabled for a complete preview", () => {
 
 test("the Print button is disabled until there is a preview", () => {
   assert.match(render({ loading: true }), /<button[^>]*disabled/);
-});
-
-test("withheld permissions show a warning naming them and disable Print", () => {
-  const html = render({ preview: { ...preview, withheldPermissions: ["READ_JOB", "READ_ITEM_CUSTOMER"] } });
-  assert.match(html, /READ_JOB, READ_ITEM_CUSTOMER/);
-  assert.match(html, /<button[^>]*disabled/);
 });
 
 test("an error is shown", () => {

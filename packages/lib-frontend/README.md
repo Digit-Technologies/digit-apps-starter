@@ -106,16 +106,15 @@ import { LabelPrintPanel } from "@digit/lib-frontend";
 
 Use `LabelPrintDialog` (same props plus `open` and `onClose`) when a modal is what the design needs,
 and `useLabelPrint({ labelId, entityType, entityId, copies?, enabled?, onPrinted? })` for your own
-layout. The hook returns `{ preview, loading, printing, error, withheldPermissions, canPrint, print,
-reload }`; render `preview` with `LabelPreview` and call `print` only while `canPrint` is true.
+layout. The hook returns `{ preview, loading, printing, error, canPrint, print, reload }`; render `preview` with `LabelPreview` and call `print` only while `canPrint` is true.
 
 `printLabel({ labelId, entityType, entityId, copies?, mode })` calls
 `AppHost.invoke("printLabel", ...)`. `mode: "preview"` resolves
-`{ html, title, widthIn, heightIn, copies, withheldPermissions }` and prints nothing — show it with
-`LabelPreview`. Declare the full label permission set in `manifest.json` up front (`READ_CUSTOM_LABEL_CONFIGURATION`,
-`READ_INVENTORY`, `READ_ITEM`, `READ_JOB`, `READ_ITEM_CUSTOMER`, `READ_PURCHASE_ORDER`,
-`READ_COMPANY_DETAILS`, `READ_ITEM_VENDOR`): a label prints blanks for data the manifest doesn't
-cover. `withheldPermissions` lists what was left off (for example `READ_JOB` for the MO number). `LabelPrintPanel` and `LabelPrintDialog` show the list and disable Print until it is empty.
+`{ html, title, widthIn, heightIn, copies }` and prints nothing — show it with `LabelPreview`.
+Declare `READ_CUSTOM_LABEL_CONFIGURATION`, `READ_INVENTORY` and `READ_ITEM` in `manifest.json` for
+inventory labels (`READ_CUSTOM_LABEL_CONFIGURATION` and `READ_ITEM` for item labels); the call
+rejects naming whichever is missing. Whatever else the label shows comes from the record, for what
+the signed-in user can read.
 `mode: "print"` resolves `{ printed: true }` after the host opens the print dialog. Do not pass
 `preview: boolean`, and do not treat any non-null result as printed. Calls are spaced to the host's
 limit of one per second. It rejects on a host that doesn't offer it, for a label with no composer

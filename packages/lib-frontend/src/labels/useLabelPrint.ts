@@ -62,13 +62,9 @@ export function labelPrintReducer(state: LabelPrintState, action: LabelPrintActi
 const messageOf = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message ? error.message : fallback;
 
-/**
- * Whether Print may be offered. The host leaves data off a label when the app's manifest doesn't
- * declare what it needs, and a label shipped without its MO number is worse than none, so Print
- * stays off until the preview is complete.
- */
+/** Whether Print may be offered: a preview has loaded and nothing is printing. */
 export const canPrintPreview = (state: LabelPrintState): boolean =>
-  state.preview !== null && !state.printing && state.preview.withheldPermissions.length === 0;
+  state.preview !== null && !state.printing;
 
 /**
  * Loads a label preview from the host and prints only when `print()` is called. Use it to put a
@@ -128,7 +124,6 @@ export function useLabelPrint({
 
   return {
     ...state,
-    withheldPermissions: state.preview?.withheldPermissions ?? [],
     canPrint: canPrintPreview(state),
     print,
     reload,

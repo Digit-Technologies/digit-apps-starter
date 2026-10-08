@@ -43,11 +43,4 @@ export type LabelPreviewDocument = {
   widthIn: number;
   heightIn: number;
   copies: number;
-  /**
-   * Manifest permissions whose data the label left blank, for example `READ_JOB` when the record has
-   * a job. A label prints blanks for data the app's manifest does not declare, so when this is not
-   * empty the label is incomplete: tell the user and do not print until the manifest declares them.
-   * Always an array; a host that predates the field reports none.
-   */
-  withheldPermissions: string[];
 };

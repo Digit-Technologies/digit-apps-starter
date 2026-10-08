@@ -10,9 +10,6 @@ import DialogTitle from "@mui/material/DialogTitle";
 
 import { LabelPreview } from "./LabelPreview";
 import { type UseLabelPrintOptions, useLabelPrint } from "./useLabelPrint";
-import { withheldMessage } from "./withheldMessage";
-
-export { withheldMessage } from "./withheldMessage";
 
 export type LabelPrintDialogProps = Omit<UseLabelPrintOptions, "enabled"> & {
   open: boolean;
@@ -32,7 +29,6 @@ export function LabelPrintDialog({ open, onClose, onPrinted, ...options }: Label
       onClose();
     },
   });
-  const withheld = withheldMessage(preview?.withheldPermissions ?? []);
 
   return (
     <Dialog open={open} onClose={printing ? undefined : onClose} maxWidth="md" fullWidth>
@@ -41,11 +37,6 @@ export function LabelPrintDialog({ open, onClose, onPrinted, ...options }: Label
         {error ? (
           <Alert severity="error" sx={{ mb: preview ? 2 : 0 }}>
             {error}
-          </Alert>
-        ) : null}
-        {withheld ? (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            {withheld}
           </Alert>
         ) : null}
         {preview ? (

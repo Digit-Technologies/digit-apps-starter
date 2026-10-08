@@ -15,7 +15,6 @@ const preview: LabelPreviewDocument = {
   widthIn: 4,
   heightIn: 6,
   copies: 1,
-  withheldPermissions: [],
 };
 
 const ready: LabelPrintState = { ...initialLabelPrintState, preview };
@@ -54,9 +53,4 @@ test("Print is available only for a complete preview that is not already printin
   assert.equal(canPrintPreview(initialLabelPrintState), false);
   assert.equal(canPrintPreview(ready), true);
   assert.equal(canPrintPreview({ ...ready, printing: true }), false);
-});
-
-test("Print stays off while the host reports withheld permissions", () => {
-  const incomplete = { ...ready, preview: { ...preview, withheldPermissions: ["READ_JOB"] } };
-  assert.equal(canPrintPreview(incomplete), false);
 });

@@ -310,32 +310,26 @@ function PrintInventoryLabel({ labelId, inventoryId }: { labelId: string; invent
 ```
 
 `useLabelPrint({ labelId, entityType, entityId, copies?, enabled?, onPrinted? })` returns
-`{ preview, loading, printing, error, withheldPermissions, canPrint, print, reload }`. Render
-`preview` with `LabelPreview`, show `error` and `withheldPermissions`, and call `print` from your own
-button only while `canPrint` is true.
+`{ preview, loading, printing, error, canPrint, print, reload }`. Render `preview` with
+`LabelPreview`, show `error`, and call `print` from your own button only while `canPrint` is true.
 
 `printLabel({ labelId, entityType, entityId, copies?, mode })` sends exactly the keys the host
 requires: `labelId`, `entityType`, `entityId`, `copies` (`null` when it was not given), and `mode`.
 Do not send template or record JSON, and do not pass `preview: boolean`.
 
-- `mode: "preview"` resolves `{ html, title, widthIn, heightIn, copies, withheldPermissions }` — self-contained,
+- `mode: "preview"` resolves `{ html, title, widthIn, heightIn, copies }` — self-contained,
   script-free HTML. Nothing prints. Show it with `LabelPreview` (a sandboxed iframe). Do not inject
   the HTML into the app page.
 - `mode: "print"` sends the same ids, the host opens the print dialog, and the call resolves
   `{ printed: true }`. Call it only after the user confirms the preview. A non-null result is not
   success; print must be `{ printed: true }`.
-- **Declare the full label permission set in `manifest.json` the first time, whenever you use
-  `printLabel`.** The host loads records with the user's session but only prints what the app's
-  manifest covers, and you cannot know which fields the user's label binds, so do not pick a
-  subset. Declare all of: `READ_CUSTOM_LABEL_CONFIGURATION`, `READ_INVENTORY`, `READ_ITEM`,
-  `READ_JOB` (MO number, bill of materials, customer), `READ_ITEM_CUSTOMER` (customer SKUs),
-  `READ_PURCHASE_ORDER` (PO and vendor on receiving labels), `READ_COMPANY_DETAILS` (vendor custom
-  fields) and `READ_ITEM_VENDOR` (vendor SKUs). Item labels need only
-  `READ_CUSTOM_LABEL_CONFIGURATION` and `READ_ITEM`. Permissions the signed-in user lacks are
-  dropped, so declaring them all never widens access. Missing the first three makes the call reject;
-  missing the rest makes the label print blanks. `withheldPermissions` names what was left off;
-  `LabelPrintPanel` and `LabelPrintDialog` show it and disable Print until the manifest declares them. If you build
-  your own UI, do the same: a physical label missing its MO number is worse than none.
+- **Declare the label and record permissions in `manifest.json`.** The host loads the label and the
+  record with the user's session, so the manifest has to say the app reads what it prints. For
+  inventory labels declare `READ_CUSTOM_LABEL_CONFIGURATION`, `READ_INVENTORY` and `READ_ITEM`; for
+  item labels `READ_CUSTOM_LABEL_CONFIGURATION` and `READ_ITEM`. Missing one makes the call reject,
+  and the message names it. That is all the label needs: whatever else it shows (MO number,
+  customer, vendor) comes from the record, for what the signed-in user can read, exactly as in a
+  native print. Declare any other permissions the app's own queries need as usual.
 - The host allows one `printLabel` call per second. `printLabel` waits so a print right after a
   preview is not rejected. Do not fire a burst of previews.
 - It rejects when the label has no composer `layoutJson`, doesn't match the record type, can't be

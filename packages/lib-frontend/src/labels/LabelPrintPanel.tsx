@@ -6,7 +6,6 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
 
 import { LabelPreview } from "./LabelPreview";
-import { withheldMessage } from "./withheldMessage";
 import { type LabelPrintState, type UseLabelPrintOptions, canPrintPreview, useLabelPrint } from "./useLabelPrint";
 
 export type LabelPrintViewProps = {
@@ -26,12 +25,10 @@ export function LabelPrintView({
   className,
   style,
 }: LabelPrintViewProps) {
-  const withheld = withheldMessage(state.preview?.withheldPermissions ?? []);
   const { preview } = state;
   return (
     <Stack spacing={2} className={className} style={style} data-digit-label-print-panel="">
       {state.error ? <Alert severity="error">{state.error}</Alert> : null}
-      {withheld ? <Alert severity="warning">{withheld}</Alert> : null}
       {state.loading && !preview ? <CircularProgress /> : null}
       {preview ? (
         <LabelPreview
@@ -59,8 +56,8 @@ export type LabelPrintPanelProps = Omit<UseLabelPrintOptions, "enabled"> & {
 
 /**
  * An inline label preview with a Print button, to place anywhere in the app (a detail page, a side
- * panel, a table row's expanded area). It previews the label the host renders, shows why a label
- * is incomplete, and prints only when the user clicks Print. For a modal, use `LabelPrintDialog`.
+ * panel, a table row's expanded area). It previews the label the host renders and prints only when
+ * the user clicks Print. For a modal, use `LabelPrintDialog`.
  * To build your own layout, use `useLabelPrint`.
  */
 export function LabelPrintPanel({ printLabelText, className, style, ...options }: LabelPrintPanelProps) {

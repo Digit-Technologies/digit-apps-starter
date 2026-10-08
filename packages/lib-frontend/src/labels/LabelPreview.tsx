@@ -2,7 +2,7 @@ import React, { type CSSProperties } from "react";
 
 import type { LabelPreviewDocument } from "./types";
 
-export type LabelPreviewProps = Omit<LabelPreviewDocument, "withheldPermissions"> & {
+export type LabelPreviewProps = LabelPreviewDocument & {
   className?: string;
   style?: CSSProperties;
 };
