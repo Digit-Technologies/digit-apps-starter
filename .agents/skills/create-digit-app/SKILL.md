@@ -227,7 +227,7 @@ only; still upload the zip **unchanged**. Details:
   paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
   unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `AppErrorAlert` + `printLabel` / `LabelPrintDialog`. Pair hook `error` with
+- **Public surface:** hooks + theme + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `useLabelPrint`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -270,11 +270,24 @@ yourself or load the records a label binds. Name the label and the record by id.
 both and renders them with the same code native label print uses, so a studio label prints exactly
 like a native one.
 
-Use `LabelPrintDialog`. It calls `printLabel` with `mode: "preview"`, shows the returned HTML in a
-sandboxed iframe, and calls `mode: "print"` only when the user clicks Print. Closing the dialog
-prints nothing.
+Put the label on the page with `LabelPrintPanel`: an inline preview with a Print button, to place
+anywhere (a detail page, a side panel, an expanded table row). It calls `printLabel` with
+`mode: "preview"`, shows the returned HTML in a sandboxed iframe, and calls `mode: "print"` only
+when the user clicks Print. Use `LabelPrintDialog` only when a modal is what the design calls for,
+and `useLabelPrint` when you need your own layout.
 
 ```tsx
+import { LabelPrintPanel } from '@digit/lib-frontend';
+
+function InventoryLabel({ labelId, inventoryId }: { labelId: string; inventoryId: string }) {
+  return (
+    <LabelPrintPanel labelId={labelId} entityType="inventory" entityId={inventoryId} copies={2} />
+  );
+}
+```
+
+```tsx
+// A modal instead: same preview and Print button, opened from a button.
 import { useState } from 'react';
 import Button from '@mui/material/Button';
 import { LabelPrintDialog } from '@digit/lib-frontend';
@@ -290,12 +303,16 @@ function PrintInventoryLabel({ labelId, inventoryId }: { labelId: string; invent
         labelId={labelId}
         entityType="inventory"
         entityId={inventoryId}
-        copies={2}
       />
     </>
   );
 }
 ```
+
+`useLabelPrint({ labelId, entityType, entityId, copies?, enabled?, onPrinted? })` returns
+`{ preview, loading, printing, error, withheldPermissions, canPrint, print, reload }`. Render
+`preview` with `LabelPreview`, show `error` and `withheldPermissions`, and call `print` from your own
+button only while `canPrint` is true.
 
 `printLabel({ labelId, entityType, entityId, copies?, mode })` sends exactly the keys the host
 requires: `labelId`, `entityType`, `entityId`, `copies` (`null` when it was not given), and `mode`.
@@ -317,12 +334,12 @@ Do not send template or record JSON, and do not pass `preview: boolean`.
   `READ_CUSTOM_LABEL_CONFIGURATION` and `READ_ITEM`. Permissions the signed-in user lacks are
   dropped, so declaring them all never widens access. Missing the first three makes the call reject;
   missing the rest makes the label print blanks. `withheldPermissions` names what was left off;
-  `LabelPrintDialog` shows it and disables Print until the manifest declares them. If you build
+  `LabelPrintPanel` and `LabelPrintDialog` show it and disable Print until the manifest declares them. If you build
   your own UI, do the same: a physical label missing its MO number is worse than none.
 - The host allows one `printLabel` call per second. `printLabel` waits so a print right after a
   preview is not rejected. Do not fire a burst of previews.
 - It rejects when the label has no composer `layoutJson`, doesn't match the record type, can't be
-  loaded, the document is too large, or the host predates `printLabel`. `LabelPrintDialog` shows
+  loaded, the document is too large, or the host predates `printLabel`. `LabelPrintPanel` shows
   that message. The record stays on the host.
 
 Look the label up through the Digit API: query the custom label configurations
@@ -451,7 +468,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintDialog` |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `useLabelPrint` |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |

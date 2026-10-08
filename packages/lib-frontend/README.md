@@ -8,7 +8,7 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 
 Import from the package root only. Theme tokens, error parsers, and other modules
 under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
-`AppErrorAlert`, `printLabel`, and `LabelPrintDialog`.
+`AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, and `useLabelPrint`.
 
 ## Why a copy (not an import from digit-web)
 
@@ -94,31 +94,20 @@ The print document runs no JavaScript. Inline CSS and convert images or canvases
 is `img-src data:`). Keep the result under 10MB. Use `invoke("download", ...)` for PDF bytes.
 
 For inventory and item labels designed in Sutton, do not rebuild the layout in the app. Name the
-label and the record by id. `LabelPrintDialog` asks the host to render with the same code native
-label print uses, shows the HTML in a sandboxed iframe, and prints only after the user confirms:
+label and the record by id. `LabelPrintPanel` asks the host to render with the same code native
+label print uses, shows the HTML inline in a sandboxed iframe, and prints only after the user clicks
+Print. Place it anywhere on the page:
 
 ```tsx
-import { useState } from "react";
-import Button from "@mui/material/Button";
-import { LabelPrintDialog } from "@digit/lib-frontend";
+import { LabelPrintPanel } from "@digit/lib-frontend";
 
-function PrintInventoryLabel({ labelId, inventoryId }: { labelId: string; inventoryId: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button onClick={() => setOpen(true)}>Print label</Button>
-      <LabelPrintDialog
-        open={open}
-        onClose={() => setOpen(false)}
-        labelId={labelId}
-        entityType="inventory"
-        entityId={inventoryId}
-        copies={2}
-      />
-    </>
-  );
-}
+<LabelPrintPanel labelId={labelId} entityType="inventory" entityId={inventory.id} copies={2} />
 ```
+
+Use `LabelPrintDialog` (same props plus `open` and `onClose`) when a modal is what the design needs,
+and `useLabelPrint({ labelId, entityType, entityId, copies?, enabled?, onPrinted? })` for your own
+layout. The hook returns `{ preview, loading, printing, error, withheldPermissions, canPrint, print,
+reload }`; render `preview` with `LabelPreview` and call `print` only while `canPrint` is true.
 
 `printLabel({ labelId, entityType, entityId, copies?, mode })` calls
 `AppHost.invoke("printLabel", ...)`. `mode: "preview"` resolves
@@ -126,7 +115,7 @@ function PrintInventoryLabel({ labelId, inventoryId }: { labelId: string; invent
 `LabelPreview`. Declare the full label permission set in `manifest.json` up front (`READ_CUSTOM_LABEL_CONFIGURATION`,
 `READ_INVENTORY`, `READ_ITEM`, `READ_JOB`, `READ_ITEM_CUSTOMER`, `READ_PURCHASE_ORDER`,
 `READ_COMPANY_DETAILS`, `READ_ITEM_VENDOR`): a label prints blanks for data the manifest doesn't
-cover. `withheldPermissions` lists what was left off (for example `READ_JOB` for the MO number). `LabelPrintDialog` shows the list and disables Print until it is empty.
+cover. `withheldPermissions` lists what was left off (for example `READ_JOB` for the MO number). `LabelPrintPanel` and `LabelPrintDialog` show the list and disable Print until it is empty.
 `mode: "print"` resolves `{ printed: true }` after the host opens the print dialog. Do not pass
 `preview: boolean`, and do not treat any non-null result as printed. Calls are spaced to the host's
 limit of one per second. It rejects on a host that doesn't offer it, for a label with no composer
