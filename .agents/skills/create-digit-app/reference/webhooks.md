@@ -10,9 +10,9 @@ POST https://{app-id}.<apps domain>/webhooks/{path}
 Each `path` must be declared in `manifest.json` — anything undeclared 404s at the platform
 edge before reaching your Worker. Frontend-only apps cannot receive webhooks.
 
-Inbound webhooks are **live-only**. A preview Host returns `404` and never delivers the request
-to the preview Worker. Use signed unit/local fixtures for preview development, or a deliberate
-test strategy against the live endpoint; never point a production provider at a preview URL.
+Inbound webhooks are **published-only**. A draft Host returns `404` and never delivers the request
+to the draft Worker. Use signed unit/local fixtures for draft development, or a deliberate
+test strategy against the published endpoint; never point a production provider at a draft URL.
 
 ## Declare paths in the manifest
 

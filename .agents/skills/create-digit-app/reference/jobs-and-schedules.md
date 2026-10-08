@@ -26,20 +26,20 @@ Rules (publish-validated):
 - `everySeconds`: integer, **300–86400** (5 minutes to 1 day)
 - `payload`: optional JSON, max 4KB — passed to every tick
 - At most **5** schedules per app
-- **Schedules are live only.** A live deployment replaces the live schedule set wholesale; a
-  live deployment with no `schedules` clears it. Preview does not register cron.
+- **Schedules run on the published app only.** A published deployment replaces the published schedule set wholesale; a
+  published deployment with no `schedules` clears it. Draft does not register cron.
 
-## Preview behavior
+## Draft behavior
 
-**Schedules = live only.** Preview Workers receive the jobs binding under the preview app
-identity, but the platform does not register the manifest's recurring schedules for preview.
-Preview cron, inbound webhooks, and other timer/webhook side effects stay off. This prevents
-a preview from running a second copy of production cron work. An on-demand job submitted by
-preview code is scoped to the preview job namespace, but it still sees live env/secrets and
+**Schedules run on the published app only.** Draft Workers receive the jobs binding under the draft app
+identity, but the platform does not register the manifest's recurring schedules for draft.
+Draft cron, inbound webhooks, and other timer/webhook side effects stay off. This prevents
+a draft from running a second copy of production cron work. An on-demand job submitted by
+draft code is scoped to the draft job namespace, but it still sees published env/secrets and
 is a real background run.
 
-Promotion registers the manifest schedules against the live Worker. Do not use a successful
-preview to claim that timer-driven behavior has been tested in production conditions; test the
+Promotion registers the manifest schedules against the published Worker. Do not use a successful
+draft to claim that timer-driven behavior has been tested in production conditions; test the
 handler directly and verify the schedule after promotion.
 
 ## Handle runs with `createHandler({ jobs })`
