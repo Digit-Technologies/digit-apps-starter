@@ -33,3 +33,22 @@ export {
   useBackendMutation,
 } from "./api";
 export type { DigitResult } from "./api";
+
+// Labels designed in Sutton. The host renders them; the app previews the HTML, then prints.
+export {
+  LabelPreview,
+  LabelPrintDialog,
+  LabelPrintPanel,
+  printLabel,
+  useLabelPrint,
+} from "./labels";
+export type {
+  LabelEntityType,
+  LabelPreviewDocument,
+  LabelPreviewProps,
+  LabelPrintDialogProps,
+  LabelPrintPanelProps,
+  UseLabelPrintOptions,
+  PrintLabelArgs,
+  PrintLabelMode,
+} from "./labels";

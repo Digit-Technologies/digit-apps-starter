@@ -115,6 +115,8 @@ const html = `
 await AppHost.invoke("print", { title: "Packing Slip 1042", html });
 ```
 
+For labels designed in Sutton, see [labels.md](labels.md).
+
 Do not use `window.open`, `target="_blank"`, blob navigation, or print-window patterns.
 Never ask for more sandbox flags. For PDF bytes, call `invoke("download", ...)` with
 `application/pdf`; printing accepts HTML only.
