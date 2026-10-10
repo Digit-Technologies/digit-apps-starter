@@ -8,7 +8,7 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 
 Import from the package root only. Theme tokens, error parsers, and other modules
 under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
-`AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, and `useLabelPrint`.
+`AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, and `useLabelPrint`.
 
 ## Why a copy (not an import from digit-web)
 
@@ -118,8 +118,10 @@ the signed-in user can read.
 `mode: "print"` resolves `{ printed: true }` after the host opens the print dialog. Do not pass
 `preview: boolean`, and do not treat any non-null result as printed. Calls are spaced to the host's
 limit of one per second. It rejects on a host that doesn't offer it, for a label with no composer
-`layoutJson`, when the label doesn't match the record type, and when the document is too large. The
-host loads the records. Look up the label id via Digit MCP before shipping.
+`layoutJson`, when the label doesn't match the record type, when the label size is outside 0.5 to
+20 inches, when the document is too large, and with "A label is already being rendered" while
+another label renders. The host loads the records. Look up the label id through the Sutton API
+before shipping.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.

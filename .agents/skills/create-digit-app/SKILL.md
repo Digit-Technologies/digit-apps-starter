@@ -227,7 +227,7 @@ only; still upload the zip **unchanged**. Details:
   paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
   unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `useLabelPrint`. Pair hook `error` with
+- **Public surface:** hooks + theme + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -265,99 +265,7 @@ Do not send PDF bytes to the print call. Download a PDF instead:
 `invoke("download", { filename, contentType: "application/pdf", data })`. Printing only
 accepts HTML and opens the browser print dialog.
 
-**Digit labels (inventory and item):** do not rebuild the native designer, and do not draw labels
-yourself or load the records a label binds. Name the label and the record by id. The host loads
-both and renders them with the same code native label print uses, so a studio label prints exactly
-like a native one.
-
-Put the label on the page with `LabelPrintPanel`: an inline preview with a Print button, to place
-anywhere (a detail page, a side panel, an expanded table row). It calls `printLabel` with
-`mode: "preview"`, shows the returned HTML in a sandboxed iframe, and calls `mode: "print"` only
-when the user clicks Print. Use `LabelPrintDialog` only when a modal is what the design calls for,
-and `useLabelPrint` when you need your own layout.
-
-```tsx
-import { LabelPrintPanel } from '@digit/lib-frontend';
-
-function InventoryLabel({ labelId, inventoryId }: { labelId: string; inventoryId: string }) {
-  return (
-    <LabelPrintPanel labelId={labelId} entityType="inventory" entityId={inventoryId} copies={2} />
-  );
-}
-```
-
-```tsx
-// A modal instead: same preview and Print button, opened from a button.
-import { useState } from 'react';
-import Button from '@mui/material/Button';
-import { LabelPrintDialog } from '@digit/lib-frontend';
-
-function PrintInventoryLabel({ labelId, inventoryId }: { labelId: string; inventoryId: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <>
-      <Button onClick={() => setOpen(true)}>Print label</Button>
-      <LabelPrintDialog
-        open={open}
-        onClose={() => setOpen(false)}
-        labelId={labelId}
-        entityType="inventory"
-        entityId={inventoryId}
-      />
-    </>
-  );
-}
-```
-
-`useLabelPrint({ labelId, entityType, entityId, copies?, enabled?, onPrinted? })` returns
-`{ preview, loading, printing, error, canPrint, print, reload }`. Render `preview` with
-`LabelPreview`, show `error`, and call `print` from your own button only while `canPrint` is true.
-
-`printLabel({ labelId, entityType, entityId, copies?, mode })` sends exactly the keys the host
-requires: `labelId`, `entityType`, `entityId`, `copies` (`null` when it was not given), and `mode`.
-Do not send template or record JSON, and do not pass `preview: boolean`.
-
-- `mode: "preview"` resolves `{ html, title, widthIn, heightIn, copies }` — self-contained,
-  script-free HTML. Nothing prints. Show it with `LabelPreview` (a sandboxed iframe). Do not inject
-  the HTML into the app page.
-- `mode: "print"` sends the same ids, the host opens the print dialog, and the call resolves
-  `{ printed: true }`. Call it only after the user confirms the preview. A non-null result is not
-  success; print must be `{ printed: true }`.
-- **Declare the label and record permissions in `manifest.json`.** The host checks these before it
-  loads anything, and rejects the call naming any that is missing.
-  - `READ_CUSTOM_LABEL_CONFIGURATION` for every label. The host reads the label configuration.
-  - `READ_ITEM` for every label. Both inventory and item labels print the item.
-  - `READ_INVENTORY` for inventory labels only. The host reads the inventory record.
-
-  The signed-in user must hold the same permissions, or the call rejects with "You don't have
-  permission to print this label". Everything else on the label (job, customer SKU, vendor, BOM,
-  default bin) is loaded with the user's own session, not the app's token, so it needs no
-  manifest entry. Adding more permissions to the manifest does not fix a print that fails there.
-- **The app's own queries need their own permissions.** Looking up labels and picking the record
-  run through the app's token, which allows only what the manifest declares and the user holds.
-  Each type in a selection set has its own read permission, so a picker that shows more than the
-  record needs more. Declare one per type you select:
-  - `customLabelConfigurations` needs `READ_CUSTOM_LABEL_CONFIGURATION`.
-  - `inventories` / `Inventory` needs `READ_INVENTORY`.
-  - `items` / `Item` needs `READ_ITEM`.
-  - `WarehouseLocation` (bin or location code) needs `READ_WAREHOUSE_LOCATION`.
-  - `Job` (MO number) needs `READ_JOB`.
-  - `PurchaseOrder` (PO number) needs `READ_PURCHASE_ORDER`.
-
-  Check every nested object in the query against `appPermissions` before the first preview,
-  not one denial at a time.
-- **A Studio preview reads the preview build's manifest.** Editing `manifest.json` changes nothing
-  until you deploy a new preview (`publishAppZip`). Deploy before you retry a rejected print.
-- The host allows one `printLabel` call per second. `printLabel` waits so a print right after a
-  preview is not rejected. Do not fire a burst of previews.
-- It rejects when the label has no composer `layoutJson`, doesn't match the record type, can't be
-  loaded, the document is too large, or the host predates `printLabel`. `LabelPrintPanel` shows
-  that message. The record stays on the host.
-
-Look the label up through the Digit API: query the custom label configurations
-(`id labelName type isDefault`) and match `type` to the record. `inventory` takes `production`,
-`receiving` and `manual_inventory` labels; `item` takes `item` labels. Container and customer
-labels aren't supported. Check each field against the schema before you deploy.
+**Sutton labels (inventory, item):** read [reference/labels.md](reference/labels.md) before writing label code. Use `LabelPrintPanel`. Never draw the label, load its records, or call `AppHost.invoke("printLabel")` yourself.
 
 #### Host-mediated actions (`AppHost.invoke`)
 
@@ -382,6 +290,11 @@ const result = await AppHost.invoke("openModal", { modal: "item", id })
 ```
 
 No optional chaining needed: outside Digit (tests, a local page) `invoke` simply rejects.
+
+Never call `AppHost.invoke("printLabel", ...)` directly, even though `getHostCapabilities` lists
+it. The helpers space calls one second apart and send the exact keys the host validates. A
+hand-rolled call fails with "Too many calls" or "Invalid params". Use the label components in
+[reference/labels.md](reference/labels.md).
 
 `window.DigitHost` still works, including its `download(...)` and `print(...)`, but it is
 deprecated. Write new code against `AppHost`, and migrate `window.DigitHost` calls in any
@@ -431,6 +344,9 @@ user’s live permissions at runtime.
 Look up GraphQL fields with `graphql-schema://…`, then declare only the permissions those
 operations need. Details: [reference/permissions.md](reference/permissions.md).
 
+Printing Sutton labels needs its own permissions. See
+[reference/labels.md#manifest-permissions](reference/labels.md#manifest-permissions).
+
 ### 7. Env vars and secrets
 
 Configured on the app in Digit Settings (UI only). Injected only into the Worker as
@@ -472,6 +388,7 @@ upstream starter.
 | Digit GraphQL                         | Schema resources → hooks + `appPermissions` → `key` in manifest |
 | Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
 | Codes / JSON validation               | `@digit/lib-common`                                             |
+| Print a Sutton inventory or item label | `LabelPrintPanel` → [reference/labels.md](reference/labels.md)  |
 
 ## Packages (`lib-*`)
 
@@ -480,7 +397,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `useLabelPrint` |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
@@ -501,6 +418,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 ## Additional resources
 
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
+- [reference/labels.md](reference/labels.md) for Sutton label preview and print, permissions, and failures
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies

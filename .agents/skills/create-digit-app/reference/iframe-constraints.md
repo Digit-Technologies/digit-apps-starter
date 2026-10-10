@@ -115,11 +115,7 @@ const html = `
 await AppHost.invoke("print", { title: "Packing Slip 1042", html });
 ```
 
-For labels designed in Sutton, use `LabelPrintPanel` (inline) or `LabelPrintDialog` from `@digit/lib-frontend` instead of
-hand-building the layout. Pass the label id and the record id. The host renders the label with the
-code native label print uses. `mode: "preview"` returns script-free HTML for a sandboxed iframe in
-the app and does not print. `mode: "print"` opens the host print dialog, and only after the user
-confirms that preview.
+For labels designed in Sutton, see [labels.md](labels.md).
 
 Do not use `window.open`, `target="_blank"`, blob navigation, or print-window patterns.
 Never ask for more sandbox flags. For PDF bytes, call `invoke("download", ...)` with
