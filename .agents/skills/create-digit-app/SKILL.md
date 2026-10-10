@@ -323,13 +323,31 @@ Do not send template or record JSON, and do not pass `preview: boolean`.
 - `mode: "print"` sends the same ids, the host opens the print dialog, and the call resolves
   `{ printed: true }`. Call it only after the user confirms the preview. A non-null result is not
   success; print must be `{ printed: true }`.
-- **Declare the label and record permissions in `manifest.json`.** The host loads the label and the
-  record with the user's session, so the manifest has to say the app reads what it prints. For
-  inventory labels declare `READ_CUSTOM_LABEL_CONFIGURATION`, `READ_INVENTORY` and `READ_ITEM`; for
-  item labels `READ_CUSTOM_LABEL_CONFIGURATION` and `READ_ITEM`. Missing one makes the call reject,
-  and the message names it. That is all the label needs: whatever else it shows (MO number,
-  customer, vendor) comes from the record, for what the signed-in user can read, exactly as in a
-  native print. Declare any other permissions the app's own queries need as usual.
+- **Declare the label and record permissions in `manifest.json`.** The host checks these before it
+  loads anything, and rejects the call naming any that is missing.
+  - `READ_CUSTOM_LABEL_CONFIGURATION` for every label. The host reads the label configuration.
+  - `READ_ITEM` for every label. Both inventory and item labels print the item.
+  - `READ_INVENTORY` for inventory labels only. The host reads the inventory record.
+
+  The signed-in user must hold the same permissions, or the call rejects with "You don't have
+  permission to print this label". Everything else on the label (job, customer SKU, vendor, BOM,
+  default bin) is loaded with the user's own session, not the app's token, so it needs no
+  manifest entry. Adding more permissions to the manifest does not fix a print that fails there.
+- **The app's own queries need their own permissions.** Looking up labels and picking the record
+  run through the app's token, which allows only what the manifest declares and the user holds.
+  Each type in a selection set has its own read permission, so a picker that shows more than the
+  record needs more. Declare one per type you select:
+  - `customLabelConfigurations` needs `READ_CUSTOM_LABEL_CONFIGURATION`.
+  - `inventories` / `Inventory` needs `READ_INVENTORY`.
+  - `items` / `Item` needs `READ_ITEM`.
+  - `WarehouseLocation` (bin or location code) needs `READ_WAREHOUSE_LOCATION`.
+  - `Job` (MO number) needs `READ_JOB`.
+  - `PurchaseOrder` (PO number) needs `READ_PURCHASE_ORDER`.
+
+  Check every nested object in the query against `appPermissions` before the first preview,
+  not one denial at a time.
+- **A Studio preview reads the preview build's manifest.** Editing `manifest.json` changes nothing
+  until you deploy a new preview (`publishAppZip`). Deploy before you retry a rejected print.
 - The host allows one `printLabel` call per second. `printLabel` waits so a print right after a
   preview is not rejected. Do not fire a burst of previews.
 - It rejects when the label has no composer `layoutJson`, doesn't match the record type, can't be
