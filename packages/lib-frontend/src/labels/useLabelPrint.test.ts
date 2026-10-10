@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { mock, test } from "node:test";
 
 import {
   canPrintPreview,
   initialLabelPrintState,
   labelPrintReducer,
+  loadLabelPreview,
+  type LabelPrintAction,
   type LabelPrintState,
 } from "./useLabelPrint";
 import type { LabelPreviewDocument } from "./types";
@@ -53,4 +55,51 @@ test("Print is available only for a complete preview that is not already printin
   assert.equal(canPrintPreview(initialLabelPrintState), false);
   assert.equal(canPrintPreview(ready), true);
   assert.equal(canPrintPreview({ ...ready, printing: true }), false);
+});
+
+test("switching records twice within a second drops the superseded preview before the host", async () => {
+  mock.timers.enable({ apis: ["setTimeout", "Date"] });
+  const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
+  const invoked: unknown[] = [];
+  const host = {
+    invoke: async (_method: string, params?: Record<string, unknown>) => {
+      invoked.push(params?.entityId);
+      return { ...preview, title: String(params?.entityId) };
+    },
+  };
+  const actions: LabelPrintAction[] = [];
+  const dispatch = (action: LabelPrintAction) => actions.push(action);
+  const open = (entityId: string) =>
+    loadLabelPreview({ labelId: "label-1", entityType: "inventory", entityId, host }, dispatch);
+
+  try {
+    const cancelFirst = open("inv-0");
+    await flush();
+    assert.deepEqual(invoked, ["inv-0"]);
+
+    mock.timers.tick(100);
+    cancelFirst();
+    const cancelSecond = open("inv-1");
+    await flush();
+
+    mock.timers.tick(100);
+    cancelSecond();
+    open("inv-2");
+    await flush();
+    assert.deepEqual(invoked, ["inv-0"]);
+
+    mock.timers.tick(799);
+    await flush();
+    assert.deepEqual(invoked, ["inv-0"], "still inside the host's one-second window");
+
+    mock.timers.tick(1);
+    await flush();
+    assert.deepEqual(invoked, ["inv-0", "inv-2"], "the superseded inv-1 never reaches the host");
+    assert.deepEqual(
+      actions.map((action) => (action.type === "loaded" ? action.preview.title : action.type)),
+      ["load", "inv-0", "load", "load", "inv-2"],
+    );
+  } finally {
+    mock.timers.reset();
+  }
 });

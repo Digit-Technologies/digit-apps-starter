@@ -18,7 +18,11 @@ const delay = (ms: number): Promise<void> =>
  * print that follows a fast preview. Wait here so confirming the preview does not trip that limit.
  * Keyed by the host object so tests that pass their own host are not coupled to each other.
  */
-const pacePrintLabel = async <T>(host: object, run: () => Promise<T>): Promise<T> => {
+const pacePrintLabel = async <T>(
+  host: object,
+  signal: AbortSignal | undefined,
+  run: () => Promise<T>,
+): Promise<T> => {
   const previous = invokeTail.get(host) ?? Promise.resolve();
   let release: () => void = () => {};
   const gate = new Promise<void>((resolve) => {
@@ -37,6 +41,8 @@ const pacePrintLabel = async <T>(host: object, run: () => Promise<T>): Promise<T
         await delay(Math.min(MIN_INTERVAL_MS, Math.max(0, MIN_INTERVAL_MS - elapsed)));
       }
     }
+    // A call superseded while it waited never reaches the host, so the next one is not held back.
+    signal?.throwIfAborted();
     lastInvokeAt.set(host, Date.now());
     return await run();
   } finally {
@@ -86,9 +92,9 @@ export async function printLabel(
 export async function printLabel(
   args: PrintLabelArgs,
 ): Promise<LabelPreviewDocument | { printed: true }> {
-  const { labelId, entityType, entityId, copies, mode, host = AppHost } = args;
+  const { labelId, entityType, entityId, copies, mode, host = AppHost, signal } = args;
   // The host requires every key, with null for "not given". `mode` is required.
-  const result = await pacePrintLabel(host, () =>
+  const result = await pacePrintLabel(host, signal, () =>
     host.invoke("printLabel", {
       labelId,
       entityType,

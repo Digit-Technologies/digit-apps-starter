@@ -17,7 +17,7 @@ export type LabelEntityType = "inventory" | "item";
 export type PrintLabelMode = "preview" | "print";
 
 export type PrintLabelArgs = {
-  /** Id of the custom label configuration (look it up through the Digit API). */
+  /** Id of the custom label configuration (look it up through the Sutton API). */
   labelId: string;
   entityType: LabelEntityType;
   /** Id of the inventory record or item to print. */
@@ -29,6 +29,11 @@ export type PrintLabelArgs = {
    * `print` opens the browser print dialog on the host. Call it only after the user confirms a preview.
    */
   mode: PrintLabelMode;
+  /**
+   * Drops the call if it is aborted while waiting for its turn, so it never reaches the host. It
+   * then rejects with the abort reason. Once the host has the call, aborting does not cancel it.
+   */
+  signal?: AbortSignal;
   /** Host to print through. Defaults to `AppHost`; override in tests. */
   host?: Pick<AppHost, "invoke">;
 };

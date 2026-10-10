@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
 
 import { printLabel } from "./printLabel";
-import type { LabelEntityType, LabelPreviewDocument } from "./types";
+import type { LabelEntityType, LabelPreviewDocument, PrintLabelArgs } from "./types";
 
 export type UseLabelPrintOptions = {
   labelId: string;
@@ -67,6 +67,29 @@ export const canPrintPreview = (state: LabelPrintState): boolean =>
   state.preview !== null && !state.printing;
 
 /**
+ * Starts loading one preview and returns its cancel function. Cancelling drops the call if it is
+ * still waiting for its turn, and keeps a late result or error out of state.
+ */
+export function loadLabelPreview(
+  args: Omit<PrintLabelArgs, "mode" | "signal">,
+  dispatch: (action: LabelPrintAction) => void,
+): () => void {
+  const controller = new AbortController();
+  dispatch({ type: "load" });
+  void printLabel({ ...args, mode: "preview", signal: controller.signal }).then(
+    (preview) => {
+      if (!controller.signal.aborted) dispatch({ type: "loaded", preview });
+    },
+    (error: unknown) => {
+      if (!controller.signal.aborted) {
+        dispatch({ type: "failed", message: messageOf(error, "Failed to render label") });
+      }
+    },
+  );
+  return () => controller.abort();
+}
+
+/**
  * Loads a label preview from the host and prints only when `print()` is called. Use it to put a
  * label preview anywhere in the app; `LabelPrintPanel` is this hook with a ready-made layout.
  */
@@ -86,26 +109,9 @@ export function useLabelPrint({
       dispatch({ type: "reset" });
       return;
     }
-
-    let cancelled = false;
-    dispatch({ type: "load" });
-    // Defer past effect cleanup so an unmounted view, or Strict Mode's double invoke, does not
-    // spend a host call. The host allows one printLabel per second.
-    const timer = setTimeout(() => {
-      if (cancelled) return;
-      void printLabel({ labelId, entityType, entityId, copies, mode: "preview" })
-        .then((preview) => {
-          if (!cancelled) dispatch({ type: "loaded", preview });
-        })
-        .catch((error: unknown) => {
-          if (!cancelled) dispatch({ type: "failed", message: messageOf(error, "Failed to render label") });
-        });
-    }, 0);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
+    // Cleanup on a record switch, unmount, or Strict Mode's double invoke drops the queued call,
+    // so the visible preview never waits behind superseded ones.
+    return loadLabelPreview({ labelId, entityType, entityId, copies }, dispatch);
   }, [enabled, labelId, entityType, entityId, copies, reloads]);
 
   const print = useCallback(() => {
