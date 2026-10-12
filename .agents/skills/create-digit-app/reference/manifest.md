@@ -34,7 +34,7 @@ type AppManifest = {
 ## Rules
 
 - Deployment channel is platform state, not manifest configuration. Do not add a `preview` or
-  `live` flag to the manifest; the same packed artifact can be previewed and later promoted.
+  `live` flag to the manifest; the same packed artifact can be deployed as a draft and later promoted.
 - `permissions` must be an array of known Digit permission **`key`** strings from MCP
   **`appPermissions`** — never invent strings (see [permissions.md](permissions.md))
 - `build` is stamped by `digit-app pack` so Digit can tell which starter release a published
@@ -51,14 +51,14 @@ type AppManifest = {
   binding points the app at a fresh, empty resource
 - Optional `backend/migrations/*.sql` requires a `database` binding — see
   [d1-migrations.md](d1-migrations.md)
-- Optional `backend.schedules` are **live only** (preview cron stays off): name
+- Optional `backend.schedules` run on the **published app only** (draft cron stays off): name
   `[a-z0-9-]{1,32}` unique, `everySeconds` 300–86400, payload ≤4KB, max 5 — handled via
-  `createHandler({ jobs })`; a live deployment replaces the live set wholesale (no
-  `schedules` = clears live schedules). See [jobs-and-schedules.md](jobs-and-schedules.md)
-- Optional `backend.webhooks` (public inbound POST endpoints, **live only** — preview Hosts
+  `createHandler({ jobs })`; a published deployment replaces the published set wholesale (no
+  `schedules` = clears published schedules). See [jobs-and-schedules.md](jobs-and-schedules.md)
+- Optional `backend.webhooks` (public inbound POST endpoints, **published app only** — draft Hosts
   404 and do not deliver): `path` `[a-z0-9-]{1,32}` unique, max 10 — handled via
   `createHandler({ webhooks })`; undeclared paths 404 at the platform edge, and the handler
-  must verify the provider's signature itself. Preview cron, webhooks, and other
+  must verify the provider's signature itself. Draft cron, webhooks, and other
   timer/webhook side effects stay off
 - `frontend/index.js` must exist; `frontend/index.html` and `frontend/loader.js` are
   harness-reserved names your bundle may not contain

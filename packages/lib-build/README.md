@@ -2,9 +2,9 @@
 
 Shared Digit app tooling. **v1 public CLI:** `digit-app pack` only.
 
-Local Digit runtime preview is not supported (Worker, env/secrets, and D1 are injected by
+Local Digit runtime draft is not supported (Worker, env/secrets, and D1 are injected by
 the platform). Pack builds the channel-neutral deploy assets and writes `app.zip` for a
-remote preview or live deployment. See the create-digit-app skill for the preview → publish
+remote draft or published deployment. See the create-digit-app skill for the draft → publish
 flow.
 
 ## Install (app)

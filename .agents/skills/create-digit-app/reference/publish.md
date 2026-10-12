@@ -5,24 +5,24 @@ missing, stop — there is no alternate publish path. Digit MCP is required for 
 upload workflow below.
 
 Packing is local; the Digit platform performs the deployment. There is no local Digit runtime
-preview because Workers, env/secrets, D1, and R2 are injected by the platform. The same
-channel-neutral `app.zip` can be deployed to preview and later promoted to live.
+draft because Workers, env/secrets, D1, and R2 are injected by the platform. The same
+channel-neutral `app.zip` can be deployed to draft and later promoted to the published app.
 
 ## Choose the workflow
 
 ### Digit App Builder
 
-The builder's `publishAppZip` tool owns upload, preview deployment, and polling:
+The builder's `publishAppZip` tool owns upload, draft deployment, and polling:
 
 ```text
 npm run pack -w apps/app
 publishAppZip({ zipPath: "apps/app/app.zip" })
 ```
 
-`publishAppZip` always deploys a preview. It waits for the preview deployment to reach a
-terminal state and reports failure details. A successful result means **the live app is
-unchanged**. The user promotes that exact preview build with the explicit Publish action in
-the Digit web app. The builder must not call a live publish or describe the preview as
+`publishAppZip` always deploys a draft. It waits for the draft deployment to reach a
+terminal state and reports failure details. A successful result means **the published app is
+unchanged**. The user promotes that exact draft build with the explicit Publish action in
+the Digit web app. The builder must not publish to the published app or describe the draft as
 production.
 
 ### Standalone MCP
@@ -44,7 +44,7 @@ exist, stop and ask the user to create it in Digit.
 `publishApp` accepts `channel: "preview" | "live"`. Use `channel: "preview"` when testing
 without changing production. If `channel` is omitted, it defaults to `live` for backwards
 compatibility with existing callers. Promotion is currently an explicit Digit web action;
-do not assume a preview is live just because its `appPublish` row succeeded.
+do not assume a draft is published just because its `appPublish` row succeeded.
 
 ## Prerequisites
 
@@ -102,19 +102,19 @@ Call `appPublish` with `appId` and `appPublishId` (the upload-link `id`) until t
 `deployingBackend`, and `publishingBundle`. During `deployingBackend`, Digit applies pending
 migrations — see [d1-migrations.md](d1-migrations.md).
 
-For a preview, a succeeded row means the owner can open the preview environment; it does not
-mean the live pointer changed. For a live publish or a later promotion, the live app changes
-only after the platform has completed the live deployment.
+For a draft, a succeeded row means the owner can open the draft environment; it does not
+mean the published app changed. For a publish to the published app or a later promotion, the published app changes
+only after the platform has completed that deployment.
 
-Publish ships the reviewed build and applies pending live migrations only — it is not a
-config promote. **Promote does not wipe live env/secrets.** Preview shares live env and
-secrets; Digit Settings write live only. Nothing is copied from preview onto live for env
-or secrets — preview already shares live, and promote is not a config copy.
+Publish ships the reviewed build and applies pending migrations on the published app only — it is not a
+config promote. **Promote does not wipe published env/secrets.** Draft shares published env and
+secrets; Digit Settings write the published app only. Nothing is copied from draft onto the published app for env
+or secrets — draft already shares them, and promote is not a config copy.
 
-Live D1 migrations are **fail-closed** on Time Travel. Digit captures a D1 Time Travel
+Published D1 migrations are **fail-closed** on Time Travel. Digit captures a D1 Time Travel
 bookmark before migrating production; if bookmark capture fails, promotion fails and does
-not migrate. Digit does not auto-restore from that bookmark if a later step fails — live
-traffic keeps writing after the bookmark, so a restore would drop those rows. The bookmark
+not migrate. Digit does not auto-restore from that bookmark if a later step fails — traffic on
+the published app keeps writing after the bookmark, so a restore would drop those rows. The bookmark
 stays on the promote row as an operator recovery aid.
 
 On failure, report the returned `error`, fix the app, repack, and start a fresh upload. Each
@@ -127,5 +127,5 @@ upload is single-use.
 - `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` including `lib-build`
 - `manifest.permissions` are **`key`** values from `appPermissions`
 
-See [preview-and-publish.md](preview-and-publish.md) for channel isolation, migrations,
+See [draft-and-publish.md](draft-and-publish.md) for channel isolation, migrations,
 schedules, webhooks, env/secrets, and side-effect guidance.

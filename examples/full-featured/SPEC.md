@@ -26,12 +26,12 @@ wired to a real host).
   `payload.maxAgeDays`; job `note-stats` is submitted via `digitJobs` from
   `POST /jobs/note-stats` — handlers in `src/backend/jobs.js`, UI in the Jobs tab
 
-Gotchas: secrets and env are Worker bindings only — never put them in frontend code. Preview
-uses live env and live secrets (Settings edits update live only); schedules do not run on
-preview, and inbound webhooks are live-only.
+Gotchas: secrets and env are Worker bindings only — never put them in frontend code. Draft
+uses published env and published secrets (Settings edits update the published app only); schedules do not run on
+draft, and inbound webhooks are published-only.
 `@digit/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@digit/lib-build`)
 vendors those packages (including `lib-build`) under `project/packages/` in `app.zip`.
-Local Digit runtime preview is not supported; remote preview is the platform deployment path.
+Local Digit runtime draft is not supported; remote draft is the platform deployment path.
 
 ## Prompts
 

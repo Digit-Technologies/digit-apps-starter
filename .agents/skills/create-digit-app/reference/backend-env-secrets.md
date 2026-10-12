@@ -12,20 +12,20 @@ into the frontend bundle.
 - Secrets are write-only in the API (owners see keys, not values)
 - Frontend must never hard-code secret values
 
-## Preview: live env and live secrets
+## Draft: published env and published secrets
 
-Preview has a separate Worker and separate app-owned storage (D1/R2), but it uses the
-**same env vars and secrets as live**.
+Draft has a separate Worker and separate app-owned storage (D1/R2), but it uses the
+**same env vars and secrets as the published app**.
 
-Digit Settings that edit env vars or secrets update **live only**. A change made while
-reviewing a preview still writes the live record, and both the preview Worker and the live
+Digit Settings that edit env vars or secrets update **the published app only**. A change made while
+reviewing a draft still writes the published record, and both the draft Worker and the published
 Worker then receive those values.
 
-**Promote does not wipe live env/secrets.** Preview shares live env and secrets; Digit
-Settings write live only. Nothing is copied from preview onto live for env or secrets —
-preview already shares live, and promote is not a config copy.
+**Promote does not wipe published env/secrets.** Draft shares published env and secrets; Digit
+Settings write the published app only. Nothing is copied from draft onto the published app for env or secrets —
+draft already shares them, and promote is not a config copy.
 
-Because preview therefore always holds live credentials, guard or disable external writes,
+Because a draft therefore always holds published credentials, guard or disable external writes,
 email, payments, and other irreversible side effects. Do not infer the channel from internal
 `X-Digit-*` headers: there is not yet a documented app-facing `isPreview()` helper. A supported
 runtime channel signal would be a platform/SDK change, not an app convention.
@@ -113,6 +113,6 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 ## Setup for users
 
 1. Create the app in Digit
-2. Set env vars / secrets in Digit Settings (live values; preview uses them too)
+2. Set env vars / secrets in Digit Settings (published values; draft uses them too)
 3. Publish a bundle whose manifest declares `backend.kind: "cloudflare-worker"`
 4. Ship `backend/index.js` that reads those keys via `requireEnv` inside `createHandler`
