@@ -7,8 +7,8 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 ## Public API
 
 Import from the package root only. Theme tokens, error parsers, and other modules
-under `src/` are implementation details — use `DigitThemeProvider`, the hooks, and
-`AppErrorAlert`.
+under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
+`AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, and `useLabelPrint`.
 
 ## Why a copy (not an import from digit-web)
 
@@ -92,6 +92,36 @@ await AppHost.invoke("print", { title: "Packing Slip 1042", html });
 The print document runs no JavaScript. Inline CSS and convert images or canvases to
 `data:image/...` before calling `invoke("print", ...)`; remote `http(s)` assets do not load (print CSP
 is `img-src data:`). Keep the result under 10MB. Use `invoke("download", ...)` for PDF bytes.
+
+For inventory and item labels designed in Sutton, do not rebuild the layout in the app. Name the
+label and the record by id. `LabelPrintPanel` asks the host to render with the same code native
+label print uses, shows the HTML inline in a sandboxed iframe, and prints only after the user clicks
+Print. Place it anywhere on the page:
+
+```tsx
+import { LabelPrintPanel } from "@digit/lib-frontend";
+
+<LabelPrintPanel labelId={labelId} entityType="inventory" entityId={inventory.id} copies={2} />
+```
+
+Use `LabelPrintDialog` (same props plus `open` and `onClose`) when a modal is what the design needs,
+and `useLabelPrint({ labelId, entityType, entityId, copies?, enabled?, onPrinted? })` for your own
+layout. The hook returns `{ preview, loading, printing, error, canPrint, print, reload }`; render `preview` with `LabelPreview` and call `print` only while `canPrint` is true.
+
+`printLabel({ labelId, entityType, entityId, copies?, mode })` calls
+`AppHost.invoke("printLabel", ...)`. `mode: "preview"` resolves
+`{ html, title, widthIn, heightIn, copies }` and prints nothing — show it with `LabelPreview`.
+Declare `READ_CUSTOM_LABEL_CONFIGURATION`, `READ_INVENTORY` and `READ_ITEM` in `manifest.json` for
+inventory labels (`READ_CUSTOM_LABEL_CONFIGURATION` and `READ_ITEM` for item labels); the call
+rejects naming whichever is missing. Whatever else the label shows comes from the record, for what
+the signed-in user can read.
+`mode: "print"` resolves `{ printed: true }` after the host opens the print dialog. Do not pass
+`preview: boolean`, and do not treat any non-null result as printed. Calls are spaced to the host's
+limit of one per second. It rejects on a host that doesn't offer it, for a label with no composer
+`layoutJson`, when the label doesn't match the record type, when the label size is outside 0.5 to
+20 inches, when the document is too large, and with "A label is already being rendered" while
+another label renders. The host loads the records. Look up the label id through the Sutton API
+before shipping.
 
 Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
 tokens over hard-coded colors.

@@ -227,7 +227,7 @@ only; still upload the zip **unchanged**. Details:
   paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
   unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `AppErrorAlert` only. Pair hook `error` with
+- **Public surface:** hooks + theme + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -265,6 +265,8 @@ Do not send PDF bytes to the print call. Download a PDF instead:
 `invoke("download", { filename, contentType: "application/pdf", data })`. Printing only
 accepts HTML and opens the browser print dialog.
 
+**Sutton labels (inventory, item):** read [reference/labels.md](reference/labels.md) before writing label code. Use `LabelPrintPanel`. Never draw the label, load its records, or call `AppHost.invoke("printLabel")` yourself.
+
 #### Host-mediated actions (`AppHost.invoke`)
 
 Every host-mediated action goes through one generic call, `AppHost.invoke(method, params?)`
@@ -288,6 +290,11 @@ const result = await AppHost.invoke("openModal", { modal: "item", id })
 ```
 
 No optional chaining needed: outside Digit (tests, a local page) `invoke` simply rejects.
+
+Never call `AppHost.invoke("printLabel", ...)` directly, even though `getHostCapabilities` lists
+it. The helpers space calls one second apart and send the exact keys the host validates. A
+hand-rolled call fails with "Too many calls" or "Invalid params". Use the label components in
+[reference/labels.md](reference/labels.md).
 
 `window.DigitHost` still works, including its `download(...)` and `print(...)`, but it is
 deprecated. Write new code against `AppHost`, and migrate `window.DigitHost` calls in any
@@ -337,6 +344,9 @@ user’s live permissions at runtime.
 Look up GraphQL fields with `graphql-schema://…`, then declare only the permissions those
 operations need. Details: [reference/permissions.md](reference/permissions.md).
 
+Printing Sutton labels needs its own permissions. See
+[reference/labels.md#manifest-permissions](reference/labels.md#manifest-permissions).
+
 ### 7. Env vars and secrets
 
 Configured on the app in Digit Settings (UI only). Injected only into the Worker as
@@ -378,6 +388,7 @@ upstream starter.
 | Digit GraphQL                         | Schema resources → hooks + `appPermissions` → `key` in manifest |
 | Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
 | Codes / JSON validation               | `@digit/lib-common`                                             |
+| Print a Sutton inventory or item label | `LabelPrintPanel` → [reference/labels.md](reference/labels.md)  |
 
 ## Packages (`lib-*`)
 
@@ -386,7 +397,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`              |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
@@ -407,6 +418,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 ## Additional resources
 
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
+- [reference/labels.md](reference/labels.md) for Sutton label preview and print, permissions, and failures
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
