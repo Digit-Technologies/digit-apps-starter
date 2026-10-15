@@ -1,6 +1,6 @@
 # Design patterns
 
-The theme makes an app look like Digit. These patterns make it **work** like Digit: where
+The theme makes an app look like the platform. These patterns make it **work** like the platform: where
 things sit, how lists read, how actions are grouped, and how status is shown. Read this
 before you lay out a screen. [theming.md](theming.md) covers the palette and component
 overrides.
@@ -227,5 +227,5 @@ blocks the action in the description, and do not use red.
 />
 ```
 
-- Navigating to another part of Digit goes through the host. Check `getHostCapabilities`
+- Navigating to another part of the platform goes through the host. Check `getHostCapabilities`
   for a navigation method before you write one.
