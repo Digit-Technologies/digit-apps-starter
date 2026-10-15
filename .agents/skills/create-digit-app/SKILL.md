@@ -315,9 +315,11 @@ colours, px font sizes, `boxShadow`, or `borderRadius` overrides. If a rule name
 cannot import, stop and say so.
 
 **Never do these** (they are the stock-looking defaults the platform does not use):
-- Never set `fullWidth` on a `Button`. Buttons size to their label.
-- Never set `textAlign: "center"` or centre content. Text is left-aligned. The only exception is
-  the `EmptyState` block.
+- Never set `fullWidth` on a `Button`, and never set `width: "100%"` (or any full-width `sx`) on a
+  button, stack, or card that holds one. Buttons size to their label and sit left in their row.
+- Never set `textAlign: "center"`, `justifyContent: "center"`, or `alignItems: "center"` on a text
+  block or a card. Titles, labels, status and account lines are all left-aligned. The only exception
+  is the `EmptyState` block.
 - Never set `fontWeight` or `fontSize` on a `Typography`. Pick the variant from the table below.
 - Never use a bare MUI `Switch` next to text. Use `Switch label=...`, which keeps the gap and the
   label click.

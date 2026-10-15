@@ -40,6 +40,8 @@ export const muiButton = (): Components<
     styleOverrides: {
       root: {
         borderRadius: "10px",
+        // Buttons size to their label. MUI's 64px minimum adds dead space to short labels like "Next".
+        minWidth: 0,
         fontSize: "13px",
         minHeight: "44px",
         padding: "8px 12px",
