@@ -15,6 +15,7 @@ import { muiAutocomplete } from "./muiAutocomplete"
 import { muiBackdrop } from "./muiBackdrop"
 import { muiButton } from "./muiButton"
 import { muiCheckbox } from "./muiCheckbox"
+import { muiChip } from "./muiChip"
 import { muiCssBaseline } from "./muiCssBaseline"
 import { muiDialog } from "./muiDialog"
 import { muiFormControlLabel } from "./muiFormControlLabel"
@@ -44,6 +45,7 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiCssBaseline: muiCssBaseline({ darkMode }),
     MuiBackdrop: muiBackdrop(),
     MuiCheckbox: muiCheckbox({ darkMode }),
+    MuiChip: muiChip(),
     MuiButton: muiButton(),
     MuiDialog: muiDialog(),
     MuiFormControlLabel: muiFormControlLabel(),

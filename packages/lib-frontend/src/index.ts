@@ -21,6 +21,10 @@ export type {
 } from "./globals";
 import "./globals";
 
+// Components
+export { StatusChip, resolveStatusTone, statusTones } from "./components/StatusChip";
+export type { StatusChipProps, StatusTone } from "./components/StatusChip";
+
 // Errors
 export { AppErrorAlert } from "./errors";
 export type { AppError } from "./errors";
