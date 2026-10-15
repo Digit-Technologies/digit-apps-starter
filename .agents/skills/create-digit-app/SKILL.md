@@ -233,7 +233,7 @@ only; still upload the zip **unchanged**. Details:
   paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
   unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `StatusChip` (for every status or category pill) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
+- **Public surface:** hooks + theme + `Pill` (every status or category pill) + `ConfirmDialog` (before any destructive action) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -404,7 +404,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `StatusChip`, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `Pill`, `ConfirmDialog`, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
