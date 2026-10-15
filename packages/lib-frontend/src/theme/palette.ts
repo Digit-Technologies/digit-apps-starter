@@ -1,5 +1,6 @@
 import { ThemeOptions } from "@mui/material/styles"
 
+import { accentPalette } from "./accent-colors"
 import { amber, blue, green, neutral, red, stone } from "./colors"
 import { getThemeExtensions } from "./theme-extensions"
 
@@ -56,6 +57,20 @@ export const palette = ({ darkMode }: ThemeProps): ThemeOptions["palette"] => {
       default: darkMode ? stone[900] : stone[100],
       paper: darkMode ? stone[800] : neutral.white,
       surface: darkMode ? stone[900] : neutral[50],
+    },
+    ...accentPalette,
+    // MUI's own grey scale would show up in components. Use the stone scale instead.
+    grey: {
+      50: stone[50],
+      100: stone[100],
+      200: stone[200],
+      300: stone[300],
+      400: stone[400],
+      500: stone[500],
+      600: stone[600],
+      700: stone[700],
+      800: stone[800],
+      900: stone[900],
     },
     // All palette extensions beyond standard MUI colors should be added here
     ...extensions,

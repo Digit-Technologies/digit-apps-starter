@@ -1,8 +1,14 @@
 import { CSSObject } from "@mui/material/styles"
-import { type CSSProperties } from "@mui/material/styles"
+import { type CSSProperties, type PaletteColor, type PaletteColorOptions } from "@mui/material/styles"
+
+import { type AccentColorName } from "./accent-colors"
 
 export interface ThemeProps {
   darkMode: boolean
+}
+
+declare module "@mui/material/Chip" {
+  interface ChipPropsColorOverrides extends Record<AccentColorName, true> {}
 }
 
 declare module "@mui/material/Typography" {
@@ -45,7 +51,7 @@ declare module "@mui/material/styles" {
     surface?: string
   }
 
-  interface Palette {
+  interface Palette extends Record<AccentColorName, PaletteColor> {
     border: {
       default: string
       strong: string
@@ -58,7 +64,7 @@ declare module "@mui/material/styles" {
     }
     tabFocus: string
   }
-  interface PaletteOptions {
+  interface PaletteOptions extends Partial<Record<AccentColorName, PaletteColorOptions>> {
     border?: {
       default?: string
       strong?: string

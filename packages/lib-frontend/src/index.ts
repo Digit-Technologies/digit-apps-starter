@@ -22,8 +22,10 @@ export type {
 import "./globals";
 
 // Components
-export { StatusChip, resolveStatusTone, statusTones } from "./components/StatusChip";
-export type { StatusChipProps, StatusTone } from "./components/StatusChip";
+export { Pill } from "./components/Pill";
+export type { PillColor, PillProps, PillTone } from "./components/Pill";
+export { ConfirmDialog } from "./components/ConfirmDialog";
+export type { ConfirmDialogProps } from "./components/ConfirmDialog";
 
 // Errors
 export { AppErrorAlert } from "./errors";
