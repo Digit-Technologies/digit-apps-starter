@@ -45,7 +45,7 @@ export const PageHeader = ({
   return (
     <Box
       sx={(theme) => ({
-        borderBottom: isDialog ? undefined : `1px solid ${theme.palette.border.strong}`,
+        borderBottom: `1px solid ${theme.palette.border.strong}`,
       })}
     >
       <Box
@@ -54,11 +54,12 @@ export const PageHeader = ({
           alignItems: "center",
           gap: 0.5,
           boxSizing: "border-box",
-          height: 60,
-          px: 4.5,
+          minHeight: 60,
+          // Dialogs use 16px padding. Pages use 36px side padding, and 20px below 600px.
+          px: isDialog ? 2 : 4.5,
           pt: 2,
           pb: tabs ? 1 : 2,
-          "@media (max-width: 599px)": { px: 2.5 },
+          "@media (max-width: 599px)": { px: isDialog ? 2 : 2.5 },
         }}
       >
         {trail?.map((crumb) => (

@@ -32,7 +32,8 @@ export const muiFilledInput = (): Components<Omit<Theme, "components">>["MuiFill
         boxShadow: `0 0 0 1px ${red[500]} inset`,
       },
       ...(ownerState.size === "small" ? { minHeight: "20px", borderRadius: 6 } : {}),
-      ...(ownerState.multiline ? { borderRadius: 10 } : {}),
+      // MUI pads the multiline field box itself. The 8px padding goes on the textarea only.
+      ...(ownerState.multiline ? { borderRadius: 10, padding: 0 } : {}),
       }
     },
     input: ({ theme, ownerState }) => ({

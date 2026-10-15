@@ -48,15 +48,15 @@ export const FileDropZone = ({
           if (!disabled) emit(Array.from(e.dataTransfer.files))
         }}
         sx={{
-          display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center",
           width: "100%", gap: "8px", px: "16px", py: "20px", border: 0, borderRadius: "8px",
           font: "inherit", color: "text.secondary",
           bgcolor: isDragging ? neutralAlpha.darken[100] : neutralAlpha.darken[50],
           cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
         }}
       >
-        <Upload size={12} aria-hidden="true" />
-        <Typography variant="overline" color="text.secondary">
+        <Upload size={12} aria-hidden="true" style={{ pointerEvents: "none" }} />
+        <Typography variant="overline" color="text.secondary" sx={{ pointerEvents: "none" }}>
           {label}
         </Typography>
       </Box>
