@@ -74,6 +74,8 @@ digit-web). Do not add a Google Fonts or other CDN stylesheet. The harness sets
 
 - Prefer MUI components styled by the theme (`Button`, `TextField`, `Typography`,
   `Stack`, `Box`, `Table`, `Alert`, …)
+- Show statuses and categories with `StatusChip`, not hand-picked `Chip` colours. See
+  [design-patterns.md](design-patterns.md#status-and-tone)
 - Lay out screens with the patterns in [design-patterns.md](design-patterns.md). The
   theme sets colour and type; the pattern sets structure, action placement and copy
 - Prefer `theme.palette.*` / typography variants over hard-coded hex colors
