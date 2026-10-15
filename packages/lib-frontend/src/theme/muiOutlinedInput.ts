@@ -9,6 +9,12 @@ export const muiOutlinedInput = (): Components<
     styleOverrides: {
       root: ({ theme }) => ({
         borderRadius: "8px",
+        "& .MuiOutlinedInput-notchedOutline": {
+          borderColor: theme.palette.border.strong,
+        },
+        "&:hover .MuiOutlinedInput-notchedOutline": {
+          borderColor: theme.palette.border.extrastrong,
+        },
         // Hover fill marks fields the user can type into. Disabled and
         // read-only fields aren't editable; selects are picked, not typed.
         "&:hover:not(.Mui-disabled):not(.Mui-readOnly):not(:has(.MuiSelect-select))":

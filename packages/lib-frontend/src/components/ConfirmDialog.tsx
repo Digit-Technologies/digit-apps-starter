@@ -5,7 +5,11 @@ import Dialog from "@mui/material/Dialog"
 import DialogActions from "@mui/material/DialogActions"
 import DialogContent from "@mui/material/DialogContent"
 import DialogTitle from "@mui/material/DialogTitle"
+import IconButton from "@mui/material/IconButton"
+import Stack from "@mui/material/Stack"
 import Typography from "@mui/material/Typography"
+
+import { X } from "../icons"
 
 export interface ConfirmDialogProps {
   open: boolean
@@ -50,21 +54,25 @@ export const ConfirmDialog = ({
     fullWidth
     aria-labelledby="confirm-dialog-title"
   >
-    <DialogTitle
-      id="confirm-dialog-title"
-      sx={{ pb: 1, display: "flex", alignItems: "center", gap: 1.5, fontWeight: 600 }}
-    >
-      {icon}
-      {title}
+    <DialogTitle id="confirm-dialog-title" component="div">
+      <Stack direction="row" sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
+        {icon}
+        <IconButton aria-label="Close" size="small" onClick={onCancel} disabled={busy}>
+          <X size={16} />
+        </IconButton>
+      </Stack>
+      <Typography component="h2" variant="h5" sx={{ mt: icon ? 1.5 : 0 }}>
+        {title}
+      </Typography>
     </DialogTitle>
     {description && (
-      <DialogContent sx={{ pt: 0 }}>
-        <Typography variant="body2" color="text.secondary">
+      <DialogContent>
+        <Typography variant="body1" color="text.secondary">
           {description}
         </Typography>
       </DialogContent>
     )}
-    <DialogActions sx={{ px: 3, pb: 2.5, justifyContent: "space-between" }}>
+    <DialogActions sx={{ justifyContent: "space-between" }}>
       <Button
         variant="text"
         color="inherit"

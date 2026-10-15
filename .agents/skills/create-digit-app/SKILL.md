@@ -234,7 +234,7 @@ only; still upload the zip **unchanged**. Details:
   handlers. Do not render a list of many rows as an unbounded dump. See
   [reference/design-patterns.md](reference/design-patterns.md#lists-of-records).
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `Pill` (every status or category pill) + `ConfirmDialog` (before any destructive action) + `Table` (every list of records) + Lucide icons (`Plus`, `Search`, …) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
+- **Public surface:** hooks + theme + `Pill` (every status or category pill) + `ConfirmDialog` (before any destructive action) + `Table` (every list of records) + `PageHeader`, `SettingsRow`, `SettingsSection`, `RadioCard`, `EmptyState`, `Switch` (native layout) + Lucide icons (`Plus`, `Search`, …) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -306,6 +306,123 @@ hand-rolled call fails with "Too many calls" or "Invalid params". Use the label 
 `window.DigitHost` still works, including its `download(...)` and `print(...)`, but it is
 deprecated. Write new code against `AppHost`, and migrate `window.DigitHost` calls in any
 existing file you edit.
+
+### Native look
+
+Build screens from the native rules below, so a prompt produces a feature that looks like the
+platform without steering. Import from `@digit/lib-frontend` or `@mui/material`. Never write hex
+colours, px font sizes, `boxShadow`, or `borderRadius` overrides. If a rule names something you
+cannot import, stop and say so.
+
+**Never do these** (they are the stock-looking defaults the platform does not use):
+- Never set `fullWidth` on a `Button`. Buttons size to their label.
+- Never set `textAlign: "center"` or centre content. Text is left-aligned. The only exception is
+  the `EmptyState` block.
+- Never set `fontWeight` or `fontSize` on a `Typography`. Pick the variant from the table below.
+- Never use a bare MUI `Switch` next to text. Use `Switch label=...`, which keeps the gap and the
+  label click.
+
+**Surfaces**
+- Page: `background.default` (white). Do not wrap a page, list or form in a Card.
+- Top of every screen, side panel and form dialog: `PageHeader`. Use `trail` for a detail screen
+  under a list, `actions` for the primary button, and `onClose` for the panel's cancel.
+- Grouped block, such as an assistant message or a progress summary: `<Card>`. The theme makes
+  it outlined with a 12px radius.
+- In-app section navigation, only if the app has sub-pages (the platform owns app navigation): a
+  `Box` 200px wide with `bgcolor: "background.surface"` and a right `divider` border. Items are
+  `ListItemButton selected` with a 16px Lucide icon. Group labels are
+  `Typography variant="caption" color="text.secondary"`.
+- Dialog: MUI `Dialog`. The theme makes it white, borderless and 16px round.
+- Lines: `Divider`, or `borderColor: "divider"`. One 1px line only.
+
+**Radii** (theme-owned, never set): pill 4, checkbox 4, input 8, small button 8, nav item 8,
+card 12, radio card 12, dialog 16.
+
+**Buttons** (leave size at the default, `small`, 28px)
+
+| Role | Code |
+| --- | --- |
+| Primary: create on a top-level page, save, publish | `<Button variant="contained" color="primary">` |
+| Secondary: create inside a settings or detail panel, choice chips | `<Button>` (contained secondary: white, 1px border) |
+| Destructive confirm | `ConfirmDialog destructive`. Never place a red button yourself |
+| Text: Cancel, Select All | `<Button variant="text">` |
+| Icon only | `<IconButton aria-label="...">` with a 16px Lucide icon |
+
+- Never use `variant="outlined"`. In this theme it is a grey fill that native screens do not use.
+- Leading icon: `startIcon={<Plus size={16} />}`. Save buttons use `Save`.
+- Overflow: `IconButton` with `Ellipsis` opens a `Menu`. The destructive item goes last as
+  `<MenuItem sx={{ color: "error.main" }}>`, with no divider before it.
+- Footers: side-panel editors put Cancel (text) on the left and the primary button on the right.
+  Dialogs put only the primary button on the right. The header X is the cancel.
+
+**Typography**
+
+| Role | Code |
+| --- | --- |
+| Header title | `PageHeader title` (h5, 16px, 600) |
+| Record title | `Typography variant="h4"` (20px, 600). A `Pill` sits beside it |
+| Section header | `SettingsSection title` (h5) |
+| Name cell in a list | `Typography variant="h6" component="span"` (13px, 600) |
+| Settings or form label | `body1` (13px, 400), via `SettingsRow` |
+| Supporting text | `body1` with `color="text.secondary"` |
+| Row description | `caption` with `color="text.tertiary"` |
+| Counts, dates, IDs, quantities | `Typography variant="mono" color="text.secondary"` |
+
+Use sentence case everywhere. The one exception is `SettingsSection`'s built-in "Select All" and
+"Deselect All".
+
+**Lists**
+- Paged, or able to outgrow one screen: `Table`. The name column renders the h6 name. Dates and
+  counts use mono. Status uses `Pill`. A person is a 20px `Avatar` with the h6 name.
+- A small fixed set, such as roles or config entries: a plain MUI `Table` with no `TableHead`,
+  using `TableRow hover` and `TableCell`. Rows that open details end with
+  `<ChevronRight size={16} />`. Never wrap it in a Card.
+
+**Status: `Pill` only**
+
+| Tone | Words (`status=`) |
+| --- | --- |
+| `gray` | draft, archived |
+| `blue` | not started, active, building |
+| `green` | live, complete, completed, done |
+| `yellow` | pending, in progress |
+| `red` | blocked, failed |
+| `outlined` (unknown words) | anything else |
+
+Category pills use `color=`, with any palette colour such as `color="sky"`. Built-in or
+system categories use `color="gray"`. For a hint, put the icon in the label, `label={<>Default <Info size={12} /></>}`,
+and wrap the pill in a `Tooltip`. Do not use the `icon` prop, which puts the icon on the left.
+
+**Forms**
+- A field inside a form row or settings panel: `<TextField variant="filled" hiddenLabel size="small" fullWidth>`.
+- A search box, or a field standing alone on a page: `<TextField size="small">` (outlined).
+- Labels sit in a left column through `SettingsRow variant="form" required`. Never use MUI
+  floating labels inside a form row.
+- A fixed set in a form row: `<Select variant="standard" fullWidth>`. It reads as text with a
+  chevron.
+- On or off uses `Switch` (`<Switch label="..." checked onChange />`). A list of grants uses `Checkbox` inside `SettingsRow variant="list"`.
+  Two or three options that each need a sentence use `RadioCard` inside `<RadioGroup row>`.
+
+**Dialogs**
+- Confirm or blocked: `ConfirmDialog`. For a blocked action, use `icon={<TriangleAlert size={20} />}`
+  and a non-red verb such as "Go to users". For a destructive action, use `destructive`.
+  `description` may hold several `<Typography>` paragraphs, with `<strong>` on the thing to fix.
+- Form dialog, Publish style: `<Dialog maxWidth="sm" fullWidth>`, then
+  `<PageHeader variant="dialog" title actions onClose />`, then `<DialogContent>` with a
+  `<Stack spacing={1.5}>` of `<SettingsRow variant="form">`, then `<DialogActions>` with one
+  primary button, which MUI aligns right by default.
+
+**Settings and permissions**
+- A group of grants: `<SettingsSection title selection={{ checked, total, onChange }}>`. Its
+  children are `<SettingsRow variant="list" label info control={<Checkbox />} />`.
+- Settings in a side panel: `<SettingsRow variant="form" labelWidth={88}>` rows, with no dividers.
+
+**Empty states**: `<EmptyState icon={<Rocket size={24} />} title description action />`. Use at
+most one action, and make it secondary unless it is the only way forward.
+
+**Spacing** (8px units): content gutter `px: 2`. Card padding `p: 3`. Form rows use
+`spacing={1.5}`. Blocks of cards use `spacing={2}`. Icon-to-label gap is `0.5`. List rows and
+settings rows are 36px. Do not pad cells. Sections stack with no gap.
 
 ### 5. `manifest.json`
 

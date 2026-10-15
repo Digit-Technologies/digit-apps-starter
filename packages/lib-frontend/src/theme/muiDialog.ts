@@ -15,9 +15,11 @@ export const muiDialog = (): Components<
         },
       },
       paper: ({ theme }) => ({
-        backgroundColor: neutral[50],
+        // Native dialogs are white, borderless, and rounded to 16px. The shadow comes from the
+        // theme's shadow scale.
+        backgroundColor: neutral.white,
         backgroundImage: "none",
-        border: `1px solid ${neutral[200]}`,
+        borderRadius: 16,
         ...theme.applyStyles("dark", {
           backgroundColor: neutral[900],
           border: `1px solid ${neutral[800]}`,

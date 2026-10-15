@@ -11,7 +11,7 @@ import {
   GridSortModel,
   GridValidRowModel,
 } from "@mui/x-data-grid"
-import { Search } from "lucide-react"
+import { Search } from "../icons"
 
 export interface TableProps<Row extends GridValidRowModel> {
   rows: Row[]
@@ -109,10 +109,12 @@ export function Table<Row extends GridValidRowModel>({
         hideFooterSelectedRowCount
         loading={loading}
         autoHeight
+        // Native lists are 36px rows under a 36px header, and sit flat without an outer card.
+        rowHeight={36}
+        columnHeaderHeight={36}
         onRowClick={onRowClick ? (params) => onRowClick(params.row) : undefined}
         sx={(theme) => ({
-          border: `1px solid ${theme.palette.divider}`,
-          borderRadius: "10px",
+          border: "none",
           backgroundColor: theme.palette.background.paper,
           fontSize: "13px",
           "& .MuiDataGrid-columnHeaders": {
@@ -121,16 +123,21 @@ export function Table<Row extends GridValidRowModel>({
           },
           "& .MuiDataGrid-columnHeaderTitle": {
             color: theme.palette.text.secondary,
+            fontSize: "12px",
             fontWeight: 500,
+          },
+          "& .MuiDataGrid-columnSeparator": {
+            color: theme.palette.divider,
           },
           "& .MuiDataGrid-cell": {
             borderBottomColor: theme.palette.divider,
+            fontWeight: 400,
           },
           "& .MuiDataGrid-row": {
             cursor: onRowClick ? "pointer" : "default",
           },
           "& .MuiDataGrid-row:hover": {
-            backgroundColor: theme.palette.grey[50],
+            backgroundColor: theme.palette.action.hover,
           },
           "& .MuiDataGrid-footerContainer": {
             borderTopColor: theme.palette.divider,

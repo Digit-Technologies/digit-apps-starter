@@ -23,7 +23,7 @@ import "./globals";
 
 // Components
 export { Pill } from "./components/Pill";
-export type { PillColor, PillProps, PillTone } from "./components/Pill";
+export type { PillColor, PillProps, PillSize } from "./components/Pill";
 export { ConfirmDialog } from "./components/ConfirmDialog";
 export type { ConfirmDialogProps } from "./components/ConfirmDialog";
 export { Table } from "./components/Table";
@@ -63,3 +63,17 @@ export type {
   PrintLabelArgs,
   PrintLabelMode,
 } from "./labels";
+
+// Layout (native screens: page header, settings rows, radio cards, empty states)
+export { PageHeader } from "./components/PageHeader";
+export type { Crumb, PageHeaderProps } from "./components/PageHeader";
+export { RadioCard } from "./components/RadioCard";
+export type { RadioCardProps } from "./components/RadioCard";
+export { SettingsRow } from "./components/SettingsRow";
+export type { SettingsRowProps } from "./components/SettingsRow";
+export { SettingsSection } from "./components/SettingsSection";
+export type { SettingsSectionProps } from "./components/SettingsSection";
+export { EmptyState } from "./components/EmptyState";
+export type { EmptyStateProps } from "./components/EmptyState";
+export { Switch } from "./components/Switch";
+export type { SwitchProps } from "./components/Switch";

@@ -28,7 +28,7 @@ export const muiMenu = (): Components<Omit<Theme, "components">>["MuiMenu"] => {
         boxShadow: outer.sm,
       }),
       list: {
-        padding: 0,
+        padding: 4,
       },
     },
   }

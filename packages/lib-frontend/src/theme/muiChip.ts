@@ -22,7 +22,7 @@ export const muiChip = (): Components<Omit<Theme, "components">>["MuiChip"] => (
       const isDark = theme.palette.mode === "dark"
 
       return {
-        borderRadius: theme.spacing(0.75), // 6px
+        borderRadius: "4px",
         fontSize: "12px",
         fontWeight: 500,
         height: "20px",
@@ -35,16 +35,16 @@ export const muiChip = (): Components<Omit<Theme, "components">>["MuiChip"] => (
               borderColor: theme.palette.border.extrastrong,
             }
           : {
-              backgroundColor: isDark ? scale[750] : scale[250],
+              backgroundColor: isDark ? scale[750] : scale[200],
             }),
         "& .MuiChip-label": {
-          paddingLeft: theme.spacing(0.5),
-          paddingRight: theme.spacing(0.5),
+          paddingLeft: theme.spacing(0.75),
+          paddingRight: theme.spacing(0.75),
         },
         "& .MuiChip-icon": {
           color: "inherit",
           marginLeft: theme.spacing(0.5),
-          marginRight: -theme.spacing(0.25),
+          marginRight: theme.spacing(-0.25),
         },
       }
     },

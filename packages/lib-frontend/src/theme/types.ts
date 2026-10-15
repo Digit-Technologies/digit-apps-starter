@@ -19,6 +19,7 @@ declare module "@mui/material/Typography" {
     body2Link: true
     buttonSm: true
     overlineLink: true
+    mono: true
   }
 }
 
@@ -31,6 +32,7 @@ declare module "@mui/material/styles" {
     button: CSSProperties
     buttonSm: CSSProperties
     overlineLink: CSSProperties
+    mono: CSSProperties
   }
 
   interface TypographyVariantsOptions {
@@ -41,6 +43,7 @@ declare module "@mui/material/styles" {
     button?: CSSProperties
     buttonSm?: CSSProperties
     overlineLink?: CSSProperties
+    mono?: CSSProperties
   }
 
   interface TypeText {

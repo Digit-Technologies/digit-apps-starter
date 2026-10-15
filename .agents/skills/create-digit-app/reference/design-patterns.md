@@ -71,8 +71,9 @@ If the design needs a colour that is not in the palette, say so. Do not add one 
 
 ## Lists of records
 
-Use `Table` for every list of records. Do not build a table from MUI primitives, and do not
-restyle a new table per screen.
+Use `Table` for every paged list of records. Do not restyle a new table per screen. A small
+fixed set (roles, config entries) may use a plain MUI `Table` with no header, because the
+theme styles its cells.
 
 A list page is a title, an optional row of tabs, then a `Table`. The primary action sits in
 the table's `actions` slot, at the top right.
@@ -91,7 +92,7 @@ import { Table, Plus } from "@digit/lib-frontend"
   search={search}
   onSearchChange={setSearch}
   searchPlaceholder="Search roles"
-  actions={<Button variant="contained" startIcon={<Plus size={16} />}>New role</Button>}
+  actions={<Button variant="contained" color="primary" startIcon={<Plus size={16} />}>New role</Button>}
   onRowClick={(row) => openDetails(row.id)}
 />
 ```
@@ -130,7 +131,7 @@ Actions that are not the main thing (duplicate, export, delete) go behind a sing
 this pattern is called; the menu it opens groups the secondary actions.
 
 - Use the `Ellipsis` icon. `IconButton` with `aria-label="More actions"`, opening a `Menu`.
-- List the actions in sentence case. Put the destructive one last, in red, below a divider.
+- List the actions in sentence case. Put the destructive one last, in red, with no divider before it.
   Destructive items still open a [confirmation](#confirmations).
 - The primary action stays visible outside the menu.
 
@@ -141,7 +142,8 @@ helps, an icon.
 
 - Top right of a page for creating something. Right side of a panel or dialog footer for
   saving.
-- Secondary actions are outlined buttons. Tertiary ones are text buttons.
+- Secondary actions are the default `Button` (white, with a border). Never use `variant="outlined"`:
+  in this theme it is a grey fill that native screens do not use. Tertiary ones are text buttons.
 - Cancel is a text button on the left of the footer when there is a save.
 - The primary button is never red. Red is for destructive actions only.
 
@@ -175,11 +177,11 @@ Only the obvious statuses are on the list. Anything else is a category, so pass 
 
 | Tone      | Meaning                   | Status words                                    |
 | --------- | ------------------------- | ----------------------------------------------- |
-| `default` | Not started, or set aside | `draft`, `not started`, `archived`              |
-| `info`    | Active                    | `active`                                        |
-| `warning` | Waiting                   | `pending`, `in progress`                        |
-| `error`   | Stopped                   | `blocked`, `failed`                             |
-| `success` | Done                      | `complete`, `completed`, `done`                 |
+| `gray`    | Set aside                 | `draft`, `archived`                             |
+| `blue`    | Not started, or underway  | `not started`, `active`, `building`             |
+| `green`   | Live, or done             | `live`, `complete`, `completed`, `done`         |
+| `yellow`  | Waiting or in progress    | `pending`, `in progress`                        |
+| `red`     | Stopped                   | `blocked`, `failed`                             |
 
 - Do not use `Chip` directly for statuses. Do not pick colours by hand.
 - If a status word is missing from the list, pass the right `color` for this one use and
@@ -195,10 +197,8 @@ import { Plus, Search, Trash2 } from "@digit/lib-frontend"
 <Plus size={16} />
 ```
 
-- The icons available are the ones exported from `@digit/lib-frontend`: `Check`,
-  `ChevronDown`, `ChevronRight`, `Copy`, `Download`, `Ellipsis`, `Globe`, `Info`, `Lock`,
-  `Paperclip`, `Pencil`, `Plus`, `Printer`, `Search`, `Send`, `Sparkles`, `Trash2`,
-  `TriangleAlert`, `X`.
+- The icons available are the names exported from `packages/lib-frontend/src/icons.ts`.
+  Read that file for the current list rather than relying on a copy here.
 - If you need an icon that is not in that list, say so and name it. Do not import a
   different icon set.
 - **Size 16** is the default. Use 14 in dense rows and 20 for a standalone icon.

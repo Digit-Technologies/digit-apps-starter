@@ -21,7 +21,7 @@ export const muiListItemButton = ({
             : `calc(${theme.shape.borderRadius} / 2)`,
         padding: theme.spacing(0.5, 1),
         minWidth: theme.spacing(3),
-        height: theme.spacing(3),
+        height: theme.spacing(3.5),
         whiteSpace: "nowrap",
         transition: defaultTransition(theme),
         background: "transparent",

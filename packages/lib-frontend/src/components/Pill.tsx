@@ -1,26 +1,30 @@
-import React from "react"
+import React, { ReactNode } from "react"
 
-import Chip, { ChipProps } from "@mui/material/Chip"
+import Box from "@mui/material/Box"
+import Typography from "@mui/material/Typography"
+import { Theme, useTheme } from "@mui/material/styles"
 
-import { type AccentColorName } from "../theme/accent-colors"
+import { type AccentColorName, accentScales } from "../theme/accent-colors"
 
-export type PillTone = "default" | "success" | "warning" | "error" | "info"
-export type PillColor = PillTone | AccentColorName
+export type PillColor = "outlined" | "gray" | AccentColorName
+export type PillSize = "sm" | "md"
 
-// Only the obvious lifecycle words. Anything else needs an explicit `color`.
-// Keys are normalised: lowercase, with spaces and hyphens turned into underscores.
-const statusTones: Readonly<Record<string, PillTone>> = {
-  draft: "default",
-  not_started: "default",
-  archived: "default",
-  active: "info",
-  pending: "warning",
-  in_progress: "warning",
-  blocked: "error",
-  failed: "error",
-  complete: "success",
-  completed: "success",
-  done: "success",
+// Generic statuses only. Each maps to the colour the platform uses for the same meaning.
+// Keys are lowercase, with spaces and hyphens turned into underscores.
+const statusColors: Readonly<Record<string, PillColor>> = {
+  draft: "gray",
+  archived: "gray",
+  not_started: "blue",
+  active: "blue",
+  building: "blue",
+  live: "green",
+  pending: "yellow",
+  in_progress: "yellow",
+  blocked: "red",
+  failed: "red",
+  complete: "green",
+  completed: "green",
+  done: "green",
 }
 
 const normaliseStatus = (status: string): string =>
@@ -31,31 +35,82 @@ const sentenceCase = (status: string): string => {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-export interface PillProps extends Omit<ChipProps, "color" | "variant"> {
-  /** A status word such as "in progress". Its tone comes from the shared status list. */
+// Light mode uses the 250 tint and dark mode the 750 tint, as the platform's pills do.
+const tint = (color: PillColor, theme: Theme): string => {
+  const isDark = theme.palette.mode === "dark"
+  const scale = color === "gray" ? accentScales.stone : accentScales[color as AccentColorName]
+  return isDark ? scale[750] : scale[250]
+}
+
+export interface PillProps {
+  /** A generic status word such as "in progress". Its colour comes from the shared status list. */
   status?: string
-  /** A tone or palette colour. Wins over `status` when both are set. */
+  /** A palette colour for a category, such as "sky". Wins over `status` when both are set. */
   color?: PillColor
+  /** Overrides the label. Otherwise `status` is shown in sentence case. */
+  label?: ReactNode
+  icon?: ReactNode
+  endAdornment?: ReactNode
+  size?: PillSize
+  onClick?: (event: React.MouseEvent<HTMLElement>) => void
 }
 
 /**
- * A small pill for a status or a category. Pass `status` for the shared tone of a
- * well-known word, or `color` to pick any tone or palette colour directly.
- * The default tone is outlined; every other colour is tinted.
+ * A small pill for a status or a category. Pass `status` for the shared colour of a generic
+ * status, or `color` for a category. Unknown statuses are outlined, as on the platform.
  */
-export const Pill = ({ status, color, label, ...chipProps }: PillProps) => {
-  const tone: PillColor =
-    color ??
-    (status ? (statusTones[normaliseStatus(status)] ?? "default") : "default")
+export const Pill = ({
+  status,
+  color,
+  label,
+  icon,
+  endAdornment,
+  size = "md",
+  onClick,
+}: PillProps) => {
+  const theme = useTheme()
+  const resolved: PillColor | undefined =
+    color ?? (status ? statusColors[normaliseStatus(status)] : undefined)
   const text = label ?? (status ? sentenceCase(status) : undefined)
+  const isSmall = size === "sm"
 
   return (
-    <Chip
-      {...chipProps}
-      size="small"
-      color={tone}
-      variant={tone === "default" ? "outlined" : "filled"}
-      label={text}
-    />
+    <Box
+      data-testid="pill"
+      role={onClick ? "button" : undefined}
+      onClick={onClick}
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 0.5,
+        width: "fit-content",
+        maxWidth: "100%",
+        height: isSmall ? 16 : 20,
+        minWidth: isSmall ? 16 : 20,
+        px: isSmall ? 0.25 : 0.5,
+        borderRadius: "6px",
+        border: "1px solid",
+        borderColor: resolved && resolved !== "outlined" ? "transparent" : theme.palette.border.extrastrong,
+        backgroundColor: resolved && resolved !== "outlined" ? tint(resolved, theme) : "transparent",
+        color: theme.palette.text.primary,
+        whiteSpace: "nowrap",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        userSelect: "none",
+        cursor: onClick ? "pointer" : undefined,
+      }}
+    >
+      {icon}
+      {text != null && text !== "" && (
+        <Typography
+          component="span"
+          sx={{ fontSize: isSmall ? "11px" : "12px", lineHeight: isSmall ? "16px" : "20px", fontWeight: 500 }}
+        >
+          {text}
+        </Typography>
+      )}
+      {endAdornment}
+    </Box>
   )
 }

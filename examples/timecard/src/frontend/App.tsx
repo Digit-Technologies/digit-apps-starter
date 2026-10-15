@@ -294,7 +294,7 @@ export default function App() {
           <>
             <Paper
               variant="outlined"
-              sx={{ px: 3, py: 3.5, borderRadius: 1, textAlign: 'center' }}
+              sx={{ px: 3, py: 3.5 }}
             >
               <Stack spacing={1.5} sx={{
                 alignItems: "center"
@@ -314,7 +314,6 @@ export default function App() {
                       px: 1.5,
                       py: 2.5,
                       fontWeight: 600,
-                      borderRadius: '10px',
                       ...(isClockedIn && {
                         bgcolor: 'success.dark',
                         color: 'common.white',
@@ -349,7 +348,6 @@ export default function App() {
               variant="contained"
               color={isClockedIn ? 'error' : 'primary'}
               size="large"
-              fullWidth
               disabled={!previewMode && (!userId || mutating)}
               onClick={previewMode ? undefined : () => void toggleClock()}
               startIcon={

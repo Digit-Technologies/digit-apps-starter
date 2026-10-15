@@ -122,6 +122,13 @@ export const typography = ({
       }),
       ":hover": linkStyles(darkMode),
     },
+    mono: {
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+      fontSize: "0.8125rem", // 13px
+      lineHeight: "1.25rem", // 20px
+      fontWeight: 400,
+      letterSpacing: 0,
+    },
     body2: createTypography({
       desktopSize: 0.8125, // 13px
       desktopLineHeight: 1.25, // 20px

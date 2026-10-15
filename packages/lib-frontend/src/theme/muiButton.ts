@@ -7,6 +7,7 @@ import {
   blue,
   neutral,
   neutralAlpha,
+  red,
   stone,
   transparent,
 } from "./colors"
@@ -214,6 +215,36 @@ export const muiButton = (): Components<
         }),
       },
       {
+        // Destructive confirm. Mirrors the primary button with red fills, so it lines up in shape.
+        props: { variant: "contained", color: "error" },
+        style: ({ theme }) => ({
+          ...(isLightMode(theme) && {
+            backgroundColor: red[500],
+            boxShadow: outer.sm,
+            color: "white",
+            "&:hover": {
+              backgroundColor: red[600],
+              boxShadow: outer.sm,
+              color: "white",
+            },
+            "&:active": {
+              backgroundColor: red[700],
+              boxShadow: inner.sm,
+              color: "white",
+            },
+            "&:disabled": {
+              backgroundColor: red[300],
+              color: "white",
+            },
+            "&:focus-visible": {
+              backgroundColor: red[500],
+              color: "white",
+              ...commonFocusLightStyles,
+            },
+          }),
+        }),
+      },
+      {
         props: { variant: "contained", color: "secondary" },
         style: ({ theme }) => ({
           ...(isLightMode(theme) && {
@@ -270,6 +301,8 @@ export const muiButton = (): Components<
       size: "small",
       variant: "contained",
       disableRipple: true,
+      // Native buttons sit flat. Their depth comes from the outer shadow in the variants above.
+      disableElevation: true,
     },
   }
 }
