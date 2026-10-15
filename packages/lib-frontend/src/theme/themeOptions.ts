@@ -10,7 +10,7 @@ xl, extra-large: 1536px
 import { ThemeOptions } from "@mui/material/styles"
 
 import { muiAlert } from "./muiAlert"
-import { muiAvatar, muiAvatarGroup } from "./muiAvatar"
+import { muiAvatar } from "./muiAvatar"
 import { muiBadge } from "./muiBadge"
 import { muiSkeleton } from "./muiSkeleton"
 import { muiSnackbarContent } from "./muiSnackbar"
@@ -53,7 +53,6 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiAppBar: muiAppBar({ darkMode }),
     MuiAutocomplete: muiAutocomplete(),
     MuiAvatar: muiAvatar(),
-    MuiAvatarGroup: muiAvatarGroup(),
     MuiBadge: muiBadge(),
     MuiSkeleton: muiSkeleton(),
     MuiSnackbarContent: muiSnackbarContent(),

@@ -18,16 +18,3 @@ export const muiAvatar = (): Components<Omit<Theme, "components">>["MuiAvatar"] 
     rounded: ({ theme }) => ({ borderRadius: theme.spacing(0.75) }),
   },
 })
-
-// Stacked avatars need a paper-coloured ring, so the overlapped edge reads cleanly.
-export const muiAvatarGroup = (): Components<Omit<Theme, "components">>["MuiAvatarGroup"] => ({
-  defaultProps: {
-    spacing: "small",
-  },
-  styleOverrides: {
-    avatar: ({ theme }) => ({
-      border: `2px solid ${theme.palette.background.paper}`,
-      backgroundColor: neutralAlpha.darken[50],
-    }),
-  },
-})
