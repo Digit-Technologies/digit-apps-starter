@@ -234,7 +234,7 @@ only; still upload the zip **unchanged**. Details:
   handlers. Do not render a list of many rows as an unbounded dump. See
   [reference/design-patterns.md](reference/design-patterns.md#lists-of-records).
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `Pill` (every status or category pill) + `ConfirmDialog` (before any destructive action) + `Table` (every list of records) + `PageHeader`, `SettingsRow`, `SettingsSection`, `RadioCard`, `EmptyState`, `Switch` (native layout) + Lucide icons (`Plus`, `Search`, …) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
+- **Public surface:** hooks + theme + `Pill` (every status or category pill) + `ConfirmDialog` (before any destructive action) + `Table` (every list of records) + `PageHeader`, `SettingsRow`, `SettingsSection`, `RadioCard`, `EmptyState`, `Switch`, `FormField` (native layout) + Lucide icons (`Plus`, `Search`, …) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -394,6 +394,8 @@ system categories use `color="gray"`. For a hint, put the icon in the label, `la
 and wrap the pill in a `Tooltip`. Do not use the `icon` prop, which puts the icon on the left.
 
 **Forms**
+- Any control with a label, helper or error text: wrap it in `FormField` (`label`, `required`, `helperText`,
+  `error`, `horizontal`). It takes any control as a child, so a `Select` or `Checkbox` works too.
 - A field inside a form row or settings panel: `<TextField variant="filled" hiddenLabel size="small" fullWidth>`.
 - A search box, or a field standing alone on a page: `<TextField size="small">` (outlined).
 - Labels sit in a left column through `SettingsRow variant="form" required`. Never use MUI

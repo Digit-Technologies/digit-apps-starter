@@ -77,3 +77,5 @@ export { EmptyState } from "./components/EmptyState";
 export type { EmptyStateProps } from "./components/EmptyState";
 export { Switch } from "./components/Switch";
 export type { SwitchProps } from "./components/Switch";
+export { FormField } from "./components/FormField";
+export type { FormFieldProps } from "./components/FormField";
