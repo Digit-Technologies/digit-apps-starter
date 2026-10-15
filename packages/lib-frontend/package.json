@@ -10,7 +10,9 @@
   },
   "dependencies": {
     "@digit/lib-common": "file:../lib-common",
-    "inter-ui": "4.1.1"
+    "@mui/x-data-grid": "^9.15.0",
+    "inter-ui": "4.1.1",
+    "lucide-react": "^1.57.0"
   },
   "peerDependencies": {
     "@emotion/react": "^11",

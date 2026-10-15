@@ -26,6 +26,11 @@ export { Pill } from "./components/Pill";
 export type { PillColor, PillProps, PillTone } from "./components/Pill";
 export { ConfirmDialog } from "./components/ConfirmDialog";
 export type { ConfirmDialogProps } from "./components/ConfirmDialog";
+export { Table } from "./components/Table";
+export type { TableProps } from "./components/Table";
+
+// Icons (Lucide, the same set the platform uses)
+export * from "./icons";
 
 // Errors
 export { AppErrorAlert } from "./errors";
