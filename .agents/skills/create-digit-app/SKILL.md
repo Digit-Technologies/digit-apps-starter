@@ -229,11 +229,12 @@ only; still upload the zip **unchanged**. Details:
   sort, filter, or connection/page inputs, use those — do not fetch a full list and
   sort/filter client-side when the API can do it. Confirm arg names via
   `graphql-schema://…`.
-- **Tables need pagination:** Any MUI `Table` (or equivalent list of many rows) must be
-  paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
-  unbounded dump of nodes.
+- **Lists use `Table`:** Use `Table` from `@digit/lib-frontend` for any list of records. It is
+  server-paged, sorted and searched, so pass the page and sort models and refetch in the
+  handlers. Do not render a list of many rows as an unbounded dump. See
+  [reference/design-patterns.md](reference/design-patterns.md#lists-of-records).
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `Pill` (every status or category pill) + `ConfirmDialog` (before any destructive action) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
+- **Public surface:** hooks + theme + `Pill` (every status or category pill) + `ConfirmDialog` (before any destructive action) + `Table` (every list of records) + Lucide icons (`Plus`, `Search`, …) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -404,7 +405,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `Pill`, `ConfirmDialog`, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `Pill`, `ConfirmDialog`, `Table`, Lucide icons, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |

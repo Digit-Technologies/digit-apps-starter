@@ -1,44 +1,43 @@
 # Design patterns
 
-The theme makes an app look like the platform. These patterns make it **work** like the platform: where
-things sit, how lists read, how actions are grouped, and how status is shown. Read this
-before you lay out a screen. [theming.md](theming.md) covers the palette and component
-overrides.
+The theme makes an app look like the platform. These patterns make it **work** like the
+platform: where things sit, how lists read, how actions are grouped, and how status is
+shown. Read this before you lay out a screen. [theming.md](theming.md) covers the palette
+and component overrides.
 
 ## How to use this file
 
 1. Find the closest need in the index.
-2. Build with the reusable piece named there. If the app already has one, use it.
+2. Build with the reusable piece named there. If `@digit/lib-frontend` already has one, use it.
 3. If no pattern fits, say so in your summary. Do not invent a layout.
 
 ## Index
 
-| Pattern                                             | Use it for                                                  | Built with                                    |
-| --------------------------------------------------- | ----------------------------------------------------------- | --------------------------------------------- |
-| [Index page with a table](#index-page-with-a-table) | Browsing a list of records                                  | `Table`, `Pill`, `Button`, `Tabs`             |
-| [Settings and detail panel](#settings-and-detail-panel) | Settings, or the details of one record, beside the page | `Drawer` (right), `Tabs`, `Switch`, `Select`  |
-| [Secondary actions menu](#secondary-actions-menu)   | Grouping secondary actions behind one button                | `IconButton`, `Menu`, `MenuItem`              |
-| [Primary action](#primary-action)                   | The one main thing a surface asks the user to do            | `Button` (primary)                            |
-| [Tabs](#tabs)                                       | Switching between views of the same data                    | `Tabs`, `Tab`                                 |
-| [Colour and status](#colour-and-status)             | Showing a state or a category                               | `Pill`                                        |
-| [Checklist with progress](#checklist-with-progress) | Ordered tasks that get marked complete                      | `LinearProgress`, `List`, `Pill`              |
-| [Chat composer](#chat-composer)                     | A box where the user types or talks to an assistant         | `TextField`, `IconButton`, `Stack`            |
-| [Confirmations](#confirmations)                     | Any destructive action, and actions blocked by something else | `ConfirmDialog`                             |
+| Pattern                                                     | Use it for                                                    | Built with                                    |
+| ----------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
+| [Lists of records](#lists-of-records)                       | Any list of records, with paging, sorting and search          | `Table`, `Pill`, `Button`                     |
+| [Settings and detail panel](#settings-and-detail-panel)     | Settings, or the details of one record, beside the page       | `Drawer` (right), `Tabs`, `Switch`, `Select`  |
+| [Secondary actions menu](#secondary-actions-menu)           | Grouping secondary actions behind one button                  | `IconButton`, `Menu`, `MenuItem`              |
+| [Primary action](#primary-action)                           | The one main thing a surface asks the user to do              | `Button` (primary)                            |
+| [Tabs](#tabs)                                               | Switching between views of the same data                      | `Tabs`, `Tab`                                 |
+| [Colour and status](#colour-and-status)                     | Showing a state or a category                                 | `Pill`                                        |
+| [Icons](#icons)                                             | Any icon in a button, a field, a row or a message             | Lucide icons from `@digit/lib-frontend`       |
+| [Checklist with progress](#checklist-with-progress)         | Ordered tasks that get marked complete                        | `LinearProgress`, `List`, `Pill`              |
+| [Chat composer](#chat-composer)                             | A box where the user types or talks to an assistant           | `TextField`, `IconButton`, `Stack`            |
+| [Confirmations](#confirmations)                             | Any destructive action, and actions blocked by something else | `ConfirmDialog`                               |
 
 ## Shared visual rules
 
 These apply everywhere.
 
-- **Radius is soft.** Buttons and pills use the theme's small radius. Panels and dialogs
-  round more. Do not add heavy borders or drop shadows to cards.
+- **Radius is soft.** Buttons and pills use the theme's small radius. Panels, tables and
+  dialogs round more. Do not add heavy borders or drop shadows to cards.
 - **Surfaces are neutral.** Backgrounds are the stone scale. Type is `text.primary`, with
   `text.secondary` for supporting text. The page is light and calm.
 - **Charcoal is the action colour.** The primary button is the theme's `primary`, which is
   black-grey. Blue means selected (checkboxes, switches, radios). Red means destructive or
   error. Nothing else.
-- **Icons come from one thin line set.** Pick one icon family and one size per context.
-  Do not mix filled and outlined icons on one screen. Icon-only buttons need an
-  `aria-label`.
+- **Icons are Lucide.** Import them from `@digit/lib-frontend`. See [Icons](#icons).
 - **Type is Inter, sentence case.** Titles are bold. Labels, buttons and menu items are
   sentence case, not Title Case and not all caps.
 - **Explain, don't just disable.** If something is unavailable, show why next to it.
@@ -70,20 +69,44 @@ If the design needs a colour that is not in the palette, say so. Do not add one 
 
 ---
 
-## Index page with a table
+## Lists of records
 
-A page of records is a title, an optional row of tabs, a primary action at the top right,
-then a table.
+Use `Table` for every list of records. Do not build a table from MUI primitives, and do not
+restyle a new table per screen.
 
-- The title says what the list is. The primary action creates a new record.
-- Table rows lead with a bold name, then muted facts in aligned columns. Use a `Pill` for
-  the state a user scans for, and `AvatarGroup` for people.
-- Use relative time for recent edits ("10 mins ago") and an absolute date for creation.
+A list page is a title, an optional row of tabs, then a `Table`. The primary action sits in
+the table's `actions` slot, at the top right.
+
+```tsx
+import { Table, Plus } from "@digit/lib-frontend"
+
+<Table
+  rows={roles.rows}
+  columns={columns}
+  rowCount={roles.total}
+  paginationModel={paging}
+  onPaginationModelChange={setPaging}
+  sortModel={sort}
+  onSortModelChange={setSort}
+  search={search}
+  onSearchChange={setSearch}
+  searchPlaceholder="Search roles"
+  actions={<Button variant="contained" startIcon={<Plus size={16} />}>New role</Button>}
+  onRowClick={(row) => openDetails(row.id)}
+/>
+```
+
+- **Paging, sorting and search run on the server.** `Table` takes the current models and
+  calls your change handlers; refetch in those handlers. Do not sort or filter a full list
+  in the browser. Confirm the API's arguments in `graphql-schema://…`.
+- **Pagination is required.** `rowCount` is the total across all pages, and the pager
+  depends on it.
+- Columns are standard MUI X `GridColDef`s. Use `renderCell` for a `Pill`, an avatar group,
+  or a relative time.
+- Rows lead with a bold name, then muted facts. Use a `Pill` for the state a user scans for.
 - Clicking a row opens its details in the [settings and detail panel](#settings-and-detail-panel).
-  Show a chevron when the whole row is clickable.
-- Pagination is required. Sort and filter through the API, not on a full list in the
-  browser. See the table rule in SKILL.md.
-- If the app already has a table component, use it. Do not restyle a new table per screen.
+- Omit `onSearchChange` if the list needs no search. Omit `onSortModelChange` to turn
+  sorting off.
 
 ## Settings and detail panel
 
@@ -106,7 +129,7 @@ Actions that are not the main thing (duplicate, export, delete) go behind a sing
 **⋯** icon button, not as extra buttons next to the primary action. The ⋯ button is what
 this pattern is called; the menu it opens groups the secondary actions.
 
-- `IconButton` with `aria-label="More actions"`, opening a `Menu`.
+- Use the `Ellipsis` icon. `IconButton` with `aria-label="More actions"`, opening a `Menu`.
 - List the actions in sentence case. Put the destructive one last, in red, below a divider.
   Destructive items still open a [confirmation](#confirmations).
 - The primary action stays visible outside the menu.
@@ -150,17 +173,40 @@ import { Pill } from "@digit/lib-frontend"
 
 Only the obvious statuses are on the list. Anything else is a category, so pass `color`:
 
-| Tone      | Meaning                    | Status words                                          |
-| --------- | -------------------------- | ----------------------------------------------------- |
-| `default` | Not started, or set aside  | `draft`, `not started`, `archived`                    |
-| `info`    | Active                     | `active`                                              |
-| `warning` | Waiting                    | `pending`, `in progress`                              |
-| `error`   | Stopped                    | `blocked`, `failed`                                   |
-| `success` | Done                       | `complete`, `completed`, `done`                       |
+| Tone      | Meaning                   | Status words                                    |
+| --------- | ------------------------- | ----------------------------------------------- |
+| `default` | Not started, or set aside | `draft`, `not started`, `archived`              |
+| `info`    | Active                    | `active`                                        |
+| `warning` | Waiting                   | `pending`, `in progress`                        |
+| `error`   | Stopped                   | `blocked`, `failed`                             |
+| `success` | Done                      | `complete`, `completed`, `done`                 |
 
 - Do not use `Chip` directly for statuses. Do not pick colours by hand.
 - If a status word is missing from the list, pass the right `color` for this one use and
   tell the user the word should be added to the status list in `@digit/lib-frontend`.
+
+## Icons
+
+Icons are Lucide. Import them from the package root, never from `lucide-react` directly:
+
+```tsx
+import { Plus, Search, Trash2 } from "@digit/lib-frontend"
+
+<Plus size={16} />
+```
+
+- The icons available are the ones exported from `@digit/lib-frontend`: `Check`,
+  `ChevronDown`, `ChevronRight`, `Copy`, `Download`, `Ellipsis`, `Globe`, `Info`, `Lock`,
+  `Paperclip`, `Pencil`, `Plus`, `Printer`, `Search`, `Send`, `Sparkles`, `Trash2`,
+  `TriangleAlert`, `X`.
+- If you need an icon that is not in that list, say so and name it. Do not import a
+  different icon set.
+- **Size 16** is the default. Use 14 in dense rows and 20 for a standalone icon.
+- Icons inherit the text colour. Set a palette colour only for a status or an error:
+  `sx={{ color: "error.main" }}`.
+- Icon-only buttons need an `aria-label`. Pair an icon with a label wherever the meaning
+  is not obvious.
+- Do not mix icon sets on one screen.
 
 ## Checklist with progress
 
@@ -175,8 +221,8 @@ An ordered list of tasks grouped into sections, each with a completion measure.
 ## Chat composer
 
 A conversation column with a composer at the bottom. The composer is a text field with a
-placeholder, an optional attach button (+) and a send button, which is an icon button in
-the primary charcoal.
+placeholder, an optional attach button (`Paperclip`) and a send button (`Send`), which is an
+icon button in the primary charcoal.
 
 - Assistant messages sit in soft cards. The user's messages are muted pills or bubbles.
 - Keep the composer pinned to the bottom. Do not put it in a panel that scrolls away.
@@ -214,14 +260,17 @@ import { ConfirmDialog } from "@digit/lib-frontend"
 
 **Blocked.** When an action cannot happen because something else must change first, use
 the same dialog with a non-destructive label that takes the user to the fix. Name what
-blocks the action in the description, and do not use red.
+blocks the action in the description, and do not use red. Add a `TriangleAlert` icon.
 
 ```tsx
+import { ConfirmDialog, TriangleAlert } from "@digit/lib-frontend"
+
 <ConfirmDialog
   open={blockedOpen}
   title="Can't delete role"
   description="This role is assigned to users. Reassign them first."
   confirmLabel="Go to users"
+  icon={<TriangleAlert size={16} />}
   onConfirm={goToUsers}
   onCancel={() => setBlockedOpen(false)}
 />
