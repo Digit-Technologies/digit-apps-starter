@@ -1,4 +1,4 @@
-import React, { ReactNode } from "react"
+import React, { ReactNode, useState } from "react"
 
 import Box from "@mui/material/Box"
 import Stack from "@mui/material/Stack"
@@ -7,14 +7,14 @@ import { useTheme } from "@mui/material/styles"
 import type { LucideIcon } from "lucide-react"
 
 import { Box as BoxIcon, Building2, CircleUserRound, Wrench } from "../icons"
-import { neutral, neutralAlpha, stone } from "../theme/colors"
+import { neutralAlpha } from "../theme/colors"
 
 export type RecordNamePlaceholder = "item" | "company" | "user" | "tool"
 
 export interface RecordNameProps {
   name: string
   image?: string
-  placeholder?: RecordNamePlaceholder
+  placeholder: RecordNamePlaceholder
   status?: ReactNode
   meta?: ReactNode
 }
@@ -26,26 +26,29 @@ const placeholderIcons: Record<RecordNamePlaceholder, LucideIcon> = {
   tool: Wrench,
 }
 
-export const RecordName = ({
-  name,
-  image,
-  placeholder = "item",
-  status,
-  meta,
-}: RecordNameProps) => {
+export const RecordName = ({ name, image, placeholder, status, meta }: RecordNameProps) => {
   const theme = useTheme()
+  const isDark = theme.palette.mode === "dark"
+  const [failedImage, setFailedImage] = useState<string>()
   const Icon = placeholderIcons[placeholder]
+  const size = meta ? 36 : 20
   const frame = {
-    width: 24,
-    height: 24,
+    width: size,
+    height: size,
     flexShrink: 0,
-    borderRadius: "4px",
-    border: `1px solid ${neutralAlpha.darken[100]}`,
+    borderRadius: "6px",
+    border: `1px solid ${isDark ? neutralAlpha.lighten[100] : neutralAlpha.darken[100]}`,
   }
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-      {image ? (
-        <Box component="img" src={image} alt="" sx={{ ...frame, objectFit: "cover" }} />
+      {image && image !== failedImage ? (
+        <Box
+          component="img"
+          src={image}
+          alt=""
+          onError={() => setFailedImage(image)}
+          sx={{ ...frame, objectFit: "cover" }}
+        />
       ) : (
         <Box
           sx={{
@@ -53,23 +56,37 @@ export const RecordName = ({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: theme.palette.mode === "dark" ? stone[800] : neutral[50],
+            backgroundColor: theme.palette.background.paper,
             color: "text.secondary",
           }}
         >
-          <Icon size={16} />
+          <Icon size={meta ? 16 : 12} />
         </Box>
       )}
-      <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <Box sx={{ display: "flex", flexDirection: "column", gap: "8px", minWidth: 0 }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
-          <Typography variant="h6" color="text.primary" noWrap sx={{ minWidth: 0 }}>
+          <Typography
+            variant={meta ? "h6" : "body1"}
+            color="text.primary"
+            noWrap
+            sx={{ minWidth: 0 }}
+          >
             {name}
           </Typography>
           {status}
         </Box>
         {meta && (
-          <Typography variant="body1" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
-            <Stack direction="row" spacing="8px" sx={{ alignItems: "center" }}>
+          <Typography
+            variant="overline"
+            color="text.secondary"
+            component="div"
+            noWrap
+            sx={{ minWidth: 0 }}
+          >
+            <Stack
+              direction="row"
+              sx={{ alignItems: "center", gap: "16px", "& svg": { marginRight: "4px" } }}
+            >
               {meta}
             </Stack>
           </Typography>

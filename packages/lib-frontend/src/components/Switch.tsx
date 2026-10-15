@@ -39,7 +39,7 @@ export const Switch = ({ label, info, checked, defaultChecked, disabled, onChang
       {info && (
         <Tooltip title={info}>
           <Box component="span" sx={{ color: "text.tertiary", display: "inline-flex" }}>
-            <Info size={14} />
+            <Info size={12} />
           </Box>
         </Tooltip>
       )}

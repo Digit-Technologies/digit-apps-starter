@@ -33,6 +33,14 @@ const commonFocusDarkStyles = {
   outlineOffset: "2px",
 }
 
+// Matches the start icon's inset at each size, so the loading spinner sits where the icon sits.
+const loadingIndicatorLeftBySize: Record<string, string> = {
+  xs: "4px",
+  small: "10px",
+  medium: "14px",
+  large: "16px",
+}
+
 // MUI disables the button while it loads, and its disabled rules would grey it out.
 // These are the normal variant colours, so a loading button keeps its look.
 const loadingColours = (
@@ -46,7 +54,10 @@ const loadingColours = (
         ? { backgroundColor: neutral.white, ...commonContainedSecondaryLightStyles }
         : { backgroundColor: stone[600], ...commonContainedSecondaryDarkStyles }
     }
-    if (!light) return color === "primary" ? { backgroundColor: stone[100], color: stone[950] } : {}
+    if (!light) {
+      if (color === "primary" || color === "error") return { backgroundColor: stone[100], color: stone[950] }
+      return {}
+    }
     if (color === "primary" || color === "error") {
       return {
         backgroundColor: stone[700],
@@ -100,11 +111,15 @@ export const muiButton = (): Components<
         marginLeft: "4px",
       },
       // MUI positions the indicator where the start icon sits when loadingPosition="start".
-      loadingIndicator: {
+      loadingIndicator: ({ ownerState }) => ({
         width: "16px",
         height: "16px",
         color: "currentColor",
-      },
+        left:
+          ownerState.variant === "text"
+            ? "6px"
+            : ownerState.size && loadingIndicatorLeftBySize[ownerState.size],
+      }),
       loading: ({ theme, ownerState }) => ({
         "&.MuiButton-loading.Mui-disabled": loadingColours(
           isLightMode(theme),
@@ -315,6 +330,27 @@ export const muiButton = (): Components<
               backgroundColor: stone[700],
               color: "white",
               ...commonFocusLightStyles,
+            },
+          }),
+          ...(isDarkMode(theme) && {
+            backgroundColor: stone[100],
+            color: stone[950],
+            "&:hover": {
+              backgroundColor: stone[200],
+              color: stone[950],
+            },
+            "&:active": {
+              backgroundColor: stone[300],
+              color: stone[950],
+            },
+            "&:disabled": {
+              backgroundColor: stone[400],
+              color: stone[950],
+            },
+            "&:focus-visible": {
+              backgroundColor: stone[100],
+              color: stone[950],
+              ...commonFocusDarkStyles,
             },
           }),
         }),

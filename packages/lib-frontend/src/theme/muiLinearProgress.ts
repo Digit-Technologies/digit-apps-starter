@@ -6,6 +6,11 @@ import { emerald, neutralAlpha } from "./colors"
 export const muiLinearProgress = (): Components<
   Omit<Theme, "components">
 >["MuiLinearProgress"] => {
+  const fill = {
+    borderRadius: 4,
+    backgroundColor: emerald[500],
+  }
+
   return {
     styleOverrides: {
       root: ({ theme }) => ({
@@ -16,10 +21,15 @@ export const muiLinearProgress = (): Components<
           backgroundColor: neutralAlpha.lighten[100],
         }),
       }),
-      bar1: {
+      bar: fill,
+      bar1: fill,
+      bar2: ({ theme }) => ({
         borderRadius: 4,
-        backgroundColor: emerald[500],
-      },
+        backgroundColor: neutralAlpha.darken[100],
+        ...theme.applyStyles("dark", {
+          backgroundColor: neutralAlpha.lighten[100],
+        }),
+      }),
     },
   }
 }

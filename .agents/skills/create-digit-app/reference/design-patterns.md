@@ -157,6 +157,7 @@ Tabs sit under the page title and switch between views of the same data (for exa
 
 - Use an underline indicator. An icon in the first tab is fine.
 - A view switch in a toolbar, or a segmented filter, uses `ToggleButtonGroup` instead of tabs.
+  The default look is floating. Outlined is opt-in: pass `sx={{ bgcolor: "<tint>", p: 0.5, borderRadius: "8px" }}` at the call site, with the items inside it in the xs look.
 - Keep tab labels to one or two words.
 
 ## Colour and status
@@ -218,7 +219,7 @@ import { Plus, Search, Trash2 } from "@digit/lib-frontend"
 An ordered list of tasks grouped into sections, each with a completion measure.
 
 - Each section has a bold heading and a thin `LinearProgress` captioned "value / max unit". It is
-  not a percentage (see Progress in SKILL.md).
+  not a percentage. Only the "/" is `text.secondary`; the value, max and unit are `text.primary` (see Progress in SKILL.md).
 - Each row has a completion marker, a bold title, a muted description, and a `Pill` on the
   right.
 - Done rows stay where they are. Do not reorder the list when a task completes.

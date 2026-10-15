@@ -6,6 +6,7 @@ import IconButton from "@mui/material/IconButton"
 import Typography from "@mui/material/Typography"
 
 import { ChevronRight, X } from "../icons"
+import { neutral } from "../theme/colors"
 
 export interface Crumb {
   label: string
@@ -45,7 +46,10 @@ export const PageHeader = ({
   return (
     <Box
       sx={(theme) => ({
-        borderBottom: `1px solid ${theme.palette.border.strong}`,
+        // Pages use the solid neutral border. Dialog headers use the 10% strong border, per Figma.
+        borderBottom: isDialog
+          ? `1px solid ${theme.palette.border.strong}`
+          : `1px solid ${theme.palette.mode === "dark" ? neutral[800] : neutral[200]}`,
       })}
     >
       <Box
@@ -59,7 +63,7 @@ export const PageHeader = ({
           px: isDialog ? 2 : 4.5,
           pt: 2,
           pb: tabs ? 1 : 2,
-          "@media (max-width: 599px)": { px: isDialog ? 2 : 2.5 },
+          "@media (max-width: 599px)": { px: isDialog ? 2 : 2.5, py: 2.5 },
         }}
       >
         {trail?.map((crumb) => (
@@ -87,11 +91,11 @@ export const PageHeader = ({
           </React.Fragment>
         ))}
         {trail ? (
-          <Typography variant="subtitle2" color="text.disabled" component="span" aria-current="page">
+          <Typography variant="subtitle2" color="text.disabled" component="span" aria-current="page" sx={{ px: 1 }}>
             {title}
           </Typography>
         ) : (
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
+          <Typography variant="h5" component="h1">
             {title}
           </Typography>
         )}
@@ -109,7 +113,16 @@ export const PageHeader = ({
           )}
         </Box>
       </Box>
-      {tabs}
+      {tabs && (
+        <Box
+          sx={{
+            px: isDialog ? 2 : 4.5,
+            "@media (max-width: 599px)": { px: isDialog ? 2 : 2.5 },
+          }}
+        >
+          {tabs}
+        </Box>
+      )}
     </Box>
   )
 }

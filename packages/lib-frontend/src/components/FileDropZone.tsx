@@ -2,6 +2,7 @@ import React, { useRef, useState } from "react"
 
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
+import { useTheme } from "@mui/material/styles"
 
 import { Upload } from "../icons"
 import { neutralAlpha } from "../theme/colors"
@@ -24,6 +25,10 @@ export const FileDropZone = ({
 }: FileDropZoneProps) => {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
+  const theme = useTheme()
+  const isDark = theme.palette.mode === "dark"
+  const restFill = isDark ? neutralAlpha.lighten[50] : neutralAlpha.darken[50]
+  const dragFill = isDark ? neutralAlpha.lighten[100] : neutralAlpha.darken[100]
 
   const emit = (files: File[]) => {
     const picked = multiple ? files : files.slice(0, 1)
@@ -51,7 +56,7 @@ export const FileDropZone = ({
           display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center",
           width: "100%", gap: "8px", px: "16px", py: "20px", border: 0, borderRadius: "8px",
           font: "inherit", color: "text.secondary",
-          bgcolor: isDragging ? neutralAlpha.darken[100] : neutralAlpha.darken[50],
+          bgcolor: isDragging ? dragFill : restFill,
           cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
         }}
       >

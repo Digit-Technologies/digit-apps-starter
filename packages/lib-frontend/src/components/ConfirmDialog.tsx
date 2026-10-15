@@ -5,6 +5,8 @@ import Dialog from "@mui/material/Dialog"
 import Stack from "@mui/material/Stack"
 import Typography from "@mui/material/Typography"
 
+import { Check } from "../icons"
+
 export interface ConfirmDialogProps {
   open: boolean
   /** A short question, such as "Delete role?" */
@@ -75,6 +77,7 @@ export const ConfirmDialog = ({
           onClick={onConfirm}
           loading={busy}
           loadingPosition="start"
+          startIcon={<Check size={16} />}
           sx={{ flex: 1 }}
         >
           {confirmLabel}

@@ -328,6 +328,7 @@ cannot import, stop and say so.
 - Page: `background.default` (white). Do not wrap a page, list or form in a Card.
 - Top of every screen, side panel and form dialog: `PageHeader`. Use `trail` for a detail screen
   under a list, `actions` for the primary button, and `onClose` for the panel's cancel.
+  A dialog header is `PageHeader variant="dialog"`, with 16px padding and a strong bottom border.
 - Grouped block, such as an assistant message or a progress summary: `<Card>`. The theme makes
   it outlined with a 12px radius.
 - In-app section navigation, only if the app has sub-pages (the platform owns app navigation): a
@@ -428,8 +429,8 @@ and wrap the pill in a `Tooltip`. Do not use the `icon` prop, which puts the ico
 **Empty states**: `<EmptyState icon={<Rocket size={20} />} title description action />`. Use at
 most one action, and make it secondary unless it is the only way forward.
 
-**Spacing** (8px units): content gutter `px: 2`. Card padding `p: 3`. Form rows use
-`spacing={1.5}`. Blocks of cards use `spacing={2}`. Icon-to-label gap is `0.5`. List rows and
+**Spacing** (8px units): content gutter `px: 4.5` on desktop (36px) and `px: 2.5` below 600px (20px), to match the page header. Card padding `p: 3`.
+Form rows use `spacing={1.5}`. Blocks of cards use `spacing={2}`. Icon-to-label gap is `0.5`. List rows and
 settings rows are 36px. Do not pad cells. Sections stack with no gap.
 
 ### Native look: additional rules
@@ -446,7 +447,7 @@ the difference is named in the rule.
 **Saving**
 - Every save or confirm button uses `<Button loading={busy} loadingPosition="start" startIcon={...}>`.
 - Never use `disabled` to show progress. Never replace the label with "Saving...". While busy, the
-  spinner replaces the start icon and the label stays. On success the button may show "Saved" briefly.
+  spinner replaces the start icon and the label stays. On success the button shows "Saved" for about 600ms, then resets to the label.
 
 **Icon sizes**
 - Icon sizes are 12, 16 and 20 only.
@@ -473,7 +474,9 @@ the difference is named in the rule.
 | Reporting | `FileChartLine` |
 | Users | `Users` |
 | Settings | `Cog` |
+| App integrations | `Puzzle` |
 | Learning center | `BookOpenText` |
+| Learning center collections | `Info`, `CircleHelp` or `Megaphone` |
 | Chat | `MessageSquareMore` |
 
 **Data type icons** (exported from `@digit/lib-frontend`)
@@ -508,7 +511,7 @@ the difference is named in the rule.
 **Progress**
 - A progress bar is `LinearProgress`. It is already themed to 8px and emerald.
 - Its caption is right-aligned `overline` text in the form "value / max unit". The value is
-  `text.primary`. The separator and max are `text.secondary`.
+  `text.primary`. Only the "/" separator is `text.secondary`.
 
 **Notes and dates**
 - Multiline notes use `<TextField variant="filled" hiddenLabel multiline minRows={3}>`.
@@ -518,7 +521,7 @@ the difference is named in the rule.
 **Toggles**
 - A view switcher or segmented filter uses `ToggleButtonGroup`. Tabs under a page title are the
   exception (see Tabs in [design-patterns.md](reference/design-patterns.md)).
-- A single-choice switch in a toolbar uses the floating look.
+- The default look is floating. Outlined is opt-in: pass `sx={{ bgcolor: "<tint>", p: 0.5, borderRadius: "8px" }}` at the call site, with the items inside it in the xs look.
 
 **Name cells and files**
 - A name cell uses `RecordName`: name, placeholder or thumbnail, status and meta.
