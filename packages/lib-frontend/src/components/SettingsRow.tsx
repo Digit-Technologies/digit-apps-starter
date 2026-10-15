@@ -13,7 +13,9 @@ export interface SettingsRowProps {
   /** Tooltip text. Renders an info icon after the label. */
   info?: string
   required?: boolean
-  control: ReactNode
+  /** The control. Children work too, so `<SettingsRow>` can wrap a field directly. */
+  control?: ReactNode
+  children?: ReactNode
   /** Form rows only. Width of the label column in px. */
   labelWidth?: number
 }
@@ -28,8 +30,10 @@ export const SettingsRow = ({
   info,
   required,
   control,
+  children,
   labelWidth = 120,
 }: SettingsRowProps) => {
+  const field = control ?? children
   const labelNode = (
     <Typography variant="body1" color="text.primary" component="span" sx={{ display: "inline-flex", alignItems: "center", gap: 0.5 }}>
       {label}
@@ -60,7 +64,7 @@ export const SettingsRow = ({
         })}
       >
         {labelNode}
-        {control}
+        {field}
       </Box>
     )
   }
@@ -77,7 +81,7 @@ export const SettingsRow = ({
       }}
     >
       {labelNode}
-      <Box sx={{ minWidth: 0 }}>{control}</Box>
+      <Box sx={{ minWidth: 0 }}>{field}</Box>
     </Box>
   )
 }

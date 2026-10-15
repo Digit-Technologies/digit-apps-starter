@@ -354,6 +354,9 @@ card 12, radio card 12, dialog 16.
 - Leading icon: `startIcon={<Plus size={16} />}`. Save buttons use `Save`.
 - Overflow: `IconButton` with `Ellipsis` opens a `Menu`. The destructive item goes last as
   `<MenuItem sx={{ color: "error.main" }}>`, with no divider before it.
+- Never put a red button in a list row. Row actions are `Edit` as a secondary button at most, and
+  every destructive action goes in the overflow menu, then through `ConfirmDialog destructive`.
+- Never clip a pill or badge. Pills keep their full width inside table cells.
 - Footers: side-panel editors put Cancel (text) on the left and the primary button on the right.
   Dialogs put only the primary button on the right. The header X is the cancel.
 

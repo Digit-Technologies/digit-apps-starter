@@ -85,6 +85,7 @@ export const Pill = ({
         justifyContent: "center",
         gap: 0.5,
         width: "fit-content",
+        flexShrink: 0,
         maxWidth: "100%",
         height: isSmall ? 16 : 20,
         minWidth: isSmall ? 16 : 20,
