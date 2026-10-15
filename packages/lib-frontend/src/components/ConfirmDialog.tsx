@@ -18,7 +18,7 @@ export interface ConfirmDialogProps {
   destructive?: boolean
   /** An optional leading icon, such as a warning mark for a blocked action. */
   icon?: ReactNode
-  /** Disables both buttons while the action runs. */
+  /** Shows a spinner on the confirm button and disables cancel while the action runs. */
   busy?: boolean
   onConfirm: () => void
   onCancel: () => void
@@ -73,7 +73,8 @@ export const ConfirmDialog = ({
           variant="contained"
           color={destructive ? "error" : "primary"}
           onClick={onConfirm}
-          disabled={busy}
+          loading={busy}
+          loadingPosition="start"
           sx={{ flex: 1 }}
         >
           {confirmLabel}

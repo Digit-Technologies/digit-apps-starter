@@ -1,7 +1,7 @@
 import React, { ReactNode } from "react"
 
 import Box from "@mui/material/Box"
-import ButtonBase from "@mui/material/ButtonBase"
+import Button from "@mui/material/Button"
 import IconButton from "@mui/material/IconButton"
 import Typography from "@mui/material/Typography"
 
@@ -45,38 +45,52 @@ export const PageHeader = ({
   return (
     <Box
       sx={(theme) => ({
-        px: isDialog ? 2.5 : 2,
-        pt: isDialog ? 2.5 : 0,
-        pb: isDialog ? 1 : 0,
-        minHeight: isDialog ? undefined : 52,
-        borderBottom: isDialog ? undefined : `1px solid ${theme.palette.divider}`,
+        borderBottom: isDialog ? undefined : `1px solid ${theme.palette.border.strong}`,
       })}
     >
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, minHeight: isDialog ? 32 : 52 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0.5,
+          boxSizing: "border-box",
+          height: 60,
+          px: 4.5,
+          pt: 2,
+          pb: tabs ? 1 : 2,
+          "@media (max-width: 599px)": { px: 2.5 },
+        }}
+      >
         {trail?.map((crumb) => (
           <React.Fragment key={crumb.label}>
             {crumb.onClick ? (
-              <ButtonBase onClick={crumb.onClick} sx={{ borderRadius: 1 }}>
-                <Typography variant="subtitle2" color="text.primary">
+              <Button
+                variant="text"
+                size="small"
+                color="inherit"
+                onClick={crumb.onClick}
+                sx={{ height: 28, px: 1, borderRadius: "8px" }}
+              >
+                <Typography variant="subtitle2" color="text.primary" component="span">
                   {crumb.label}
                 </Typography>
-              </ButtonBase>
+              </Button>
             ) : (
               <Typography variant="subtitle2" color="text.primary">
                 {crumb.label}
               </Typography>
             )}
-            <Box component="span" sx={{ color: "text.tertiary", display: "inline-flex" }}>
-              <ChevronRight size={14} />
+            <Box component="span" sx={{ opacity: 0.6, display: "inline-flex" }}>
+              <ChevronRight size={16} />
             </Box>
           </React.Fragment>
         ))}
         {trail ? (
-          <Typography variant="subtitle2" color="text.tertiary" component="span" aria-current="page">
+          <Typography variant="subtitle2" color="text.disabled" component="span" aria-current="page">
             {title}
           </Typography>
         ) : (
-          <Typography variant="h5" component="h1">
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
         )}
@@ -85,10 +99,10 @@ export const PageHeader = ({
             {subtitle}
           </Typography>
         )}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, ml: "auto" }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto" }}>
           {actions}
           {onClose && (
-            <IconButton aria-label="Close" size="small" onClick={onClose}>
+            <IconButton aria-label="Close" size="small" onClick={onClose} sx={{ "& svg": { opacity: 0.6 } }}>
               <X size={16} />
             </IconButton>
           )}

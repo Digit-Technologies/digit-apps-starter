@@ -318,8 +318,8 @@ cannot import, stop and say so.
 - Never set `fullWidth` on a `Button`, and never set `width: "100%"` (or any full-width `sx`) on a
   button, stack, or card that holds one. Buttons size to their label and sit left in their row.
 - Never set `textAlign: "center"`, `justifyContent: "center"`, or `alignItems: "center"` on a text
-  block or a card. Titles, labels, status and account lines are all left-aligned. The only exception
-  is the `EmptyState` block.
+  block or a card. Titles, labels, status and account lines are all left-aligned. The only exceptions
+  are the `EmptyState` block and the `FileDropZone` component.
 - Never set `fontWeight` or `fontSize` on a `Typography`. Pick the variant from the table below.
 - Never use a bare MUI `Switch` next to text. Use `Switch label=...`, which keeps the gap and the
   label click.
@@ -425,12 +425,109 @@ and wrap the pill in a `Tooltip`. Do not use the `icon` prop, which puts the ico
   children are `<SettingsRow variant="list" label info control={<Checkbox />} />`.
 - Settings in a side panel: `<SettingsRow variant="form" labelWidth={88}>` rows, with no dividers.
 
-**Empty states**: `<EmptyState icon={<Rocket size={24} />} title description action />`. Use at
+**Empty states**: `<EmptyState icon={<Rocket size={20} />} title description action />`. Use at
 most one action, and make it secondary unless it is the only way forward.
 
 **Spacing** (8px units): content gutter `px: 2`. Card padding `p: 3`. Form rows use
 `spacing={1.5}`. Blocks of cards use `spacing={2}`. Icon-to-label gap is `0.5`. List rows and
 settings rows are 36px. Do not pad cells. Sections stack with no gap.
+
+### Native look: additional rules
+
+These extend the Native look rules above and keep them. Where a rule differs from a line above,
+the difference is named in the rule.
+
+**Surfaces and headers**
+- Record pages (a single item, order or event) sit on `background.secondary`. Index and list pages
+  sit on white. This is the record-page exception to the Page line above.
+- Every page header is `PageHeader`. Use `trail` on a detail screen and `actions` for the primary
+  button. Do not build a custom header bar.
+
+**Saving**
+- Every save or confirm button uses `<Button loading={busy} loadingPosition="start" startIcon={...}>`.
+- Never use `disabled` to show progress. Never replace the label with "Saving...". While busy, the
+  spinner replaces the start icon and the label stays. On success the button may show "Saved" briefly.
+
+**Icon sizes**
+- Icon sizes are 12, 16 and 20 only.
+- Size 16 sits inline with 13px text and inside buttons.
+- Size 20 stands alone.
+- Size 12 sits next to 11px overline text.
+
+**Domain icons** (exported from `@digit/lib-frontend`)
+
+| Domain | Icon |
+| --- | --- |
+| Deals | `Handshake` |
+| Quotes | `ReceiptText` |
+| Price lists | `FileBox` |
+| Sales orders | `ShoppingCart` |
+| Purchase orders | `BaggageClaim` |
+| Items | `Box` |
+| Inventory | `Layers` |
+| Receiving | `PackageOpen` |
+| Planning | `CalendarRange` |
+| Production | `Factory` |
+| Shipping | `Truck` |
+| Accounts | `BookUser` |
+| Reporting | `FileChartLine` |
+| Users | `Users` |
+| Settings | `Cog` |
+| Learning center | `BookOpenText` |
+| Chat | `MessageSquareMore` |
+
+**Data type icons** (exported from `@digit/lib-frontend`)
+
+| Data type | Icon |
+| --- | --- |
+| Quantity | `Cylinder` |
+| Unit of measure | `Ruler` |
+| Status | `Loader` |
+| Date | `Calendar` |
+| Time | `Clock` |
+| Money | `DollarSign` |
+| Percent | `Percent` |
+| Count | `Hash` |
+| Text | `Text` |
+| SKU | `Bookmark` |
+| Person | `CircleUserRound` |
+| Company | `Building2` |
+| Custom field | `TextCursorInput` |
+| Actions | `Zap` |
+| Tags | `Tags` |
+| Links | `Link` |
+
+**Empty and multi-value display**
+- Missing text shows "None" in `text.tertiary`.
+- Not applicable shows an empty cell.
+- Numeric zero shows "0.00", right-aligned, in the `mono` variant.
+- Multiple values show "Multiple" with a chevron, right-aligned. The chevron opens a menu of the values.
+- A list of values is separated by commas, for example "640.00 ft2, 300.00 lb".
+- Never print "null", "N/A" or "-".
+
+**Progress**
+- A progress bar is `LinearProgress`. It is already themed to 8px and emerald.
+- Its caption is right-aligned `overline` text in the form "value / max unit". The value is
+  `text.primary`. The separator and max are `text.secondary`.
+
+**Notes and dates**
+- Multiline notes use `<TextField variant="filled" hiddenLabel multiline minRows={3}>`.
+- Dates use `<TextField variant="filled" hiddenLabel size="small" type="date">`. Do not add
+  `@mui/x-date-pickers`.
+
+**Toggles**
+- A view switcher or segmented filter uses `ToggleButtonGroup`. Tabs under a page title are the
+  exception (see Tabs in [design-patterns.md](reference/design-patterns.md)).
+- A single-choice switch in a toolbar uses the floating look.
+
+**Name cells and files**
+- A name cell uses `RecordName`: name, placeholder or thumbnail, status and meta.
+- Placeholder icons: item `Box`, company `Building2`, user `CircleUserRound`, tool `Wrench`.
+- A file upload area uses `FileDropZone`.
+
+**Dividers and motion**
+- A divider is a MUI `Divider`, themed to the solid border colour.
+- Transitions are 20ms. Do not add slower transitions in app code.
 
 ### 5. `manifest.json`
 

@@ -67,6 +67,10 @@ export type {
 // Layout (native screens: page header, settings rows, radio cards, empty states)
 export { PageHeader } from "./components/PageHeader";
 export type { Crumb, PageHeaderProps } from "./components/PageHeader";
+export { RecordName } from "./components/RecordName";
+export type { RecordNameProps } from "./components/RecordName";
+export { FileDropZone } from "./components/FileDropZone";
+export type { FileDropZoneProps } from "./components/FileDropZone";
 export { RadioCard } from "./components/RadioCard";
 export type { RadioCardProps } from "./components/RadioCard";
 export { SettingsRow } from "./components/SettingsRow";

@@ -41,6 +41,9 @@ These apply everywhere.
 - **Type is Inter, sentence case.** Titles are bold. Labels, buttons and menu items are
   sentence case, not Title Case and not all caps.
 - **Explain, don't just disable.** If something is unavailable, show why next to it.
+- **Record pages sit on `background.secondary`.** Index and list pages sit on white. Every page
+  header is `PageHeader`. The full native rules (saving, icons, empty values, progress, forms,
+  name cells, files) are in SKILL.md under "Native look: additional rules".
 
 ### Colours: use the palette, nothing else
 
@@ -153,6 +156,7 @@ Tabs sit under the page title and switch between views of the same data (for exa
 "Your features" and "All features"). They are not for moving between apps.
 
 - Use an underline indicator. An icon in the first tab is fine.
+- A view switch in a toolbar, or a segmented filter, uses `ToggleButtonGroup` instead of tabs.
 - Keep tab labels to one or two words.
 
 ## Colour and status
@@ -201,7 +205,8 @@ import { Plus, Search, Trash2 } from "@digit/lib-frontend"
   Read that file for the current list rather than relying on a copy here.
 - If you need an icon that is not in that list, say so and name it. Do not import a
   different icon set.
-- **Size 16** is the default. Use 14 in dense rows and 20 for a standalone icon.
+- **Icon sizes are 12, 16 and 20 only.** 16 is the default, inline with 13px text and inside
+  buttons. 20 stands alone. 12 sits next to 11px overline text.
 - Icons inherit the text colour. Set a palette colour only for a status or an error:
   `sx={{ color: "error.main" }}`.
 - Icon-only buttons need an `aria-label`. Pair an icon with a label wherever the meaning
@@ -212,7 +217,8 @@ import { Plus, Search, Trash2 } from "@digit/lib-frontend"
 
 An ordered list of tasks grouped into sections, each with a completion measure.
 
-- Each section has a bold heading and a thin progress bar with a percentage.
+- Each section has a bold heading and a thin `LinearProgress` captioned "value / max unit". It is
+  not a percentage (see Progress in SKILL.md).
 - Each row has a completion marker, a bold title, a muted description, and a `Pill` on the
   right.
 - Done rows stay where they are. Do not reorder the list when a task completes.

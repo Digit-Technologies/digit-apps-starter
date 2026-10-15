@@ -1,4 +1,4 @@
-import { Components, Theme } from "@mui/material/styles"
+import { CSSObject, Components, Theme } from "@mui/material/styles"
 
 import { isDarkMode } from "./helpers/isDarkMode"
 import { isLightMode } from "./helpers/isLightMode"
@@ -33,6 +33,45 @@ const commonFocusDarkStyles = {
   outlineOffset: "2px",
 }
 
+// MUI disables the button while it loads, and its disabled rules would grey it out.
+// These are the normal variant colours, so a loading button keeps its look.
+const loadingColours = (
+  light: boolean,
+  variant: string | undefined,
+  color: string | undefined,
+): CSSObject => {
+  if (variant === "contained") {
+    if (color === "secondary") {
+      return light
+        ? { backgroundColor: neutral.white, ...commonContainedSecondaryLightStyles }
+        : { backgroundColor: stone[600], ...commonContainedSecondaryDarkStyles }
+    }
+    if (!light) return color === "primary" ? { backgroundColor: stone[100], color: stone[950] } : {}
+    if (color === "primary" || color === "error") {
+      return {
+        backgroundColor: stone[700],
+        border: `1px solid ${neutralAlpha.darken[100]}`,
+        boxShadow: outer.sm,
+        color: "white",
+      }
+    }
+    return {}
+  }
+  if (variant === "outlined") {
+    return light
+      ? {
+          backgroundColor: neutralAlpha.darken[50],
+          borderColor: transparent,
+          color: color === "error" ? red[600] : stone[950],
+        }
+      : { backgroundColor: neutralAlpha.lighten[150], borderColor: transparent, color: neutral.white }
+  }
+  if (variant === "text") {
+    return { color: light ? (color === "error" ? red[600] : stone[950]) : neutral.white }
+  }
+  return {}
+}
+
 export const muiButton = (): Components<
   Omit<Theme, "components">
 >["MuiButton"] => {
@@ -60,6 +99,19 @@ export const muiButton = (): Components<
       endIcon: {
         marginLeft: "4px",
       },
+      // MUI positions the indicator where the start icon sits when loadingPosition="start".
+      loadingIndicator: {
+        width: "16px",
+        height: "16px",
+        color: "currentColor",
+      },
+      loading: ({ theme, ownerState }) => ({
+        "&.MuiButton-loading.Mui-disabled": loadingColours(
+          isLightMode(theme),
+          ownerState.variant,
+          ownerState.color,
+        ),
+      }),
       sizeXs: {
         borderRadius: "6px",
         fontSize: "13px",

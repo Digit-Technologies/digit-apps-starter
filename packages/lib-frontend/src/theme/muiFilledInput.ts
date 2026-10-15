@@ -25,18 +25,20 @@ export const muiFilledInput = (): Components<Omit<Theme, "components">>["MuiFill
         backgroundColor: fill,
       },
       // The focusable element is the inner input, so :has() reaches it from the root.
-      "&:has(input:focus-visible)": {
+      "&:has(input:focus-visible, textarea:focus-visible)": {
         boxShadow: `0 0 0 1px ${blue[600]} inset`,
       },
       "&.Mui-error": {
         boxShadow: `0 0 0 1px ${red[500]} inset`,
       },
       ...(ownerState.size === "small" ? { minHeight: "20px", borderRadius: 6 } : {}),
+      ...(ownerState.multiline ? { borderRadius: 10 } : {}),
       }
     },
     input: ({ theme, ownerState }) => ({
       // Only hidden-label fields get the compact padding. Labelled fields keep MUI's label space.
       ...(ownerState.hiddenLabel ? { padding: ownerState.size === "small" ? "2px 4px" : "6px 8px" } : {}),
+      ...(ownerState.multiline ? { padding: "8px" } : {}),
       fontSize: "13px",
       lineHeight: "16px",
       "&::placeholder": {

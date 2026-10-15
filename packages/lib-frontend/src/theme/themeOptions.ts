@@ -25,6 +25,8 @@ import { muiChip } from "./muiChip"
 import { muiCssBaseline } from "./muiCssBaseline"
 import { muiDialog } from "./muiDialog"
 import { muiDataGrid } from "./muiDataGrid"
+import { muiDivider } from "./muiDivider"
+import { muiLinearProgress } from "./muiLinearProgress"
 import { muiDialogActions, muiDialogContent, muiDialogTitle } from "./muiDialogParts"
 import { muiFilledInput } from "./muiFilledInput"
 import { muiFormControlLabel } from "./muiFormControlLabel"
@@ -91,6 +93,8 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiTab: muiTab(),
     MuiTabs: muiTabs(),
     MuiDataGrid: muiDataGrid(),
+    MuiDivider: muiDivider(),
+    MuiLinearProgress: muiLinearProgress(),
     MuiTableCell: muiTableCell(),
     MuiTextField: muiTextField(),
     MuiToggleButtonGroup: muiToggleButtonGroup(),
