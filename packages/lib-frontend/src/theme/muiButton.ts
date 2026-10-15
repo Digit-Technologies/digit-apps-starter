@@ -43,7 +43,6 @@ export const muiButton = (): Components<
         // Buttons size to their label. MUI's 64px minimum adds dead space to short labels like "Next".
         minWidth: 0,
         fontSize: "13px",
-        minHeight: "44px",
         padding: "8px 12px",
         "&.Mui-disabled .MuiButton-startIcon, &.Mui-disabled .MuiButton-endIcon":
           {
@@ -61,17 +60,37 @@ export const muiButton = (): Components<
       endIcon: {
         marginLeft: "4px",
       },
-      sizeMedium: {
-        borderRadius: "10px",
+      sizeXs: {
+        borderRadius: "6px",
         fontSize: "13px",
-        minHeight: "36px",
-        padding: "8px 12px",
+        minHeight: "20px",
+        padding: "0 4px",
+        gap: "2px",
       },
       sizeSmall: {
         borderRadius: "8px",
         fontSize: "13px",
         minHeight: "28px",
         padding: "0 8px",
+        gap: "4px",
+        "@media (max-width: 599px)": {
+          minHeight: "35px",
+          padding: "0 10px",
+        },
+      },
+      sizeMedium: {
+        borderRadius: "10px",
+        fontSize: "13px",
+        minHeight: "36px",
+        padding: "8px 12px",
+        gap: "6px",
+        "@media (max-width: 599px)": {
+          minHeight: "45px",
+          padding: "0 15px",
+        },
+      },
+      sizeLarge: {
+        gap: "8px",
       },
       outlined: ({ theme }) => ({
         ...(isLightMode(theme) && {
@@ -89,7 +108,7 @@ export const muiButton = (): Components<
           "&:disabled": {
             backgroundColor: neutralAlpha.darken[50],
             borderColor: transparent,
-            color: neutralAlpha.darken[450],
+            color: stone[350],
           },
           "&:focus-visible": {
             backgroundColor: neutralAlpha.darken[50],
@@ -112,7 +131,7 @@ export const muiButton = (): Components<
           "&:disabled": {
             backgroundColor: neutralAlpha.lighten[50],
             borderColor: transparent,
-            color: neutralAlpha.lighten[450],
+            color: stone[350],
           },
           "&:focus-visible": {
             borderColor: transparent,
@@ -133,7 +152,7 @@ export const muiButton = (): Components<
             borderColor: transparent,
           },
           "&:disabled": {
-            color: neutralAlpha.darken[450],
+            color: stone[350],
             borderColor: transparent,
           },
           "&:focus-visible": {
@@ -155,7 +174,7 @@ export const muiButton = (): Components<
           "&:disabled": {
             backgroundColor: stone[600],
             borderColor: transparent,
-            color: neutralAlpha.darken[450],
+            color: stone[350],
           },
           "&:focus-visible": {
             backgroundColor: stone[600],
@@ -171,6 +190,7 @@ export const muiButton = (): Components<
         style: ({ theme }) => ({
           ...(isLightMode(theme) && {
             backgroundColor: stone[700],
+            border: `1px solid ${neutralAlpha.darken[100]}`,
             boxShadow: outer.sm,
             color: "white",
             "&:hover": {
@@ -185,7 +205,7 @@ export const muiButton = (): Components<
             },
             "&:disabled": {
               backgroundColor: stone[400],
-              color: "white",
+              color: stone[200],
             },
             "&:focus-visible": {
               backgroundColor: stone[700],
@@ -217,31 +237,64 @@ export const muiButton = (): Components<
         }),
       },
       {
-        // Destructive confirm. Mirrors the primary button with red fills, so it lines up in shape.
+        // Destructive confirm. Keeps the primary fill and shape, and shifts to red on hover and press.
         props: { variant: "contained", color: "error" },
         style: ({ theme }) => ({
           ...(isLightMode(theme) && {
-            backgroundColor: red[500],
+            backgroundColor: stone[700],
+            border: `1px solid ${neutralAlpha.darken[100]}`,
             boxShadow: outer.sm,
             color: "white",
             "&:hover": {
-              backgroundColor: red[600],
+              backgroundColor: red[800],
               boxShadow: outer.sm,
               color: "white",
             },
             "&:active": {
-              backgroundColor: red[700],
+              backgroundColor: red[850],
               boxShadow: inner.sm,
               color: "white",
             },
             "&:disabled": {
-              backgroundColor: red[300],
-              color: "white",
+              backgroundColor: stone[400],
+              color: stone[350],
             },
             "&:focus-visible": {
-              backgroundColor: red[500],
+              backgroundColor: stone[700],
               color: "white",
               ...commonFocusLightStyles,
+            },
+          }),
+        }),
+      },
+      {
+        props: { variant: "outlined", color: "error" },
+        style: ({ theme }) => ({
+          ...(isLightMode(theme) && {
+            color: red[600],
+            "&:hover": {
+              backgroundColor: red[50],
+              color: red[600],
+            },
+            "&:active": {
+              backgroundColor: red[100],
+              color: red[600],
+            },
+          }),
+        }),
+      },
+      {
+        props: { variant: "text", color: "error" },
+        style: ({ theme }) => ({
+          ...(isLightMode(theme) && {
+            color: red[600],
+            "&:hover": {
+              backgroundColor: red[50],
+              color: red[600],
+            },
+            "&:active": {
+              backgroundColor: red[100],
+              color: red[600],
             },
           }),
         }),
@@ -264,7 +317,7 @@ export const muiButton = (): Components<
             "&:disabled": {
               backgroundColor: neutral.white,
               ...commonContainedSecondaryLightStyles,
-              color: neutralAlpha.darken[450],
+              color: stone[350],
             },
             "&:focus-visible": {
               backgroundColor: neutral.white,
@@ -287,7 +340,7 @@ export const muiButton = (): Components<
             "&:disabled": {
               backgroundColor: stone[600],
               ...commonContainedSecondaryDarkStyles,
-              color: neutralAlpha.darken[450],
+              color: stone[350],
             },
             "&:focus-visible": {
               backgroundColor: stone[600],

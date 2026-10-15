@@ -1,6 +1,7 @@
 import { Components, Theme } from "@mui/material/styles"
 
 import { neutral } from "./colors"
+import { outer } from "./shadows"
 
 export const muiDialog = (): Components<
   Omit<Theme, "components">
@@ -15,11 +16,16 @@ export const muiDialog = (): Components<
         },
       },
       paper: ({ theme }) => ({
-        // Native dialogs are white, borderless, and rounded to 16px. The shadow comes from the
-        // theme's shadow scale.
-        backgroundColor: neutral.white,
+        // Dialogs are 480px wide on desktop with a 16px radius. Light mode is white with a 1px
+        // border and the outer.lg shadow. Dark mode keeps its own border and the elevation shadow.
         backgroundImage: "none",
         borderRadius: 16,
+        maxWidth: 480,
+        ...(theme.palette.mode === "light" && {
+          backgroundColor: neutral.white,
+          border: `1px solid ${neutral[300]}`,
+          boxShadow: outer.lg,
+        }),
         ...theme.applyStyles("dark", {
           backgroundColor: neutral[900],
           border: `1px solid ${neutral[800]}`,

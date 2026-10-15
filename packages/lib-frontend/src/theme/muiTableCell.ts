@@ -1,20 +1,23 @@
 import { Components, Theme } from "@mui/material/styles"
 
-// Plain MUI tables match the native list: 13px rows with light dividers, and 12px medium
-// secondary headers. DataGrid is styled in components/Table.tsx.
+// Plain MUI tables match the Figma table: 36px rows with vertical and horizontal dividers.
 export const muiTableCell = (): Components<Omit<Theme, "components">>["MuiTableCell"] => ({
   styleOverrides: {
     root: ({ theme }) => ({
+      height: "36px",
+      padding: "0 8px",
       fontSize: "13px",
+      fontWeight: 400,
       lineHeight: "20px",
-      padding: theme.spacing(1, 1.5),
-      borderBottom: `1px solid ${theme.palette.divider}`,
       color: theme.palette.text.primary,
+      borderRight: `1px solid ${theme.palette.divider}`,
+      borderBottom: `1px solid ${theme.palette.divider}`,
     }),
     head: ({ theme }) => ({
-      fontSize: "12px",
-      fontWeight: 500,
+      fontSize: "13px",
+      fontWeight: 400,
       color: theme.palette.text.secondary,
+      borderRight: `1px solid ${theme.palette.divider}`,
       borderBottom: `1px solid ${theme.palette.divider}`,
     }),
   },

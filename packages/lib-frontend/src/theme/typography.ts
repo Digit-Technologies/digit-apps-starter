@@ -50,28 +50,28 @@ export const typography = ({
     fontFamily:
       "InterVariable, Inter var, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji",
     h1: createTypography({
-      desktopSize: 2, // 32px
-      desktopLineHeight: 2.25, // 36px
+      desktopSize: 1.5, // 24px
+      desktopLineHeight: 2, // 32px
       mobileSize: 2 * mobileScaleFactor,
       mobileLineHeight: 2.25 * mobileScaleFactor,
-      fontWeight: 600,
+      fontWeight: 500,
     }),
     h2: createTypography({
-      desktopSize: 1.75, // 28px
-      desktopLineHeight: 2, // 32px
+      desktopSize: 1.375, // 22px
+      desktopLineHeight: 1.75, // 28px
       mobileSize: 1.75 * mobileScaleFactor,
       mobileLineHeight: 2 * mobileScaleFactor,
       fontWeight: 600,
     }),
     h3: createTypography({
-      desktopSize: 1.5, // 24px
-      desktopLineHeight: 1.75, // 28px
+      desktopSize: 1.25, // 20px
+      desktopLineHeight: 1.5, // 24px
       mobileSize: 1.5 * mobileScaleFactor,
       mobileLineHeight: 1.75 * mobileScaleFactor,
       fontWeight: 600,
     }),
     h4: createTypography({
-      desktopSize: 1.25, // 20px
+      desktopSize: 1.125, // 18px
       desktopLineHeight: 1.5, // 24px
       mobileSize: 1.25 * mobileScaleFactor,
       mobileLineHeight: 1.5 * mobileScaleFactor,
@@ -79,14 +79,14 @@ export const typography = ({
     }),
     h5: createTypography({
       desktopSize: 1, // 16px
-      desktopLineHeight: 1.25, // 20px
+      desktopLineHeight: 1.5, // 24px
       mobileSize: 1 * mobileScaleFactor,
       mobileLineHeight: 1.25 * mobileScaleFactor,
       fontWeight: 600,
     }),
     h6: createTypography({
       desktopSize: 0.8125, // 13px
-      desktopLineHeight: 1.25, // 20px
+      desktopLineHeight: 1, // 16px
       mobileSize: 0.8125 * mobileScaleFactor,
       mobileLineHeight: 1.25 * mobileScaleFactor,
       fontWeight: 600,
@@ -107,7 +107,7 @@ export const typography = ({
     }),
     body1: createTypography({
       desktopSize: 0.8125, // 13px
-      desktopLineHeight: 1.25, // 20px
+      desktopLineHeight: 1, // 16px
       mobileSize: 1, // 16px on mobile
       mobileLineHeight: 1.25 * mobileScaleFactor,
       fontWeight: 400,
@@ -131,18 +131,18 @@ export const typography = ({
     },
     body2: createTypography({
       desktopSize: 0.8125, // 13px
-      desktopLineHeight: 1.25, // 20px
+      desktopLineHeight: 1, // 16px
       mobileSize: 0.8125 * mobileScaleFactor, // 16px on mobile
       mobileLineHeight: 1.25 * mobileScaleFactor,
-      fontWeight: 600,
+      fontWeight: 500,
     }),
     body2Link: {
       ...createTypography({
         desktopSize: 0.8125, // 13px
-        desktopLineHeight: 1.25, // 20px
+        desktopLineHeight: 1, // 16px
         mobileSize: 0.8125 * mobileScaleFactor, // 16px on mobile
         mobileLineHeight: 1.25 * mobileScaleFactor,
-        fontWeight: 700,
+        fontWeight: 600,
       }),
       ":hover": linkStyles(darkMode),
     },
@@ -184,7 +184,7 @@ export const typography = ({
     overline: {
       ...createTypography({
         desktopSize: 0.6875, // 11px
-        desktopLineHeight: 1, // 16px
+        desktopLineHeight: 0.75, // 12px
         mobileSize: 0.6875 * mobileScaleFactor,
         mobileLineHeight: 1 * mobileScaleFactor,
         fontWeight: 400,
@@ -194,7 +194,7 @@ export const typography = ({
     overlineLink: {
       ...createTypography({
         desktopSize: 0.6875, // 11px
-        desktopLineHeight: 1, // 16px
+        desktopLineHeight: 0.75, // 12px
         mobileSize: 0.6875 * mobileScaleFactor,
         mobileLineHeight: 1 * mobileScaleFactor,
         fontWeight: 600,
@@ -205,11 +205,21 @@ export const typography = ({
     overline2: {
       ...createTypography({
         desktopSize: 0.6875, // 11px
-        desktopLineHeight: 1, // 16px
+        desktopLineHeight: 0.75, // 12px
         mobileSize: 0.6875 * mobileScaleFactor,
         mobileLineHeight: 1 * mobileScaleFactor,
         fontWeight: 500,
       }),
     },
+    pillSm: createTypography({
+      desktopSize: 0.6875, // 11px
+      desktopLineHeight: 0.75, // 12px
+      fontWeight: 500,
+    }),
+    pillMd: createTypography({
+      desktopSize: 0.75, // 12px
+      desktopLineHeight: 1, // 16px
+      fontWeight: 500,
+    }),
   }
 }

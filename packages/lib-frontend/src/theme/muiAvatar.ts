@@ -1,5 +1,7 @@
 import { Components, Theme } from "@mui/material/styles"
 
+import { neutralAlpha } from "./colors"
+
 // Avatars sit on the paper surface with a 1px strong border. People are round, and everything
 // else is a rounded square, as on the platform.
 export const muiAvatar = (): Components<Omit<Theme, "components">>["MuiAvatar"] => ({
@@ -25,6 +27,7 @@ export const muiAvatarGroup = (): Components<Omit<Theme, "components">>["MuiAvat
   styleOverrides: {
     avatar: ({ theme }) => ({
       border: `2px solid ${theme.palette.background.paper}`,
+      backgroundColor: neutralAlpha.darken[50],
     }),
   },
 })

@@ -49,12 +49,13 @@ export const palette = ({ darkMode }: ThemeProps): ThemeOptions["palette"] => {
     },
     text: {
       primary: darkMode ? neutral.white : stone[950], // All-purpose body text
-      secondary: darkMode ? stone[350] : stone[650], // Text that supports primary information
-      tertiary: darkMode ? stone[550] : stone[450], // Text that's of optional importance
-      disabled: darkMode ? stone[550] : stone[450],
+      secondary: darkMode ? stone[350] : stone[550], // Text that supports primary information
+      tertiary: darkMode ? stone[550] : stone[350], // Text that's of optional importance
+      disabled: darkMode ? stone[550] : stone[350],
     },
     background: {
-      default: darkMode ? stone[900] : stone[100],
+      default: darkMode ? stone[900] : neutral.white,
+      secondary: darkMode ? stone[900] : neutral[50],
       paper: darkMode ? stone[800] : neutral.white,
       surface: darkMode ? stone[900] : neutral[50],
     },

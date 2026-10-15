@@ -21,11 +21,8 @@ export const muiMenu = (): Components<Omit<Theme, "components">>["MuiMenu"] => {
       },
       paper: ({ theme }) => ({
         border: `1px solid ${theme.palette.border.strong}`,
-        borderRadius:
-          typeof theme.shape.borderRadius === "number"
-            ? theme.shape.borderRadius / 2
-            : `calc(${theme.shape.borderRadius} / 2)`,
-        boxShadow: outer.sm,
+        borderRadius: "10px",
+        boxShadow: outer.md,
       }),
       list: {
         padding: 4,

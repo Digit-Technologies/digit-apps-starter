@@ -7,6 +7,15 @@ export interface ThemeProps {
   darkMode: boolean
 }
 
+declare module "@mui/material/Button" {
+  interface ButtonPropsSizeOverrides {
+    xs: true
+  }
+  interface ButtonClasses {
+    sizeXs: string
+  }
+}
+
 declare module "@mui/material/Chip" {
   interface ChipPropsColorOverrides extends Record<AccentColorName, true> {}
 }
@@ -19,6 +28,8 @@ declare module "@mui/material/Typography" {
     body2Link: true
     buttonSm: true
     overlineLink: true
+    pillSm: true
+    pillMd: true
     mono: true
   }
 }
@@ -32,6 +43,8 @@ declare module "@mui/material/styles" {
     button: CSSProperties
     buttonSm: CSSProperties
     overlineLink: CSSProperties
+    pillSm: CSSProperties
+    pillMd: CSSProperties
     mono: CSSProperties
   }
 
@@ -43,6 +56,8 @@ declare module "@mui/material/styles" {
     button?: CSSProperties
     buttonSm?: CSSProperties
     overlineLink?: CSSProperties
+    pillSm?: CSSProperties
+    pillMd?: CSSProperties
     mono?: CSSProperties
   }
 
@@ -52,6 +67,7 @@ declare module "@mui/material/styles" {
 
   interface TypeBackground {
     surface?: string
+    secondary?: string
   }
 
   interface Palette extends Record<AccentColorName, PaletteColor> {

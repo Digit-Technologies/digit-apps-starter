@@ -5,14 +5,30 @@ import Typography from "@mui/material/Typography"
 import { Theme, useTheme } from "@mui/material/styles"
 
 import { type AccentColorName, accentScales } from "../theme/accent-colors"
+import { neutralAlpha } from "../theme/colors"
 
 export type PillColor = "outlined" | "gray" | AccentColorName
+// Public size names are kept for existing callers. `sm` is the Figma xs pill and `md` is the Figma sm pill.
 export type PillSize = "sm" | "md"
+
+const sizeTokens = {
+  sm: { height: 16, px: "4px", gap: "2px", radius: "4px", fontSize: "11px", lineHeight: "12px" },
+  md: { height: 20, px: "6px", gap: "4px", radius: "6px", fontSize: "12px", lineHeight: "16px" },
+} as const
 
 // Generic statuses only. Each maps to the colour the platform uses for the same meaning.
 // Keys are lowercase, with spaces and hyphens turned into underscores.
 const statusColors: Readonly<Record<string, PillColor>> = {
-  draft: "gray",
+  draft: "outlined",
+  open: "blue",
+  sent: "violet",
+  shipped: "yellow",
+  stopped: "red",
+  rejected: "red",
+  approved: "green",
+  received: "green",
+  closed: "gray",
+  cancelled: "gray",
   archived: "gray",
   not_started: "blue",
   active: "blue",
@@ -35,10 +51,13 @@ const sentenceCase = (status: string): string => {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-// Light mode uses the 250 tint and dark mode the 750 tint, as the platform's pills do.
+// Gray uses the neutral alpha overlay. Accents use the 250 tint in light mode and the 750 tint in dark mode.
 const tint = (color: PillColor, theme: Theme): string => {
   const isDark = theme.palette.mode === "dark"
-  const scale = color === "gray" ? accentScales.stone : accentScales[color as AccentColorName]
+  if (color === "gray") {
+    return isDark ? neutralAlpha.lighten[50] : neutralAlpha.darken[50]
+  }
+  const scale = accentScales[color as AccentColorName]
   return isDark ? scale[750] : scale[250]
 }
 
@@ -72,7 +91,8 @@ export const Pill = ({
   const resolved: PillColor | undefined =
     color ?? (status ? statusColors[normaliseStatus(status)] : undefined)
   const text = label ?? (status ? sentenceCase(status) : undefined)
-  const isSmall = size === "sm"
+  const token = size === "sm" ? sizeTokens.sm : sizeTokens.md
+  const fill = resolved && resolved !== "outlined" ? resolved : undefined
 
   return (
     <Box
@@ -83,17 +103,17 @@ export const Pill = ({
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: 0.5,
+        gap: token.gap,
         width: "fit-content",
         flexShrink: 0,
         maxWidth: "100%",
-        height: isSmall ? 16 : 20,
-        minWidth: isSmall ? 16 : 20,
-        px: isSmall ? 0.25 : 0.5,
-        borderRadius: "6px",
+        height: token.height,
+        minWidth: token.height,
+        px: token.px,
+        borderRadius: token.radius,
         border: "1px solid",
-        borderColor: resolved && resolved !== "outlined" ? "transparent" : theme.palette.border.extrastrong,
-        backgroundColor: resolved && resolved !== "outlined" ? tint(resolved, theme) : "transparent",
+        borderColor: fill ? "transparent" : theme.palette.border.extrastrong,
+        backgroundColor: fill ? tint(fill, theme) : "transparent",
         color: theme.palette.text.primary,
         whiteSpace: "nowrap",
         overflow: "hidden",
@@ -106,7 +126,7 @@ export const Pill = ({
       {text != null && text !== "" && (
         <Typography
           component="span"
-          sx={{ fontSize: isSmall ? "11px" : "12px", lineHeight: isSmall ? "16px" : "20px", fontWeight: 500 }}
+          sx={{ fontSize: token.fontSize, lineHeight: token.lineHeight, fontWeight: 500 }}
         >
           {text}
         </Typography>

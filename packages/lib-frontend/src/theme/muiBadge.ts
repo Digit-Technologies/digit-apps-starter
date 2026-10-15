@@ -9,6 +9,7 @@ export const muiBadge = (): Components<Omit<Theme, "components">>["MuiBadge"] =>
       const isDark = theme.palette.mode === "dark"
       return {
         position: "static",
+        marginLeft: theme.spacing(0.5),
         transform: "none",
         height: 18,
         minWidth: 18,

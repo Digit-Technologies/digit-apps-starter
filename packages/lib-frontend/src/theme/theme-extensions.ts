@@ -1,4 +1,4 @@
-import { neutralAlpha, purple } from "./colors"
+import { blue, neutralAlpha } from "./colors"
 
 /**
  * Shared theme extension constants used by both the actual theme
@@ -32,9 +32,9 @@ export const themeExtensions = {
   },
   opacity: {
     helper: 0.6,
-    disabled: 0.4,
+    disabled: 0.3,
   },
-  tabFocus: purple[500], // "#a855f7"
+  tabFocus: blue[600], // "rgba(21, 93, 252, 1)"
 } as const
 
 /**

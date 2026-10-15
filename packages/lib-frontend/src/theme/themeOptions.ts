@@ -13,6 +13,7 @@ import { muiAlert } from "./muiAlert"
 import { muiAvatar, muiAvatarGroup } from "./muiAvatar"
 import { muiBadge } from "./muiBadge"
 import { muiSkeleton } from "./muiSkeleton"
+import { muiSnackbarContent } from "./muiSnackbar"
 import { outer } from "./shadows"
 import { muiAppBar } from "./muiAppBar"
 import { muiAutocomplete } from "./muiAutocomplete"
@@ -23,6 +24,7 @@ import { muiCheckbox } from "./muiCheckbox"
 import { muiChip } from "./muiChip"
 import { muiCssBaseline } from "./muiCssBaseline"
 import { muiDialog } from "./muiDialog"
+import { muiDataGrid } from "./muiDataGrid"
 import { muiDialogActions, muiDialogContent, muiDialogTitle } from "./muiDialogParts"
 import { muiFilledInput } from "./muiFilledInput"
 import { muiFormControlLabel } from "./muiFormControlLabel"
@@ -54,6 +56,7 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiAvatarGroup: muiAvatarGroup(),
     MuiBadge: muiBadge(),
     MuiSkeleton: muiSkeleton(),
+    MuiSnackbarContent: muiSnackbarContent(),
     MuiCssBaseline: muiCssBaseline({ darkMode }),
     MuiBackdrop: muiBackdrop(),
     MuiCard: muiCard(),
@@ -88,6 +91,7 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiSwitch: muiSwitch(),
     MuiTab: muiTab(),
     MuiTabs: muiTabs(),
+    MuiDataGrid: muiDataGrid(),
     MuiTableCell: muiTableCell(),
     MuiTextField: muiTextField(),
     MuiToggleButtonGroup: muiToggleButtonGroup(),

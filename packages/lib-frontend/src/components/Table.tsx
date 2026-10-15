@@ -1,17 +1,25 @@
 import React, { ReactNode } from "react"
 
+import IconButton from "@mui/material/IconButton"
 import InputAdornment from "@mui/material/InputAdornment"
 import Stack from "@mui/material/Stack"
 import TextField from "@mui/material/TextField"
+import Typography from "@mui/material/Typography"
 import {
   DataGrid,
   GridColDef,
+  GridFooterContainer,
   GridPaginationModel,
   GridRowId,
   GridSortModel,
   GridValidRowModel,
+  gridPageCountSelector,
+  gridPaginationModelSelector,
+  gridPaginationRowCountSelector,
+  useGridApiContext,
+  useGridSelector,
 } from "@mui/x-data-grid"
-import { Search } from "../icons"
+import { ChevronRight, Search } from "../icons"
 
 export interface TableProps<Row extends GridValidRowModel> {
   rows: Row[]
@@ -33,6 +41,39 @@ export interface TableProps<Row extends GridValidRowModel> {
   loading?: boolean
   onRowClick?: (row: Row) => void
   pageSizeOptions?: number[]
+}
+
+// Reads paging state from the grid API, so it needs no props from Table.
+function TableFooter() {
+  const apiRef = useGridApiContext()
+  const { page, pageSize } = useGridSelector(apiRef, gridPaginationModelSelector)
+  const rowCount = useGridSelector(apiRef, gridPaginationRowCountSelector)
+  const pageCount = useGridSelector(apiRef, gridPageCountSelector)
+
+  const first = rowCount === 0 ? 0 : page * pageSize + 1
+  const last = Math.min((page + 1) * pageSize, rowCount)
+
+  return (
+    <GridFooterContainer sx={{ justifyContent: "flex-end", gap: 1, px: 1 }}>
+      <Typography variant="overline" sx={{ color: "text.tertiary" }}>
+        {first}-{last} of {rowCount}
+      </Typography>
+      <IconButton
+        aria-label="Previous page"
+        disabled={page === 0}
+        onClick={() => apiRef.current.setPage(page - 1)}
+      >
+        <ChevronRight size={16} style={{ transform: "rotate(180deg)" }} />
+      </IconButton>
+      <IconButton
+        aria-label="Next page"
+        disabled={page >= pageCount - 1}
+        onClick={() => apiRef.current.setPage(page + 1)}
+      >
+        <ChevronRight size={16} />
+      </IconButton>
+    </GridFooterContainer>
+  )
 }
 
 /**
@@ -69,6 +110,8 @@ export function Table<Row extends GridValidRowModel>({
         >
           {onSearchChange ? (
             <TextField
+              variant="filled"
+              hiddenLabel
               size="small"
               placeholder={searchPlaceholder}
               value={search ?? ""}
@@ -106,43 +149,15 @@ export function Table<Row extends GridValidRowModel>({
         disableColumnFilter
         disableColumnMenu
         disableRowSelectionOnClick
-        hideFooterSelectedRowCount
         loading={loading}
         autoHeight
-        // Native lists are 36px rows under a 36px header, and sit flat without an outer card.
-        rowHeight={36}
-        columnHeaderHeight={36}
+        slots={{ footer: TableFooter }}
         onRowClick={onRowClick ? (params) => onRowClick(params.row) : undefined}
-        sx={(theme) => ({
-          border: "none",
-          backgroundColor: theme.palette.background.paper,
-          fontSize: "13px",
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "transparent",
-            borderBottomColor: theme.palette.divider,
-          },
-          "& .MuiDataGrid-columnHeaderTitle": {
-            color: theme.palette.text.secondary,
-            fontSize: "12px",
-            fontWeight: 500,
-          },
-          "& .MuiDataGrid-columnSeparator": {
-            color: theme.palette.divider,
-          },
-          "& .MuiDataGrid-cell": {
-            borderBottomColor: theme.palette.divider,
-            fontWeight: 400,
-          },
+        sx={{
           "& .MuiDataGrid-row": {
             cursor: onRowClick ? "pointer" : "default",
           },
-          "& .MuiDataGrid-row:hover": {
-            backgroundColor: theme.palette.action.hover,
-          },
-          "& .MuiDataGrid-footerContainer": {
-            borderTopColor: theme.palette.divider,
-          },
-        })}
+        }}
       />
     </Stack>
   )

@@ -15,6 +15,30 @@ export const muiIconButton = ({
       disableFocusRipple: true,
       size: "small",
     },
+    variants: [
+      {
+        // Destructive icon. Tints to red on hover and press, with a red wash behind it.
+        props: { color: "error" },
+        style: {
+          "&:hover": {
+            background: red[50],
+            color: red[600],
+            "& .MuiSvgIcon-root, & svg, & .MuiBox-root": {
+              color: red[600],
+              stroke: "currentColor",
+            },
+          },
+          "&:active": {
+            background: red[100],
+            color: red[600],
+            "& .MuiSvgIcon-root, & svg, & .MuiBox-root": {
+              color: red[600],
+              stroke: "currentColor",
+            },
+          },
+        },
+      },
+    ],
     styleOverrides: {
       root: ({ theme }) => ({
         background: "transparent",
@@ -53,7 +77,7 @@ export const muiIconButton = ({
           border: "1px solid transparent!important",
           boxShadow: "none",
           color: theme.palette.text.disabled,
-          opacity: 0.4,
+          opacity: 0.3,
 
           "& .MuiSvgIcon-root, & svg, & .MuiBox-root": {
             color: "inherit",
@@ -61,28 +85,6 @@ export const muiIconButton = ({
             stroke: "currentColor",
           },
         },
-
-        variants: [
-          {
-            props: { color: "error" },
-            style: {
-              "&:hover": {
-                color: red[500],
-                "& .MuiSvgIcon-root, & svg, & .MuiBox-root": {
-                  color: red[500],
-                  stroke: "currentColor",
-                },
-              },
-              "&:active": {
-                color: red[700],
-                "& .MuiSvgIcon-root, & svg, & .MuiBox-root": {
-                  color: red[700],
-                  stroke: "currentColor",
-                },
-              },
-            },
-          },
-        ],
       }),
       sizeSmall: ({ theme }) => ({
         borderRadius: "8px",

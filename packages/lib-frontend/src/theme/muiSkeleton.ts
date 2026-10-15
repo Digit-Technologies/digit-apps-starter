@@ -7,7 +7,7 @@ export const muiSkeleton = (): Components<Omit<Theme, "components">>["MuiSkeleto
   styleOverrides: {
     root: ({ theme }) => ({
       borderRadius: theme.spacing(1),
-      backgroundColor: theme.palette.mode === "dark" ? neutralAlpha.lighten[50] : neutralAlpha.darken[50],
+      backgroundColor: theme.palette.mode === "dark" ? neutralAlpha.lighten[50] : neutralAlpha.darken[25],
     }),
   },
 })
