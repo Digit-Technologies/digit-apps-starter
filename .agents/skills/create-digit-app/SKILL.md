@@ -6,9 +6,9 @@ description: >-
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Digit app, editing an app in a local clone
-  of this starter, publishing via MCP, or when the user mentions Digit apps,
-  manifest.json, AppProxy, DigitThemeProvider, /proxy/digit, or
-  /proxy/backend.
+  of this starter, publishing via MCP, laying out screens, or when the user mentions
+  Digit apps, manifest.json, AppProxy, DigitThemeProvider, /proxy/digit, /proxy/backend,
+  settings screens, confirmation dialogs, tables, checklists, or guided chat flows.
 ---
 
 # Create Digit App
@@ -214,6 +214,12 @@ only; still upload the zip **unchanged**. Details:
 - **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
   hard-coded colors or custom CSS. Do not invent a parallel CSS design system or
   restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
+- **Layout:** The theme makes an app look like Digit; the patterns make it behave like
+  Digit. Before you lay out a screen, find the closest match in
+  [reference/design-patterns.md](reference/design-patterns.md) (settings shell, list with
+  metadata, confirm destructive action, blocked by a dependency, table with tabs, and so
+  on), copy its structure, and name the pattern you used in your summary. Do not invent a
+  new layout when a pattern fits.
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
@@ -389,6 +395,7 @@ upstream starter.
 | Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
 | Codes / JSON validation               | `@digit/lib-common`                                             |
 | Print a Sutton inventory or item label | `LabelPrintPanel` → [reference/labels.md](reference/labels.md)  |
+| Screen layout, dialogs, lists, checklists, guided flows | Pattern from [reference/design-patterns.md](reference/design-patterns.md) |
 
 ## Packages (`lib-*`)
 
@@ -420,6 +427,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
 - [reference/labels.md](reference/labels.md) for Sutton label preview and print, permissions, and failures
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
+- [reference/design-patterns.md](reference/design-patterns.md) — screen patterns: settings shell, lists, confirmations, tables, checklists, guided flows
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key
