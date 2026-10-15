@@ -16,11 +16,9 @@ export const muiDialog = (): Components<
         },
       },
       paper: ({ theme }) => ({
-        // Dialogs are 480px wide on desktop with a 16px radius. Light mode is white with a 1px
-        // border and the outer.lg shadow. Dark mode keeps its own border and the elevation shadow.
+        // Border, radius, and shadow apply to every dialog size. Width is set per size below.
         backgroundImage: "none",
         borderRadius: 16,
-        maxWidth: 480,
         ...(theme.palette.mode === "light" && {
           backgroundColor: neutral.white,
           border: `1px solid ${neutral[300]}`,
@@ -31,6 +29,10 @@ export const muiDialog = (): Components<
           border: `1px solid ${neutral[800]}`,
         }),
       }),
+      // The 480px width is the small size only, so md and lg dialogs keep their widths.
+      paperWidthSm: { maxWidth: 480 },
+      // Full screen dialogs fill the viewport with no radius.
+      paperFullScreen: { maxWidth: "100%", borderRadius: 0 },
     },
   }
 }

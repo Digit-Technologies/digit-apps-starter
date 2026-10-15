@@ -8,17 +8,21 @@ export const muiFilledInput = (): Components<Omit<Theme, "components">>["MuiFill
     disableUnderline: true,
   },
   styleOverrides: {
-    root: ({ ownerState }) => ({
+    root: ({ ownerState, theme }) => {
+      const isDark = theme.palette.mode === "dark"
+      const fill = isDark ? neutralAlpha.lighten[50] : neutralAlpha.darken[50]
+      const hoverFill = isDark ? neutralAlpha.lighten[100] : neutralAlpha.darken[100]
+      return {
       borderRadius: 8,
-      backgroundColor: neutralAlpha.darken[50],
+      backgroundColor: fill,
       "&:hover": {
-        backgroundColor: neutralAlpha.darken[100],
+        backgroundColor: hoverFill,
       },
       "&:active": {
-        backgroundColor: neutralAlpha.darken[100],
+        backgroundColor: hoverFill,
       },
       "&.Mui-focused": {
-        backgroundColor: neutralAlpha.darken[50],
+        backgroundColor: fill,
       },
       // The focusable element is the inner input, so :has() reaches it from the root.
       "&:has(input:focus-visible)": {
@@ -28,20 +32,17 @@ export const muiFilledInput = (): Components<Omit<Theme, "components">>["MuiFill
         boxShadow: `0 0 0 1px ${red[500]} inset`,
       },
       ...(ownerState.size === "small" ? { minHeight: "20px", borderRadius: 6 } : {}),
-    }),
+      }
+    },
     input: ({ theme, ownerState }) => ({
       // Only hidden-label fields get the compact padding. Labelled fields keep MUI's label space.
       ...(ownerState.hiddenLabel ? { padding: ownerState.size === "small" ? "2px 4px" : "6px 8px" } : {}),
       fontSize: "13px",
       lineHeight: "16px",
-      ...(theme.palette.mode === "light"
-        ? {
-            "&::placeholder": {
-              color: neutralAlpha.darken[400],
-              opacity: 1,
-            },
-          }
-        : {}),
+      "&::placeholder": {
+        color: theme.palette.mode === "light" ? neutralAlpha.darken[400] : neutralAlpha.lighten[400],
+        opacity: 1,
+      },
     }),
   },
 })
