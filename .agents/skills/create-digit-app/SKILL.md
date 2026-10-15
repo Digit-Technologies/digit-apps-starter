@@ -371,7 +371,8 @@ card 12, radio card 12, dialog 16.
 | Settings or form label | `body1` (13px, 400), via `SettingsRow` |
 | Supporting text | `body1` with `color="text.secondary"` |
 | Row description | `caption` with `color="text.tertiary"` |
-| Counts, dates, IDs, quantities | `Typography variant="mono" color="text.secondary"` |
+| Counts, IDs, quantities | `Typography variant="mono" color="text.secondary"` |
+| Dates | `body1` in `text.primary`. Dates are never mono |
 
 Use sentence case everywhere. The one exception is `SettingsSection`'s built-in "Select All" and
 "Deselect All".

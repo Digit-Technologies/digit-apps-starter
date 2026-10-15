@@ -6,7 +6,7 @@ import type {} from "@mui/x-data-grid/themeAugmentation"
 // Behaviour props (sorting, paging, selection) stay in components/Table.tsx.
 export const muiDataGrid = (): Components<Omit<Theme, "components">>["MuiDataGrid"] => ({
   defaultProps: {
-    getRowHeight: () => "auto",
+    rowHeight: 36,
     columnHeaderHeight: 36,
     showColumnVerticalBorder: true,
   },
@@ -28,9 +28,7 @@ export const muiDataGrid = (): Components<Omit<Theme, "components">>["MuiDataGri
         color: theme.palette.divider,
       },
       "& .MuiDataGrid-cell": {
-        padding: "8px 8px",
-        minHeight: 36,
-        boxSizing: "border-box",
+        padding: "0 8px",
         color: theme.palette.text.primary,
         fontSize: "13px",
         fontWeight: 400,
