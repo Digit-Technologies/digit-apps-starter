@@ -1,6 +1,7 @@
 import { Components, Theme } from "@mui/material/styles"
 
 import { neutral } from "./colors"
+import { outer } from "./shadows"
 
 export const muiDialog = (): Components<
   Omit<Theme, "components">
@@ -15,14 +16,23 @@ export const muiDialog = (): Components<
         },
       },
       paper: ({ theme }) => ({
-        backgroundColor: neutral[50],
+        // Border, radius, and shadow apply to every dialog size. Width is set per size below.
         backgroundImage: "none",
-        border: `1px solid ${neutral[200]}`,
+        borderRadius: 16,
+        ...(theme.palette.mode === "light" && {
+          backgroundColor: neutral.white,
+          border: `1px solid ${neutral[300]}`,
+          boxShadow: outer.lg,
+        }),
         ...theme.applyStyles("dark", {
           backgroundColor: neutral[900],
           border: `1px solid ${neutral[800]}`,
         }),
       }),
+      // The 480px width is the small size only, so md and lg dialogs keep their widths.
+      paperWidthSm: { maxWidth: 480 },
+      // Full screen dialogs fill the viewport with no radius.
+      paperFullScreen: { maxWidth: "100%", borderRadius: 0 },
     },
   }
 }

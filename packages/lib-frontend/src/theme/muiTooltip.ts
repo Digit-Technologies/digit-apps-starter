@@ -1,6 +1,6 @@
 import { Components, Theme } from "@mui/material/styles"
 
-import { neutral, stone } from "./colors"
+import { neutral, neutralAlpha, stone } from "./colors"
 import { outer } from "./shadows"
 
 export const muiTooltip = (): Components<
@@ -10,7 +10,7 @@ export const muiTooltip = (): Components<
     styleOverrides: {
       tooltip: ({ theme }) => ({
         backgroundColor: stone[800],
-        border: `1px solid ${theme.palette.border.strong}`,
+        border: `1px solid ${neutralAlpha.lighten[100]}`,
         borderRadius:
           typeof theme.shape.borderRadius === "number"
             ? theme.shape.borderRadius / 2
@@ -21,7 +21,7 @@ export const muiTooltip = (): Components<
         maxWidth: theme.spacing(28),
         display: "flex",
         flexDirection: "row",
-        padding: theme.spacing(0.5, 1),
+        padding: theme.spacing(1),
         alignItems: "center",
         justifyContent: "center",
         textAlign: "left",

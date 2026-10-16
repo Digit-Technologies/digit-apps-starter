@@ -10,12 +10,25 @@ xl, extra-large: 1536px
 import { ThemeOptions } from "@mui/material/styles"
 
 import { muiAlert } from "./muiAlert"
+import { muiAvatar } from "./muiAvatar"
+import { muiBadge } from "./muiBadge"
+import { muiSkeleton } from "./muiSkeleton"
+import { muiSnackbarContent } from "./muiSnackbar"
+import { outer } from "./shadows"
 import { muiAppBar } from "./muiAppBar"
 import { muiAutocomplete } from "./muiAutocomplete"
 import { muiBackdrop } from "./muiBackdrop"
 import { muiButton } from "./muiButton"
+import { muiCard } from "./muiCard"
+import { muiCheckbox } from "./muiCheckbox"
+import { muiChip } from "./muiChip"
 import { muiCssBaseline } from "./muiCssBaseline"
 import { muiDialog } from "./muiDialog"
+import { muiDataGrid } from "./muiDataGrid"
+import { muiDivider } from "./muiDivider"
+import { muiLinearProgress } from "./muiLinearProgress"
+import { muiDialogActions, muiDialogContent, muiDialogTitle } from "./muiDialogParts"
+import { muiFilledInput } from "./muiFilledInput"
 import { muiFormControlLabel } from "./muiFormControlLabel"
 import { muiIconButton } from "./muiIconButton"
 import { muiListItemButton } from "./muiListItemButton"
@@ -25,7 +38,8 @@ import { muiOutlinedInput } from "./muiOutlinedInput"
 import { muiRadio } from "./muiRadio"
 import { muiSelect } from "./muiSelect"
 import { muiSwitch } from "./muiSwitch"
-import { muiTabs } from "./muiTabs"
+import { muiTab, muiTabs } from "./muiTabs"
+import { muiTableCell } from "./muiTableCell"
 import { muiTextField } from "./muiTextField"
 import { muiToggleButton } from "./muiToggleButton"
 import { muiToggleButtonGroup } from "./muiToggleButtonGroup"
@@ -40,12 +54,28 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiAlert: muiAlert({ darkMode }),
     MuiAppBar: muiAppBar({ darkMode }),
     MuiAutocomplete: muiAutocomplete(),
+    MuiAvatar: muiAvatar(),
+    MuiBadge: muiBadge(),
+    MuiSkeleton: muiSkeleton(),
+    MuiSnackbarContent: muiSnackbarContent(),
     MuiCssBaseline: muiCssBaseline({ darkMode }),
     MuiBackdrop: muiBackdrop(),
+    MuiCard: muiCard(),
+    MuiCheckbox: muiCheckbox({ darkMode }),
+    MuiChip: muiChip(),
     MuiButton: muiButton(),
     MuiDialog: muiDialog(),
+    MuiDialogTitle: muiDialogTitle(),
+    MuiDialogContent: muiDialogContent(),
+    MuiDialogActions: muiDialogActions(),
+    MuiFilledInput: muiFilledInput(),
     MuiFormControlLabel: muiFormControlLabel(),
     MuiIconButton: muiIconButton({ darkMode }),
+    MuiInput: {
+      defaultProps: {
+        disableUnderline: true,
+      },
+    },
     MuiInputBase: {
       defaultProps: {
         disableInjectingGlobalStyles: true,
@@ -60,13 +90,47 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiRadio: muiRadio(darkMode),
     MuiSelect: muiSelect(),
     MuiSwitch: muiSwitch(),
+    MuiTab: muiTab(),
     MuiTabs: muiTabs(),
+    MuiDataGrid: muiDataGrid(),
+    MuiDivider: muiDivider(),
+    MuiLinearProgress: muiLinearProgress(),
+    MuiTableCell: muiTableCell(),
     MuiTextField: muiTextField(),
     MuiToggleButtonGroup: muiToggleButtonGroup(),
     MuiToggleButton: muiToggleButton(),
     MuiTooltip: muiTooltip(),
   },
   palette: palette({ darkMode }),
+  // MUI's material elevations (Dialog 24, Popover 8, contained Button 2 and 4) are replaced with
+  // the native outer scale. Each of the 25 levels maps to one of the scale's steps.
+  shadows: [
+    "none",
+    outer.sm,
+    outer.sm,
+    outer.md,
+    outer.md,
+    outer.md,
+    outer.md,
+    outer.md,
+    outer.md,
+    outer.lg,
+    outer.lg,
+    outer.lg,
+    outer.lg,
+    outer.lg,
+    outer.lg,
+    outer.lg,
+    outer.lg,
+    outer.xl,
+    outer.xl,
+    outer.xl,
+    outer.xl,
+    outer.xl,
+    outer.xl,
+    outer.xl,
+    outer.xl,
+  ] as ThemeOptions["shadows"],
   shape: {
     borderRadius: 16,
   },
