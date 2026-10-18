@@ -1,23 +1,19 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
-  "name": "digit-apps",
+  "name": "sutton",
   "owner": {
-    "name": "Digit"
+    "name": "Sutton"
   },
   "metadata": {
-    "description": "Official skills for building Digit custom apps."
+    "description": "Official Sutton agent plugins."
   },
   "plugins": [
     {
-      "name": "digit-apps",
+      "name": "sutton-apps",
       "source": "./",
-      "description": "Create new Digit apps and update published apps through Digit MCP.",
+      "description": "Build, draft, and publish Sutton custom apps.",
       "category": "development",
-      "tags": [
-        "digit",
-        "custom-apps",
-        "mcp"
-      ]
+      "tags": ["sutton", "custom-apps", "mcp"]
     }
   ]
 }

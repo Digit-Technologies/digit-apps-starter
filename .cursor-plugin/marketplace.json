@@ -1,0 +1,16 @@
+{
+  "name": "sutton",
+  "owner": {
+    "name": "Sutton"
+  },
+  "metadata": {
+    "description": "Official Sutton agent plugins."
+  },
+  "plugins": [
+    {
+      "name": "sutton-apps",
+      "source": "./",
+      "description": "Build, draft, and publish Sutton custom apps."
+    }
+  ]
+}

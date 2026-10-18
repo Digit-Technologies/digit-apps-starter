@@ -1,0 +1,14 @@
+{
+  "name": "sutton-apps",
+  "displayName": "Sutton Apps",
+  "version": "0.1.0",
+  "description": "Build, draft, and publish Sutton custom apps with the create-digit-app skill.",
+  "author": {
+    "name": "Sutton"
+  },
+  "homepage": "https://github.com/Digit-Technologies/digit-apps-starter",
+  "repository": "https://github.com/Digit-Technologies/digit-apps-starter",
+  "license": "MIT",
+  "keywords": ["sutton", "custom-apps", "mcp"],
+  "skills": "./.agents/skills/"
+}

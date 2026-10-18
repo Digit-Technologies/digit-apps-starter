@@ -1,22 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "digit-apps",
-  "displayName": "Digit Apps",
+  "name": "sutton-apps",
+  "displayName": "Sutton Apps",
   "version": "0.1.0",
-  "description": "Create and update Digit custom apps through Digit MCP.",
+  "description": "Build, draft, and publish Sutton custom apps with the create-digit-app skill.",
   "author": {
-    "name": "Digit"
+    "name": "Sutton"
   },
   "homepage": "https://github.com/Digit-Technologies/digit-apps-starter",
   "repository": "https://github.com/Digit-Technologies/digit-apps-starter",
   "license": "MIT",
-  "keywords": [
-    "digit",
-    "custom-apps",
-    "mcp"
-  ],
-  "skills": [
-    "./.agents/skills/create-digit-app",
-    "./.agents/skills/update-digit-app"
-  ]
+  "keywords": ["sutton", "custom-apps", "mcp"],
+  "skills": "./.agents/skills/"
 }
