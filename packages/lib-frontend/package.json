@@ -9,17 +9,21 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@digit/lib-common": "file:../lib-common"
+    "@digit/lib-common": "file:../lib-common",
+    "inter-ui": "4.1.1"
   },
   "peerDependencies": {
     "@emotion/react": "^11",
     "@emotion/styled": "^11",
-    "@mui/material": "^7",
-    "react": "^18 || ^19",
-    "react-dom": "^18 || ^19"
+    "@mui/material": "^9",
+    "react": "^19",
+    "react-dom": "^19"
   },
   "devDependencies": {
-    "@types/react": "^18",
-    "typescript": "^5.8"
+    "@types/react": "^19",
+    "typescript": "^7.0.2"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --pretty false"
   }
 }

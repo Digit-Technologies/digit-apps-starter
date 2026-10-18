@@ -5,8 +5,12 @@ import { outer } from "./shadows"
 export const muiMenu = (): Components<Omit<Theme, "components">>["MuiMenu"] => {
   return {
     defaultProps: {
-      BackdropProps: {
-        invisible: true,
+      // digit-web passes BackdropProps. MUI 9 removed that prop; slotProps.backdrop
+      // is the same invisible menu backdrop.
+      slotProps: {
+        backdrop: {
+          invisible: true,
+        },
       },
     },
     styleOverrides: {

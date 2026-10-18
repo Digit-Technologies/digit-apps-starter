@@ -55,6 +55,8 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiMenuItem: muiMenuItem(),
     MuiMenu: muiMenu(),
     MuiOutlinedInput: muiOutlinedInput(),
+    // MuiPickersInputBase / MuiPickersOutlinedInput stay on digit-web (need
+    // @mui/x-date-pickers). Do not copy them into the starter.
     MuiRadio: muiRadio(darkMode),
     MuiSelect: muiSelect(),
     MuiSwitch: muiSwitch(),

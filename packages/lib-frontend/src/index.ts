@@ -1,18 +1,29 @@
+/// <reference path="./css.d.ts" />
 /**
  * Public API for Digit custom apps.
  * Only import from this package root — other files are implementation details.
  */
 
 // Theme
-export { DigitThemeProvider } from "./theme"
+export { DigitThemeProvider } from "./theme";
 
-// Host / proxy types (importing this package augments Window)
-export type { DigitHost, DigitHostSettings } from "./globals"
-import "./globals"
+// Host API + types (importing this package augments Window)
+export { AppHost } from "./host";
+export type {
+  AppHostDownloadOptions,
+  AppHostPrintOptions,
+  AppHostSettings,
+  DigitHost,
+  DigitHostDownloadOptions,
+  DigitHostPrintOptions,
+  DigitHostSettings,
+  HostInvokeParams,
+} from "./globals";
+import "./globals";
 
 // Errors
-export { AppErrorAlert } from "./errors"
-export type { AppError } from "./errors"
+export { AppErrorAlert } from "./errors";
+export type { AppError } from "./errors";
 
 // Digit API + app backend (hooks only — imperative fetch helpers are internal)
 export {
@@ -20,5 +31,24 @@ export {
   useDigitApiMutation,
   useBackendQuery,
   useBackendMutation,
-} from "./api"
-export type { DigitResult } from "./api"
+} from "./api";
+export type { DigitResult } from "./api";
+
+// Labels designed in Sutton. The host renders them; the app previews the HTML, then prints.
+export {
+  LabelPreview,
+  LabelPrintDialog,
+  LabelPrintPanel,
+  printLabel,
+  useLabelPrint,
+} from "./labels";
+export type {
+  LabelEntityType,
+  LabelPreviewDocument,
+  LabelPreviewProps,
+  LabelPrintDialogProps,
+  LabelPrintPanelProps,
+  UseLabelPrintOptions,
+  PrintLabelArgs,
+  PrintLabelMode,
+} from "./labels";

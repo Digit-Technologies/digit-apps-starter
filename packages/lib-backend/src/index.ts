@@ -17,6 +17,9 @@ export { backendPath } from './backendPath';
 // Env / bindings
 export { requireEnv, optionalEnv } from './env';
 
+// The Digit API (platform-brokered, manifest-scoped)
+export type { PlatformApi, GraphqlResult } from './platformApi';
+
 // Jobs & schedules (platform scheduler)
 export { digitJobs } from './jobs';
 export type {

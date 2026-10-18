@@ -32,13 +32,20 @@ export default function App() {
     <Box sx={{ maxWidth: '72rem', mx: 'auto', px: 3, py: 4 }}>
       <Stack
         direction={{ xs: 'column', sm: 'row' }}
-        justifyContent="space-between"
-        alignItems={{ xs: 'flex-start', sm: 'center' }}
         spacing={0.5}
-        sx={{ mb: 3 }}
-      >
+        sx={{
+          justifyContent: "space-between",
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          mb: 3
+        }}>
         <Box>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "center",
+              mb: 0.5
+            }}>
             <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
               Digit App
             </Typography>
@@ -59,7 +66,9 @@ export default function App() {
         <Stack
           direction={{ xs: 'column', sm: 'row' }}
           spacing={{ xs: 0.5, sm: 2 }}
-          alignItems={{ xs: 'flex-start', sm: 'center' }}
+          sx={{
+            alignItems: { xs: 'flex-start', sm: 'center' }
+          }}
         >
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Today &amp; day boundaries shown in your local time ({tzAbbreviation})
@@ -89,7 +98,13 @@ export default function App() {
       )}
 
       {loading && !error && (
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3 }}>
+        <Stack
+          direction="row"
+          spacing={1.5}
+          sx={{
+            alignItems: "center",
+            mb: 3
+          }}>
           <CircularProgress size={18} />
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             Loading today&rsquo;s metrics…

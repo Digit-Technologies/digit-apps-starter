@@ -12,6 +12,6 @@
     "@digit/lib-common": "file:../lib-common"
   },
   "devDependencies": {
-    "typescript": "^5.8"
+    "typescript": "^7.0.2"
   }
 }

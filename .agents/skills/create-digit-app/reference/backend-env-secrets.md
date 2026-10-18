@@ -12,6 +12,24 @@ into the frontend bundle.
 - Secrets are write-only in the API (owners see keys, not values)
 - Frontend must never hard-code secret values
 
+## Draft: published env and published secrets
+
+Draft has a separate Worker and separate app-owned storage (D1/R2), but it uses the
+**same env vars and secrets as the published app**.
+
+Digit Settings that edit env vars or secrets update **the published app only**. A change made while
+reviewing a draft still writes the published record, and both the draft Worker and the published
+Worker then receive those values.
+
+**Promote does not wipe published env/secrets.** Draft shares published env and secrets; Digit
+Settings write the published app only. Nothing is copied from draft onto the published app for env or secrets —
+draft already shares them, and promote is not a config copy.
+
+Because a draft therefore always holds published credentials, guard or disable external writes,
+email, payments, and other irreversible side effects. Do not infer the channel from internal
+`X-Digit-*` headers: there is not yet a documented app-facing `isPreview()` helper. A supported
+runtime channel signal would be a platform/SDK change, not an app convention.
+
 ## Worker access
 
 Prefer `@digit/lib-backend`: wrap with `createHandler`, read bindings with `requireEnv`
@@ -86,7 +104,7 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 | Situation | Backend required? |
 | --- | --- |
 | Pure UI | No |
-| Digit GraphQL via `useDigitApiQuery` / `DigitProxyClient` | No |
+| Digit GraphQL via `useDigitApiQuery` / `AppProxy` | No |
 | Read non-secret config from Digit app settings | Yes |
 | Call third-party APIs with secrets | Yes |
 | App-own persistence (D1) | Yes (`backend.d1`) |
@@ -95,6 +113,6 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 ## Setup for users
 
 1. Create the app in Digit
-2. Set env vars / secrets on the app in Digit
+2. Set env vars / secrets in Digit Settings (published values; draft uses them too)
 3. Publish a bundle whose manifest declares `backend.kind: "cloudflare-worker"`
 4. Ship `backend/index.js` that reads those keys via `requireEnv` inside `createHandler`

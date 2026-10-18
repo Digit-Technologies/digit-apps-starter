@@ -4,6 +4,9 @@ import { Components, Theme } from "@mui/material/styles"
 import { neutralAlpha } from "./colors"
 import { ThemeProps } from "./types"
 
+// Shared html/body rules match digit-web. Omitted on purpose: Clerk's
+// `.cl-organizationSwitcher-root` overrides and detail-inset form styles
+// (those need private web components).
 export const muiCssBaseline = ({
   darkMode,
 }: ThemeProps): Components<Omit<Theme, "components">>["MuiCssBaseline"] => ({

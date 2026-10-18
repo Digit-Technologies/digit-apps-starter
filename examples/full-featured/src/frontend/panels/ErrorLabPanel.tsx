@@ -54,7 +54,7 @@ const FIXTURES: Record<string, AppError> = {
   unavailable: {
     kind: 'unavailable',
     code: 'CLIENT_UNAVAILABLE',
-    message: 'DigitProxyClient is unavailable. This page only works inside the Digit app harness.',
+    message: 'AppProxy is unavailable. This page only works inside the Digit app harness.',
     requestId: null,
     status: null,
   },
@@ -134,7 +134,9 @@ export default function ErrorLabPanel() {
           These call the real Digit API / Worker. Outside the Digit harness they will show the
           unavailable client error.
         </Typography>
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+        <Stack direction="row" spacing={1} useFlexGap sx={{
+          flexWrap: "wrap"
+        }}>
           <Button
             variant="outlined"
             disabled={live.status === 'loading'}
@@ -166,7 +168,9 @@ export default function ErrorLabPanel() {
           <AppErrorAlert error={live.error} onRetry={() => setLive({ status: 'idle' })} />
         )}
         {live.status === 'ok' && (
-          <Typography variant="body2" color="success.main">
+          <Typography variant="body2" sx={{
+            color: "success.main"
+          }}>
             {live.detail}
           </Typography>
         )}

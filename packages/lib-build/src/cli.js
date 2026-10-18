@@ -3,9 +3,10 @@ import { pack } from './pack.js';
 
 const usage = `Usage: digit-app pack
 
-Build frontend/ (+ backend/ when present) and write app.zip for Digit publish.
+Build frontend/ (+ backend/ when present) and write app.zip for a Digit draft or published deployment.
 
-Local Digit preview (dev/preview) is not supported yet — pack + publish is the path.
+Local Digit runtime draft is not supported — the platform injects Workers, env/secrets, and D1.
+Pack is the shared step before a remote draft or published deployment.
 `;
 
 async function main() {

@@ -7,7 +7,7 @@ const PLATFORM_USER_MESSAGES: Record<string, string> = {
   SESSION_EXPIRED: 'Your session expired. Re-open the app from Digit.',
   SESSION_APP_MISMATCH: 'Session does not match this app. Reload the app from Digit.',
   INVALID_ORIGIN:
-    'Request was rejected by Digit. Use DigitProxyClient (do not call /proxy/* with a bare fetch).',
+    'Request was rejected by Digit. Use AppProxy (do not call /proxy/* with a bare fetch).',
   RATE_LIMITED: 'Too many requests. Wait a moment and try again.',
   APP_UNAVAILABLE: 'This app is not currently available.',
   NO_BACKEND: 'This app has no backend configured.',

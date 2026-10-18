@@ -53,8 +53,8 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 Confirm root fields and selection sets against `graphql-schema://…` before shipping.
-Types for `window.DigitHost` are exported from `@digit/lib-frontend` (`DigitHost`,
-`DigitHostSettings`). Prefer the hooks over calling `window.DigitProxyClient` yourself.
+`AppHost` and its types (`AppHostSettings`) are exported from `@digit/lib-frontend`. Prefer the
+hooks over calling `window.AppProxy` yourself.
 
 ## Sort, filter, and pagination
 
@@ -76,6 +76,9 @@ tables.
 - Your query must be covered by `manifest.permissions` ∩ the user's live permissions
 - Do **not** call Digit GraphQL with a bearer token from app JS
 - Do **not** invent a different proxy URL
+
+On a draft Host, Digit GraphQL reads and writes use the viewer's permissions, still
+limited to `manifest.permissions`. App-owned D1/R2 writes stay in draft resources.
 
 ## App backend
 
@@ -111,13 +114,35 @@ export default createHandler({
 Import codes / validation from `@digit/lib-common`; Worker Response helpers from
 `@digit/lib-backend` (no re-exports between packages).
 
+## Digit API from the backend
+
+The backend `fetch` handler gets an `api` argument for Digit GraphQL. Never ask the user for an API token,
+org id or anything similar: the platform brokers every call.
+
+```js
+import { createHandler, ok } from '@digit/lib-backend';
+
+export default createHandler({
+  fetch: async ({ api }) => {
+    const result = await api.query(`{ purchaseOrders(connection: { first: 20 }) { nodes { id } } }`);
+    return ok({ data: result.data });
+  },
+});
+```
+
+- Scope is `manifest.permissions`, exactly as for `/proxy/digit` — declare what the backend needs
+- It acts as **the user whose request it is serving**. Jobs, schedules and webhooks have no
+  Digit API for now: do Digit work in `fetch`, or pass the data a job needs in its payload
+- Always use the `api` argument — never `env.__API`
+- Results come back as GraphQL `{ data, errors }` — check `errors`
+
 ## Host display settings
 
 ```ts
-import type { DigitHostSettings } from '@digit/lib-frontend';
+import { AppHost } from '@digit/lib-frontend';
 
-window.DigitHost?.getSettings(); // DigitHostSettings | null
-window.DigitHost?.onSettingsChange((settings) => { /* ... */ });
+AppHost.getSettings(); // AppHostSettings | null
+AppHost.onSettingsChange((settings) => { /* ... */ });
 ```
 
 `data-theme` and `lang` are also set on `<html>`. Apps using `@digit/lib-frontend` get

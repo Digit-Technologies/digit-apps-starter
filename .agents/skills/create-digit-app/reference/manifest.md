@@ -25,13 +25,20 @@ type AppManifest = {
       path: string;        // lowercase [a-z0-9-], max 32, unique — served at /webhooks/{path}
     }[];                   // max 10; see reference/webhooks.md
   };
+  build?: {                // written by `digit-app pack` into the zip copy — do not author it
+    starter: string | null; // starter release tag (or git:<sha> from a checkout)
+  };
 };
 ```
 
 ## Rules
 
+- Deployment channel is platform state, not manifest configuration. Do not add a `preview` or
+  `live` flag to the manifest; the same packed artifact can be deployed as a draft and later promoted.
 - `permissions` must be an array of known Digit permission **`key`** strings from MCP
   **`appPermissions`** — never invent strings (see [permissions.md](permissions.md))
+- `build` is stamped by `digit-app pack` so Digit can tell which starter release a published
+  app came from. Never hand-write it — re-pack instead
 - If `backend` is present, the zip **must** include `backend/index.js`
 - If the zip includes `backend/` files but the manifest has no `backend` block → reject
 - `bindings` maps `BINDING_NAME` (`^[A-Z][A-Z0-9_]{0,63}$`) to a type: `"database"` (a
@@ -44,12 +51,15 @@ type AppManifest = {
   binding points the app at a fresh, empty resource
 - Optional `backend/migrations/*.sql` requires a `database` binding — see
   [d1-migrations.md](d1-migrations.md)
-- Optional `backend.schedules` (recurring background runs): name `[a-z0-9-]{1,32}` unique,
-  `everySeconds` 300–86400, payload ≤4KB, max 5 — handled via `createHandler({ jobs })`;
-  publishing replaces the set wholesale (no `schedules` = clears them)
-- Optional `backend.webhooks` (public inbound POST endpoints): `path` `[a-z0-9-]{1,32}`
-  unique, max 10 — handled via `createHandler({ webhooks })`; undeclared paths 404 at the
-  platform edge, and the handler must verify the provider's signature itself
+- Optional `backend.schedules` run on the **published app only** (draft cron stays off): name
+  `[a-z0-9-]{1,32}` unique, `everySeconds` 300–86400, payload ≤4KB, max 5 — handled via
+  `createHandler({ jobs })`; a published deployment replaces the published set wholesale (no
+  `schedules` = clears published schedules). See [jobs-and-schedules.md](jobs-and-schedules.md)
+- Optional `backend.webhooks` (public inbound POST endpoints, **published app only** — draft Hosts
+  404 and do not deliver): `path` `[a-z0-9-]{1,32}` unique, max 10 — handled via
+  `createHandler({ webhooks })`; undeclared paths 404 at the platform edge, and the handler
+  must verify the provider's signature itself. Draft cron, webhooks, and other
+  timer/webhook side effects stay off
 - `frontend/index.js` must exist; `frontend/index.html` and `frontend/loader.js` are
   harness-reserved names your bundle may not contain
 
@@ -85,6 +95,7 @@ Produced by `digit-app pack`. Upload that zip **unchanged**.
 manifest.json            # zip root — Digit publish config
 frontend/                # Digit deploy — required
   index.js               # the entry, by convention
+  assets/                # self-hosted Inter (.woff2); served at /app/assets/
 backend/                 # Digit deploy — when manifest.backend is set
   index.js               # single-file Worker ESM, by convention
   migrations/
