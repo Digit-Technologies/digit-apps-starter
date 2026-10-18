@@ -40,6 +40,24 @@ That skill covers:
 - Deploying a draft or publishing the app with Digit tools (`publishAppZip` in App Builder, or
   MCP upload → `publishApp` with a channel → poll)
 
+## Agent plugin
+
+This repo is also the **Sutton Apps** plugin, which bundles the skills in
+[`.agents/skills/`](.agents/skills) for agents that install from a repository:
+
+- **Claude Code:** `/plugin marketplace add Digit-Technologies/digit-apps-starter`, then
+  `/plugin install sutton-apps@sutton` (or `/plugin install sutton-apps --marketplace Digit-Technologies/digit-apps-starter` on 2.1.275+)
+- **Codex:** `codex plugin marketplace add Digit-Technologies/digit-apps-starter`, then
+  `codex plugin add sutton-apps@sutton`
+- **Cursor:** a team admin imports this repo under **Import from Repo** in the team marketplace,
+  or clone it into `~/.cursor/plugins/local/sutton-apps`
+- **Any other agent:** `npx skills add Digit-Technologies/digit-apps-starter`
+
+Manifests live in `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and
+`.agents/plugins/marketplace.json`. Installed copies update when `version` changes, so bump it
+in all three `plugin.json` files together (CI checks they match). Check Claude manifests with
+`claude plugin validate --strict .`. None of these files ship in the starter zip.
+
 ## Packages
 
 | Package | Role |
