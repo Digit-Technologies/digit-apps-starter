@@ -2,6 +2,8 @@
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "bootstrap-sha": "ea827fbfdc816035f2b057ba9b45bfd97e78c029",
   "separate-pull-requests": true,
+  "draft": true,
+  "force-tag-creation": true,
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },
