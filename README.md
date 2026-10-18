@@ -54,9 +54,15 @@ This repo is also the **Sutton Apps** plugin, which bundles the skills in
 - **Any other agent:** `npx skills add Digit-Technologies/digit-apps-starter`
 
 Manifests live in `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and
-`.agents/plugins/marketplace.json`. Installed copies update when `version` changes, so bump it
-in all three `plugin.json` files together (CI checks they match). Check Claude manifests with
-`claude plugin validate --strict .`. None of these files ship in the starter zip.
+`.agents/plugins/marketplace.json`. Check Claude manifests with `claude plugin validate --strict .`.
+None of these files ship in the starter zip.
+
+Installed copies update when `version` changes. Don't edit it by hand: Release Please owns it.
+A `feat:`, `fix:`, `docs:` or `chore:` commit that touches `.agents/` opens (or updates) a
+`release sutton-apps-plugin` PR that bumps `version` in all three `plugin.json` files and
+`.release-please-manifest.json`, and adds an entry to `.agents/CHANGELOG.md`.
+Merging it tags `sutton-apps-plugin-vX.Y.Z`, and agents pick up the new version on their next
+marketplace refresh. `feat:` bumps the minor version; the others bump the patch.
 
 ## Packages
 

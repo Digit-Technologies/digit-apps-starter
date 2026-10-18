@@ -19,6 +19,9 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - '.github/workflows/publish-starter-asset.yml'
+      - '.github/workflows/release-please.yml'
+      - 'release-please-config.json'
+      - '.release-please-manifest.json'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -68,6 +71,20 @@ jobs:
           fi
 
           jq -e '.interface.displayName == "Sutton Apps"' .codex-plugin/plugin.json >/dev/null
+
+          # Release Please owns the version: its manifest must match, and every
+          # plugin.json must be in the plugin component's extra-files.
+          version="$(printf '%s' "$versions")"
+          jq -e --arg v "$version" '.[".agents"] == $v' .release-please-manifest.json >/dev/null \
+            || { echo "::error file=.release-please-manifest.json::.agents is not $version"; exit 1; }
+          for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .codex-plugin/plugin.json; do
+            jq -e --arg p "/$f" '
+              .packages[".agents"] as $pkg |
+              $pkg.component == "sutton-apps-plugin" and
+              any($pkg["extra-files"][]; .type == "json" and .path == $p and .jsonpath == "$.version")
+            ' release-please-config.json >/dev/null \
+              || { echo "::error file=release-please-config.json::$f is not bumped by Release Please"; exit 1; }
+          done
 
           # Claude: version lives in plugin.json only, or the marketplace entry silently loses.
           jq -e '

@@ -1,0 +1,46 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+# contents + pull-requests: Release Please opens the Release PR and creates the
+# GitHub Release.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    outputs:
+      # "true" only when this run created GitHub releases (Release PR merged).
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      # Sutton Apps agent plugin (.agents). Tagged sutton-apps-plugin-v*.
+      plugin_release_created: ${{ steps.release.outputs['.agents--release_created'] }}
+    steps:
+      - uses: googleapis/release-please-action@a02a34c4d625f9be7cb89156071d8567266a2445 # v4.2.0
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Component tags (sutton-apps-plugin-v*) must not replace the starter zip at
+      # /releases/latest. release-please does not pass make_latest: false.
+      - name: Keep the starter zip as the latest GitHub release
+        if: steps.release.outputs.releases_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag="$(gh release list --repo "${GITHUB_REPOSITORY}" --limit 100 --json tagName,isDraft,publishedAt --jq '
+            [.[] | select(.isDraft == false) | select(.tagName | startswith("starter-"))]
+            | sort_by(.publishedAt)
+            | last
+            | .tagName // empty
+          ')"
+          if [ -z "${tag}" ]; then
+            echo "No starter-* release found; leaving GitHub latest unchanged"
+            exit 0
+          fi
+          echo "Restoring GitHub latest release to ${tag}"
+          gh release edit "${tag}" --latest --repo "${GITHUB_REPOSITORY}"
