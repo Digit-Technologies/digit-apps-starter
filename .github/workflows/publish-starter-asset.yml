@@ -131,7 +131,9 @@ jobs:
 
           npm ci --no-audit --no-fund
 
-          for name in full-featured production-dashboard timecard; do
+          # Every example ships a zip: digit-api accepts any template name the release has a zip for.
+          for dir in examples/*/; do
+            name="$(basename "$dir")"
             npm run pack -w "examples/$name"
             unzip -Z1 "examples/$name/app.zip" | grep -Fx 'frontend/index.js' >/dev/null
             cp "examples/$name/app.zip" "$STAGE/examples/$name/app.zip"
@@ -187,7 +189,8 @@ jobs:
           unzip -q digit-apps-starter.zip 'digit-apps-starter/examples/*/app.zip' -d "$OUT" || true
 
           failed=0
-          for name in full-featured production-dashboard timecard; do
+          for dir in examples/*/; do
+            name="$(basename "$dir")"
             zip_path="$OUT/digit-apps-starter/examples/$name/app.zip"
             if [ ! -f "$zip_path" ]; then
               echo "::error::examples/$name/app.zip is missing from digit-apps-starter.zip"
@@ -231,7 +234,7 @@ jobs:
           - \`.agents/skills/create-digit-app\`
           - Pre-scaffolded, frontend-only, packable \`apps/app/\`
           - \`examples/\`, \`packages/\`, \`scripts/\`
-          - Prebuilt \`examples/{full-featured,production-dashboard,timecard}/app.zip\`
+          - Prebuilt \`examples/<name>/app.zip\` for every example
           - Root \`package.json\`, \`package-lock.json\`, \`README.md\`, \`LICENSE\`, \`.gitignore\`
 
           ### Download
