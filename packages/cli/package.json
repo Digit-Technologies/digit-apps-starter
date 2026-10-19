@@ -1,13 +1,13 @@
 {
-  "name": "@heysutton/sdk-build",
+  "name": "@heysutton/cli",
   "version": "1.0.0",
-  "description": "sutton-app pack: shared Vite build and app.zip packaging for Sutton custom apps",
+  "description": "sutton CLI for Sutton custom apps: `sutton studio pack` builds with Vite and writes app.zip",
   "license": "MIT",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/hey-sutton/sdk.git",
-    "directory": "packages/sdk-build"
+    "directory": "packages/cli"
   },
   "publishConfig": {
     "access": "public",
@@ -18,11 +18,13 @@
     "README.md"
   ],
   "bin": {
-    "sutton-app": "src/cli.js",
-    "digit-app": "src/cli.js"
+    "sutton": "src/cli.js",
+    "sutton-app": "src/sutton-app.js",
+    "digit-app": "src/digit-app.js"
   },
+  "main": "./src/index.js",
   "exports": {
-    ".": "./src/cli.js"
+    ".": "./src/index.js"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.5",

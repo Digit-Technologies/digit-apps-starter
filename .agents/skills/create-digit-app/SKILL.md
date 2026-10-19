@@ -114,10 +114,10 @@ do not invent a new project shape.
 
 The template covers theme, errors, Digit GraphQL (`useApiQuery`), public API, secrets,
 D1 via the Worker (`useBackendQuery` / `@heysutton/sdk-server`), and env config. Keep the
-`@heysutton/sdk-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
+`@heysutton/cli` devDependency and `"pack": "sutton studio pack"` — do **not** add Vite
 configs, a local pack script, or a per-app `npm install`.
 
-**Always install from the repo root.** `@heysutton/sdk-build` is a `file:` link, so npm puts
+**Always install from the repo root.** `@heysutton/cli` is a `file:` link, so npm puts
 its build toolchain (Vite) in the root `node_modules`, not the app's. Running `npm install`
 only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
@@ -176,8 +176,8 @@ then resolve its `id` with MCP **`apps`** (or have the user paste it).
 
 ```
 apps/my-app/
-├── package.json            # @heysutton/sdk* ; "pack": "digit-app pack"
-├── manifest.json           # staged at zip root by digit-app pack
+├── package.json            # @heysutton/sdk* ; "pack": "sutton studio pack"
+├── manifest.json           # staged at zip root by sutton studio pack
 ├── SPEC.md
 ├── src/frontend/           # main.tsx → #root + ThemeProvider; App.tsx
 ├── src/backend/            # optional Worker (index.js, migrations/)
@@ -223,7 +223,7 @@ Some lack `packages/lib-common`; the starter's private `packages/lib-common` shi
   restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `ThemeProvider` in `main.tsx` (see the template).
-- **Entry is IIFE `frontend/index.js`.** `@heysutton/sdk-build` packs it — no alternate bundler.
+- **Entry is IIFE `frontend/index.js`.** `@heysutton/cli` packs it — no alternate bundler.
 - **Digit API:** `useApiQuery` / `useApiMutation`. Look up operations via
   `graphql-schema://…` first. Never call Digit GraphQL with a bearer token from the browser.
 - **Sort / filter / page via the API:** When the GraphQL field (or backend route) accepts
@@ -400,7 +400,7 @@ upstream starter.
 ## Packages (`@heysutton/sdk*`)
 
 Import from each package **root only**. Helpers use **named arguments**. Runtime packages
-do **not** re-export each other. Use `@heysutton/sdk-build` only via `npm run pack`.
+do **not** re-export each other. Use `@heysutton/cli` only via `npm run pack`.
 Use the current export names (`ThemeProvider`, `useApiQuery`, `useApiMutation`, `appJobs`).
 The old `Digit*` names (`DigitThemeProvider`, `useDigitApiQuery`, `digitJobs`, …) are
 deprecated aliases; don't use them in new code.
@@ -410,7 +410,7 @@ deprecated aliases; don't use them in new code.
 | `@heysutton/sdk-react`  | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
 | `@heysutton/sdk-server` | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs                                                                          |
 | `@heysutton/sdk`        | With Worker (or code branching) | `AppErrorCode`, result types, validation                                                                                                |
-| `@heysutton/sdk-build`  | Always (devDependency)          | `digit-app pack`                                                                                                                        |
+| `@heysutton/cli`  | Always (devDependency)          | `sutton studio pack`                                                                                                                 |
 
 ### Backend Worker
 
@@ -443,4 +443,4 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/publish.md](reference/publish.md) — draft/published deployment workflows and zip rules
 - [reference/draft-and-publish.md](reference/draft-and-publish.md) — channel behavior and draft safety
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context
-- [`packages/sdk-build`](../../../packages/sdk-build) — `digit-app pack` shared tooling
+- [`packages/cli`](../../../packages/cli) — `sutton studio pack` shared tooling

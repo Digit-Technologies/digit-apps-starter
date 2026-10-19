@@ -7,7 +7,7 @@ Digit has two deployment channels for a custom app:
 
 The platform keeps the channels separate with different Workers, D1 databases, R2 buckets,
 sessions, and bundle pointers. A draft deployment does not change what the published app serves.
-The `app.zip` produced by `digit-app pack` is channel-neutral: the same reviewed build can be
+The `app.zip` produced by `sutton studio pack` is channel-neutral: the same reviewed build can be
 promoted without rebuilding it.
 
 ## Deployment flow
