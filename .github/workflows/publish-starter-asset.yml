@@ -16,6 +16,7 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - '.github/workflows/publish-starter-asset.yml'
+      - '.github/workflows/test-packages.yml'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -102,8 +103,9 @@ jobs:
           cd "$CHECK"
 
           npm install --no-audit --no-fund
+          npm run build:packages
 
-          # A second copy means the seed's pins disagree with lib-frontend's peers, and
+          # A second copy means the seed's pins disagree with sdk-react's peers, and
           # every app built from it bundles two Reacts.
           for pkg in react react-dom @mui/material; do
             copies="$(find . -path "*/node_modules/$pkg/package.json")"

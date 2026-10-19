@@ -8,8 +8,8 @@ import {
   optionalString,
   parseJsonResponse,
   requiredString,
-} from '@digit/lib-common';
-import { err, ok, requireEnv } from '@digit/lib-backend';
+} from '@heysutton/sdk';
+import { err, ok, requireEnv } from '@heysutton/sdk-server';
 
 function toNote(row) {
   return {

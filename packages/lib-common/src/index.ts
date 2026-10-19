@@ -1,20 +1,6 @@
 /**
- * Public API shared by Digit app frontend and backend.
- * Only import from this package root — other files are implementation details.
+ * Compatibility shim, never published. Apps packed before the rename import `@digit/lib-common`
+ * through their vendored `@digit/lib-frontend` without vendoring it, so this resolves it from the
+ * starter. New code imports `@heysutton/sdk`.
  */
-
-export * from './codes';
-
-export type {
-  SuccessResult,
-  ErrorResult,
-  Result,
-  ParseResult,
-} from './result';
-
-export {
-  parseJsonResponse,
-  requiredString,
-  optionalString,
-  parseObject,
-} from './validate';
+export * from '@heysutton/sdk';

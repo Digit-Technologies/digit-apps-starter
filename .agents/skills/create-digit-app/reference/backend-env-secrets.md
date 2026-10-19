@@ -32,19 +32,19 @@ runtime channel signal would be a platform/SDK change, not an app convention.
 
 ## Worker access
 
-Prefer `@digit/lib-backend`: wrap with `createHandler`, read bindings with `requireEnv`
+Prefer `@heysutton/sdk-server`: wrap with `createHandler`, read bindings with `requireEnv`
 (or `optionalEnv` when absence is a valid branch). Missing required keys become structured
 `{ ok: false, error }` responses — do not read `env.KEY` ad hoc and return plain text.
 
 ```js
-import { AppErrorCode } from '@digit/lib-common';
+import { AppErrorCode } from '@heysutton/sdk';
 import {
   backendPath,
   createHandler,
   err,
   ok,
   requireEnv,
-} from '@digit/lib-backend';
+} from '@heysutton/sdk-server';
 
 export default createHandler({
   fetch: async ({ request, env }) => {
@@ -90,7 +90,7 @@ Never put secret values or raw upstream bodies into `error.message` / success `d
 Frontend reads env-backed data only through the backend proxy, via hooks:
 
 ```ts
-import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
+import { AppErrorAlert, useBackendQuery } from '@heysutton/sdk-react';
 
 const { data, error, loading, refetch } = useBackendQuery<{ authenticated: boolean }>({
   path: '/external-status',
@@ -104,7 +104,7 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 | Situation | Backend required? |
 | --- | --- |
 | Pure UI | No |
-| Digit GraphQL via `useDigitApiQuery` / `AppProxy` | No |
+| Digit GraphQL via `useApiQuery` / `AppProxy` | No |
 | Read non-secret config from Digit app settings | Yes |
 | Call third-party APIs with secrets | Yes |
 | App-own persistence (D1) | Yes (`backend.d1`) |

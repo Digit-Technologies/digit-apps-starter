@@ -1,0 +1,48 @@
+# `@heysutton/sdk-build`
+
+Build tooling for Sutton custom apps. **v1 public CLI:** `sutton-app pack` only.
+`digit-app` is kept as an alias of the same binary, so existing `"pack": "digit-app pack"`
+scripts keep working.
+
+Local Digit runtime draft is not supported (Worker, env/secrets, and D1 are injected by
+the platform). Pack builds the channel-neutral deploy assets and writes `app.zip` for a
+remote draft or published deployment. See the create-digit-app skill for the draft → publish
+flow.
+
+## Install (app)
+
+```json
+{
+  "scripts": {
+    "pack": "digit-app pack"
+  },
+  "devDependencies": {
+    "@heysutton/sdk-build": "file:../../packages/sdk-build"
+  }
+}
+```
+
+This package brings its own Vite toolchain. Because it is linked with `file:`, npm installs
+that toolchain into the **workspace root** `node_modules`, not the app's — so run
+`npm install` from the repo root. Installing only inside the app leaves Vite missing and
+`pack` fails.
+
+## Conventions
+
+| Input | Output |
+| --- | --- |
+| `src/frontend/main.tsx` | `frontend/index.js` (IIFE — the entry) plus `frontend/assets/` (self-hosted Inter) |
+| `src/backend/index.js` (optional) | `backend/index.js` (+ `backend/migrations/*.sql`) |
+| Root `manifest.json` | `manifest.json` at the zip root |
+| `SPEC.md` + source/tooling | `project/` inside `app.zip` (vendored `@heysutton/sdk*`) |
+
+Zip root: `manifest.json` + `frontend/` (+ `backend/`) for Digit deploy, plus required
+`project/` (source, SPEC, vendored libs — not what Digit deploys).
+
+## Commands
+
+```bash
+npm run pack   # digit-app pack → build + app.zip
+```
+
+Do not add per-app Vite configs or `scripts/pack.sh` — this package owns them.
