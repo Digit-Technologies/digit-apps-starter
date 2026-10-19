@@ -42,21 +42,6 @@ Old packs only vendored libs an app listed directly, so frontend-only apps often
 starter checkout, and `pack` vendors it plus `sdk` so one re-pack makes the zip self-contained.
 It is not in `release-please-config.json` or `scripts/publish-packages.sh`.
 
-## What Sean still wires
-
-The `@heysutton` npm org already exists. This repo does not store a token. Before the
-first real publish, add a GitHub Actions secret on `Digit-Technologies/digit-apps-starter`:
-
-| Secret      | Value                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `NPM_TOKEN` | Granular or classic Automation token that can publish `@heysutton/sdk`, `@heysutton/sdk-react`, `@heysutton/sdk-server`, and `@heysutton/cli` |
-
-The publish job maps `NPM_TOKEN` to `NODE_AUTH_TOKEN` and **fails closed** when it is
-empty. It also sets `id-token: write` and runs `npm publish --provenance --access public`.
-Without `id-token: write`, provenance cannot mint the Actions OIDC token and the first
-real publish fails. Trusted publishing (npm OIDC, no long-lived token) can replace the
-token later.
-
 ## Versions
 
 [Release Please](https://github.com/googleapis/release-please) manifest mode:
