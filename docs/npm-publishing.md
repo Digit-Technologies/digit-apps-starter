@@ -5,8 +5,7 @@ The four SDK packages in `packages/` publish to npm as **public** packages under
 only when a **Release Please release PR merges**.
 
 This is separate from the curated starter zip (`publish-starter-asset.yml`, tags
-`starter-*`). There is no design-system package here: `Modal`, `InputTextField`,
-`IconWrapper` and `InvisibleButton` are not exported, and UI styles come from Figma.
+`starter-*`).
 
 ## Packages
 
