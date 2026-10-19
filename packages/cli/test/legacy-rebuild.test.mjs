@@ -38,10 +38,7 @@ test('the lib-common shim is never published', async () => {
   );
   assert.equal(pkg.name, '@digit/lib-common');
   assert.equal(pkg.private, true);
-  const config = JSON.parse(
-    await fs.readFile(path.join(packagesDir, '..', 'release-please-config.json'), 'utf8'),
-  );
-  assert.equal(config.packages['packages/lib-common'], undefined);
+  assert.equal(pkg.version, '0.0.0');
 });
 
 // Apps packed before the rename vendor @digit/lib-frontend but not the @digit/lib-common it
