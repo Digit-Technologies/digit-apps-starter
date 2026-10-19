@@ -33,3 +33,13 @@ jobs:
 
       - name: Build @heysutton packages
         run: npm run build:packages
+
+      - name: Installed-package smoke test
+        run: scripts/smoke-installed-packages.sh
+
+      - name: Dry-run npm pack
+        run: |
+          set -euo pipefail
+          for pkg in sdk sdk-react sdk-server cli; do
+            npm publish --dry-run --access public -w "@heysutton/${pkg}"
+          done
