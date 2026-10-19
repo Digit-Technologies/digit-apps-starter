@@ -15,7 +15,7 @@ npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
 ```
 
 This repo is one npm workspace (`packages/*`, `examples/*`, `apps/*`). Always install from
-the repo root — `@heysutton/sdk-build` is linked with `file:`, so npm installs its Vite build
+the repo root — `@heysutton/cli` is linked with `file:`, so npm installs its Vite build
 toolchain into the root `node_modules` rather than the app's.
 
 The curated starter archive includes `apps/app/`, pre-scaffolded from the frontend-only
@@ -47,7 +47,7 @@ That skill covers:
 | [`packages/sdk`](packages/sdk) (`@heysutton/sdk`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
 | [`packages/sdk-react`](packages/sdk-react) (`@heysutton/sdk-react`) | Theme, harness types, Digit/backend **hooks**, error UI, `printLabel` |
 | [`packages/sdk-server`](packages/sdk-server) (`@heysutton/sdk-server`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
-| [`packages/sdk-build`](packages/sdk-build) (`@heysutton/sdk-build`) | `digit-app pack` — shared Vite build + `app.zip` |
+| [`packages/cli`](packages/cli) (`@heysutton/cli`) | `sutton studio pack` — shared Vite build + `app.zip` |
 | [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Private, never published: re-exports `@heysutton/sdk` so apps packed before the rename still build. Don't use in new apps |
 
 Runtime packages expose a slim root export for everyday app/Worker code. Other files
@@ -55,7 +55,7 @@ under `src/` are implementation details — do not deep-import them. Helpers use
 arguments. Runtime packages do **not** re-export each other.
 
 Apps depend on them via `file:…` — not on private `digit-web`. With a Worker, depend on
-`sdk-react` + `sdk-server` + `sdk`, plus `sdk-build` as a devDependency.
+`sdk-react` + `sdk-server` + `sdk`, plus `@heysutton/cli` as a devDependency.
 
 ## Example
 
