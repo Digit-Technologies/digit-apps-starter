@@ -14,7 +14,7 @@ Reference Digit app that exercises the main platform surfaces in one place:
 | Config | Env `WELCOME_MESSAGE` via `/proxy/backend/greeting` |
 
 Uses `@heysutton/sdk-react`, `@heysutton/sdk-server`, `@heysutton/sdk`, and
-`@heysutton/sdk-build` (`digit-app pack`).
+`@heysutton/cli` (`sutton studio pack`).
 
 Layout:
 
@@ -25,7 +25,7 @@ Layout:
 
 Scripts:
 
-- `npm run pack` — `digit-app pack`: build + `app.zip` for Digit upload
+- `npm run pack` — `sutton studio pack`: build + `app.zip` for Digit upload
 
 Local Digit runtime draft is not supported (there is no local Worker / env / D1 harness).
 Pack this example for a remote Digit draft first — a draft isolates Worker/D1/R2 from the published app
@@ -39,7 +39,7 @@ frontend/                 # Digit deploy
 backend/                  # Digit deploy
 project/                  # Required in the zip — source, SPEC, tooling (not deployed)
   src/, SPEC.md, configs
-  packages/sdk*          # vendored (incl. sdk-build) until registry publish
+  packages/sdk*          # vendored (incl. cli) until registry publish
 ```
 
 ## Setup in Digit

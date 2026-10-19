@@ -20,12 +20,12 @@ const PROJECT_ALLOWLIST = [
 ];
 
 function libBuildPackagesDir() {
-  // packages/sdk-build/src/pack.js → packages/
+  // packages/cli/src/pack.js → packages/
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 }
 
 /** Build tooling folder, always vendored so the project can re-pack. */
-export const BUILD_FOLDER = 'sdk-build';
+export const BUILD_FOLDER = 'cli';
 
 /** Runtime libs whose package entry points are built `dist/` output. */
 const BUILT_LIB_FOLDERS = new Set(['sdk', 'sdk-react', 'sdk-server']);
@@ -39,7 +39,7 @@ async function resolvePackagesDir({ root }) {
     return monorepo;
   }
   throw new Error(
-    'cannot find @heysutton/sdk* packages (expected ./packages or monorepo packages/ next to sdk-build)',
+    'cannot find @heysutton/sdk* packages (expected ./packages or monorepo packages/ next to packages/cli)',
   );
 }
 
@@ -47,7 +47,7 @@ const SDK_NAMES = new Map([
   ['@heysutton/sdk', 'sdk'],
   ['@heysutton/sdk-react', 'sdk-react'],
   ['@heysutton/sdk-server', 'sdk-server'],
-  ['@heysutton/sdk-build', 'sdk-build'],
+  ['@heysutton/cli', 'cli'],
 ]);
 
 /**
@@ -75,21 +75,29 @@ function libDepsOf(pkg) {
   return found;
 }
 
+/** First of `dirs` that holds packages/<folder>, or null. */
+async function findLibDir(dirs, folder) {
+  for (const dir of dirs) {
+    const src = path.join(dir, folder);
+    if (await pathExists(path.join(src, 'package.json'))) return src;
+  }
+  return null;
+}
+
 /**
  * Platform libs to vendor: the app's own, the build tooling, and every lib those depend
  * on. sdk-react and sdk-server depend on `@heysutton/sdk` by version; in the reseeded
  * project that version only resolves (without the registry) when sdk is vendored too and
  * linked from the project root.
  */
-async function libsToVendor({ pkg, packagesDir }) {
+async function libsToVendor({ pkg, libDirs }) {
   const libs = libDepsOf(pkg);
-  if (![...libs.values()].includes(BUILD_FOLDER)) libs.set('@heysutton/sdk-build', BUILD_FOLDER);
+  if (![...libs.values()].includes(BUILD_FOLDER)) libs.set('@heysutton/cli', BUILD_FOLDER);
   const queue = [...libs.values()];
   while (queue.length > 0) {
-    const folder = queue.shift();
-    const manifest = path.join(packagesDir, folder, 'package.json');
-    if (!(await pathExists(manifest))) continue;
-    const libPkg = JSON.parse(await fs.readFile(manifest, 'utf8'));
+    const src = await findLibDir(libDirs, queue.shift());
+    if (!src) continue;
+    const libPkg = JSON.parse(await fs.readFile(path.join(src, 'package.json'), 'utf8'));
     for (const [name, dep] of libDepsOf({ dependencies: libPkg.dependencies })) {
       if (libs.has(name)) continue;
       libs.set(name, dep);
@@ -116,7 +124,12 @@ function rewriteDigitLibDeps(pkg, libs) {
   return pkg;
 }
 
-async function stageProject({ root, staging, packagesDir }) {
+/**
+ * Libs come from the app's own packages/ first, then the tooling's. An app packed before
+ * the rename vendors `@digit/lib-*` under packages/lib-*, which the current tooling does
+ * not ship, while the `@heysutton/*` libs it adds come from the tooling.
+ */
+export async function stageProject({ root, staging, packagesDir }) {
   const projectDir = path.join(staging, 'project');
   await fs.mkdir(projectDir, { recursive: true });
 
@@ -136,18 +149,16 @@ async function stageProject({ root, staging, packagesDir }) {
 
   const pkgPath = path.join(projectDir, 'package.json');
   const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf8'));
-  const libs = await libsToVendor({ pkg, packagesDir });
+  const libDirs = [...new Set([path.join(root, 'packages'), packagesDir])];
+  const libs = await libsToVendor({ pkg, libDirs });
 
   const packagesOut = path.join(projectDir, 'packages');
   await fs.mkdir(packagesOut, { recursive: true });
 
   for (const folder of new Set(libs.values())) {
-    const src = path.join(packagesDir, folder);
-    if (!(await pathExists(src))) {
-      if (folder === BUILD_FOLDER) {
-        throw new Error(`missing required package ${folder} under ${packagesDir}`);
-      }
-      continue;
+    const src = await findLibDir(libDirs, folder);
+    if (!src) {
+      throw new Error(`missing package ${folder} (looked in ${libDirs.join(', ')})`);
     }
     // Runtime libs resolve to dist/ (package.json exports). The vendored copy is installed
     // with file: in the reseeded project, where nothing rebuilds it, so dist/ must ship.
@@ -198,7 +209,7 @@ export async function pack({ root = process.cwd() } = {}) {
     throw new Error('SPEC.md is required before pack (iteration context for the next agent)');
   }
   if (!(await pathExists(path.join(appRoot, 'package.json')))) {
-    throw new Error('package.json not found — run digit-app pack from the app root');
+    throw new Error('package.json not found — run sutton studio pack from the app root');
   }
 
   console.log('Building frontend…');
