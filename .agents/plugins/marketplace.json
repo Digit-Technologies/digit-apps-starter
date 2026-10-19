@@ -5,7 +5,7 @@
   },
   "plugins": [
     {
-      "name": "sutton-apps",
+      "name": "sutton",
       "source": {
         "source": "local",
         "path": "./"

@@ -8,9 +8,9 @@
   },
   "plugins": [
     {
-      "name": "sutton-apps",
+      "name": "sutton",
       "source": "./",
-      "description": "Build, draft, and publish Sutton custom apps."
+      "description": "Sutton agent skills. The current skill builds, drafts, and publishes Sutton Studio and custom apps."
     }
   ]
 }

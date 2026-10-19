@@ -57,7 +57,7 @@ jobs:
           SKILLS="./.agents/skills/"
           for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .codex-plugin/plugin.json; do
             jq -e --arg skills "$SKILLS" '
-              .name == "sutton-apps" and
+              .name == "sutton" and
               (.version | type) == "string" and
               .skills == $skills
             ' "$f" >/dev/null || { echo "::error file=$f::unexpected plugin manifest"; exit 1; }
@@ -70,7 +70,9 @@ jobs:
             exit 1
           fi
 
-          jq -e '.interface.displayName == "Sutton Apps"' .codex-plugin/plugin.json >/dev/null
+          jq -e '.displayName == "Sutton"' .claude-plugin/plugin.json >/dev/null
+          jq -e '.displayName == "Sutton"' .cursor-plugin/plugin.json >/dev/null
+          jq -e '.interface.displayName == "Sutton"' .codex-plugin/plugin.json >/dev/null
 
           # Release Please owns the version: its manifest must match, and every
           # plugin.json must be in the plugin component's extra-files.
@@ -80,7 +82,7 @@ jobs:
           for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .codex-plugin/plugin.json; do
             jq -e --arg p "/$f" '
               .packages[".agents"] as $pkg |
-              $pkg.component == "sutton-apps-plugin" and
+              $pkg.component == "sutton-plugin" and
               any($pkg["extra-files"][]; .type == "json" and .path == $p and .jsonpath == "$.version")
             ' release-please-config.json >/dev/null \
               || { echo "::error file=release-please-config.json::$f is not bumped by Release Please"; exit 1; }
@@ -89,15 +91,15 @@ jobs:
           # Claude: version lives in plugin.json only, or the marketplace entry silently loses.
           jq -e '
             .name == "sutton" and
-            any(.plugins[]; .name == "sutton-apps" and .source == "./" and (has("version") | not))
+            any(.plugins[]; .name == "sutton" and .source == "./" and (has("version") | not))
           ' .claude-plugin/marketplace.json >/dev/null
           jq -e '
             .name == "sutton" and
-            any(.plugins[]; .name == "sutton-apps" and .source == "./")
+            any(.plugins[]; .name == "sutton" and .source == "./")
           ' .cursor-plugin/marketplace.json >/dev/null
           jq -e '
             .name == "sutton" and
-            any(.plugins[]; .name == "sutton-apps" and .source.path == "./" and
+            any(.plugins[]; .name == "sutton" and .source.path == "./" and
               (.policy.installation | type) == "string" and (.category | type) == "string")
           ' .agents/plugins/marketplace.json >/dev/null
 

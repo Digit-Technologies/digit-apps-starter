@@ -42,15 +42,16 @@ That skill covers:
 
 ## Agent plugin
 
-This repo is also the **Sutton Apps** plugin, which bundles the skills in
-[`.agents/skills/`](.agents/skills) for agents that install from a repository:
+This repo is also the **Sutton** plugin, the home for Sutton agent skills in
+[`.agents/skills/`](.agents/skills). The current skill is `create-digit-app`, which
+builds, drafts, and publishes Sutton Studio and custom apps:
 
 - **Claude Code:** `/plugin marketplace add Digit-Technologies/digit-apps-starter`, then
-  `/plugin install sutton-apps@sutton` (or `/plugin install sutton-apps --marketplace Digit-Technologies/digit-apps-starter` on 2.1.275+)
+  `/plugin install sutton@sutton` (or `/plugin install sutton --marketplace Digit-Technologies/digit-apps-starter` on 2.1.275+)
 - **Codex:** `codex plugin marketplace add Digit-Technologies/digit-apps-starter`, then
-  `codex plugin add sutton-apps@sutton`
+  `codex plugin add sutton@sutton`
 - **Cursor:** a team admin imports this repo under **Import from Repo** in the team marketplace,
-  or clone it into `~/.cursor/plugins/local/sutton-apps`
+  or clone it into `~/.cursor/plugins/local/sutton`
 - **Any other agent:** `npx skills add Digit-Technologies/digit-apps-starter`
 
 Manifests live in `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and
@@ -59,9 +60,9 @@ None of these files ship in the starter zip.
 
 Installed copies update when `version` changes. Don't edit it by hand: Release Please owns it.
 A `feat:`, `fix:`, `docs:` or `chore:` commit that touches `.agents/` opens (or updates) a
-`release sutton-apps-plugin` PR that bumps `version` in all three `plugin.json` files and
+`release sutton-plugin` PR that bumps `version` in all three `plugin.json` files and
 `.release-please-manifest.json`, and adds an entry to `.agents/CHANGELOG.md`.
-Merging it tags `sutton-apps-plugin-vX.Y.Z`, and agents pick up the new version on their next
+Merging it tags `sutton-plugin-vX.Y.Z`, and agents pick up the new version on their next
 marketplace refresh. `feat:` bumps the minor version; the others bump the patch.
 
 ## Packages

@@ -1,19 +1,19 @@
 {
-  "name": "sutton-apps",
+  "name": "sutton",
   "version": "0.1.0",
-  "description": "Build, draft, and publish Sutton custom apps with the create-digit-app skill.",
+  "description": "Sutton agent skills. The current skill, create-digit-app, builds, drafts, and publishes Sutton Studio and custom apps.",
   "author": {
     "name": "Sutton"
   },
   "homepage": "https://github.com/Digit-Technologies/digit-apps-starter",
   "repository": "https://github.com/Digit-Technologies/digit-apps-starter",
   "license": "MIT",
-  "keywords": ["sutton", "custom-apps", "mcp"],
+  "keywords": ["sutton", "skills", "sdk", "custom-apps", "mcp"],
   "skills": "./.agents/skills/",
   "interface": {
-    "displayName": "Sutton Apps",
-    "shortDescription": "Build Sutton custom apps",
-    "longDescription": "Scaffold, build, pack, draft, and publish Sutton custom apps (React + MUI frontends with optional Worker backends) using the create-digit-app skill. Publishing needs a Sutton account and the Sutton MCP connection.",
+    "displayName": "Sutton",
+    "shortDescription": "Sutton agent skills",
+    "longDescription": "Sutton agent skills. The current skill, create-digit-app, scaffolds, builds, packs, drafts, and publishes Sutton Studio and custom apps (React + MUI frontends with optional Worker backends). Publishing needs a Sutton account and the Sutton MCP connection.",
     "developerName": "Sutton",
     "category": "Developer Tools",
     "capabilities": [],
