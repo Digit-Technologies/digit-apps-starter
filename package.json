@@ -17,7 +17,7 @@
     "prepare": "npm run build:packages"
   },
   "engines": {
-    "node": ">=22"
+    "node": "24.x"
   },
   "overrides": {
     "@types/react": "^19.2.18",
