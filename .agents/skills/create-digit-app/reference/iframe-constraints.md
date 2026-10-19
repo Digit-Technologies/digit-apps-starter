@@ -52,7 +52,7 @@ host can do some of these on the app's behalf (scanning, for example).
 - SPA navigation and in-iframe links (same document / React Router-style)
 - MUI **Dialog**, Drawer, Menu, Popover, Snackbar — these are in-page overlays, not
   browser `window.alert`-style modals
-- Digit proxies and hooks (`useDigitApiQuery`, `useBackendQuery`, …)
+- Digit proxies and hooks (`useApiQuery`, `useBackendQuery`, …)
 - Forms with `onSubmit` + `preventDefault`, posting JSON via fetch/hooks
 - “Copy” buttons via `navigator.clipboard.writeText(...)` inside a click handler
 - File exports via `AppHost.invoke("download", { filename, contentType, data })` — the host

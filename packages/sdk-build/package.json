@@ -1,0 +1,32 @@
+{
+  "name": "@heysutton/sdk-build",
+  "version": "1.0.0",
+  "description": "sutton-app pack: shared Vite build and app.zip packaging for Sutton custom apps",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Digit-Technologies/digit-apps-starter.git",
+    "directory": "packages/sdk-build"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "bin": {
+    "sutton-app": "src/cli.js",
+    "digit-app": "src/cli.js"
+  },
+  "exports": {
+    ".": "./src/cli.js"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^6.0.5",
+    "vite": "^8.2.1",
+    "vite-plugin-css-injected-by-js": "^5.0.2"
+  }
+}

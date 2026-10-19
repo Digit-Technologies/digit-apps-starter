@@ -1,7 +1,7 @@
 // prune-notes is the manifest schedule (hourly); note-stats is submitted on demand by the
 // /jobs/note-stats route.
 
-import { requireEnv } from '@digit/lib-backend';
+import { requireEnv } from '@heysutton/sdk-server';
 
 export async function pruneNotes({ payload, env }) {
   const db = requireEnv({ env, key: 'FULL_FEATURED_DB' });

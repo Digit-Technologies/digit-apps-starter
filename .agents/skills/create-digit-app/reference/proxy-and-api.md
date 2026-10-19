@@ -3,7 +3,7 @@
 Apps run on a per-app origin. The only egress the frontend CSP allows is same-origin, so
 Digit data and app backends are reached through Digit-hosted proxies.
 
-Prefer the React hooks from `@digit/lib-frontend` — they wrap the harness client and
+Prefer the React hooks from `@heysutton/sdk-react` — they wrap the harness client and
 normalize errors for `AppErrorAlert`. The package’s public data API is **hooks only**
 (imperative fetch helpers stay private).
 
@@ -27,12 +27,12 @@ see [permissions.md](permissions.md).
 ```ts
 import {
   AppErrorAlert,
-  useDigitApiQuery,
+  useApiQuery,
   useBackendQuery,
   useBackendMutation,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
-const { data, error, loading, refetch } = useDigitApiQuery({
+const { data, error, loading, refetch } = useApiQuery({
   query: `
     query Items($connection: ConnectionInput) {
       items(connection: $connection) {
@@ -53,7 +53,7 @@ await mutateNote({ path: '/notes', method: 'POST', body: { title: 'Hi' } });
 ```
 
 Confirm root fields and selection sets against `graphql-schema://…` before shipping.
-`AppHost` and its types (`AppHostSettings`) are exported from `@digit/lib-frontend`. Prefer the
+`AppHost` and its types (`AppHostSettings`) are exported from `@heysutton/sdk-react`. Prefer the
 hooks over calling `window.AppProxy` yourself.
 
 ## Sort, filter, and pagination
@@ -69,7 +69,7 @@ tables.
 
 ## Digit GraphQL API
 
-`useDigitApiQuery` / `useDigitApiMutation` POST `/proxy/digit` with
+`useApiQuery` / `useApiMutation` POST `/proxy/digit` with
 `credentials: 'include'` and `X-Digit-Proxy-Client: 1`.
 
 - Credentials stay server-side (HttpOnly session cookie + scoped token in Redis)
@@ -88,11 +88,11 @@ When `manifest.backend` is set, `useBackendQuery` / `useBackendMutation` hit
 - Always go through these helpers so `X-Digit-Proxy-Client` is set
 - Paths starting with `/__` are reserved and refused
 - The platform sets `X-Digit-App-Id` from the Host header — the browser cannot spoof another app's worker
-- Pair with `@digit/lib-backend` on the Worker (`createHandler`, `backendPath`, `ok` / `err`)
+- Pair with `@heysutton/sdk-server` on the Worker (`createHandler`, `backendPath`, `ok` / `err`)
 
 ```js
-import { AppErrorCode } from '@digit/lib-common';
-import { backendPath, createHandler, ok, err, requireEnv } from '@digit/lib-backend';
+import { AppErrorCode } from '@heysutton/sdk';
+import { backendPath, createHandler, ok, err, requireEnv } from '@heysutton/sdk-server';
 
 export default createHandler({
   fetch: async ({ request, env }) => {
@@ -111,8 +111,8 @@ export default createHandler({
 });
 ```
 
-Import codes / validation from `@digit/lib-common`; Worker Response helpers from
-`@digit/lib-backend` (no re-exports between packages).
+Import codes / validation from `@heysutton/sdk`; Worker Response helpers from
+`@heysutton/sdk-server` (no re-exports between packages).
 
 ## Digit API from the backend
 
@@ -120,7 +120,7 @@ The backend `fetch` handler gets an `api` argument for Digit GraphQL. Never ask 
 org id or anything similar: the platform brokers every call.
 
 ```js
-import { createHandler, ok } from '@digit/lib-backend';
+import { createHandler, ok } from '@heysutton/sdk-server';
 
 export default createHandler({
   fetch: async ({ api }) => {
@@ -139,11 +139,11 @@ export default createHandler({
 ## Host display settings
 
 ```ts
-import { AppHost } from '@digit/lib-frontend';
+import { AppHost } from '@heysutton/sdk-react';
 
 AppHost.getSettings(); // AppHostSettings | null
 AppHost.onSettingsChange((settings) => { /* ... */ });
 ```
 
-`data-theme` and `lang` are also set on `<html>`. Apps using `@digit/lib-frontend` get
-light/dark sync automatically via `DigitThemeProvider` — see [theming.md](theming.md).
+`data-theme` and `lang` are also set on `<html>`. Apps using `@heysutton/sdk-react` get
+light/dark sync automatically via `ThemeProvider` — see [theming.md](theming.md).
