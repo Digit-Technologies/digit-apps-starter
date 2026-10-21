@@ -81,6 +81,14 @@ declare module "@mui/material/styles" {
       default: string
       strong: string
       extrastrong: string
+      /** Solid #e5e5e5 line: page header, toolbar and menu outlines. */
+      solidStrong: string
+      /** Solid #f5f5f5 line: section dividers inside a page or card. */
+      solidDefault: string
+    }
+    table: {
+      hover: string
+      selected: string
     }
     divider: string
     opacity: {
@@ -94,6 +102,12 @@ declare module "@mui/material/styles" {
       default?: string
       strong?: string
       extrastrong?: string
+      solidStrong?: string
+      solidDefault?: string
+    }
+    table?: {
+      hover?: string
+      selected?: string
     }
     divider?: string
     opacity?: {
@@ -103,17 +117,4 @@ declare module "@mui/material/styles" {
     tabFocus?: string
   }
 
-  interface Theme {
-    spacingMultiplier: {
-      xs: number
-      md: number
-    }
-  }
-
-  interface ThemeOptions {
-    spacingMultiplier?: {
-      xs?: number
-      md?: number
-    }
-  }
 }

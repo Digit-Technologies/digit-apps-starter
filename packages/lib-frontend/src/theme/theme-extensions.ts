@@ -1,4 +1,4 @@
-import { blue, neutralAlpha } from "./colors"
+import { blue, neutral, neutralAlpha, stone } from "./colors"
 
 /**
  * Shared theme extension constants used by both the actual theme
@@ -25,6 +25,27 @@ export const themeExtensions = {
       light: neutralAlpha.darken[200], // "rgba(0, 0, 0, 0.1)"
       dark: neutralAlpha.lighten[200], // "rgba(255, 255, 255, 0.1)"
     },
+    // Figma paper/border/solid/*. Solid lines for page chrome: the page header and toolbar
+    // dividers, menu outlines, and the sidebar edge.
+    solidStrong: {
+      light: neutral[200], // #e5e5e5
+      dark: neutral[600], // #525252
+    },
+    solidDefault: {
+      light: neutral[100], // #f5f5f5
+      dark: neutral[700], // #404040
+    },
+  },
+  // Figma table/row/background/*.
+  table: {
+    hover: {
+      light: stone[50], // #fafaf9
+      dark: stone[750], // #37322f
+    },
+    selected: {
+      light: stone[100], // #f5f5f4
+      dark: stone[700], // #44403b
+    },
   },
   divider: {
     light: neutralAlpha.darken[50], // "rgba(0, 0, 0, 0.05)"
@@ -34,7 +55,11 @@ export const themeExtensions = {
     helper: 0.6,
     disabled: 0.3,
   },
-  tabFocus: blue[600], // "rgba(21, 93, 252, 1)"
+  // Figma button-iconButton/all/outline/focus.
+  tabFocus: {
+    light: blue[600], // #155dfc
+    dark: blue[400], // #51a2ff
+  },
 } as const
 
 /**
@@ -43,7 +68,14 @@ export const themeExtensions = {
 export const getThemeExtensions = (
   darkMode: boolean,
 ): {
-  border: { default: string; strong: string; extrastrong: string }
+  border: {
+    default: string
+    strong: string
+    extrastrong: string
+    solidStrong: string
+    solidDefault: string
+  }
+  table: { hover: string; selected: string }
   divider: string
   opacity: { helper: number; disabled: number }
   tabFocus: string
@@ -58,10 +90,22 @@ export const getThemeExtensions = (
     extrastrong: darkMode
       ? themeExtensions.border.extrastrong.dark
       : themeExtensions.border.extrastrong.light,
+    solidStrong: darkMode
+      ? themeExtensions.border.solidStrong.dark
+      : themeExtensions.border.solidStrong.light,
+    solidDefault: darkMode
+      ? themeExtensions.border.solidDefault.dark
+      : themeExtensions.border.solidDefault.light,
+  },
+  table: {
+    hover: darkMode ? themeExtensions.table.hover.dark : themeExtensions.table.hover.light,
+    selected: darkMode
+      ? themeExtensions.table.selected.dark
+      : themeExtensions.table.selected.light,
   },
   divider: darkMode
     ? themeExtensions.divider.dark
     : themeExtensions.divider.light,
   opacity: themeExtensions.opacity,
-  tabFocus: themeExtensions.tabFocus,
+  tabFocus: darkMode ? themeExtensions.tabFocus.dark : themeExtensions.tabFocus.light,
 })

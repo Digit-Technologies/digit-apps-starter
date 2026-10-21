@@ -134,10 +134,26 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
   shape: {
     borderRadius: 16,
   },
-  spacing: 8, // default spacing multiplier for md and above
-  spacingMultiplier: {
-    xs: 10, // mobile uses 10px base
-    md: 8, // desktop uses 8px base (MUI default)
+  // Figma Scale: the spacing base is 8px, and 10px below 600px. muiCssBaseline sets the variable,
+  // so every theme.spacing() value, and every sx padding or gap, scales with it.
+  spacing: (factor: number) => `calc(var(--digit-spacing-base, 8px) * ${factor})`,
+  // Figma Animation: every transition is 20ms ease-in.
+  transitions: {
+    duration: {
+      shortest: 20,
+      shorter: 20,
+      short: 20,
+      standard: 20,
+      complex: 20,
+      enteringScreen: 20,
+      leavingScreen: 20,
+    },
+    easing: {
+      easeInOut: "ease-in",
+      easeOut: "ease-in",
+      easeIn: "ease-in",
+      sharp: "ease-in",
+    },
   },
   typography: typography({ darkMode }),
 })

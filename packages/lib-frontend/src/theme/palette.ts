@@ -23,8 +23,9 @@ export const palette = ({ darkMode }: ThemeProps): ThemeOptions["palette"] => {
       dark: darkMode ? stone[400] : stone[800],
       contrastText: darkMode ? neutral.black : neutral.white,
     },
+    // Figma form …/border/error: red 500 in light mode, red 600 in dark mode.
     error: {
-      main: red[500],
+      main: darkMode ? red[600] : red[500],
       light: red[400],
       dark: red[600],
       contrastText: neutral.white,
@@ -54,7 +55,8 @@ export const palette = ({ darkMode }: ThemeProps): ThemeOptions["palette"] => {
       disabled: darkMode ? stone[550] : stone[350],
     },
     background: {
-      default: darkMode ? stone[900] : neutral.white,
+      // Figma page/background/primary is #292524 in dark mode, the same as paper.
+      default: darkMode ? stone[800] : neutral.white,
       secondary: darkMode ? stone[900] : neutral[50],
       paper: darkMode ? stone[800] : neutral.white,
       surface: darkMode ? stone[900] : neutral[50],
