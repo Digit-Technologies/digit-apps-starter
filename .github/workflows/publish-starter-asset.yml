@@ -102,8 +102,8 @@ jobs:
           cp -R "$STAGE" "$CHECK"
           cd "$CHECK"
 
+          # The root `prepare` script builds the packages' dist/, as in the harness.
           npm install --no-audit --no-fund
-          npm run build:packages
 
           # A second copy means the seed's pins disagree with sdk-react's peers, and
           # every app built from it bundles two Reacts.
