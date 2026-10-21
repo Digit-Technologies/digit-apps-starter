@@ -4,14 +4,16 @@ Reference Digit app that exercises the main platform surfaces in one place:
 
 | Tab | What it shows |
 | --- | --- |
-| Theme | Typography, buttons, fields, chips, alerts, table via `DigitThemeProvider` |
-| Error lab | Canned + live failures through `AppErrorAlert` / mutation hooks |
-| Digit API | `useDigitApiQuery` items query (`READ_ITEM`) |
-| Public API | Worker → Open-Meteo (no key) via `/proxy/backend/weather` |
-| Secrets | Worker → httpbin bearer using `API_BASE_URL` + `THIRD_PARTY_API_KEY` |
-| Notes | D1 CRUD (`FULL_FEATURED_DB`) |
+| Notes | D1 CRUD (`FULL_FEATURED_DB`): list page with `Table`, row menu, `Modal` form, `ConfirmDialog` delete; "New note" in the `PageHeader` |
+| Items | `useDigitApiQuery` items query (`READ_ITEM`) in a `Table` |
 | Jobs | Submit `note-stats` via `digitJobs`, watch runs; hourly `prune-notes` schedule |
-| Config | Env `WELCOME_MESSAGE` via `/proxy/backend/greeting` |
+| Backend | Public API (Worker → Open-Meteo via `/proxy/backend/weather`), Secrets (`API_BASE_URL` + `THIRD_PARTY_API_KEY`), Config (env `WELCOME_MESSAGE` via `/proxy/backend/greeting`) |
+| Error lab | Canned + live failures through `AppErrorAlert` / mutation hooks |
+| Components | A short reference of the themed buttons, fields, choices, pills, alerts and type roles |
+
+Tabs live in `src/frontend/App.tsx`: each entry has a label, its content and optional
+`PageHeader` actions. `src/frontend/PageBody.tsx` is the page gutter for content that is not a
+full-bleed `Table`.
 
 Uses `@digit/lib-frontend`, `@digit/lib-backend`, `@digit/lib-common`, and
 `@digit/lib-build` (`digit-app pack`).
@@ -61,5 +63,5 @@ guard. Draft schedules and inbound webhooks stay off.
 
 ## Notes
 
-- Secrets never leave the Worker; the Secrets tab only shows a short token prefix
+- Secrets never leave the Worker; the Secrets section only shows a short token prefix
 - See `SPEC.md` for iteration context for a later agent (prompts, constraints, gotchas)

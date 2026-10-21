@@ -16,11 +16,11 @@ wired to a real host).
 
 ## Data & permissions
 
-- `READ_ITEM` — Digit API tab runs an `items` query; needed so the proxy allows that field
+- `READ_ITEM` — Items tab runs an `items` query; needed so the proxy allows that field
 - D1 binding `FULL_FEATURED_DB` — schema from `src/backend/migrations/`; Digit applies
   pending files during each channel's deployment (not at runtime; upload alone is not enough)
-- Env `WELCOME_MESSAGE` — greeting text for the Config tab (`GET /greeting`)
-- Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets tab hits an external HTTP API
+- Env `WELCOME_MESSAGE` — greeting text for the Config section of the Backend tab (`GET /greeting`)
+- Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets section of the Backend tab hits an external HTTP API
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
 - Schedule `prune-notes` (hourly, manifest `backend.schedules`) deletes notes older than
   `payload.maxAgeDays`; job `note-stats` is submitted via `digitJobs` from
