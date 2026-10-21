@@ -1,7 +1,7 @@
 {
   "name": "@heysutton/sdk-build",
   "version": "1.0.0",
-  "description": "sutton-app pack: shared Vite build and app.zip packaging for Sutton custom apps",
+  "description": "digit-app pack: shared Vite build and app.zip packaging for Sutton custom apps",
   "license": "MIT",
   "type": "module",
   "repository": {
@@ -18,7 +18,6 @@
     "README.md"
   ],
   "bin": {
-    "sutton-app": "src/cli.js",
     "digit-app": "src/cli.js"
   },
   "exports": {

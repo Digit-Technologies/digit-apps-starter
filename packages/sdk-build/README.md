@@ -1,8 +1,6 @@
 # `@heysutton/sdk-build`
 
-Build tooling for Sutton custom apps. **v1 public CLI:** `sutton-app pack` only.
-`digit-app` is kept as an alias of the same binary, so existing `"pack": "digit-app pack"`
-scripts keep working.
+Build tooling for Sutton custom apps. **v1 public CLI:** `digit-app pack` only.
 
 Local Digit runtime draft is not supported (Worker, env/secrets, and D1 are injected by
 the platform). Pack builds the channel-neutral deploy assets and writes `app.zip` for a

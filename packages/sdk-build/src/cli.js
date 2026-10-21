@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { pack } from './pack.js';
 
-const usage = `Usage: sutton-app pack   (digit-app is an alias)
+const usage = `Usage: digit-app pack
 
 Build frontend/ (+ backend/ when present) and write app.zip for a Sutton draft or published deployment.
 
