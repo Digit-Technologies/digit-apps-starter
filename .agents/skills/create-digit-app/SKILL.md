@@ -8,7 +8,8 @@ description: >-
   or device APIs). Use when creating a Digit app, editing an app in a local clone
   of this starter, publishing via MCP, laying out screens, or when the user mentions
   Digit apps, manifest.json, AppProxy, DigitThemeProvider, /proxy/digit, /proxy/backend,
-  settings panels, status pills, tables, checklists, chat boxes, or confirmation dialogs.
+  settings panels, status pills, tables, checklists, chat boxes, or confirmation dialogs, or
+  asks for an app to look like Digit, match the design system, or match a Figma mockup.
 ---
 
 # Create Digit App
@@ -211,15 +212,15 @@ only; still upload the zip **unchanged**. Details:
   iframe can't do something itself (camera, scanning, navigating Digit), check
   `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
-- **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
-  hard-coded colors or custom CSS. Do not invent a parallel CSS design system or
-  restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
-- **Layout:** The theme makes an app look like Digit; the patterns make it behave like
-  Digit. Before you lay out a screen, find the closest match in
-  [reference/design-patterns.md](reference/design-patterns.md) (settings shell, list with
-  metadata, confirm destructive action, blocked by a dependency, table with tabs, and so
-  on), copy its structure, and name the pattern you used in your summary. Do not invent a
-  new layout when a pattern fits.
+- **Stack:** React + MUI + `DigitThemeProvider`. The theme already matches the Figma design
+  system; do not restyle MUI or invent a parallel CSS design system. See
+  [Design system](#design-system-required-for-every-screen) below and
+  [reference/theming.md](reference/theming.md).
+- **Layout:** The theme makes an app look like Digit; the recipes make it behave like
+  Digit. Before you lay out a screen, find the closest recipe in
+  [reference/design-patterns.md](reference/design-patterns.md) (list page, details panel,
+  record page, settings, form dialog, confirm, dashboard), copy its structure, and name the
+  recipe you used in your summary. Do not invent a new layout when a recipe fits.
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
@@ -232,9 +233,14 @@ only; still upload the zip **unchanged**. Details:
 - **Lists use `Table`:** Use `Table` from `@digit/lib-frontend` for any list of records. It is
   server-paged, sorted and searched, so pass the page and sort models and refetch in the
   handlers. Do not render a list of many rows as an unbounded dump. See
-  [reference/design-patterns.md](reference/design-patterns.md#lists-of-records).
+  [reference/design-patterns.md](reference/design-patterns.md#list-page).
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `Pill` (every status or category pill) + `ConfirmDialog` (before any destructive action) + `Table` (every list of records) + `PageHeader`, `SettingsRow`, `SettingsSection`, `RadioCard`, `EmptyState`, `Switch`, `FormField` (native layout) + Lucide icons (`Plus`, `Search`, …) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
+- **Public surface:** hooks + theme + layout and data components (`PageHeader`, `Table`,
+  `RecordName`, `Pill`, `SidePanel`, `Modal`/`ModalSection`, `ConfirmDialog`, `SettingsSection`,
+  `SettingsRow`, `Section`, `RecordCard`/`RecordCardSection`, `PropertyGrid`, `FormField`,
+  `Switch`, `RadioCard`, `EmptyState`, `ProgressBar`, `FileDropZone`, `FileUploadRow`) + Lucide
+  icons (`Plus`, `Search`, …) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` /
+  `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
   `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
 
 #### Printing
@@ -307,230 +313,53 @@ hand-rolled call fails with "Too many calls" or "Invalid params". Use the label 
 deprecated. Write new code against `AppHost`, and migrate `window.DigitHost` calls in any
 existing file you edit.
 
-### Native look
+### Design system (required for every screen)
 
-Build screens from the native rules below, so a prompt produces a feature that looks like the
-platform without steering. Import from `@digit/lib-frontend` or `@mui/material`. Never write hex
-colours, px font sizes, `boxShadow`, or `borderRadius` overrides. If a rule names something you
-cannot import, stop and say so.
+Digit apps sit next to the platform's own screens, so they must look like them. The **Figma
+design system is the source of truth**, and `@digit/lib-frontend` implements it: the theme
+restyles every MUI component to the Figma values in light and dark, and the library adds the
+composite pieces the product mockups use. You compose those pieces; you never restyle them.
 
-**Never do these** (they are the stock-looking defaults the platform does not use):
-- Never set `fullWidth` on a `Button`, and never set `width: "100%"` (or any full-width `sx`) on a
-  button, stack, or card that holds one. Buttons size to their label and sit left in their row.
-- Never set `textAlign: "center"`, `justifyContent: "center"`, or `alignItems: "center"` on a text
-  block or a card. Titles, labels, status and account lines are all left-aligned. The only exceptions
-  are the `EmptyState` block and the `FileDropZone` component.
-- Never set `fontWeight` or `fontSize` on a `Typography`. Pick the variant from the table below.
-- Never use a bare MUI `Switch` next to text. Use `Switch label=...`, which keeps the gap and the
-  label click.
+**Before you write any UI:**
 
-**Surfaces**
-- Page: `background.default` (white). Do not wrap a page, list or form in a Card.
-- Top of every screen, side panel and form dialog: `PageHeader`. Use `trail` for a detail screen
-  under a list, `actions` for the primary button, and `onClose` for the panel's cancel.
-  A dialog header is `PageHeader variant="dialog"`, with 16px padding and a strong bottom border.
-- Grouped block, such as an assistant message or a progress summary: `<Card>`. The theme makes
-  it outlined with a 12px radius.
-- In-app section navigation, only if the app has sub-pages (the platform owns app navigation): a
-  `Box` 200px wide with `bgcolor: "background.surface"` and a right `divider` border. Items are
-  `ListItemButton selected` with a 16px Lucide icon. Group labels are
-  `Typography variant="caption" color="text.secondary"`.
-- Dialog: MUI `Dialog`. The theme makes it white, borderless and 16px round.
-- Lines: `Divider`, or `borderColor: "divider"`. One 1px line only.
+1. Read [reference/design-system.md](reference/design-system.md): the component picker, type
+   roles, colour tokens, spacing, icons and the self-check list.
+2. Pick the closest recipe in [reference/design-patterns.md](reference/design-patterns.md) (list
+   page, details panel, record page, settings, form dialog, confirm, dashboard, …) and copy its
+   structure. Name the recipe in your summary.
+3. When you finish, run the self-check at the end of design-system.md on every screen and fix
+   what fails.
 
-**Radii** (theme-owned, never set): pill 4, checkbox 4, input 8, small button 8, nav item 8,
-card 12, radio card 12, dialog 16.
+**Hard rules** (each one is a common way apps end up looking like stock MUI):
 
-**Buttons** (leave size at the default, `small`, 28px)
+- Use the library component when one exists: `PageHeader`, `Table`, `RecordName`, `Pill`,
+  `SidePanel`, `Modal` + `ModalSection`, `ConfirmDialog`, `SettingsSection` + `SettingsRow`,
+  `Section`, `RecordCard`, `PropertyGrid`, `FormField`, `Switch`, `RadioCard`, `EmptyState`,
+  `ProgressBar`, `FileDropZone`, `FileUploadRow`, `AppErrorAlert`.
+- Never set colour, background, border, radius, shadow, font size, font weight, line height,
+  height or padding on a themed MUI component (`Button`, `TextField`, `Select`, `Tabs`, `Dialog`,
+  `Menu`, `Chip`, `Alert`, `Card`, …). Layout props (`gap`, `flex`, `width`, margins) are fine.
+- No hex or `rgb()` colours, no px font sizes, no `fontWeight`. Use palette tokens
+  (`text.secondary`, `border.solidDefault`, …) and `Typography` variants.
+- Every screen starts with `PageHeader`; never an `h1` or a centred title block. Lists are a
+  full-bleed `Table` with no card around it; the create action sits in the page header.
+- One primary button (`variant="contained" color="primary"`) per surface, last in its group;
+  secondary is the default `Button`; Cancel is `variant="text"`. Never `fullWidth` buttons.
+- Every status or category is a `Pill`. Icons are Lucide from `@digit/lib-frontend` at 12, 16 or
+  20px. Sentence case everywhere. Everything left-aligned except `EmptyState` and
+  `FileDropZone`.
+- Fields are the themed grey field (`<TextField hiddenLabel>`) or the invisible field
+  (`variant="standard"`), labelled by `FormField` (label above, on records and page forms) or
+  `SettingsRow` (label left, in panels and dialogs). Never floating labels.
+- Destructive actions go through `ConfirmDialog destructive`. Saving uses
+  `loading` + `loadingPosition="start"` on the Save button, which stays disabled until the form
+  is dirty.
+- Do not branch on `theme.palette.mode`; following the rules gives dark mode for free.
 
-| Role | Code |
-| --- | --- |
-| Primary: create on a top-level page, save, publish | `<Button variant="contained" color="primary">` |
-| Secondary: create inside a settings or detail panel, choice chips | `<Button>` (contained secondary: white, 1px border) |
-| Destructive confirm | `ConfirmDialog destructive`. Never place a red button yourself |
-| Text: Cancel, Select All | `<Button variant="text">` |
-| Icon only | `<IconButton aria-label="...">` with a 16px Lucide icon |
+If a screen needs something the library and the recipes do not cover, say so in your summary and
+build it from themed MUI parts with layout props only. Do not invent new colours, sizes or
+shapes.
 
-- Never use `variant="outlined"`. In this theme it is a grey fill that native screens do not use.
-- Leading icon: `startIcon={<Plus size={16} />}`. Save buttons use `Save`.
-- Overflow: `IconButton` with `Ellipsis` opens a `Menu`. The destructive item goes last as
-  `<MenuItem sx={{ color: "error.main" }}>`, with no divider before it.
-- Never put a red button in a list row. Row actions are `Edit` as a secondary button at most, and
-  every destructive action goes in the overflow menu, then through `ConfirmDialog destructive`.
-- Never clip a pill or badge. Pills keep their full width inside table cells.
-- Footers: side-panel editors put Cancel (text) on the left and the primary button on the right.
-  Dialogs put only the primary button on the right. The header X is the cancel.
-
-**Typography**
-
-| Role | Code |
-| --- | --- |
-| Header title | `PageHeader title` (h5, 16px, 600) |
-| Record title | `Typography variant="h4"` (20px, 600). A `Pill` sits beside it |
-| Section header | `SettingsSection title` (h5) |
-| Name cell in a list | `Typography variant="h6" component="span"` (13px, 600) |
-| Settings or form label | `body1` (13px, 400), via `SettingsRow` |
-| Supporting text | `body1` with `color="text.secondary"` |
-| Row description | `caption` with `color="text.tertiary"` |
-| Counts, IDs, quantities | `Typography variant="mono" color="text.secondary"` |
-| Dates | `body1` in `text.primary`. Dates are never mono |
-
-Use sentence case everywhere. The one exception is `SettingsSection`'s built-in "Select All" and
-"Deselect All".
-
-**Lists**
-- Paged, or able to outgrow one screen: `Table`. The name column renders the h6 name. Dates and
-  counts use mono. Status uses `Pill`. A person is a 20px `Avatar` with the h6 name.
-- A small fixed set, such as roles or config entries: a plain MUI `Table` with no `TableHead`,
-  using `TableRow hover` and `TableCell`. Rows that open details end with
-  `<ChevronRight size={16} />`. Never wrap it in a Card.
-
-**Status: `Pill` only**
-
-| Tone | Words (`status=`) |
-| --- | --- |
-| `gray` | draft, archived |
-| `blue` | not started, active, building |
-| `green` | live, complete, completed, done |
-| `yellow` | pending, in progress |
-| `red` | blocked, failed |
-| `outlined` (unknown words) | anything else |
-
-Category pills use `color=`, with any palette colour such as `color="sky"`. Built-in or
-system categories use `color="gray"`. For a hint, put the icon in the label, `label={<>Default <Info size={12} /></>}`,
-and wrap the pill in a `Tooltip`. Do not use the `icon` prop, which puts the icon on the left.
-
-**Forms**
-- Any control with a label, helper or error text: wrap it in `FormField` (`label`, `required`, `helperText`,
-  `error`, `horizontal`). It takes any control as a child, so a `Select` or `Checkbox` works too.
-- A field inside a form row or settings panel: `<TextField variant="filled" hiddenLabel size="small" fullWidth>`.
-- A search box, or a field standing alone on a page: `<TextField size="small">` (outlined).
-- Labels sit in a left column through `SettingsRow variant="form" required`. Never use MUI
-  floating labels inside a form row.
-- A fixed set in a form row: `<Select variant="standard" fullWidth>`. It reads as text with a
-  chevron.
-- On or off uses `Switch` (`<Switch label="..." checked onChange />`). A list of grants uses `Checkbox` inside `SettingsRow variant="list"`.
-  Two or three options that each need a sentence use `RadioCard` inside `<RadioGroup row>`.
-
-**Dialogs**
-- Confirm or blocked: `ConfirmDialog`. For a blocked action, use `icon={<TriangleAlert size={20} />}`
-  and a non-red verb such as "Go to users". For a destructive action, use `destructive`.
-  `description` may hold several `<Typography>` paragraphs, with `<strong>` on the thing to fix.
-- Form dialog, Publish style: `<Dialog maxWidth="sm" fullWidth>`, then
-  `<PageHeader variant="dialog" title actions onClose />`, then `<DialogContent>` with a
-  `<Stack spacing={1.5}>` of `<SettingsRow variant="form">`, then `<DialogActions>` with one
-  primary button, which MUI aligns right by default.
-
-**Settings and permissions**
-- A group of grants: `<SettingsSection title selection={{ checked, total, onChange }}>`. Its
-  children are `<SettingsRow variant="list" label info control={<Checkbox />} />`.
-- Settings in a side panel: `<SettingsRow variant="form" labelWidth={88}>` rows, with no dividers.
-
-**Empty states**: `<EmptyState icon={<Rocket size={20} />} title description action />`. Use at
-most one action, and make it secondary unless it is the only way forward.
-
-**Spacing** (8px units): content gutter `px: 4.5` on desktop (36px) and `px: 2.5` below 600px (20px), to match the page header. Card padding `p: 3`.
-Form rows use `spacing={1.5}`. Blocks of cards use `spacing={2}`. Icon-to-label gap is `0.5`. List rows and
-settings rows are 36px. Do not pad cells. Sections stack with no gap.
-
-### Native look: additional rules
-
-These extend the Native look rules above and keep them. Where a rule differs from a line above,
-the difference is named in the rule.
-
-**Surfaces and headers**
-- Record pages (a single item, order or event) sit on `background.secondary`. Index and list pages
-  sit on white. This is the record-page exception to the Page line above.
-- Every page header is `PageHeader`. Use `trail` on a detail screen and `actions` for the primary
-  button. Do not build a custom header bar.
-
-**Saving**
-- Every save or confirm button uses `<Button loading={busy} loadingPosition="start" startIcon={...}>`.
-- Never use `disabled` to show progress. Never replace the label with "Saving...". While busy, the
-  spinner replaces the start icon and the label stays. On success the button shows "Saved" for about 600ms, then resets to the label.
-
-**Icon sizes**
-- Icon sizes are 12, 16 and 20 only.
-- Size 16 sits inline with 13px text and inside buttons.
-- Size 20 stands alone.
-- Size 12 sits next to 11px overline text.
-
-**Domain icons** (exported from `@digit/lib-frontend`)
-
-| Domain | Icon |
-| --- | --- |
-| Deals | `Handshake` |
-| Quotes | `ReceiptText` |
-| Price lists | `FileBox` |
-| Sales orders | `ShoppingCart` |
-| Purchase orders | `BaggageClaim` |
-| Items | `BoxIcon` |
-| Inventory | `Layers` |
-| Receiving | `PackageOpen` |
-| Planning | `CalendarRange` |
-| Production | `Factory` |
-| Shipping | `Truck` |
-| Accounts | `BookUser` |
-| Reporting | `FileChartLine` |
-| Users | `Users` |
-| Settings | `Cog` |
-| App integrations | `Puzzle` |
-| Learning center | `BookOpenText` |
-| Learning center collections | `Info`, `CircleHelp` or `Megaphone` |
-| Chat | `MessageSquareMore` |
-
-**Data type icons** (exported from `@digit/lib-frontend`)
-
-| Data type | Icon |
-| --- | --- |
-| Quantity | `Cylinder` |
-| Unit of measure | `Ruler` |
-| Status | `Loader` |
-| Date | `Calendar` |
-| Time | `Clock` |
-| Money | `DollarSign` |
-| Percent | `Percent` |
-| Count | `Hash` |
-| Text | `TextIcon` |
-| SKU | `Bookmark` |
-| Person | `CircleUserRound` |
-| Company | `Building2` |
-| Custom field | `TextCursorInput` |
-| Actions | `Zap` |
-| Tags | `Tags` |
-| Links | `LinkIcon` |
-
-**Empty and multi-value display**
-- Missing text shows "None" in `text.tertiary`.
-- Not applicable shows an empty cell.
-- Numeric zero shows "0.00", right-aligned, in the `mono` variant.
-- Multiple values show "Multiple" with a chevron, right-aligned. The chevron opens a menu of the values.
-- A list of values is separated by commas, for example "640.00 ft2, 300.00 lb".
-- Never print "null", "N/A" or "-".
-
-**Progress**
-- A progress bar is `LinearProgress`. It is already themed to 8px and emerald.
-- Its caption is right-aligned `overline` text in the form "value / max unit". The value is
-  `text.primary`. Only the "/" separator is `text.secondary`.
-
-**Notes and dates**
-- Multiline notes use `<TextField variant="filled" hiddenLabel multiline minRows={3}>`.
-- Dates use `<TextField variant="filled" hiddenLabel size="small" type="date">`. Do not add
-  `@mui/x-date-pickers`.
-
-**Toggles**
-- A view switcher or segmented filter uses `ToggleButtonGroup`. Tabs under a page title are the
-  exception (see Tabs in [design-patterns.md](reference/design-patterns.md)).
-- The default look is floating. Outlined is opt-in: pass `sx={{ bgcolor: "<tint>", p: 0.5, borderRadius: "8px" }}` at the call site, with the items inside it in the xs look.
-
-**Name cells and files**
-- A name cell uses `RecordName`: name, placeholder or thumbnail, status and meta.
-- Placeholder icons: item `BoxIcon`, company `Building2`, user `CircleUserRound`, tool `Wrench`.
-- A file upload area uses `FileDropZone`.
-
-**Dividers and motion**
-- A divider is a MUI `Divider`, themed to the solid border colour.
-- Transitions are 20ms. Do not add slower transitions in app code.
 
 ### 5. `manifest.json`
 
@@ -621,7 +450,8 @@ upstream starter.
 | Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
 | Codes / JSON validation               | `@digit/lib-common`                                             |
 | Print a Sutton inventory or item label | `LabelPrintPanel` → [reference/labels.md](reference/labels.md)  |
-| Screen layout, dialogs, lists, checklists, guided flows | Pattern from [reference/design-patterns.md](reference/design-patterns.md) |
+| Which component to use, and how it should look | [reference/design-system.md](reference/design-system.md) |
+| Screen layout: lists, records, panels, settings, dialogs, dashboards | Recipe from [reference/design-patterns.md](reference/design-patterns.md) |
 
 ## Packages (`lib-*`)
 
@@ -630,7 +460,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `Pill`, `ConfirmDialog`, `Table`, Lucide icons, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, design-system components (`PageHeader`, `Table`, `Pill`, `SidePanel`, `Modal`, `ConfirmDialog`, …), Lucide icons, `AppErrorAlert`, label printing |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
@@ -653,7 +483,8 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
 - [reference/labels.md](reference/labels.md) for Sutton label preview and print, permissions, and failures
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
-- [reference/design-patterns.md](reference/design-patterns.md) — screen patterns: settings shell, lists, confirmations, tables, checklists, guided flows
+- [reference/design-system.md](reference/design-system.md) — **read before any UI**: component picker, type, colour, spacing, icons, self-check
+- [reference/design-patterns.md](reference/design-patterns.md) — screen recipes from the product mockups: list page, details panel, record page, settings, form dialog, confirm, dashboard
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key

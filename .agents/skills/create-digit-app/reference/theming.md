@@ -72,21 +72,23 @@ digit-web). Do not add a Google Fonts or other CDN stylesheet. The harness sets
 
 ## UI rules for agents
 
-- Prefer MUI components styled by the theme (`Button`, `TextField`, `Typography`,
-  `Stack`, `Box`, `Table`, `Alert`, …)
-- Lists of records use `Table`, and icons come from the Lucide set re-exported by
-  `@digit/lib-frontend`. Do not import `lucide-react` or another icon set directly.
-- Show statuses and categories with `Pill`, and pick colours from the palette roles and
-  accents. See [design-patterns.md](design-patterns.md#colour-and-status)
-- Lay out screens with the patterns in [design-patterns.md](design-patterns.md). The
-  theme sets colour and type; the pattern sets structure, action placement and copy
-- Prefer `theme.palette.*` / typography variants over hard-coded hex colors
-- Do not restyle MUI from scratch, and do not invent a parallel CSS design system
-- Do not reintroduce cream/teal “starter” palettes or IBM Plex / decorative
-  gradients from older vanilla examples
-- Do not invent a CSS custom-property theme — use MUI + `DigitThemeProvider`
-- Stay inside the host iframe: no downloads, new tabs/popups, or
-  `alert`/`confirm`/`prompt`. MUI Dialog/Drawer are fine. See
+The theme implements the Figma design system; [design-system.md](design-system.md) is the
+component and token reference, and [design-patterns.md](design-patterns.md) has the screen
+recipes. In short:
+
+- Compose library components and theme-styled MUI components. Never restyle them: no `sx`,
+  `style` or `styled()` that sets colour, border, radius, shadow, font or height on a themed
+  component.
+- Colours come from palette tokens (`text.secondary`, `background.secondary`,
+  `border.solidDefault`, …), text styles from `Typography` variants. No hex values, no px font
+  sizes, no `fontWeight`.
+- Lists of records use `Table`; statuses and categories use `Pill`; icons are the Lucide set
+  re-exported by `@digit/lib-frontend` (do not import `lucide-react` or another icon set).
+- Do not invent a parallel CSS design system or a CSS custom-property theme, and do not add
+  Google Fonts or other CDN stylesheets. Inter comes from `DigitThemeProvider`.
+- Do not branch on `theme.palette.mode` in app code; every themed component already has its
+  dark-mode values.
+- Stay inside the host iframe: no downloads, new tabs/popups, or `alert`/`confirm`/`prompt`.
+  MUI Dialog/Drawer are fine (prefer `Modal`, `SidePanel` and `ConfirmDialog`). See
   [iframe-constraints.md](iframe-constraints.md).
 - Do not assume the harness injects React, MUI, or fonts — only host APIs.
-  Inter comes from `DigitThemeProvider`

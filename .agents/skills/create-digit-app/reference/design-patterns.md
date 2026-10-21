@@ -1,257 +1,277 @@
-# Design patterns
+# Screen recipes
 
-The theme makes an app look like the platform. These patterns make it **work** like the
-platform: where things sit, how lists read, how actions are grouped, and how status is
-shown. Read this before you lay out a screen. [theming.md](theming.md) covers the palette
-and component overrides.
+[design-system.md](design-system.md) says what each component looks like and when to use it.
+These recipes say how a whole screen is put together. They are taken from the Digit product
+mockups, so a screen built from one sits naturally next to the platform's own screens.
 
 ## How to use this file
 
-1. Find the closest need in the index.
-2. Build with the reusable piece named there. If `@digit/lib-frontend` already has one, use it.
-3. If no pattern fits, say so in your summary. Do not invent a layout.
+1. Find the recipe closest to what the user asked for.
+2. Copy its structure: the same components, in the same order, with the same props.
+3. Fill in the app's data and copy.
+4. Name the recipe you used in your summary. If none fits, say so and build from the closest one;
+   do not invent a new layout.
 
 ## Index
 
-| Pattern                                                     | Use it for                                                    | Built with                                    |
-| ----------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
-| [Lists of records](#lists-of-records)                       | Any list of records, with paging, sorting and search          | `Table`, `Pill`, `Button`                     |
-| [Settings and detail panel](#settings-and-detail-panel)     | Settings, or the details of one record, beside the page       | `Drawer` (right), `Tabs`, `Switch`, `Select`  |
-| [Secondary actions menu](#secondary-actions-menu)           | Grouping secondary actions behind one button                  | `IconButton`, `Menu`, `MenuItem`              |
-| [Primary action](#primary-action)                           | The one main thing a surface asks the user to do              | `Button` (primary)                            |
-| [Tabs](#tabs)                                               | Switching between views of the same data                      | `Tabs`, `Tab`                                 |
-| [Colour and status](#colour-and-status)                     | Showing a state or a category                                 | `Pill`                                        |
-| [Icons](#icons)                                             | Any icon in a button, a field, a row or a message             | Lucide icons from `@digit/lib-frontend`       |
-| [Checklist with progress](#checklist-with-progress)         | Ordered tasks that get marked complete                        | `LinearProgress`, `List`, `Pill`              |
-| [Chat composer](#chat-composer)                             | A box where the user types or talks to an assistant           | `TextField`, `IconButton`, `Stack`            |
-| [Confirmations](#confirmations)                             | Any destructive action, and actions blocked by something else | `ConfirmDialog`                               |
-
-## Shared visual rules
-
-These apply everywhere.
-
-- **Radius is soft.** Buttons and pills use the theme's small radius. Panels, tables and
-  dialogs round more. Do not add heavy borders or drop shadows to cards.
-- **Surfaces are neutral.** Backgrounds are the stone scale. Type is `text.primary`, with
-  `text.secondary` for supporting text. The page is light and calm.
-- **Charcoal is the action colour.** The primary button is the theme's `primary`, which is
-  black-grey. Blue means selected (checkboxes, switches, radios). Red means destructive or
-  error. Nothing else.
-- **Icons are Lucide.** Import them from `@digit/lib-frontend`. See [Icons](#icons).
-- **Type is Inter, sentence case.** Titles are bold. Labels, buttons and menu items are
-  sentence case, not Title Case and not all caps.
-- **Explain, don't just disable.** If something is unavailable, show why next to it.
-- **Record pages sit on `background.secondary`.** Index and list pages sit on white. Every page
-  header is `PageHeader`. The full native rules (saving, icons, empty values, progress, forms,
-  name cells, files) are in SKILL.md under "Native look: additional rules".
-
-### Colours: use the palette, nothing else
-
-Every colour comes from the theme palette. Do not write hex values, `rgb()`, or colour
-names from MUI's defaults (MUI's default blue, or `grey.500` from a stock theme).
-
-- **Roles:** `primary` (charcoal), `secondary`, `success`, `warning`, `error`, `info`.
-  Use them for meaning: success for done, warning for waiting, error for stopped, info for
-  active. Read the shade with `main`, `light` or `dark`, for example
-  `sx={{ color: "error.main" }}`.
-- **Neutrals:** `stone`, plus `text.primary`, `text.secondary`, `text.disabled`,
-  `background.default` and `background.paper`. `grey` is also mapped to the stone scale.
-- **Accents:** `red`, `orange`, `amber`, `yellow`, `lime`, `green`, `emerald`, `teal`,
-  `cyan`, `sky`, `blue`, `indigo`, `violet`, `purple`, `fuchsia`, `pink`, `rose`. Use these
-  for categories that are not a meaning, for example a label colour a user picks.
-
-```tsx
-import { useTheme } from "@mui/material/styles"
-
-const theme = useTheme()
-<Box sx={{ bgcolor: "purple.light", color: "purple.dark" }} />
-theme.palette.violet.main        // read a value in code
-```
-
-If the design needs a colour that is not in the palette, say so. Do not add one locally.
+| Recipe | Use it for |
+| --- | --- |
+| [List page](#list-page) | Any index of records: orders, items, bins, logs |
+| [Details panel over a list](#details-panel-over-a-list) | Opening one row without leaving the list |
+| [Record page](#record-page) | One document with sections: an order, a quote, a job |
+| [Settings page](#settings-page) | An app's settings, a handful of options |
+| [Permissions groups](#permissions-groups) | Grants, scopes, feature toggles in groups |
+| [Form dialog](#form-dialog) | Creating or editing something with a few fields |
+| [Confirm and blocked](#confirm-and-blocked) | Before a destructive action, or when an action is blocked |
+| [Dashboard](#dashboard) | A home or overview screen with tiles and task lists |
+| [Empty, loading and error](#empty-loading-and-error) | Every screen's other states |
+| [Row and record actions](#row-and-record-actions) | Edit, duplicate, delete, export |
+| [Checklist with progress](#checklist-with-progress) | Ordered tasks that get marked complete |
+| [Chat composer](#chat-composer) | A box where the user talks to an assistant |
 
 ---
 
-## Lists of records
+## List page
 
-Use `Table` for every paged list of records. Do not restyle a new table per screen. A small
-fixed set (roles, config entries) may use a plain MUI `Table` with no header, because the
-theme styles its cells.
+The canonical index screen (Figma "Scorecard"): a page header, then a full-bleed table on
+white. Nothing else, no card, no intro paragraph.
 
-A list page is a title, an optional row of tabs, then a `Table`. The primary action sits in
-the table's `actions` slot, at the top right.
-
-```tsx
-import { Table, Plus } from "@digit/lib-frontend"
-
-<Table
-  rows={roles.rows}
-  columns={columns}
-  rowCount={roles.total}
-  paginationModel={paging}
-  onPaginationModelChange={setPaging}
-  sortModel={sort}
-  onSortModelChange={setSort}
-  search={search}
-  onSearchChange={setSearch}
-  searchPlaceholder="Search roles"
-  actions={<Button variant="contained" color="primary" startIcon={<Plus size={16} />}>New role</Button>}
-  onRowClick={(row) => openDetails(row.id)}
-/>
+```
+PageHeader            60px · title (+ Pill) · secondary · primary "New …"
+  tabs?               only if the list has sibling datasets
+Table toolbar         44px · saved views left · search, refresh, download right
+Table                 36px rows · page gutter on first/last column
+Footer                44px · "1–10 of 240" · ‹ ›
 ```
 
-- **Paging, sorting and search run on the server.** `Table` takes the current models and
-  calls your change handlers; refetch in those handlers. Do not sort or filter a full list
-  in the browser. Confirm the API's arguments in `graphql-schema://…`.
-- **Pagination is required.** `rowCount` is the total across all pages, and the pager
-  depends on it.
-- Columns are standard MUI X `GridColDef`s. Use `renderCell` for a `Pill`, an avatar group,
-  or a relative time.
-- Rows lead with a bold name, then muted facts. Use a `Pill` for the state a user scans for.
-- Clicking a row opens its details in the [settings and detail panel](#settings-and-detail-panel).
-- Omit `onSearchChange` if the list needs no search. Omit `onSortModelChange` to turn
-  sorting off.
-
-## Settings and detail panel
-
-A side panel docked to the right edge, opened from the page for settings or for one
-record's details. It sits beside the content, so the list stays visible. Apps usually have
-few settings, so this is the only settings surface. Do not build a full-screen settings
-modal.
-
-- Header: the title on the left, a close (×) on the right. Optional tabs under the header.
-- Body: sections of label-left rows. The label sits on the left, the control on the right.
-  Use `Switch` for on/off, `Select` for a fixed set, and a text field for free text.
-- If the panel edits data, put one primary action in a footer on the right. A read-only
-  details panel has no footer.
-- Build one panel component and reuse it across the app. Do not build a new side panel
-  per screen.
-
-## Secondary actions menu
-
-Actions that are not the main thing (duplicate, export, delete) go behind a single
-**⋯** icon button, not as extra buttons next to the primary action. The ⋯ button is what
-this pattern is called; the menu it opens groups the secondary actions.
-
-- Use the `Ellipsis` icon. `IconButton` with `aria-label="More actions"`, opening a `Menu`.
-- List the actions in sentence case. Put the destructive one last, in red, with no divider before it.
-  Destructive items still open a [confirmation](#confirmations).
-- The primary action stays visible outside the menu.
-
-## Primary action
-
-Each surface has one primary action: a filled charcoal `Button` with a label and, where it
-helps, an icon.
-
-- Top right of a page for creating something. Right side of a panel or dialog footer for
-  saving.
-- Secondary actions are the default `Button` (white, with a border). Never use `variant="outlined"`:
-  in this theme it is a grey fill that native screens do not use. Tertiary ones are text buttons.
-- Cancel is a text button on the left of the footer when there is a save.
-- The primary button is never red. Red is for destructive actions only.
-
-## Tabs
-
-Tabs sit under the page title and switch between views of the same data (for example
-"Your features" and "All features"). They are not for moving between apps.
-
-- Use an underline indicator. An icon in the first tab is fine.
-- A view switch in a toolbar, or a segmented filter, uses `ToggleButtonGroup` instead of tabs.
-  The default look is floating. Outlined is opt-in: pass `sx={{ bgcolor: "<tint>", p: 0.5, borderRadius: "8px" }}` at the call site, with the items inside it in the xs look.
-- Keep tab labels to one or two words.
-
-## Colour and status
-
-Use `Pill` for any status or category. It is the one place a status gets its colour.
-
 ```tsx
-import { Pill } from "@digit/lib-frontend"
+import {
+  PageHeader, Table, TableColumn, RecordName, Pill, Plus, Bookmark, Loader, Calendar, DollarSign,
+} from "@digit/lib-frontend"
+import Button from "@mui/material/Button"
+import Box from "@mui/material/Box"
 
-<Pill status="in progress" />              // warning tone, from the status word
-<Pill status={order.state} />              // unknown words render as the neutral tone
-<Pill color="purple" label="Vendor" />     // any palette colour, for a category
+const columns: TableColumn<Order>[] = [
+  { field: "name", headerName: "Order", flex: 1, minWidth: 240, icon: Bookmark,
+    renderCell: (p) => <RecordName name={p.row.name} link /> },
+  { field: "status", headerName: "Status", width: 120, icon: Loader, sortable: false,
+    renderCell: (p) => <Pill status={p.row.status} /> },
+  { field: "total", headerName: "Total", width: 120, icon: DollarSign, type: "number" },
+  { field: "dueAt", headerName: "Due", width: 120, icon: Calendar },
+]
+
+export function OrdersPage() {
+  // paging, sort, search, view state; useDigitApiQuery with those as variables
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+      <PageHeader
+        title="Orders"
+        actions={
+          <Button variant="contained" color="primary" startIcon={<Plus />} onClick={openCreate}>
+            New order
+          </Button>
+        }
+      />
+      <Table
+        rows={rows} columns={columns} rowCount={total} loading={loading}
+        paginationModel={paging} onPaginationModelChange={setPaging}
+        sortModel={sort} onSortModelChange={setSort}
+        search={search} onSearchChange={setSearch}
+        views={[{ value: "open", label: "Open" }, { value: "all", label: "All" }]}
+        view={view} onViewChange={setView}
+        onRefresh={refetch}
+        onRowClick={(row) => setSelectedId(row.id)}
+      />
+      <OrderPanel id={selectedId} onClose={() => setSelectedId(null)} />
+    </Box>
+  )
+}
 ```
 
-- `status` takes the tone from the shared status list below. The label is the status in
-  sentence case, unless you pass `label`.
-- `color` sets the colour directly. Pass any tone (`success`, `warning`, `error`, `info`,
-  `default`) or any accent (`purple`, `teal`, and so on). When both are set, `color` wins.
-- The default tone is outlined. Every other colour is tinted.
+- Paging, sorting and search run on the server. Pass the models and refetch in the handlers. Do
+  not sort or filter a full list in the browser; confirm the API's arguments in
+  `graphql-schema://…`.
+- `rowCount` is the total across all pages; the pager depends on it.
+- One primary action, in the header. Bulk actions go in `selection.actions`. Row actions go in
+  an overflow menu (see [Row and record actions](#row-and-record-actions)).
+- Saved views (Open / All, or the user's own) are `views`. Sibling datasets that are not the same
+  records (Inventory bins / Work centers) are `PageHeader tabs` instead.
+- Clicking a row opens the [details panel](#details-panel-over-a-list), or navigates to the
+  [record page](#record-page) when the record has a lot of content.
+- A small fixed set (roles, a few config entries) uses a plain MUI `Table` with no head:
+  `TableRow hover`, `TableCell`, the name in `h6`, a `Pill`, and a trailing `ChevronRight` (16px)
+  when the row opens something.
 
-Only the obvious statuses are on the list. Anything else is a category, so pass `color`:
+## Details panel over a list
 
-| Tone      | Meaning                   | Status words                                    |
-| --------- | ------------------------- | ----------------------------------------------- |
-| `gray`    | Set aside                 | `draft`, `archived`                             |
-| `blue`    | Not started, or underway  | `not started`, `active`, `building`             |
-| `green`   | Live, or done             | `live`, `complete`, `completed`, `done`         |
-| `yellow`  | Waiting or in progress    | `pending`, `in progress`                        |
-| `red`     | Stopped                   | `blocked`, `failed`                             |
-
-- Do not use `Chip` directly for statuses. Do not pick colours by hand.
-- If a status word is missing from the list, pass the right `color` for this one use and
-  tell the user the word should be added to the status list in `@digit/lib-frontend`.
-
-## Icons
-
-Icons are Lucide. Import them from the package root, never from `lucide-react` directly:
+One row's details, beside the list, so the list stays visible (Figma "Side peek").
 
 ```tsx
-import { Plus, Search, Trash2 } from "@digit/lib-frontend"
-
-<Plus size={16} />
+<SidePanel
+  open={Boolean(id)}
+  onClose={onClose}
+  title="Details"
+  actions={<IconButton aria-label="More actions" onClick={openMenu}><Ellipsis /></IconButton>}
+  footer={dirty ? { onCancel: reset, primary: <Button variant="contained" color="primary" startIcon={<Save />} loading={saving} loadingPosition="start" onClick={save}>Save</Button> } : undefined}
+>
+  <ModalSection title="General">
+    <SettingsRow variant="form" label="Customer" control={<Select variant="standard" fullWidth displayEmpty>…</Select>} />
+    <SettingsRow variant="form" label="Reference" control={<TextField hiddenLabel fullWidth placeholder="Enter value" />} />
+    <SettingsRow variant="form" label="Due by" control={<TextField hiddenLabel fullWidth type="date" />} />
+  </ModalSection>
+  <ModalSection title="Notes">
+    <TextField hiddenLabel multiline minRows={3} fullWidth placeholder="Add a note" />
+  </ModalSection>
+</SidePanel>
 ```
 
-- The icons available are the names exported from `packages/lib-frontend/src/icons.ts`.
-  Read that file for the current list rather than relying on a copy here.
-- If you need an icon that is not in that list, say so and name it. Do not import a
-  different icon set.
-- **Icon sizes are 12, 16 and 20 only.** 16 is the default, inline with 13px text and inside
-  buttons. 20 stands alone. 12 sits next to 11px overline text.
-- Icons inherit the text colour. Set a palette colour only for a status or an error:
-  `sx={{ color: "error.main" }}`.
-- Icon-only buttons need an `aria-label`. Pair an icon with a label wherever the meaning
-  is not obvious.
-- Do not mix icon sets on one screen.
+- Rows are `SettingsRow variant="form"` (128px label, 28px control, 36px pitch). Selects are
+  invisible (`variant="standard"`); free text is the grey field.
+- A read-only panel has no footer. An editing panel shows Cancel and Save once something changed.
+- One panel component per app, reused for every list. Never a new panel per screen.
 
-## Checklist with progress
+## Record page
 
-An ordered list of tasks grouped into sections, each with a completion measure.
+One document (Figma "Sales order"): a breadcrumb header, the document in a white card on the
+grey page, and optionally a docked details panel on the right.
 
-- Each section has a bold heading and a thin `LinearProgress` captioned "value / max unit". It is
-  not a percentage. Only the "/" is `text.secondary`; the value, max and unit are `text.primary` (see Progress in SKILL.md).
-- Each row has a completion marker, a bold title, a muted description, and a `Pill` on the
-  right.
-- Done rows stay where they are. Do not reorder the list when a task completes.
-- A blocked task shows the reason and who is fixing it, in one line under the row.
-
-## Chat composer
-
-A conversation column with a composer at the bottom. The composer is a text field with a
-placeholder, an optional attach button (`Paperclip`) and a send button (`Send`), which is an
-icon button in the primary charcoal.
-
-- Assistant messages sit in soft cards. The user's messages are muted pills or bubbles.
-- Keep the composer pinned to the bottom. Do not put it in a panel that scrolls away.
-- Use the same send button style as the primary action.
-
-## Confirmations
-
-**Any destructive action asks first.** Delete, remove, cancel an order, or any change that
-cannot be undone opens a confirmation before it runs. A non-destructive change, such as
-renaming or saving a draft, does not need one.
-
-Use `ConfirmDialog` from `@digit/lib-frontend`. Never use the browser `confirm()`: the app
-iframe blocks it.
+```
+PageHeader variant="record"   Orders › SO-1234 · icon buttons · primary Save
+┌ background.secondary ─────────────────────────┬ SidePanel docked 367 ┐
+│   RecordCard 850 · h2 title · owner · date · Pill │ Details · Layout tabs │
+│   ├ RecordCardSection "Customer"               │ form rows             │
+│   ├ RecordCardSection "Shipping & delivery"    │ Custom fields         │
+│   ├ RecordCardSection "Items" (+ Add items)    │ Internal notes        │
+│   └ RecordCardSection "Notes"                  │ Files                 │
+└───────────────────────────────────────────────┴──────────────────────┘
+```
 
 ```tsx
-import { ConfirmDialog } from "@digit/lib-frontend"
+<Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+  <PageHeader
+    variant="record"
+    title={order.number}
+    trail={[{ label: "Orders", onClick: goBack }]}
+    actions={<Button variant="contained" color="primary" startIcon={<Save />} disabled={!dirty}>Save</Button>}
+  />
+  <Box sx={{ display: "flex", flex: 1, minHeight: 0 }}>
+    <Box sx={{ flex: 1, overflow: "auto", bgcolor: "background.secondary", px: 2 }}>
+      <RecordCard
+        title={`Sales order ${order.number}`}
+        meta={<><Avatar sx={{ "--digit-avatar-size": "16px" }}>SB</Avatar> Sean B.</>}
+        status={<Pill status={order.status} />}
+      >
+        <RecordCardSection title="Shipping & delivery" inset>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 1 }}>
+            <FormField label="Deliver by"><TextField variant="standard" type="date" fullWidth /></FormField>
+            <FormField label="Carrier"><Select variant="standard" fullWidth displayEmpty>…</Select></FormField>
+            <FormField label="Service"><Select variant="standard" fullWidth displayEmpty>…</Select></FormField>
+          </Box>
+        </RecordCardSection>
+        <RecordCardSection title="Items" actions={<Button startIcon={<Plus />}>Add items</Button>}>
+          <Table inset="none" rowHeight={52} … />
+        </RecordCardSection>
+      </RecordCard>
+    </Box>
+    <SidePanel variant="docked" open title="Details" onClose={collapse}>…</SidePanel>
+  </Box>
+</Box>
+```
 
+- On the record, labels sit **above** fields (`FormField`), fields in equal columns, gap 8.
+- Section titles are h6; hints beside them ("Shared with customer") are `subtitle`.
+- Read-only computed values (subtotals) are `text.tertiary`.
+
+## Settings page
+
+An app's settings (Figma "Settings › General"). Few settings fit in a [side panel](#details-panel-over-a-list);
+use this when there are several groups.
+
+```tsx
+<PageHeader title="Settings" />
+<Box sx={{ maxWidth: 720 }}>
+  <SettingsSection title="Details" size="sm" collapsible={false} padded>
+    <SettingsRow variant="setting" label="Workspace name"
+      description="Shown on documents you send."
+      control={<TextField variant="standard" fullWidth defaultValue={name} />} />
+    <SettingsRow variant="setting" label="Prevent over shipping"
+      description="Block shipments above the ordered quantity."
+      control={<MuiSwitch checked={value} onChange={toggle}
+        slotProps={{ input: { "aria-label": "Prevent over shipping" } }} />} />
+  </SettingsSection>
+  <SettingsSection title="Defaults" size="sm" collapsible={false} padded>
+    …
+  </SettingsSection>
+</Box>
+```
+
+- Label (body1) and description (`overline`, tertiary) on the left; the control in the 256px
+  column on the right. Inside a setting row the switch is MUI's bare `Switch`
+  (`import MuiSwitch from "@mui/material/Switch"`) with an `aria-label`, because the row already
+  draws the label. Everywhere else use the library `Switch label`.
+- Bordered label/value lists (custom fields) are a `PropertyGrid`.
+- Saving: one Save in the header or a footer, disabled until something changed. Or save each
+  control on change and confirm with a `Snackbar`; do not mix the two on one screen.
+
+## Permissions groups
+
+Grants and toggles in collapsible groups (Figma "Roles & permissions").
+
+```tsx
+<SettingsSection
+  title="Inventory"
+  selection={{ checked: granted.length, total: all.length, onChange: (all) => setAll(all) }}
+>
+  {all.map((p) => (
+    <SettingsRow key={p.id} variant="list" label={p.label} info={p.help}
+      control={<Checkbox checked={granted.includes(p.id)} onChange={() => toggle(p.id)} />} />
+  ))}
+</SettingsSection>
+```
+
+- Each row is 36px, the whole row toggles, dividers run full width.
+- The group header shows "Select all" / "Deselect all" automatically.
+
+## Form dialog
+
+Creating or editing something with a few fields (Figma "Modal").
+
+```tsx
+<Modal
+  open={open}
+  onClose={close}
+  title="New bin"
+  footer={{
+    onCancel: close,
+    primary: <Button variant="contained" color="primary" startIcon={<Save />} loading={saving}
+      loadingPosition="start" disabled={!valid} onClick={save}>Save</Button>,
+  }}
+>
+  <ModalSection>
+    <SettingsRow variant="form" label="Name" required control={<TextField hiddenLabel fullWidth placeholder="Enter value" />} />
+    <SettingsRow variant="form" label="Location" control={<Select variant="standard" fullWidth displayEmpty>…</Select>} />
+  </ModalSection>
+</Modal>
+```
+
+- One primary action, on the right. Cancel is the text button on the left; the X also cancels.
+- Choices that need a sentence each: `RadioGroup` with `RadioCard`s, stacked.
+- Tabs that switch the whole content go in `Modal tabs`.
+- Validation errors go on the field (`FormField error` or `TextField error helperText`), and
+  `AppErrorAlert` above the footer for a failed save.
+
+## Confirm and blocked
+
+**Any destructive action asks first.** Delete, remove, cancel an order, or anything that cannot be
+undone opens a `ConfirmDialog destructive` before it runs. Renaming or saving a draft does not.
+
+```tsx
 <ConfirmDialog
   open={confirmOpen}
   title="Delete role?"
-  description="This cannot be undone."
+  description="Users with this role lose access. This cannot be undone."
   confirmLabel="Delete"
+  cancelLabel="Keep role"
   destructive
   busy={deleting}
   onConfirm={handleDelete}
@@ -259,29 +279,95 @@ import { ConfirmDialog } from "@digit/lib-frontend"
 />
 ```
 
-- Title is a question. Description is one line on the consequence.
-- Confirm label is the verb ("Delete", "Remove"), never "OK".
-- `destructive` makes the confirm button red and puts focus on Cancel, so Enter does not
-  delete by accident.
-- Set `busy` while the action runs, and close the dialog only when it succeeds.
+- The title is a question; the description is one line on the consequence.
+- The confirm label is the verb, never "OK". Close the dialog only when the action succeeds.
 
-**Blocked.** When an action cannot happen because something else must change first, use
-the same dialog with a non-destructive label that takes the user to the fix. Name what
-blocks the action in the description, and do not use red. Add a `TriangleAlert` icon.
+**Blocked**: when an action cannot happen because something else must change first, use the same
+dialog with a `TriangleAlert` icon and a non-destructive label that takes the user to the fix.
 
 ```tsx
-import { ConfirmDialog, TriangleAlert } from "@digit/lib-frontend"
-
 <ConfirmDialog
   open={blockedOpen}
+  icon={<TriangleAlert />}
   title="Can't delete role"
-  description="This role is assigned to users. Reassign them first."
+  description="This role is assigned to 4 users. Reassign them first."
   confirmLabel="Go to users"
-  icon={<TriangleAlert size={16} />}
   onConfirm={goToUsers}
   onCancel={() => setBlockedOpen(false)}
 />
 ```
 
-- Navigating to another part of the platform goes through the host. Check `getHostCapabilities`
-  for a navigation method before you write one.
+Navigating to another part of the platform goes through the host: check `getHostCapabilities`
+for a navigation method before you write one.
+
+## Dashboard
+
+A home or overview (Figma "Home"): tiles and lists on the grey page.
+
+```tsx
+<PageHeader title="Production" />
+<Box sx={{ bgcolor: "background.secondary", minHeight: "100%", px: 4.5, py: 4.5 }}>
+  <Section title="Open jobs" subtitle="4 active"
+    actions={<Button variant="text" endIcon={<ArrowUpRight />}>View all</Button>}>
+    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 1 }}>
+      {jobs.map((job) => (
+        <Card key={job.id} sx={{ p: 2 }}>
+          <Typography variant="overline" color="text.secondary">{job.number}</Typography>
+          <Typography variant="body2" sx={{ mt: 1 }}>{job.name}</Typography>
+          <ProgressBar value={job.done} total={job.qty} unit="pcs" sx={{ mt: 2 }} />
+        </Card>
+      ))}
+    </Box>
+  </Section>
+</Box>
+```
+
+- Tiles are `Card` (outlined, radius 16, padding `p: 2`), in a grid with an 8px column gap and a
+  16px row gap. Never wrap the whole dashboard in a card.
+- Task lists: one `Card` holding a `List` of `ListItemButton` rows: a 20px icon, a `body2` title, a
+  `body1` secondary description and an `overline` tertiary time on the right.
+- Charts sit in a `Card` with a `Section` heading; use palette accents for series colours.
+
+## Empty, loading and error
+
+Every screen has all three; design them, do not leave a blank area.
+
+- **Empty**: `EmptyState` where the content would be, at the content width, with at most one
+  action. A filtered list with no matches says so and offers to clear the filter.
+- **Loading**: `Table loading`, `Button loading` (spinner in place of the start icon), `Skeleton`
+  blocks the shape of the content for cards. Never a full-page spinner, never "Loading..." text
+  on its own.
+- **Error**: `AppErrorAlert error={error} onRetry={refetch}` at the top of the content. Field
+  errors on the field.
+
+## Row and record actions
+
+- The record's main action is a visible button (header or panel footer). Everything else goes
+  behind one `IconButton aria-label="More actions"` with `Ellipsis`, opening a `Menu`.
+- Menu items are sentence case with a 16px `ListItemIcon`. The destructive item goes last and
+  opens `ConfirmDialog destructive`.
+- In a `Table`, the overflow menu is the last column (`width: 48`, `sortable: false`), rendering
+  the `IconButton`. Never put buttons, and never a red button, in a row.
+- Export is the table's `onDownload` (it calls `AppHost.invoke("download", …)`); print is
+  `AppHost.invoke("print", …)`.
+
+## Checklist with progress
+
+An ordered list of tasks grouped into sections, each with a completion measure.
+
+- Each section is a `Section` heading with a `ProgressBar` ("value / total unit", never a
+  percentage).
+- Each row has a completion marker (`CircleCheck` or a `Checkbox`), a `body2` title, a `body1`
+  secondary description and a `Pill` on the right.
+- Done rows stay where they are; do not reorder the list when a task completes.
+- A blocked task shows the reason and who is fixing it, in one line under the row.
+
+## Chat composer
+
+A conversation column with a composer pinned to the bottom.
+
+- The composer is a multiline grey `TextField hiddenLabel` with a placeholder, an optional attach
+  `IconButton` (`Paperclip`) and a send `IconButton color="primary"` (`Send`).
+- Assistant messages sit in `Card`s; the user's messages are right-aligned `Card`s on
+  `bgcolor: "background.secondary"`.
+- Keep the composer pinned; never inside a panel that scrolls away.
