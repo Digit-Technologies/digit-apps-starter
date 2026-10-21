@@ -7,6 +7,15 @@ import { neutralAlpha } from "../theme/colors"
 
 import { Section } from "./Section"
 
+// `meta` may be a fragment or an array; each child of either is one item. Children.toArray does
+// not look inside fragments, so they are unwrapped here.
+const flattenFragments = (node: ReactNode): ReactNode[] =>
+  React.Children.toArray(node).flatMap((child) =>
+    React.isValidElement<{ children?: ReactNode }>(child) && child.type === React.Fragment
+      ? flattenFragments(child.props.children)
+      : [child],
+  )
+
 export interface RecordCardProps {
   /** The record's name, such as "Sales order SO-1234". Renders as h2 in the title row. */
   title?: ReactNode
@@ -71,13 +80,13 @@ export const RecordCard = ({
       >
         <Box sx={{ display: "flex", alignItems: "center", flexWrap: "wrap", columnGap: 2, rowGap: 1, minWidth: 0, flex: 1 }}>
           {title && (
-            <Typography variant="h2" component="h1" sx={{ minWidth: 0 }}>
+            <Typography variant="h2" component="h2" sx={{ minWidth: 0 }}>
               {title}
             </Typography>
           )}
-          {React.Children.map(meta, (item) =>
+          {flattenFragments(meta).map((item, index) =>
             item === null || item === undefined || item === false ? null : (
-              <Box sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, minHeight: 28 }}>
+              <Box key={index} sx={{ display: "inline-flex", alignItems: "center", gap: 0.5, minHeight: 28 }}>
                 {typeof item === "string" || typeof item === "number" ? (
                   <Typography variant="body1" color="text.primary" component="span">
                     {item}

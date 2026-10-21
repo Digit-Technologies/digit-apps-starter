@@ -9,6 +9,8 @@ export const muiAppBar = (_options: {
   return {
     defaultProps: {
       elevation: 0,
+      // Static, not MUI's fixed: the page header scrolls with the app inside the host iframe, as
+      // PageHeader does. Pass position="sticky" for a header that stays put.
       position: "static",
     },
     styleOverrides: {

@@ -24,12 +24,27 @@ export const muiAutocomplete = (): Components<
       },
     },
     styleOverrides: {
-      root: {
+      root: ({ theme }) => ({
         fontSize: "0.8125rem", // body2
         "& ::placeholder": {
           fontSize: "0.8125rem", // body2
         },
-      },
+        // MUI pads the field for its floating label and 48px touch targets (filled paddingTop
+        // 19, outlined padding 9, input 7px 4px). The themed field already has the Figma height
+        // and side padding, so only the room for the trailing icons is kept. Doubled class to
+        // outrank MUI's own "& .MuiFilledInput-root.MuiInputBase-sizeSmall" rules.
+        "&& .MuiInputBase-root.MuiInputBase-root": {
+          paddingTop: 0,
+          paddingBottom: 0,
+          paddingLeft: theme.spacing(1),
+        },
+        "&& .MuiInputBase-root .MuiAutocomplete-input.MuiAutocomplete-input": {
+          padding: 0,
+        },
+        "&& .MuiAutocomplete-endAdornment": {
+          right: theme.spacing(0.5),
+        },
+      }),
       popupIndicator: ({ theme }) => ({
         opacity: theme.palette.opacity.helper,
       }),

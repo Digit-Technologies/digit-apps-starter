@@ -103,7 +103,8 @@ export const PageHeader = ({
         </React.Fragment>
       ))}
       {/* The current crumb is a disabled text button in Figma: tertiary label, same padding. */}
-      <Typography variant="subtitle2" color="text.tertiary" component="span" aria-current="page" noWrap sx={{ px: 1 }}>
+      {/* The current crumb is the page's heading. */}
+      <Typography variant="subtitle2" color="text.tertiary" component="h1" aria-current="page" noWrap sx={{ px: 1, m: 0 }}>
         {title}
       </Typography>
     </Box>

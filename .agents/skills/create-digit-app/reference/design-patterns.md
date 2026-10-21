@@ -24,6 +24,7 @@ mockups, so a screen built from one sits naturally next to the platform's own sc
 | [Form dialog](#form-dialog) | Creating or editing something with a few fields |
 | [Confirm and blocked](#confirm-and-blocked) | Before a destructive action, or when an action is blocked |
 | [Dashboard](#dashboard) | A home or overview screen with tiles and task lists |
+| [Status and action](#status-and-action) | One current state, one action, and its history (a time clock, a machine on/off) |
 | [Empty, loading and error](#empty-loading-and-error) | Every screen's other states |
 | [Row and record actions](#row-and-record-actions) | Edit, duplicate, delete, export |
 | [Checklist with progress](#checklist-with-progress) | Ordered tasks that get marked complete |
@@ -332,7 +333,44 @@ A home or overview (Figma "Home"): tiles and lists on the grey page.
   16px row gap. Never wrap the whole dashboard in a card.
 - Task lists: one `Card` holding a `List` of `ListItemButton` rows: a 20px icon, a `body2` title, a
   `body1` secondary description and an `overline` tertiary time on the right.
-- Charts sit in a `Card` with a `Section` heading; use palette accents for series colours.
+- KPI tiles: `Card sx={{ p: 2 }}` with a `Section` heading, the number in `h2`, and a `Pill`
+  for the delta or a breach. Missing values show "None"; loading shows `Skeleton`.
+- Charts (`@mui/x-charts`) sit in a `Card` with a `Section` heading; series colours come from
+  palette accents (`theme.palette.blue.main`, `emerald`, `violet`, `amber`), axis labels stay
+  the chart's defaults, and an empty chart shows an `EmptyState` in the card.
+
+## Status and action
+
+A screen about one thing's current state with one main action (clock in / out, start / stop a
+machine) and the history of that action.
+
+```tsx
+<PageHeader
+  title="Time card"
+  actions={
+    <Button variant="contained" color="primary" loading={busy} loadingPosition="start"
+      startIcon={clockedIn ? <LogOut /> : <LogIn />} onClick={toggle}>
+      {clockedIn ? "Clock out" : "Clock in"}
+    </Button>
+  }
+/>
+<PageBody maxWidth={720}>
+  <Section title="Today">
+    <PropertyGrid rows={[
+      { label: "Status", value: <Pill status={clockedIn ? "clocked in" : "clocked out"} /> },
+      { label: "Worked today", value: formatDuration(total) },
+    ]} />
+  </Section>
+  <Section title="Recent shifts">
+    <Table inset="none" … />
+  </Section>
+</PageBody>
+```
+
+- The one action is the header's primary button; its label and icon follow the state. It is
+  not red, even when it stops something.
+- The current state is a `Pill` in a `PropertyGrid`; the history is a `Table` (or an
+  `EmptyState` when there is none).
 
 ## Empty, loading and error
 

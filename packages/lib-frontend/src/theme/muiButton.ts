@@ -175,6 +175,8 @@ export const buttonLookStyles = (
     "@media (hover: hover)": {
       "&:hover": {
         backgroundColor: destructive ? t.destructiveHover : t.bgHover,
+        // MUI's disableElevation sets boxShadow none on hover; contained looks keep outer/sm.
+        boxShadow: t.raised ? outer.sm : "none",
       },
     },
     "&:active": {

@@ -131,6 +131,7 @@ export const SidePanel = (props: SidePanelProps) => {
       slotProps={{
         ...DrawerProps?.slotProps,
         paper: {
+          ...(DrawerProps?.slotProps?.paper as object | undefined),
           role: "dialog",
           "aria-labelledby": titleId,
           sx: [

@@ -40,7 +40,8 @@ Read this file before you write any UI. Then pick a screen recipe from
    padding on a `Button`, `IconButton`, `TextField`, `Select`, `Checkbox`, `Switch`, `Radio`,
    `Tabs`, `Tab`, `Chip`, `Alert`, `Dialog`, `Menu`, `Tooltip`, `Card` or `Table`. The theme
    already matches Figma; an override breaks it. Layout props (`gap`, `flex`, `width`,
-   `maxWidth`, `mt`, `alignSelf`) are fine.
+   `maxWidth`, `mt`, `alignSelf`) are fine, and so is content padding on a `Card` (`p: 2`),
+   which the theme leaves to you.
 3. **No hex, `rgb()`, px font sizes or hand-picked greys.** Colours come from the palette tokens
    listed under [Colour](#colour). Text styles come from the `Typography` variants listed under
    [Typography](#typography).
@@ -101,6 +102,7 @@ Inter, with tabular figures and a slashed zero on every style. Pick the variant 
 | --- | --- | --- |
 | Page, panel and dialog title | `PageHeader title` (h5) | 16/24 600 |
 | Record title in its card | `RecordCard title` (h2) | 22/28 600 |
+| A headline number on a dashboard tile (KPI) | `h2` | 22/28 600 |
 | Section title, name cell, card label | `h6` | 13/16 600 |
 | Labels, values, table cells, paragraphs | `body1` | 13/16 400 |
 | List-row titles, card titles, emphasised values | `body2` | 13/16 500 |
@@ -137,8 +139,10 @@ appears inside a `Pill`.
 | `error.main` | Error text only. A destructive button gets red from `color="error"` |
 
 Use them through `sx` (`sx={{ color: "text.secondary", borderColor: "border.solidDefault" }}`).
-Never use MUI's `grey.*`, `primary.light`, `info.main` or accent colours (`violet`, `sky`, …)
-outside a `Pill`.
+Never use MUI's `grey.*`, `primary.light` or `info.main`. Accent colours (`violet`, `sky`,
+`emerald`, …) appear only in a `Pill` and as chart series colours
+(`theme.palette.emerald.main`); a good or bad delta on a tile is a `Pill` (`green` / `red`), not
+coloured text.
 
 ## Spacing and layout
 
@@ -165,6 +169,8 @@ that is not exported, say so and name it.
 
 - **16** inline with 13px text, inside buttons, fields, menu items and tabs (the theme sizes icons
   inside `Button` and `IconButton` for you).
+- Trends and deltas: `TrendingUp`, `TrendingDown`, `ArrowUp`, `ArrowDown`; clocking in and out:
+  `LogIn`, `LogOut`; durations: `Timer`.
 - **12** next to 11px `overline` text, in table headers, in `Pill`s and meta lines.
 - **20** standing alone (the `ConfirmDialog` icon, dashboard task rows).
 - Trailing chevrons, "View all" arrows and other helper icons sit at 60% opacity
@@ -217,7 +223,8 @@ that is not exported, say so and name it.
 - `variant="page"` (default) for list and index screens; `variant="record"` with `trail` for a
   single record under a list; `variant="dialog"` inside a `Dialog` or panel.
 - Actions run from least to most used: icon buttons (learning center, star), then secondary
-  buttons, then **one** contained primary button, last.
+  buttons, then **one** contained primary button, last. A page-level mode toggle (such as
+  "Preview data") is a library `Switch label` at the start of `actions`.
 - `subtitle` for a short caption; `onClose` adds the X.
 
 **`PageBody`**: the page gutter, 24px above and below, and a 32px gap between its children.

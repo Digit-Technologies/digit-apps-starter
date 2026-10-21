@@ -82,12 +82,7 @@ export const PropertyGrid = ({ rows, labelWidth = 128 }: PropertyGridProps) => (
               },
               "&::before, &::after": { display: "none" },
             },
-            "& .MuiInputBase-root .MuiInputBase-input.MuiInputBase-input": {
-              paddingLeft: theme.spacing(1),
-            },
-            "& .MuiInputBase-root:not(.MuiInputBase-adornedEnd) .MuiInputBase-input.MuiInputBase-input:not(.MuiSelect-select)": {
-              paddingRight: theme.spacing(1),
-            },
+            // The themed field root already pads its text 8px, which is the cell's inset.
             "& .MuiSelect-icon": { right: theme.spacing(1), opacity: theme.palette.opacity.helper },
             "& .MuiSelect-select.MuiSelect-select": { paddingRight: theme.spacing(4) },
           })}

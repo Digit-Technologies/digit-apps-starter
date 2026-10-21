@@ -45,6 +45,8 @@ const statusColors: Readonly<Record<string, PillColor>> = {
   running: "blue",
   scheduled: "blue",
   paused: "gray",
+  clocked_in: "blue",
+  clocked_out: "gray",
   blocked: "red",
   failed: "red",
   complete: "green",

@@ -56,7 +56,7 @@ export const SettingsSection = ({
 
   const heading = (
     <Box component="span" sx={{ display: "inline-flex", alignItems: "baseline", gap: 1, minWidth: 0 }}>
-      <Typography variant={isSmall ? "h6" : "h5"} component="h2" noWrap>
+      <Typography variant={isSmall ? "h6" : "h5"} component="span" noWrap>
         {title}
       </Typography>
       {subtitle && (
@@ -89,35 +89,38 @@ export const SettingsSection = ({
           minHeight: isSmall ? 28 : 40,
         }}
       >
-        {collapsible ? (
-          <ButtonBase
-            onClick={() => setOpen((value) => !value)}
-            aria-expanded={open}
-            aria-controls={bodyId}
-            sx={(theme) => ({
-              gap: 1,
-              minWidth: 0,
-              borderRadius: "8px",
-              justifyContent: "flex-start",
-              "&.Mui-focusVisible": { boxShadow: focusRing(theme) },
-            })}
-          >
-            <Box
-              component="span"
-              sx={{
-                display: "inline-flex",
-                color: "text.primary",
-                transform: open ? "none" : "rotate(-90deg)",
-                transition: "transform 150ms ease",
-              }}
+        {/* The h2 wraps the toggle button, so the title stays a heading for screen readers. */}
+        <Box component="h2" sx={{ m: 0, minWidth: 0, display: "flex", font: "inherit" }}>
+          {collapsible ? (
+            <ButtonBase
+              onClick={() => setOpen((value) => !value)}
+              aria-expanded={open}
+              aria-controls={bodyId}
+              sx={(theme) => ({
+                gap: 1,
+                minWidth: 0,
+                borderRadius: "8px",
+                justifyContent: "flex-start",
+                "&.Mui-focusVisible": { boxShadow: focusRing(theme) },
+              })}
             >
-              <ChevronDown size={16} />
-            </Box>
-            {heading}
-          </ButtonBase>
-        ) : (
-          heading
-        )}
+              <Box
+                component="span"
+                sx={{
+                  display: "inline-flex",
+                  color: "text.primary",
+                  transform: open ? "none" : "rotate(-90deg)",
+                  transition: "transform 150ms ease",
+                }}
+              >
+                <ChevronDown size={16} />
+              </Box>
+              {heading}
+            </ButtonBase>
+          ) : (
+            heading
+          )}
+        </Box>
         {(selection || action) && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
             {selection && (

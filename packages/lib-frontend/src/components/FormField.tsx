@@ -1,6 +1,7 @@
 import React, { ReactElement, ReactNode, cloneElement, isValidElement, useId } from "react"
 
 import Box from "@mui/material/Box"
+import Select from "@mui/material/Select"
 import TextField from "@mui/material/TextField"
 import Typography from "@mui/material/Typography"
 import { useTheme } from "@mui/material/styles"
@@ -27,6 +28,7 @@ export interface FormFieldProps {
 
 type ControlProps = {
   id?: string
+  labelId?: string
   error?: boolean
   "aria-describedby"?: string
   slotProps?: { htmlInput?: Record<string, unknown> } & Record<string, unknown>
@@ -55,10 +57,13 @@ export const FormField = ({
 
   const child = isValidElement<ControlProps>(children) ? (children as ReactElement<ControlProps>) : null
   const controlId = child?.props.id ?? id ?? generatedId
+  const labelId = `${controlId}-label`
 
   let control: ReactNode = children
   if (child) {
     const extra: ControlProps = { id: controlId }
+    // A Select's id lands on its hidden native input, so the combobox is named through labelId.
+    if (child.type === Select) extra.labelId = child.props.labelId ?? labelId
     if (error) extra.error = true
     if (describedBy) {
       // A TextField puts its own props on the wrapper div, so the description goes on the input.
@@ -88,6 +93,7 @@ export const FormField = ({
       <Typography
         variant="body1"
         component="label"
+        id={labelId}
         htmlFor={controlId}
         color="text.primary"
         // Beside a 28px field, the 16px label sits on the field's text line.
