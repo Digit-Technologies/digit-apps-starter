@@ -31,6 +31,8 @@ import { muiDialogActions, muiDialogContent, muiDialogTitle } from "./muiDialogP
 import { muiFilledInput } from "./muiFilledInput"
 import { muiFormControlLabel } from "./muiFormControlLabel"
 import { muiIconButton } from "./muiIconButton"
+import { muiInput } from "./muiInput"
+import { muiInputAdornment } from "./muiInputAdornment"
 import { muiListItemButton } from "./muiListItemButton"
 import { muiMenu } from "./muiMenu"
 import { muiMenuItem } from "./muiMenuItem"
@@ -73,11 +75,8 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiFilledInput: muiFilledInput(),
     MuiFormControlLabel: muiFormControlLabel(),
     MuiIconButton: muiIconButton({ darkMode }),
-    MuiInput: {
-      defaultProps: {
-        disableUnderline: true,
-      },
-    },
+    MuiInput: muiInput(),
+    MuiInputAdornment: muiInputAdornment(),
     MuiInputBase: {
       defaultProps: {
         disableInjectingGlobalStyles: true,

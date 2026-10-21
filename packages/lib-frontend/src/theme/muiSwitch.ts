@@ -1,119 +1,89 @@
 import { Components, Theme } from "@mui/material/styles"
 
-import { neutral, neutralAlpha, blue, violet, stone } from "./colors"
-import { outer } from "./shadows"
+import { blue, neutral, neutralAlpha, stone } from "./colors"
+import { focusColor } from "./focus"
+import { inner, outer } from "./shadows"
 
-export const muiSwitch = (): Components<
-  Omit<Theme, "components">
->["MuiSwitch"] => {
-  return {
-    styleOverrides: {
-      root: ({ theme }) => ({
-        width: theme.spacing(4.5),
-        height: theme.spacing(4.5),
-        padding: theme.spacing(1.25, 0),
-        borderRadius: 0,
+// The root is a span, so it still gets :hover and :active when the input inside is disabled.
+const enabled = "&:not(:has(.Mui-disabled))"
 
-        "& .MuiSwitch-switchBase": {
-          padding: theme.spacing(0.25),
-          margin: 0,
-          top: "unset",
+// Figma form/input/switch (spec 2.12): a 32x16 track with a 1px border that stays on when checked,
+// and a 10px white thumb inset 3px. Hover and pressed change the track only (pressed adds
+// inner/sm), focus swaps the track border colour, and disabled fades the whole control to 30%.
+export const muiSwitch = (): Components<Omit<Theme, "components">>["MuiSwitch"] => ({
+  defaultProps: {
+    disableRipple: true,
+  },
+  styleOverrides: {
+    root: ({ theme }) => ({
+      width: theme.spacing(4),
+      height: theme.spacing(2),
+      padding: 0,
+      overflow: "visible",
 
-          "&.Mui-focusVisible": {
-            outline: `2px auto ${violet[500]}`,
-            outlineOffset: 2,
-          },
+      "&:has(.Mui-disabled)": {
+        opacity: theme.palette.opacity.disabled,
+      },
 
-          "&.Mui-checked": {
-            transform: `translateX(${theme.spacing(2)})`,
-            color: neutral.white,
-            "& + .MuiSwitch-track": {
-              opacity: 1,
-              border: 0,
-            },
-            "&.Mui-disabled + .MuiSwitch-track": {
-              opacity: theme.palette.opacity.disabled,
-            },
-          },
-          "&.Mui-disabled .MuiSwitch-thumb": {
-            color: stone[50],
-            ...theme.applyStyles("dark", {
-              color: stone[750],
-            }),
-          },
-          "&.Mui-disabled + .MuiSwitch-track": {
-            opacity: theme.palette.opacity.disabled,
-          },
+      "& .MuiSwitch-switchBase": {
+        padding: theme.spacing(0.375),
+        margin: 0,
+        "&:hover": { backgroundColor: "transparent" },
+        "&.Mui-checked": {
+          transform: `translateX(${theme.spacing(2)})`,
+          color: neutral.white,
         },
-        "& .MuiSwitch-thumb": {
-          boxSizing: "border-box",
-          width: theme.spacing(1.5),
-          height: theme.spacing(1.5),
-          boxShadow: outer.sm,
-          background: neutral.white,
-          border: `1px solid ${neutralAlpha.darken[200]}`,
-        },
-        "&:active .MuiSwitch-thumb": {
-          background: stone[100],
-          ...theme.applyStyles("dark", {
-            background: stone[700],
-          }),
-        },
-        "& .MuiSwitch-track": {
-          borderRadius: theme.spacing(2),
-          backgroundColor: stone[100],
-          border: `1px solid ${neutralAlpha.darken[100]}`,
-          opacity: 1,
-          height: theme.spacing(2),
-          width: theme.spacing(4),
-          ...theme.applyStyles("dark", {
-            backgroundColor: stone[600],
-            border: `1px solid ${neutralAlpha.lighten[100]}`,
-          }),
-        },
-        "&:hover .MuiSwitch-track": {
-          backgroundColor: stone[150],
-          ...theme.applyStyles("dark", {
-            backgroundColor: stone[650],
-          }),
-        },
-        "&:active .MuiSwitch-track": {
-          backgroundColor: stone[200],
-          ...theme.applyStyles("dark", {
-            backgroundColor: stone[700],
-          }),
-        },
-        "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
-          backgroundColor: blue[500],
-          ...theme.applyStyles("dark", {
-            backgroundColor: blue[500],
-          }),
-        },
-        "& .MuiSwitch-switchBase.Mui-checked:hover + .MuiSwitch-track": {
-          backgroundColor: blue[550],
-          ...theme.applyStyles("dark", {
-            backgroundColor: blue[550],
-          }),
-        },
-        "& .MuiSwitch-switchBase.Mui-checked:active + .MuiSwitch-track": {
-          backgroundColor: blue[600],
-          ...theme.applyStyles("dark", {
-            backgroundColor: blue[600],
-          }),
-        },
-        "& .MuiSwitch-switchBase.Mui-disabled + .MuiSwitch-track": {
-          backgroundColor: stone[50],
-          ...theme.applyStyles("dark", {
-            backgroundColor: stone[750],
-          }),
-        },
-        "& .MuiSwitch-switchBase.Mui-checked.Mui-disabled + .MuiSwitch-track": {
-          backgroundColor: blue[50],
-          ...theme.applyStyles("dark", {
-            backgroundColor: blue[750],
-          }),
-        },
-      }),
-    },
-  }
-}
+        // MUI dims the track and recolours the thumb when disabled. The root opacity covers it.
+        "&.Mui-disabled": { color: neutral.white },
+        "&.Mui-disabled + .MuiSwitch-track, &.Mui-checked + .MuiSwitch-track": { opacity: 1 },
+      },
+
+      "& .MuiSwitch-thumb": {
+        boxSizing: "border-box",
+        width: theme.spacing(1.25),
+        height: theme.spacing(1.25),
+        boxShadow: outer.sm,
+        backgroundColor: neutral.white,
+        border: `1px solid ${neutralAlpha.darken[100]}`,
+      },
+
+      "& .MuiSwitch-track": {
+        boxSizing: "border-box",
+        borderRadius: theme.spacing(2.5),
+        border: `1px solid ${neutralAlpha.darken[100]}`,
+        backgroundColor: stone[100],
+        opacity: 1,
+        ...theme.applyStyles("dark", {
+          borderColor: neutralAlpha.lighten[100],
+          backgroundColor: stone[600],
+        }),
+      },
+      [`${enabled}:hover .MuiSwitch-track`]: {
+        backgroundColor: stone[150],
+        ...theme.applyStyles("dark", { backgroundColor: stone[650] }),
+      },
+      [`${enabled}:active .MuiSwitch-track`]: {
+        backgroundColor: stone[200],
+        boxShadow: inner.sm,
+        ...theme.applyStyles("dark", { backgroundColor: stone[700] }),
+      },
+
+      "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+        backgroundColor: blue[500],
+        ...theme.applyStyles("dark", { backgroundColor: blue[600] }),
+      },
+      [`${enabled}:hover .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track`]: {
+        backgroundColor: blue[550],
+        ...theme.applyStyles("dark", { backgroundColor: blue[650] }),
+      },
+      [`${enabled}:active .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track`]: {
+        backgroundColor: blue[600],
+        ...theme.applyStyles("dark", { backgroundColor: blue[700] }),
+      },
+
+      "& .MuiSwitch-switchBase.Mui-focusVisible + .MuiSwitch-track": {
+        borderColor: focusColor(theme),
+      },
+    }),
+  },
+})

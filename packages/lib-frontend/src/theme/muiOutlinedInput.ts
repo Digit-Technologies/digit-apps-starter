@@ -1,34 +1,18 @@
 import { Components, Theme } from "@mui/material/styles"
 
-import { inputHoverFillColor } from "./inputHoverFill"
+import { fieldInputStyles, fieldRootStyles } from "./muiFilledInput"
 
+// Figma has no stroked field: its "Outlined" field is the grey filled one. variant="outlined"
+// renders that same field, so a TextField or Select written without a variant (or with MUI's
+// default outlined one) still matches the design. The notched outline is hidden.
 export const muiOutlinedInput = (): Components<
   Omit<Theme, "components">
->["MuiOutlinedInput"] => {
-  return {
-    styleOverrides: {
-      root: ({ theme }) => ({
-        borderRadius: "8px",
-        "& .MuiOutlinedInput-notchedOutline": {
-          borderColor: theme.palette.border.strong,
-        },
-        "&:hover .MuiOutlinedInput-notchedOutline": {
-          borderColor: theme.palette.border.extrastrong,
-        },
-        "&.Mui-disabled": {
-          opacity: 0.3,
-        },
-        // Hover fill marks fields the user can type into. Disabled and
-        // read-only fields aren't editable; selects are picked, not typed.
-        "&:hover:not(.Mui-disabled):not(.Mui-readOnly):not(:has(.MuiSelect-select))":
-          {
-            backgroundColor: inputHoverFillColor(theme),
-          },
-      }),
-      input: ({ theme }) => ({
-        fontSize: theme.typography.body1.fontSize,
-        lineHeight: theme.typography.body1.lineHeight,
-      }),
+>["MuiOutlinedInput"] => ({
+  styleOverrides: {
+    root: ({ ownerState, theme }) => fieldRootStyles(theme, ownerState, "filled"),
+    input: ({ ownerState, theme }) => fieldInputStyles(theme, ownerState),
+    notchedOutline: {
+      display: "none",
     },
-  }
-}
+  },
+})

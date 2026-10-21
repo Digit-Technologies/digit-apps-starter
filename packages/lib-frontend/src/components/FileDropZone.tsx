@@ -5,7 +5,8 @@ import Typography from "@mui/material/Typography"
 import { useTheme } from "@mui/material/styles"
 
 import { Upload } from "../icons"
-import { neutralAlpha } from "../theme/colors"
+import { focusColor } from "../theme/focus"
+import { fieldColors } from "../theme/inputHoverFill"
 
 export interface FileDropZoneProps {
   accept?: string
@@ -47,9 +48,9 @@ export const FileDropZone = ({
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
   const theme = useTheme()
-  const isDark = theme.palette.mode === "dark"
-  const restFill = isDark ? neutralAlpha.lighten[50] : neutralAlpha.darken[50]
-  const dragFill = isDark ? neutralAlpha.lighten[100] : neutralAlpha.darken[100]
+  // Figma File upload/Set "Blank": the form field fill (a.05 / w.15), and its hover fill while a
+  // file is dragged over.
+  const { fill: restFill, hoverFill: dragFill } = fieldColors(theme)
 
   const emit = (files: File[]) => {
     const accepted = files.filter((file) => matchesAccept(file, accept))
@@ -79,7 +80,10 @@ export const FileDropZone = ({
           width: "100%", gap: "8px", px: "16px", py: "20px", border: 0, borderRadius: "8px",
           font: "inherit", color: "text.secondary",
           bgcolor: isDragging ? dragFill : restFill,
-          cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.5 : 1,
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? theme.palette.opacity.disabled : 1,
+          "&:hover:not(:disabled)": { bgcolor: dragFill },
+          "&:focus-visible": { outline: "none", boxShadow: `0 0 0 1px ${focusColor(theme)} inset` },
         }}
       >
         <Upload size={12} aria-hidden="true" style={{ pointerEvents: "none" }} />

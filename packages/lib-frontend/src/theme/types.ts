@@ -39,6 +39,26 @@ declare module "@mui/material/Badge" {
   }
 }
 
+// Figma field sizes: xs 20px, sm 28px (small and medium), md 36px (large). See muiFilledInput.ts.
+declare module "@mui/material/InputBase" {
+  interface InputBasePropsSizeOverrides {
+    xs: true
+    large: true
+  }
+}
+declare module "@mui/material/TextField" {
+  interface TextFieldPropsSizeOverrides {
+    xs: true
+    large: true
+  }
+}
+declare module "@mui/material/FormControl" {
+  interface FormControlPropsSizeOverrides {
+    xs: true
+    large: true
+  }
+}
+
 declare module "@mui/material/Chip" {
   interface ChipPropsColorOverrides extends Record<AccentColorName, true> {}
 }

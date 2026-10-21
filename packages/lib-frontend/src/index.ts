@@ -89,3 +89,5 @@ export { RecordCard, RecordCardSection } from "./components/RecordCard";
 export type { RecordCardProps, RecordCardSectionProps } from "./components/RecordCard";
 export { Section } from "./components/Section";
 export type { SectionProps } from "./components/Section";
+export { FileUploadRow } from "./components/FileUploadRow";
+export type { FileUploadRowProps, FileUploadStatus } from "./components/FileUploadRow";

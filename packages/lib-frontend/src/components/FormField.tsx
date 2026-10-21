@@ -3,6 +3,7 @@ import React, { ReactElement, ReactNode, cloneElement, isValidElement, useId } f
 import Box from "@mui/material/Box"
 import TextField from "@mui/material/TextField"
 import Typography from "@mui/material/Typography"
+import { useTheme } from "@mui/material/styles"
 
 export interface FormFieldProps {
   /** The visible label above the control, or beside it when `horizontal`. */
@@ -46,6 +47,7 @@ export const FormField = ({
   id,
   children,
 }: FormFieldProps) => {
+  const theme = useTheme()
   const generatedId = useId()
   const messageId = useId()
   const message = error ?? helperText
@@ -72,21 +74,24 @@ export const FormField = ({
     control = cloneElement(child, extra)
   }
 
+  // Figma label/Sm above the field (4px gap), or in a 128px column beside it (form/label-field/
+  // width md, 8px gap). The 8px inset lines the label and message up with the text in the field.
   return (
     <Box
       sx={{
         display: "grid",
-        gridTemplateColumns: horizontal ? "120px 1fr" : "1fr",
+        gridTemplateColumns: horizontal ? `${theme.spacing(16)} minmax(0, 1fr)` : "minmax(0, 1fr)",
         alignItems: horizontal ? "start" : undefined,
         gap: horizontal ? 1 : 0.5,
       }}
     >
       <Typography
-        variant="subtitle2"
+        variant="body1"
         component="label"
         htmlFor={controlId}
         color="text.primary"
-        sx={{ pt: horizontal ? 1 : 0 }}
+        // Beside a 28px field, the 16px label sits on the field's text line.
+        sx={{ px: 1, pt: horizontal ? 0.75 : 0, overflowWrap: "anywhere" }}
       >
         {label}
         {required && " *"}
@@ -100,6 +105,7 @@ export const FormField = ({
             component="p"
             sx={{
               mt: 0.5,
+              px: 1,
               fontSize: "12px",
               lineHeight: "16px",
               fontWeight: 400,

@@ -1,24 +1,35 @@
 import { Components, Theme } from "@mui/material/styles"
 
-import { blue, red } from "./colors"
+import { neutralAlpha } from "./colors"
+import { focusColor } from "./focus"
+import { isDarkMode } from "./helpers/isDarkMode"
 
-// Floating is the default group look: no track, with items that fill on hover and selection.
-// For an outlined track, pass sx={{ bgcolor, p: 0.5, borderRadius: "8px" }} at the call site.
+// Figma toggleButton groups (spec 2.13), picked with `size`:
+// - default (medium): Floating. No track; items are Sm text buttons that fill on hover and selection.
+// - size="small": Outlined. A grey track (a.05 / w.15) with 4px padding around XS items. Use it for
+//   a compact segmented filter such as All / Active / Archived.
+// Both draw a 1px line round the group for keyboard focus (focusColor) and for error (error.main).
 export const muiToggleButtonGroup = (): Components<
   Omit<Theme, "components">
->["MuiToggleButtonGroup"] => {
-  return {
-    styleOverrides: {
-      root: {
-        gap: "4px",
-        border: "1px solid transparent",
-        borderRadius: "8px",
-        // Keyboard focus draws a 1px blue border on the group.
+>["MuiToggleButtonGroup"] => ({
+  styleOverrides: {
+    root: ({ theme, ownerState }) => {
+      const outlined = ownerState.size === "small"
+      return {
+        gap: theme.spacing(0.5),
+        // Figma strokes sit inside the frame, so an inset outline keeps the group at item height.
+        outline: "1px solid transparent",
+        outlineOffset: "-1px",
+        borderRadius: theme.spacing(1),
+        ...(outlined && {
+          padding: theme.spacing(0.5),
+          backgroundColor: isDarkMode(theme) ? neutralAlpha.lighten[150] : neutralAlpha.darken[50],
+        }),
         "&:has(.Mui-focusVisible)": {
-          borderColor: blue[600],
+          outlineColor: focusColor(theme),
         },
         "&[aria-invalid='true'], &.Mui-error": {
-          borderColor: red[500],
+          outlineColor: theme.palette.error.main,
         },
         // The item look comes from MuiToggleButton. This only undoes MUI's joined-segment styling
         // (shared borders, -1px margins, square inner corners), including its three-class
@@ -26,9 +37,9 @@ export const muiToggleButtonGroup = (): Components<
         "&& .MuiToggleButtonGroup-grouped.MuiToggleButtonGroup-grouped": {
           border: "none",
           margin: 0,
-          borderRadius: "8px",
+          borderRadius: theme.spacing(outlined ? 0.75 : 1),
         },
-      },
+      }
     },
-  }
-}
+  },
+})
