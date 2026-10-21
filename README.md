@@ -81,12 +81,12 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 
 On every merge to `main`, CI publishes a curated zip for other repos / agent sessions:
 
-- Latest zip: [GitHub Releases (latest)](https://github.com/Digit-Technologies/digit-apps-starter/releases/latest)
+- Latest zip: [GitHub Releases (latest)](https://github.com/hey-sutton/sdk/releases/latest)
 - Dated snapshots: `starter-YYYY.MM.DD-<sha>` (immutable git tags; the newest is marked latest)
 
 ```bash
 curl -fsSL -o digit-apps-starter.zip \
-  https://github.com/Digit-Technologies/digit-apps-starter/releases/latest/download/digit-apps-starter.zip
+  https://github.com/hey-sutton/sdk/releases/latest/download/digit-apps-starter.zip
 unzip digit-apps-starter.zip
 ```
 
