@@ -4,15 +4,13 @@
 #
 # Idempotent: a package whose name@version is already on npm is skipped, so a
 # re-run after a partial failure publishes only what is missing.
+#
+# Auth is npm trusted publishing (OIDC): the calling job needs id-token: write
+# and npm >= 11.5.1. No npm token is used.
 set -euo pipefail
 
 dry_run=false
 if [ "${1:-}" = "--dry-run" ]; then dry_run=true; fi
-
-if [ "$dry_run" = false ] && [ -z "${NODE_AUTH_TOKEN:-}" ]; then
-  echo "::error::NPM_TOKEN secret is required for real publish"
-  exit 1
-fi
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 

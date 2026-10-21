@@ -33,7 +33,10 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version-file: .nvmrc
-          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm for trusted publishing
+        # Trusted publishing (OIDC) needs npm >= 11.5.1.
+        run: npm install -g npm@^11.5.1 && npm --version
 
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
@@ -56,6 +59,4 @@ jobs:
 
       - name: Publish @heysutton platform libraries
         if: env.DRY_RUN != 'true'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: scripts/publish-packages.sh
