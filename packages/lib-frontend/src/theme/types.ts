@@ -11,7 +11,24 @@ declare module "@mui/material/Button" {
   interface ButtonPropsSizeOverrides {
     xs: true
   }
+  /** Destructive contained-secondary (white button, red hover/press). See theme/muiButton.ts. */
+  interface ButtonPropsColorOverrides {
+    errorSecondary: true
+  }
   interface ButtonClasses {
+    sizeXs: string
+  }
+}
+
+declare module "@mui/material/IconButton" {
+  interface IconButtonPropsSizeOverrides {
+    xs: true
+  }
+  /** Destructive contained-secondary icon button. See theme/muiIconButton.ts. */
+  interface IconButtonPropsColorOverrides {
+    errorSecondary: true
+  }
+  interface IconButtonClasses {
     sizeXs: string
   }
 }

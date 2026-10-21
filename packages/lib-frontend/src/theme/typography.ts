@@ -33,7 +33,7 @@ const createTypography = ({
   lineHeight: `${lineHeight / 16}rem`,
   fontWeight,
   letterSpacing: 0,
-  "@media (max-width: 599px) and not print": {
+  "@media screen and (max-width: 599px)": {
     fontSize: `${(size * mobileScaleFactor) / 16}rem`,
     lineHeight: `${(lineHeight * mobileScaleFactor) / 16}rem`,
   },

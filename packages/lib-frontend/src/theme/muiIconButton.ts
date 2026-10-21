@@ -1,11 +1,60 @@
-import { Components, Theme, alpha } from "@mui/material/styles"
+import { CSSObject, Components, Theme } from "@mui/material/styles"
 
-import { neutral, red } from "./colors"
+import { ButtonLook, buttonLookRestStyles, buttonLookStyles } from "./muiButton"
 import { defaultTransition } from "./transitions"
 
-export const muiIconButton = ({
-  darkMode,
-}: {
+/**
+ * Figma IconButton (Atoms 10380:21565) has the four Button looks. MUI's IconButton only has
+ * `color`, so colour picks the look:
+ * - default / inherit / other colours: text look (transparent, neutral icon).
+ * - error: text look, destructive (icon stays neutral, red wash on hover and press).
+ * - primary: contained-primary (charcoal square).
+ * - secondary: contained-secondary (white square with a border and shadow).
+ * - errorSecondary: contained-secondary, destructive.
+ */
+const lookFor = (color: string | undefined): ButtonLook => {
+  if (color === "primary") return "containedPrimary"
+  if (color === "secondary" || color === "errorSecondary") return "containedSecondary"
+  return "text"
+}
+
+const isDestructive = (color: string | undefined): boolean =>
+  color === "error" || color === "errorSecondary"
+
+// Figma sizes: xs 20 (radius 6, icon 16), sm 28 (8, 16), md 36 (10, 20). MUI small = sm,
+// medium = md; large has no Figma size and keeps md.
+const sizeTokens: Record<string, { box: number; radius: number; icon: number }> = {
+  xs: { box: 20, radius: 6, icon: 16 },
+  small: { box: 28, radius: 8, icon: 16 },
+  medium: { box: 36, radius: 10, icon: 20 },
+  large: { box: 36, radius: 10, icon: 20 },
+}
+
+const MOBILE = "@media (max-width: 599px)"
+const mobileScale = 1.25
+
+const sizeStyles = (size: string | undefined, scale: number): CSSObject => {
+  const s = sizeTokens[size ?? "small"] ?? sizeTokens.small
+  const box = `${s.box * scale}px`
+  const icon = `${s.icon * scale}px`
+  return {
+    borderRadius: `${s.radius * scale}px`,
+    height: box,
+    minWidth: box,
+    width: box,
+    // Icons are sized here so a caller's `size` on a lucide icon can't drift from Figma. The
+    // loading spinner keeps its own size.
+    "& .MuiSvgIcon-root, & svg:not(.MuiCircularProgress-svg)": {
+      color: "inherit",
+      fontSize: icon,
+      height: icon,
+      stroke: "currentColor",
+      width: icon,
+    },
+  }
+}
+
+export const muiIconButton = (_: {
   darkMode: boolean
 }): Components<Omit<Theme, "components">>["MuiIconButton"] => {
   return {
@@ -15,127 +64,32 @@ export const muiIconButton = ({
       disableFocusRipple: true,
       size: "small",
     },
-    variants: [
-      {
-        // Destructive icon. Tints to red on hover and press, with a red wash behind it.
-        props: { color: "error" },
-        style: {
-          "&:hover": {
-            background: red[50],
-            color: red[600],
-            "& .MuiSvgIcon-root, & svg, & .MuiBox-root": {
-              color: red[600],
-              stroke: "currentColor",
-            },
-          },
-          "&:active": {
-            background: red[100],
-            color: red[600],
-            "& .MuiSvgIcon-root, & svg, & .MuiBox-root": {
-              color: red[600],
-              stroke: "currentColor",
-            },
-          },
-        },
-      },
-    ],
     styleOverrides: {
-      root: ({ theme }) => ({
-        background: "transparent",
-        border: "1px solid transparent",
-        boxShadow: "none",
-        color: theme.palette.text.secondary,
-        gap: theme.spacing(1),
-        lineHeight: "1rem", // 16px
-        transition: defaultTransition(theme),
-        whiteSpace: "nowrap",
-
-        "& .MuiSvgIcon-root, & svg": {
-          fontSize: "1em",
-          stroke: "currentColor",
-          [theme.breakpoints.down("md")]: {
-            fontSize: "1.25em",
-            width: "1.25em",
-            height: "1.25em",
-          },
-        },
-
-        "&:hover": {
-          background: darkMode
-            ? alpha(neutral.white, 0.1)
-            : alpha(neutral.black, 0.05),
-        },
-
-        "&:active": {
-          background: darkMode
-            ? alpha(neutral.white, 0.05)
-            : alpha(neutral.black, 0.1),
-        },
-
-        "&.Mui-disabled": {
-          background: "transparent",
-          border: "1px solid transparent!important",
-          boxShadow: "none",
-          color: theme.palette.text.disabled,
-          opacity: 0.3,
-
-          "& .MuiSvgIcon-root, & svg, & .MuiBox-root": {
+      root: ({ theme, ownerState }) => {
+        const look = lookFor(ownerState.color)
+        return {
+          padding: 0,
+          lineHeight: "1rem", // 16px
+          transition: defaultTransition(theme),
+          whiteSpace: "nowrap",
+          ...sizeStyles(ownerState.size, 1),
+          [MOBILE]: sizeStyles(ownerState.size, mobileScale),
+          ...buttonLookStyles(theme, look, isDestructive(ownerState.color)),
+          // Disabled dims once, through the disabled foreground token (no extra opacity).
+          "&.Mui-disabled .MuiSvgIcon-root, &.Mui-disabled svg:not(.MuiCircularProgress-svg)": {
             color: "inherit",
             opacity: 1,
-            stroke: "currentColor",
           },
-        },
-      }),
-      sizeSmall: ({ theme }) => ({
-        borderRadius: "8px",
-        height: "28px",
-        minWidth: "28px",
-        width: "28px",
-
-        "& .MuiSvgIcon-root, & svg": {
-          fontSize: "16px",
-          height: "16px",
-          width: "16px",
-        },
-
-        [theme.breakpoints.down("md")]: {
-          borderRadius: "10px",
-          height: "35px",
-          minWidth: "35px",
-          width: "35px",
-
-          "& .MuiSvgIcon-root, & svg": {
-            fontSize: "20px",
-            height: "20px",
-            width: "20px",
+          // MUI disables a loading icon button; keep its resting look and colour the spinner.
+          "&.MuiIconButton-loading.Mui-disabled": {
+            ...buttonLookRestStyles(theme, look),
+            color: "transparent",
+            "& .MuiIconButton-loadingIndicator": {
+              color: buttonLookRestStyles(theme, look).color,
+            },
           },
-        },
-      }),
-      sizeMedium: ({ theme }) => ({
-        borderRadius: "10px",
-        height: "36px",
-        minWidth: "36px",
-        width: "36px",
-
-        "& .MuiSvgIcon-root, & svg": {
-          fontSize: "20px",
-          height: "20px",
-          width: "20px",
-        },
-
-        [theme.breakpoints.down("md")]: {
-          borderRadius: "12.5px",
-          height: "45px",
-          minWidth: "45px",
-          width: "45px",
-
-          "& .MuiSvgIcon-root, & svg": {
-            fontSize: "25px",
-            height: "25px",
-            width: "25px",
-          },
-        },
-      }),
+        }
+      },
     },
   }
 }

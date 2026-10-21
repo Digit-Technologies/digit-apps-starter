@@ -41,6 +41,7 @@ import { muiSelect } from "./muiSelect"
 import { muiSwitch } from "./muiSwitch"
 import { muiTab, muiTabs } from "./muiTabs"
 import { muiTableCell } from "./muiTableCell"
+import { muiTableRow } from "./muiTableRow"
 import { muiTextField } from "./muiTextField"
 import { muiToggleButton } from "./muiToggleButton"
 import { muiToggleButtonGroup } from "./muiToggleButtonGroup"
@@ -98,6 +99,7 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiDivider: muiDivider(),
     MuiLinearProgress: muiLinearProgress(),
     MuiTableCell: muiTableCell(),
+    MuiTableRow: muiTableRow(),
     MuiTextField: muiTextField(),
     MuiToggleButtonGroup: muiToggleButtonGroup(),
     MuiToggleButton: muiToggleButton(),

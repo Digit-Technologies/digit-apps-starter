@@ -27,7 +27,7 @@ export type { PillColor, PillProps, PillSize } from "./components/Pill";
 export { ConfirmDialog } from "./components/ConfirmDialog";
 export type { ConfirmDialogProps } from "./components/ConfirmDialog";
 export { Table } from "./components/Table";
-export type { TableProps } from "./components/Table";
+export type { TableColumn, TableInset, TableProps, TableSelection, TableView } from "./components/Table";
 
 // Icons (Lucide, the same set the platform uses)
 export * from "./icons";
@@ -68,7 +68,7 @@ export type {
 export { PageHeader } from "./components/PageHeader";
 export type { Crumb, PageHeaderProps } from "./components/PageHeader";
 export { RecordName } from "./components/RecordName";
-export type { RecordNameProps } from "./components/RecordName";
+export type { RecordNameMeta, RecordNameProps } from "./components/RecordName";
 export { FileDropZone } from "./components/FileDropZone";
 export type { FileDropZoneProps } from "./components/FileDropZone";
 export { RadioCard } from "./components/RadioCard";

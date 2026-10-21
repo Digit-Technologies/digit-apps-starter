@@ -14,7 +14,7 @@ export const muiCssBaseline = ({
     // Figma Scale: an 8px spacing base, and 10px below 600px. theme.spacing() reads it.
     ":root": {
       "--digit-spacing-base": "8px",
-      "@media (max-width: 599px) and not print": {
+      "@media screen and (max-width: 599px)": {
         "--digit-spacing-base": "10px",
       },
     },
