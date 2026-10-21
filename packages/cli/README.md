@@ -1,9 +1,8 @@
 # `@heysutton/cli`
 
-The `sutton` CLI for Sutton custom apps. Commands are grouped by product area.
-**v1 public CLI:** `sutton studio pack`, plus `sutton studio --help`, `sutton --help` and
-`sutton --version`. Unknown commands, and unknown or missing `studio` subcommands, exit
-non-zero with usage.
+The `sutton` CLI for Sutton custom apps.
+**v1 public CLI:** `sutton studio pack`, plus `sutton --help` and `sutton --version`.
+Unknown commands, and unknown or missing `studio` subcommands, exit non-zero with usage.
 
 `digit-app` stays as a bin for already-built apps: its `pack` runs
 `sutton studio pack`, and it prints a one-line deprecation warning pointing to
@@ -17,7 +16,7 @@ import { pack } from '@heysutton/cli';
 await pack({ root: process.cwd() });
 ```
 
-Subcommands load their own code only when they run, so `--help` and `--version` don't
+`pack` loads its code only when it runs, so `--help` and `--version` don't
 import Vite. Vite is a regular dependency of this package.
 
 Local Digit runtime draft is not supported (Worker, env/secrets, and D1 are injected by

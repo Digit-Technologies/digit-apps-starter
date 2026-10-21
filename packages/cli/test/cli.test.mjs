@@ -25,22 +25,12 @@ test('bins: sutton is primary, digit-app is a legacy alias', () => {
   assert.equal(pkg.bin['digit-app'], 'src/digit-app.js');
 });
 
-test('sutton --help lists the studio group, exits 0, and does not load pack or Vite', () => {
-  for (const flag of ['--help', '-h']) {
+test('sutton --help lists studio pack, exits 0, and does not load pack or Vite', () => {
+  for (const flag of ['--help', '-h', 'help']) {
     const { code, stdout, stderr } = cli('sutton', [flag]);
     assert.equal(code, 0);
-    assert.match(stdout, /^Usage: sutton <group> <command>/);
-    assert.match(stdout, /\bstudio\b/);
-    assert.doesNotMatch(stderr, /LOADED/);
-  }
-});
-
-test('sutton studio --help lists studio subcommands without loading pack or Vite', () => {
-  for (const flag of ['--help', '-h']) {
-    const { code, stdout, stderr } = cli('sutton', ['studio', flag]);
-    assert.equal(code, 0);
-    assert.match(stdout, /^Usage: sutton studio <command>/);
-    assert.match(stdout, /^ {2}pack {2}/m);
+    assert.match(stdout, /^Usage: sutton studio pack/);
+    assert.match(stdout, /^ {2}studio pack {2}/m);
     assert.doesNotMatch(stderr, /LOADED/);
   }
 });
@@ -58,12 +48,12 @@ test('an unknown or missing top-level command exits non-zero with usage', () => 
   const unknown = cli('sutton', ['deploy']);
   assert.equal(unknown.code, 1);
   assert.match(unknown.stderr, /Unknown command: deploy/);
-  assert.match(unknown.stderr, /Usage: sutton <group> <command>/);
+  assert.match(unknown.stderr, /Usage: sutton studio pack/);
   assert.doesNotMatch(unknown.stderr, /LOADED/);
 
   const none = cli('sutton', []);
   assert.equal(none.code, 1);
-  assert.match(none.stderr, /Usage: sutton <group> <command>/);
+  assert.match(none.stderr, /Usage: sutton studio pack/);
 });
 
 test('top-level pack is not a command (it is sutton studio pack)', () => {
@@ -73,17 +63,17 @@ test('top-level pack is not a command (it is sutton studio pack)', () => {
   assert.doesNotMatch(stderr, /LOADED/);
 });
 
-test('an unknown or missing studio subcommand exits non-zero with studio usage', () => {
+test('an unknown or missing studio subcommand exits non-zero with usage', () => {
   const unknown = cli('sutton', ['studio', 'deploy']);
   assert.equal(unknown.code, 1);
   assert.match(unknown.stderr, /Unknown studio command: deploy/);
-  assert.match(unknown.stderr, /Usage: sutton studio <command>/);
+  assert.match(unknown.stderr, /Usage: sutton studio pack/);
   assert.doesNotMatch(unknown.stderr, /LOADED/);
 
   const none = cli('sutton', ['studio']);
   assert.equal(none.code, 1);
-  assert.match(none.stderr, /Missing studio command/);
-  assert.match(none.stderr, /Usage: sutton studio <command>/);
+  assert.match(none.stderr, /Unknown studio command/);
+  assert.match(none.stderr, /Usage: sutton studio pack/);
 });
 
 test('studio pack rejects arguments', () => {
