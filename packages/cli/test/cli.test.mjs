@@ -19,9 +19,9 @@ function cli(bin, args, { cwd = pkgDir } = {}) {
   return { code: res.status, stdout: res.stdout, stderr: res.stderr };
 }
 
-test('bins: sutton is primary, sutton-app and digit-app are legacy aliases', () => {
+test('bins: sutton is primary, digit-app is a legacy alias', () => {
   assert.equal(pkg.bin.sutton, 'src/cli.js');
-  assert.equal(pkg.bin['sutton-app'], 'src/sutton-app.js');
+  assert.equal(pkg.bin['sutton-app'], undefined);
   assert.equal(pkg.bin['digit-app'], 'src/digit-app.js');
 });
 
@@ -110,17 +110,6 @@ function inEmptyDir(fn) {
 
 test('studio pack loads its implementation only when it runs', () => {
   inEmptyDir((cwd) => assertPackRan(cli('sutton', ['studio', 'pack'], { cwd })));
-});
-
-test('sutton-app pack runs studio pack with no warning', () => {
-  inEmptyDir((cwd) => {
-    const res = cli('sutton-app', ['pack'], { cwd });
-    assertPackRan(res);
-    assert.doesNotMatch(res.stderr, /deprecated/);
-  });
-  const { code, stdout } = cli('sutton-app', ['--version']);
-  assert.equal(code, 0);
-  assert.equal(stdout.trim(), pkg.version);
 });
 
 test('digit-app pack runs studio pack with a one-line deprecation warning', () => {

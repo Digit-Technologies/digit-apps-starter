@@ -19,7 +19,6 @@
   ],
   "bin": {
     "sutton": "src/cli.js",
-    "sutton-app": "src/sutton-app.js",
     "digit-app": "src/digit-app.js"
   },
   "main": "./src/index.js",

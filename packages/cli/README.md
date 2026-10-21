@@ -5,8 +5,8 @@ The `sutton` CLI for Sutton custom apps. Commands are grouped by product area.
 `sutton --version`. Unknown commands, and unknown or missing `studio` subcommands, exit
 non-zero with usage.
 
-`sutton-app` and `digit-app` stay as bins for already-built apps: their `pack` runs
-`sutton studio pack`. `digit-app` prints a one-line deprecation warning pointing to
+`digit-app` stays as a bin for already-built apps: its `pack` runs
+`sutton studio pack`, and it prints a one-line deprecation warning pointing to
 `sutton studio pack`.
 
 Programmatic use:
