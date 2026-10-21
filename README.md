@@ -46,13 +46,13 @@ This repo is also the **Sutton** plugin, the home for Sutton agent skills in
 [`.agents/skills/`](.agents/skills). The current skill is `create-digit-app`, which
 builds, drafts, and publishes Sutton Studio and custom apps:
 
-- **Claude Code:** `/plugin marketplace add Digit-Technologies/digit-apps-starter`, then
-  `/plugin install sutton@sutton` (or `/plugin install sutton --marketplace Digit-Technologies/digit-apps-starter` on 2.1.275+)
-- **Codex:** `codex plugin marketplace add Digit-Technologies/digit-apps-starter`, then
+- **Claude Code:** `/plugin marketplace add hey-sutton/sdk`, then
+  `/plugin install sutton@sutton` (or `/plugin install sutton --marketplace hey-sutton/sdk` on 2.1.275+)
+- **Codex:** `codex plugin marketplace add hey-sutton/sdk`, then
   `codex plugin add sutton@sutton`
 - **Cursor:** a team admin imports this repo under **Import from Repo** in the team marketplace,
   or clone it into `~/.cursor/plugins/local/sutton`
-- **Any other agent:** `npx skills add Digit-Technologies/digit-apps-starter`
+- **Any other agent:** `npx skills add hey-sutton/sdk`
 
 Manifests live in `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and
 `.agents/plugins/marketplace.json`. Check Claude manifests with `claude plugin validate --strict .`.

@@ -5,8 +5,8 @@
   "author": {
     "name": "Sutton"
   },
-  "homepage": "https://github.com/Digit-Technologies/digit-apps-starter",
-  "repository": "https://github.com/Digit-Technologies/digit-apps-starter",
+  "homepage": "https://github.com/hey-sutton/sdk",
+  "repository": "https://github.com/hey-sutton/sdk",
   "license": "MIT",
   "keywords": ["sutton", "skills", "sdk", "custom-apps", "mcp"],
   "skills": "./.agents/skills/",
