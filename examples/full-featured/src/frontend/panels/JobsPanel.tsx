@@ -15,6 +15,7 @@ import {
   EmptyState,
   History,
   Loader,
+  PageBody,
   Pill,
   RecordName,
   RefreshCw,
@@ -22,13 +23,12 @@ import {
   Table,
   Tags,
   TextIcon,
-  Zap,
   useBackendMutation,
   useBackendQuery,
+  Zap,
   type TableColumn,
 } from '@digit/lib-frontend';
 
-import PageBody from '../PageBody';
 
 type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
@@ -48,15 +48,6 @@ type Schedule = {
   everySeconds: number;
   nextDueAt: number;
   autoPaused: boolean;
-};
-
-// Pill colours come from its shared status words, so map the job states onto them.
-const RUN_STATUS: Record<RunStatus, { status: string; label: string }> = {
-  queued: { status: 'not started', label: 'Queued' },
-  running: { status: 'in progress', label: 'Running' },
-  succeeded: { status: 'completed', label: 'Succeeded' },
-  failed: { status: 'failed', label: 'Failed' },
-  cancelled: { status: 'cancelled', label: 'Cancelled' },
 };
 
 const formatTime = (epochMs: number) =>
@@ -98,7 +89,7 @@ const columns: TableColumn<JobRun>[] = [
     width: 120,
     icon: Loader,
     sortable: false,
-    renderCell: (params) => <Pill {...RUN_STATUS[params.row.status]} />,
+    renderCell: (params) => <Pill status={params.row.status} />,
   },
   {
     field: 'createdAt',
@@ -161,7 +152,7 @@ export default function JobsPanel() {
   };
 
   return (
-    <PageBody wide>
+    <PageBody>
       <Section title="Schedules" subtitle="From manifest.json">
         {schedulesQuery.error ? (
           <AppErrorAlert

@@ -9,13 +9,13 @@ import Select from '@mui/material/Select';
 import {
   AppErrorAlert,
   FormField,
+  PageBody,
   Section,
   useBackendMutation,
   useDigitApiMutation,
   type AppError,
 } from '@digit/lib-frontend';
 
-import PageBody from '../PageBody';
 
 const FIXTURES: { id: string; label: string; error: AppError }[] = [
   {
@@ -119,7 +119,7 @@ export default function ErrorLabPanel() {
   };
 
   return (
-    <PageBody>
+    <PageBody maxWidth={720}>
       <Section
         title="Fixtures"
         subtitle="How AppErrorAlert presents each known error."

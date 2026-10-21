@@ -92,6 +92,8 @@ export function OrdersPage() {
   not sort or filter a full list in the browser; confirm the API's arguments in
   `graphql-schema://…`.
 - `rowCount` is the total across all pages; the pager depends on it.
+- Tabs that each have their own primary action: keep one `PageHeader` in the app shell and let
+  each tab's config supply its `actions` (see `examples/full-featured/src/frontend/App.tsx`).
 - One primary action, in the header. Bulk actions go in `selection.actions`. Row actions go in
   an overflow menu (see [Row and record actions](#row-and-record-actions)).
 - Saved views (Open / All, or the user's own) are `views`. Sibling datasets that are not the same
@@ -189,7 +191,7 @@ use this when there are several groups.
 
 ```tsx
 <PageHeader title="Settings" />
-<Box sx={{ maxWidth: 720 }}>
+<PageBody maxWidth={720}>
   <SettingsSection title="Details" size="sm" collapsible={false} padded>
     <SettingsRow variant="setting" label="Workspace name"
       description="Shown on documents you send."
@@ -202,7 +204,7 @@ use this when there are several groups.
   <SettingsSection title="Defaults" size="sm" collapsible={false} padded>
     …
   </SettingsSection>
-</Box>
+</PageBody>
 ```
 
 - Label (body1) and description (`overline`, tertiary) on the left; the control in the 256px
@@ -274,13 +276,15 @@ undone opens a `ConfirmDialog destructive` before it runs. Renaming or saving a 
   cancelLabel="Keep role"
   destructive
   busy={deleting}
+  error={deleteError}
   onConfirm={handleDelete}
   onCancel={() => setConfirmOpen(false)}
 />
 ```
 
 - The title is a question; the description is one line on the consequence.
-- The confirm label is the verb, never "OK". Close the dialog only when the action succeeds.
+- The confirm label is the verb, never "OK". Close the dialog only when the action succeeds;
+  on failure pass the error to `error` and keep it open.
 
 **Blocked**: when an action cannot happen because something else must change first, use the same
 dialog with a `TriangleAlert` icon and a non-destructive label that takes the user to the fix.
@@ -306,19 +310,21 @@ A home or overview (Figma "Home"): tiles and lists on the grey page.
 
 ```tsx
 <PageHeader title="Production" />
-<Box sx={{ bgcolor: "background.secondary", minHeight: "100%", px: 4.5, py: 4.5 }}>
-  <Section title="Open jobs" subtitle="4 active"
-    actions={<Button variant="text" endIcon={<ArrowUpRight />}>View all</Button>}>
-    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 1 }}>
-      {jobs.map((job) => (
-        <Card key={job.id} sx={{ p: 2 }}>
-          <Typography variant="overline" color="text.secondary">{job.number}</Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>{job.name}</Typography>
-          <ProgressBar value={job.done} total={job.qty} unit="pcs" sx={{ mt: 2 }} />
-        </Card>
-      ))}
-    </Box>
-  </Section>
+<Box sx={{ bgcolor: "background.secondary", minHeight: "100%" }}>
+  <PageBody>
+    <Section title="Open jobs" subtitle="4 active"
+      actions={<Button variant="text" endIcon={<ArrowUpRight />}>View all</Button>}>
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", columnGap: 1, rowGap: 2 }}>
+        {jobs.map((job) => (
+          <Card key={job.id} sx={{ p: 2 }}>
+            <Typography variant="overline" color="text.secondary">{job.number}</Typography>
+            <Typography variant="body2" sx={{ mt: 1 }}>{job.name}</Typography>
+            <ProgressBar value={job.done} total={job.qty} unit="pcs" sx={{ mt: 2 }} />
+          </Card>
+        ))}
+      </Box>
+    </Section>
+  </PageBody>
 </Box>
 ```
 
@@ -332,13 +338,13 @@ A home or overview (Figma "Home"): tiles and lists on the grey page.
 
 Every screen has all three; design them, do not leave a blank area.
 
-- **Empty**: `EmptyState` where the content would be, at the content width, with at most one
+- **Empty**: `EmptyState` where the content would be, inside `PageBody`, with at most one
   action. A filtered list with no matches says so and offers to clear the filter.
 - **Loading**: `Table loading`, `Button loading` (spinner in place of the start icon), `Skeleton`
   blocks the shape of the content for cards. Never a full-page spinner, never "Loading..." text
   on its own.
-- **Error**: `AppErrorAlert error={error} onRetry={refetch}` at the top of the content. Field
-  errors on the field.
+- **Error**: `AppErrorAlert error={error} onRetry={refetch}` at the top of the content, inside
+  `PageBody`. Field errors on the field. A failed confirm shows in the `ConfirmDialog` (`error`).
 
 ## Row and record actions
 

@@ -21,6 +21,7 @@ import {
   FileText,
   Modal,
   ModalSection,
+  PageBody,
   Pencil,
   Plus,
   RecordName,
@@ -34,7 +35,6 @@ import {
   type TableColumn,
 } from '@digit/lib-frontend';
 
-import PageBody from '../PageBody';
 
 type Note = {
   id: number;
@@ -99,7 +99,7 @@ export default function NotesPanel({ createOpen, onCreateOpen, onCreateClose }: 
       minWidth: 200,
       icon: TextIcon,
       sortable: false,
-      renderCell: (params) => <RecordName name={params.row.title} link />,
+      renderCell: (params) => <RecordName name={params.row.title} placeholder="document" link />,
     },
     {
       field: 'body',
@@ -148,10 +148,9 @@ export default function NotesPanel({ createOpen, onCreateOpen, onCreateClose }: 
     },
   ];
 
-  const errorAlerts = (error || deleteError) && (
-    <PageBody>
-      {error && <AppErrorAlert error={error} onRetry={() => void refetch()} />}
-      {deleteError && <AppErrorAlert error={deleteError} />}
+  const errorAlerts = error && (
+    <PageBody maxWidth={720}>
+      <AppErrorAlert error={error} onRetry={() => void refetch()} />
     </PageBody>
   );
 
@@ -160,7 +159,7 @@ export default function NotesPanel({ createOpen, onCreateOpen, onCreateClose }: 
       {errorAlerts}
 
       {!error && !loading && notes.length === 0 ? (
-        <PageBody>
+        <PageBody maxWidth={720}>
           <EmptyState
             icon={<FileText size={20} />}
             title="No notes yet"
@@ -232,8 +231,12 @@ export default function NotesPanel({ createOpen, onCreateOpen, onCreateClose }: 
         cancelLabel="Keep note"
         destructive
         busy={deleting}
+        error={deleteError}
         onConfirm={() => void remove()}
-        onCancel={() => setConfirming(null)}
+        onCancel={() => {
+          resetDelete();
+          setConfirming(null);
+        }}
       />
 
       <Snackbar

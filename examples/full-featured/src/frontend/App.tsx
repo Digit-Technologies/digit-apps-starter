@@ -5,9 +5,8 @@ import Button from '@mui/material/Button';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 
-import { PageHeader, Plus } from '@digit/lib-frontend';
+import { PageBody, PageHeader, Plus } from '@digit/lib-frontend';
 
-import PageBody from './PageBody';
 import ComponentsPanel from './panels/ComponentsPanel';
 import ConfigPanel from './panels/ConfigPanel';
 import DigitApiPanel from './panels/DigitApiPanel';
@@ -61,7 +60,7 @@ export default function App() {
       id: 'backend',
       label: 'Backend',
       content: (
-        <PageBody>
+        <PageBody maxWidth={720}>
           <PublicApiPanel />
           <SecretsPanel />
           <ConfigPanel />

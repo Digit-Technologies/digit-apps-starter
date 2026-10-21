@@ -6,6 +6,8 @@ import Dialog from "@mui/material/Dialog"
 import Stack from "@mui/material/Stack"
 import Typography from "@mui/material/Typography"
 
+import { AppErrorAlert, type AppError } from "../errors"
+
 export interface ConfirmDialogProps {
   open: boolean
   /** A short question, such as "Delete role?" */
@@ -27,6 +29,11 @@ export interface ConfirmDialogProps {
   confirmIcon?: ReactNode
   /** Shows a spinner on the confirm button and disables cancel while the action runs. */
   busy?: boolean
+  /**
+   * The error from a failed attempt. Keep the dialog open and pass the hook's error here, so the
+   * user can retry or back out without losing the question.
+   */
+  error?: AppError | null
   onConfirm: () => void
   onCancel: () => void
 }
@@ -47,6 +54,7 @@ export const ConfirmDialog = ({
   icon,
   confirmIcon,
   busy = false,
+  error,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) => {
@@ -93,6 +101,7 @@ export const ConfirmDialog = ({
             </Typography>
           )}
         </Stack>
+        {error && <AppErrorAlert error={error} />}
         {/* Equal halves of 240px fit two short answers, such as "No, cancel" and "Yes, continue". */}
         <Stack direction="row" sx={{ gap: 1 }}>
           <Button

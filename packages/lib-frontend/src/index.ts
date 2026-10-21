@@ -97,3 +97,5 @@ export { SidePanel } from "./components/SidePanel";
 export type { SidePanelProps } from "./components/SidePanel";
 export { ProgressBar } from "./components/ProgressBar";
 export type { ProgressBarProps } from "./components/ProgressBar";
+export { PageBody } from "./components/PageBody";
+export type { PageBodyProps } from "./components/PageBody";

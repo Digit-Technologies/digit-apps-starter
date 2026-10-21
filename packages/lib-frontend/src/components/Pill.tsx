@@ -39,12 +39,19 @@ const statusColors: Readonly<Record<string, PillColor>> = {
   building: "blue",
   live: "green",
   pending: "yellow",
+  queued: "yellow",
+  waiting: "yellow",
   in_progress: "yellow",
+  running: "blue",
+  scheduled: "blue",
+  paused: "gray",
   blocked: "red",
   failed: "red",
   complete: "green",
   completed: "green",
   done: "green",
+  succeeded: "green",
+  success: "green",
 }
 
 const normaliseStatus = (status: string): string =>

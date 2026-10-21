@@ -7,6 +7,7 @@ import {
   Bookmark,
   BoxIcon,
   EmptyState,
+  PageBody,
   RecordName,
   Table,
   TextIcon,
@@ -14,7 +15,6 @@ import {
   type TableColumn,
 } from '@digit/lib-frontend';
 
-import PageBody from '../PageBody';
 
 type ItemNode = { id: string; name?: string | null; sku?: string | null };
 
@@ -76,7 +76,7 @@ export default function DigitApiPanel() {
 
   if (error) {
     return (
-      <PageBody>
+      <PageBody maxWidth={720}>
         <AppErrorAlert error={error} onRetry={() => void refetch()} />
       </PageBody>
     );
@@ -84,7 +84,7 @@ export default function DigitApiPanel() {
 
   if (!loading && items.length === 0) {
     return (
-      <PageBody>
+      <PageBody maxWidth={720}>
         <EmptyState
           icon={<BoxIcon size={20} />}
           title="No items"

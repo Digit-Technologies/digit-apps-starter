@@ -6,10 +6,10 @@ import Tooltip from "@mui/material/Tooltip"
 import Typography from "@mui/material/Typography"
 import type { LucideIcon } from "lucide-react"
 
-import { BoxIcon, Building2, CircleUserRound, Wrench } from "../icons"
+import { BoxIcon, Building2, CircleUserRound, FileText, Wrench } from "../icons"
 import { focusRing } from "../theme/focus"
 
-export type RecordNamePlaceholder = "item" | "company" | "user" | "tool"
+export type RecordNamePlaceholder = "item" | "company" | "user" | "tool" | "document"
 
 /** One group in the meta line: a 12px icon, an optional label, then the value. */
 export interface RecordNameMeta {
@@ -50,6 +50,8 @@ const placeholderIcons: Record<RecordNamePlaceholder, LucideIcon> = {
   company: Building2,
   user: CircleUserRound,
   tool: Wrench,
+  // Anything that is not one of the above: notes, files, reports, runs.
+  document: FileText,
 }
 
 // The DataGrid theme underlines this class when its row is hovered (muiDataGrid.ts).

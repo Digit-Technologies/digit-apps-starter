@@ -235,7 +235,7 @@ only; still upload the zip **unchanged**. Details:
   handlers. Do not render a list of many rows as an unbounded dump. See
   [reference/design-patterns.md](reference/design-patterns.md#list-page).
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + layout and data components (`PageHeader`, `Table`,
+- **Public surface:** hooks + theme + layout and data components (`PageHeader`, `PageBody`, `Table`,
   `RecordName`, `Pill`, `SidePanel`, `Modal`/`ModalSection`, `ConfirmDialog`, `SettingsSection`,
   `SettingsRow`, `Section`, `RecordCard`/`RecordCardSection`, `PropertyGrid`, `FormField`,
   `Switch`, `RadioCard`, `EmptyState`, `ProgressBar`, `FileDropZone`, `FileUploadRow`) + Lucide
@@ -332,7 +332,7 @@ composite pieces the product mockups use. You compose those pieces; you never re
 
 **Hard rules** (each one is a common way apps end up looking like stock MUI):
 
-- Use the library component when one exists: `PageHeader`, `Table`, `RecordName`, `Pill`,
+- Use the library component when one exists: `PageHeader`, `PageBody`, `Table`, `RecordName`, `Pill`,
   `SidePanel`, `Modal` + `ModalSection`, `ConfirmDialog`, `SettingsSection` + `SettingsRow`,
   `Section`, `RecordCard`, `PropertyGrid`, `FormField`, `Switch`, `RadioCard`, `EmptyState`,
   `ProgressBar`, `FileDropZone`, `FileUploadRow`, `AppErrorAlert`.

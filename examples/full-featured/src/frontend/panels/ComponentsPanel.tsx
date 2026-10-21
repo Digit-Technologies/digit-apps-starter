@@ -18,6 +18,7 @@ import {
   Download,
   Factory,
   FormField,
+  PageBody,
   Pill,
   Plus,
   PropertyGrid,
@@ -26,7 +27,6 @@ import {
   Switch,
 } from '@digit/lib-frontend';
 
-import PageBody from '../PageBody';
 
 const STATUSES = ['draft', 'open', 'in progress', 'ready', 'sent', 'completed', 'blocked', 'closed'];
 
@@ -42,7 +42,7 @@ export default function ComponentsPanel() {
   const [notify, setNotify] = useState(true);
 
   return (
-    <PageBody>
+    <PageBody maxWidth={720}>
       <Section title="Buttons" subtitle="One primary per surface, last in its group">
         <Box sx={row}>
           <Button variant="text">Cancel</Button>

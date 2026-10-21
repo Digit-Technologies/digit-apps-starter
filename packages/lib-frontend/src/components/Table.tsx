@@ -58,6 +58,14 @@ export interface TableSelection {
  */
 export type TableInset = "page" | "panel" | "none"
 
+const colSelector = (index: number) =>
+  `& .MuiDataGrid-cell[aria-colindex="${index}"], & .MuiDataGrid-columnHeader[aria-colindex="${index}"]`
+
+const gutterRules = <T,>(first: number, last: number, inset: T) =>
+  first === last
+    ? { [colSelector(first)]: { pl: inset, pr: inset } }
+    : { [colSelector(first)]: { pl: inset }, [colSelector(last)]: { pr: inset } }
+
 export interface TableProps<Row extends GridValidRowModel> {
   rows: Row[]
   columns: TableColumn<Row>[]
@@ -429,11 +437,9 @@ export function Table<Row extends GridValidRowModel>({
           "& .MuiDataGrid-row": {
             cursor: onRowClick ? "pointer" : "default",
           },
-          // The page gutter sits inside the first and last cells, so rows stay full bleed.
-          [`& .MuiDataGrid-cell[aria-colindex="${firstColIndex}"], & .MuiDataGrid-columnHeader[aria-colindex="${firstColIndex}"]`]:
-            { pl: insetVar },
-          [`& .MuiDataGrid-cell[aria-colindex="${lastColIndex}"], & .MuiDataGrid-columnHeader[aria-colindex="${lastColIndex}"]`]:
-            { pr: insetVar },
+          // The page gutter sits inside the first and last cells, so rows stay full bleed. With a
+          // single column the two selectors are the same key, so they merge into one rule.
+          ...gutterRules(firstColIndex, lastColIndex, insetVar),
         }}
       />
     </Box>

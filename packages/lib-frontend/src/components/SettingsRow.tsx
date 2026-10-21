@@ -137,7 +137,9 @@ export const SettingsRow = ({
       sx={{
         display: "grid",
         gridTemplateColumns: `${labelWidth}px minmax(0, 1fr)`,
-        alignItems: "center",
+        // Top-aligned, with the label pushed down to the first text line of a 28px control, so
+        // the label stays beside the first line of a multiline field.
+        alignItems: "start",
         gap: 1,
         // The 8px inset lines the label up with the text of an invisible input below or beside it.
         pl: 1,
@@ -146,7 +148,7 @@ export const SettingsRow = ({
         "&:where(.SettingsRow-form + .SettingsRow-form)": { mt: 1 },
       }}
     >
-      {labelBlock}
+      <Box sx={{ pt: 0.75, minWidth: 0 }}>{labelBlock}</Box>
       <Box sx={{ minWidth: 0 }}>{field}</Box>
     </Box>
   )

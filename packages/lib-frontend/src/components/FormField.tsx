@@ -101,16 +101,9 @@ export const FormField = ({
         {message && (
           <Typography
             id={messageId}
-            variant="body2"
+            variant="caption"
             component="p"
-            sx={{
-              mt: 0.5,
-              px: 1,
-              fontSize: "12px",
-              lineHeight: "16px",
-              fontWeight: 400,
-              color: error ? "error.main" : "text.secondary",
-            }}
+            sx={{ mt: 0.5, px: 1, color: error ? "error.main" : "text.secondary" }}
           >
             {message}
           </Typography>

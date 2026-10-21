@@ -30,7 +30,7 @@ Read this file before you write any UI. Then pick a screen recipe from
 
 ## Non-negotiables
 
-1. **Use the library component when one exists.** `PageHeader`, `Table`, `Pill`, `RecordName`,
+1. **Use the library component when one exists.** `PageHeader`, `PageBody`, `Table`, `Pill`, `RecordName`,
    `ConfirmDialog`, `Modal`, `SidePanel`, `SettingsRow`, `SettingsSection`, `Section`,
    `RecordCard`, `PropertyGrid`, `FormField`, `Switch`, `RadioCard`, `EmptyState`, `ProgressBar`,
    `FileDropZone`, `FileUploadRow` and `AppErrorAlert` exist so you never rebuild them from `Box`
@@ -64,6 +64,7 @@ Read this file before you write any UI. Then pick a screen recipe from
 | You need | Use |
 | --- | --- |
 | The title bar of any screen, panel or form dialog | `PageHeader` (`variant` page, record or dialog) |
+| Content under the header that is not a full-bleed table | `PageBody` (page gutter and spacing) |
 | A list of records | `Table` (server paged, sorted, searched) |
 | A short fixed list (roles, config entries) | Plain MUI `Table` + `TableRow hover` + `TableCell`, no `TableHead` |
 | A record's name in a list or header | `RecordName` |
@@ -143,8 +144,10 @@ outside a `Pill`.
 
 - The spacing unit is 8px on desktop and 10px below 600px; `sx` numbers (`p: 2`, `gap: 1`) scale
   with it automatically. Use spacing numbers, not px.
-- **Page gutter**: 36px (`px: 4.5`) on desktop, 20px below 600px. `PageHeader` and `Table`
-  (`inset="page"`) already apply it; content blocks below them use the same gutter.
+- **Page gutter**: 36px on desktop, 20px below 600px. `PageHeader`, `Table` (`inset="page"`) and
+  `PageBody` apply it. Put every other block under a `PageHeader` inside `<PageBody>` (add
+  `maxWidth={720}` for settings and forms); do not pad a `Box` by hand, since `px: 4.5` comes out
+  at 45px on mobile.
 - **Panel and dialog gutter**: 16px (`p: 2`). `SidePanel`, `Modal` and `Table inset="panel"`
   apply it.
 - Sections inside a card or panel stack with **no gap**, separated by a 1px `border.solidDefault`
@@ -217,6 +220,10 @@ that is not exported, say so and name it.
   buttons, then **one** contained primary button, last.
 - `subtitle` for a short caption; `onClose` adds the X.
 
+**`PageBody`**: the page gutter, 24px above and below, and a 32px gap between its children.
+Everything under a `PageHeader` that is not a full-bleed `Table` goes in it: `Section`s,
+`AppErrorAlert`, `EmptyState`, dashboards.
+
 **`Section`**: an h6 heading row with an overline count or hint and right-side actions, for blocks
 on a page or panel ("Tasks · 4 active" with a "View all" text button).
 
@@ -242,7 +249,7 @@ a 240px `Box` with `bgcolor: "background.surface"` and a right `border.solidStro
 | Secondary: everything else that is a button | `<Button>` (white, 1px border) |
 | Tertiary: Cancel, Select all, View all | `<Button variant="text">` |
 | Utility grey (a "Learn more" in an empty state, the cancel answer in `ConfirmDialog`) | `<Button variant="outlined">` |
-| Destructive | `color="error"` on the button's normal variant: it keeps its neutral look and turns red on hover and press. Usually only inside `ConfirmDialog destructive` |
+| Destructive | `color="error"` (charcoal primary look) or `color="errorSecondary"` (white secondary look). Both keep their neutral colours at rest and turn red on hover and press. Usually only inside `ConfirmDialog destructive` |
 
 - Leading icon: `startIcon={<Plus />}`. Save buttons use `Save`. A trailing chevron for a menu:
   `endIcon={<ChevronDown />}`.
@@ -294,24 +301,36 @@ const columns: TableColumn<Order>[] = [
 - `selection={{ model, onChange, actions }}` adds checkboxes and a bulk-action bar.
 - `inset="panel"` inside a side panel or dialog.
 - The create action goes in `PageHeader actions`, not in the table toolbar.
+- Paging: `paginationModel` is `{ page, pageSize }`. For a GraphQL connection, request
+  `first: pageSize` and keep the `endCursor` of each page you have loaded, so page `n` asks for
+  `after: cursors[n - 1]`; `rowCount` is the connection's `totalCount`. Reset to page 0 when the
+  search, view or sort changes. A backend route with no paging returns the whole list: slice
+  it in the browser for the current page and pass its length as `rowCount`.
+- No rows yet: render an `EmptyState` (inside `PageBody`) instead of the table, unless a search
+  or view is active, in which case keep the table and say nothing matched.
 
 **`RecordName`**: 20px tile + name; with `meta` (a list of `{ icon, label?, value }`) a 36px tile
 and an overline meta line (then pass `rowHeight={52}` to `Table`). `placeholder` picks the tile
-icon (`item`, `company`, `user`, `tool`); `image` shows a thumbnail. `onClick`/`href` make it a
+icon (`item`, `company`, `user`, `tool`, or `document` for anything else: notes, files,
+reports, runs); `image` shows a thumbnail. `onClick`/`href` make it a
 real link.
 
 **`Pill`**: every status and category. Never `Chip` for a status.
 
 | Tone | Status words (`status=`) |
 | --- | --- |
-| `gray` | draft, archived, closed, cancelled |
-| `blue` | open, not started, active, building |
-| `green` | live, approved, received, complete, completed, done |
-| `yellow` | pending, in progress, shipped |
+| `gray` | closed, cancelled, archived, paused |
+| `blue` | open, not started, active, building, running, scheduled |
+| `green` | live, approved, received, complete, completed, done, succeeded, success |
+| `yellow` | pending, queued, waiting, in progress, shipped |
 | `orange` | ready |
 | `violet` | sent |
 | `red` | blocked, failed, stopped, rejected |
-| outlined | any other word |
+| outlined | draft, and any word not listed |
+
+Pass the record's own status word (`<Pill status={run.status} />`); the label is the word in
+sentence case. If a word your data uses is missing, pass `color` for now and tell the user the
+word should be added to the list in `Pill.tsx`.
 
 - `color="sky"` (any accent) for a category; `color="gray"` for built-in or system categories.
 - `size="md"` (20px, default) for record status; `size="sm"` (16px) for inline facts and
@@ -349,7 +368,9 @@ overlapping). Companies and items use `variant="rounded"`.
     `FormField`.
 - Placeholders: "Enter value", "Select value", "MM/DD/YYYY", "Search…".
 - Select: `<Select variant="standard" displayEmpty>` for invisible, plain `<Select>` for the grey
-  field. Options are `MenuItem`.
+  field. Options are `MenuItem`. For a placeholder, use `displayEmpty` with
+  `renderValue={(v) => v ? labelFor(v) : <Typography component="span" color="text.tertiary">Select value</Typography>}`.
+- A checkbox with its label: `<FormControlLabel control={<Checkbox />} label="Include archived" />`.
 - Dates: `<TextField type="date" hiddenLabel />` (do not add `@mui/x-date-pickers`).
 - Multiline notes: `<TextField hiddenLabel multiline minRows={3} />`.
 - Lead and trail icons and units go in `InputAdornment` (16px icons).
@@ -366,7 +387,8 @@ overlapping). Companies and items use `variant="rounded"`.
   20px icon, h5 question, one-line consequence, two equal answers (outlined back-out, contained
   go-ahead), no X. `destructive` for anything that deletes or cannot be undone: the go-ahead turns
   red on hover and press, and the back-out answer takes focus. `busy` while it runs. Answers are
-  phrased as answers ("Delete", "No, keep it", "Go to users"), never "OK".
+  phrased as answers ("Delete", "No, keep it", "Go to users"), never "OK". If the action fails,
+  keep the dialog open and pass the hook's error as `error`; it shows inside the dialog.
 
   ```tsx
   <ConfirmDialog
@@ -444,7 +466,8 @@ overlapping). Companies and items use `variant="rounded"`.
 ## Copy and values
 
 - Sentence case everywhere ("New bin", "Select all"). Labels are nouns; buttons are verbs.
-- Missing text is "None" in `text.tertiary`. Not applicable is an empty cell. Never "null",
+- Missing text is "None" in `text.tertiary`. A value not fetched yet shows "None" too (or a
+  `Skeleton` while it loads), never an empty box. Not applicable is an empty cell. Never "null",
   "N/A" or "-".
 - Numeric zero is "0.00", right-aligned. Lists of values are comma separated ("640.00 ft², 300.00 lb").
 - Several values in one cell show "Multiple" with a chevron that opens a menu of them.
