@@ -35,6 +35,7 @@ import { muiListItemButton } from "./muiListItemButton"
 import { muiMenu } from "./muiMenu"
 import { muiMenuItem } from "./muiMenuItem"
 import { muiOutlinedInput } from "./muiOutlinedInput"
+import { muiPaper } from "./muiPaper"
 import { muiRadio } from "./muiRadio"
 import { muiSelect } from "./muiSelect"
 import { muiSwitch } from "./muiSwitch"
@@ -85,6 +86,7 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiMenuItem: muiMenuItem(),
     MuiMenu: muiMenu(),
     MuiOutlinedInput: muiOutlinedInput(),
+    MuiPaper: muiPaper(),
     // MuiPickersInputBase / MuiPickersOutlinedInput stay on digit-web (need
     // @mui/x-date-pickers). Do not copy them into the starter.
     MuiRadio: muiRadio(darkMode),
