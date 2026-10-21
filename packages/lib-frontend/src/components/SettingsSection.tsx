@@ -30,7 +30,8 @@ export const SettingsSection = ({
 }: SettingsSectionProps) => {
   const [open, setOpen] = useState(defaultOpen)
   const bodyId = useId()
-  const allChecked = selection !== undefined && selection.checked === selection.total
+  const allChecked =
+    selection !== undefined && selection.total > 0 && selection.checked === selection.total
 
   return (
     <Box>

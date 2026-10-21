@@ -18,6 +18,11 @@ export const muiDialogContent = (): Components<Omit<Theme, "components">>["MuiDi
   styleOverrides: {
     root: {
       padding: 16,
+      // MUI drops the top padding after a DialogTitle. The title here has its own border, so the
+      // content keeps its full padding.
+      ".MuiDialogTitle-root + &": {
+        paddingTop: 16,
+      },
     },
   },
 })

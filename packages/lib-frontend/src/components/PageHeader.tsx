@@ -30,7 +30,8 @@ export interface PageHeaderProps {
 
 /**
  * The title row at the top of a screen, side panel or form dialog. Use `trail` for a detail
- * screen under a list. Use `variant="dialog"` inside a Dialog, where the divider is not wanted.
+ * screen under a list. Use `variant="dialog"` inside a Dialog: it uses 16px padding and the 10%
+ * strong divider instead of the page's solid one.
  */
 export const PageHeader = ({
   title,
@@ -59,11 +60,13 @@ export const PageHeader = ({
           gap: 0.5,
           boxSizing: "border-box",
           minHeight: 60,
-          // Dialogs use 16px padding. Pages use 36px side padding, and 20px below 600px.
+          // Dialogs use 16px padding. Pages use 36px side padding.
           px: isDialog ? 2 : 4.5,
           pt: 2,
           pb: tabs ? 1 : 2,
-          "@media (max-width: 599px)": { px: isDialog ? 2 : 2.5, py: 2.5 },
+          // Below 600px, page headers get 20px padding. Dialog headers keep 16px, and a header with
+          // tabs keeps its tight bottom padding.
+          "@media (max-width: 599px)": isDialog ? {} : { px: 2.5, pt: 2.5, pb: tabs ? 1 : 2.5 },
         }}
       >
         {trail?.map((crumb) => (

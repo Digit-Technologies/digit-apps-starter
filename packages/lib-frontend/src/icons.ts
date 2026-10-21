@@ -1,6 +1,7 @@
 // The icons the Digit design uses. Import them from the package root, for example
 // `import { Plus } from "@digit/lib-frontend"`. Add a name here when a screen needs a new icon,
-// rather than importing lucide-react directly in an app.
+// rather than importing lucide-react directly in an app. Box, Link and Text are exported as
+// BoxIcon, LinkIcon and TextIcon so they do not shadow the MUI components of the same name.
 export {
   Archive,
   ArrowUpDown,
@@ -9,7 +10,7 @@ export {
   BookOpen,
   BookOpenText,
   BookUser,
-  Box,
+  BoxIcon,
   Building2,
   Calendar,
   CalendarRange,
@@ -37,7 +38,7 @@ export {
   Import,
   Info,
   Layers,
-  Link,
+  LinkIcon,
   Loader,
   Lock,
   LockKeyhole,
@@ -64,7 +65,7 @@ export {
   SquareTerminal,
   Star,
   Tags,
-  Text,
+  TextIcon,
   TextCursorInput,
   Trash2,
   TriangleAlert,

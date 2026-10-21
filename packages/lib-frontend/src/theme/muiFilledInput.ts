@@ -32,14 +32,16 @@ export const muiFilledInput = (): Components<Omit<Theme, "components">>["MuiFill
         boxShadow: `0 0 0 1px ${red[500]} inset`,
       },
       ...(ownerState.size === "small" ? { minHeight: "20px", borderRadius: 6 } : {}),
-      // MUI pads the multiline field box itself. The 8px padding goes on the textarea only.
-      ...(ownerState.multiline ? { borderRadius: 10, padding: 0 } : {}),
+      // A hidden-label multiline field is a plain 8px box, so the padding moves onto the textarea.
+      // A labelled one keeps MUI's 25px top padding, which is where the floating label sits.
+      ...(ownerState.multiline ? { borderRadius: 10 } : {}),
+      ...(ownerState.multiline && ownerState.hiddenLabel ? { padding: 0 } : {}),
       }
     },
     input: ({ theme, ownerState }) => ({
       // Only hidden-label fields get the compact padding. Labelled fields keep MUI's label space.
       ...(ownerState.hiddenLabel ? { padding: ownerState.size === "small" ? "2px 4px" : "6px 8px" } : {}),
-      ...(ownerState.multiline ? { padding: "8px" } : {}),
+      ...(ownerState.multiline && ownerState.hiddenLabel ? { padding: "8px" } : {}),
       fontSize: "13px",
       lineHeight: "16px",
       "&::placeholder": {

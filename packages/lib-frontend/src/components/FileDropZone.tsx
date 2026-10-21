@@ -15,7 +15,28 @@ export interface FileDropZoneProps {
   disabled?: boolean
 }
 
-/** A drop area that takes dragged files, or opens the file picker when clicked. */
+// Mirrors the browser's own `accept` matching, so a dropped file passes the same filter as a picked
+// one. Entries are extensions (".csv"), exact types ("text/csv"), or wildcards ("image/*").
+const matchesAccept = (file: File, accept: string | undefined): boolean => {
+  if (!accept) return true
+  const name = file.name.toLowerCase()
+  const type = file.type.toLowerCase()
+  return accept
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
+    .some((entry) => {
+      if (entry.startsWith(".")) return name.endsWith(entry)
+      if (entry.endsWith("/*")) return type.startsWith(entry.slice(0, -1))
+      return type === entry
+    })
+}
+
+/**
+ * A drop area that takes dragged files, or opens the file picker when clicked. Dropped files are
+ * checked against `accept` the same way the picker checks them, and files that do not match are
+ * left out.
+ */
 export const FileDropZone = ({
   accept,
   multiple,
@@ -31,7 +52,8 @@ export const FileDropZone = ({
   const dragFill = isDark ? neutralAlpha.lighten[100] : neutralAlpha.darken[100]
 
   const emit = (files: File[]) => {
-    const picked = multiple ? files : files.slice(0, 1)
+    const accepted = files.filter((file) => matchesAccept(file, accept))
+    const picked = multiple ? accepted : accepted.slice(0, 1)
     if (picked.length > 0) onFiles(picked)
   }
 

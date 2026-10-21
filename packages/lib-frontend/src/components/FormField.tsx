@@ -1,6 +1,7 @@
-import React, { ReactNode, useId } from "react"
+import React, { ReactElement, ReactNode, cloneElement, isValidElement, useId } from "react"
 
 import Box from "@mui/material/Box"
+import TextField from "@mui/material/TextField"
 import Typography from "@mui/material/Typography"
 
 export interface FormFieldProps {
@@ -14,14 +15,27 @@ export interface FormFieldProps {
   error?: ReactNode
   /** Puts the label in a left column, with the control on the right. */
   horizontal?: boolean
-  /** The control, usually a themed TextField, Select, or Checkbox. */
+  /**
+   * The id given to the control, so the label points at it. Defaults to a generated id. A child
+   * that already has an `id` keeps it, and the label uses that id instead.
+   */
+  id?: string
+  /** One control, usually a themed TextField, Select, or Checkbox. */
   children: ReactNode
+}
+
+type ControlProps = {
+  id?: string
+  error?: boolean
+  "aria-describedby"?: string
+  slotProps?: { htmlInput?: Record<string, unknown> } & Record<string, unknown>
 }
 
 /**
  * Wraps one form control with its label, helper text, and error text. The control is passed in
- * as a child, so the same wrapper works with MUI's Select, TextField, and Checkbox. This is a
- * presentational wrapper, not a form library binding: it holds no state.
+ * as a child, so the same wrapper works with MUI's Select, TextField, and Checkbox. FormField
+ * gives the child an id that the label points at, links the message to it with
+ * aria-describedby, and sets `error` on it when there is error text. It holds no state.
  */
 export const FormField = ({
   label,
@@ -29,10 +43,34 @@ export const FormField = ({
   helperText,
   error,
   horizontal,
+  id,
   children,
 }: FormFieldProps) => {
+  const generatedId = useId()
   const messageId = useId()
   const message = error ?? helperText
+  const describedBy = message ? messageId : undefined
+
+  const child = isValidElement<ControlProps>(children) ? (children as ReactElement<ControlProps>) : null
+  const controlId = child?.props.id ?? id ?? generatedId
+
+  let control: ReactNode = children
+  if (child) {
+    const extra: ControlProps = { id: controlId }
+    if (error) extra.error = true
+    if (describedBy) {
+      // A TextField puts its own props on the wrapper div, so the description goes on the input.
+      if (child.type === TextField) {
+        extra.slotProps = {
+          ...child.props.slotProps,
+          htmlInput: { ...child.props.slotProps?.htmlInput, "aria-describedby": describedBy },
+        }
+      } else {
+        extra["aria-describedby"] = describedBy
+      }
+    }
+    control = cloneElement(child, extra)
+  }
 
   return (
     <Box
@@ -46,14 +84,15 @@ export const FormField = ({
       <Typography
         variant="subtitle2"
         component="label"
+        htmlFor={controlId}
         color="text.primary"
         sx={{ pt: horizontal ? 1 : 0 }}
       >
         {label}
         {required && " *"}
       </Typography>
-      <Box sx={{ minWidth: 0 }} aria-describedby={message ? messageId : undefined}>
-        {children}
+      <Box sx={{ minWidth: 0 }}>
+        {control}
         {message && (
           <Typography
             id={messageId}

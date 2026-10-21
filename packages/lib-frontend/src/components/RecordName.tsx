@@ -6,7 +6,7 @@ import Typography from "@mui/material/Typography"
 import { useTheme } from "@mui/material/styles"
 import type { LucideIcon } from "lucide-react"
 
-import { Box as BoxIcon, Building2, CircleUserRound, Wrench } from "../icons"
+import { BoxIcon, Building2, CircleUserRound, Wrench } from "../icons"
 import { neutralAlpha } from "../theme/colors"
 
 export type RecordNamePlaceholder = "item" | "company" | "user" | "tool"
@@ -14,7 +14,8 @@ export type RecordNamePlaceholder = "item" | "company" | "user" | "tool"
 export interface RecordNameProps {
   name: string
   image?: string
-  placeholder: RecordNamePlaceholder
+  /** The icon shown when there is no image, or the image fails to load. Defaults to "item". */
+  placeholder?: RecordNamePlaceholder
   status?: ReactNode
   meta?: ReactNode
 }
@@ -26,7 +27,7 @@ const placeholderIcons: Record<RecordNamePlaceholder, LucideIcon> = {
   tool: Wrench,
 }
 
-export const RecordName = ({ name, image, placeholder, status, meta }: RecordNameProps) => {
+export const RecordName = ({ name, image, placeholder = "item", status, meta }: RecordNameProps) => {
   const theme = useTheme()
   const isDark = theme.palette.mode === "dark"
   const [failedImage, setFailedImage] = useState<string>()

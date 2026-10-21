@@ -16,6 +16,12 @@ declare module "@mui/material/Button" {
   }
 }
 
+declare module "@mui/material/Badge" {
+  interface BadgePropsVariantOverrides {
+    count: true
+  }
+}
+
 declare module "@mui/material/Chip" {
   interface ChipPropsColorOverrides extends Record<AccentColorName, true> {}
 }

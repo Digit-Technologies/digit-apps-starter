@@ -464,7 +464,7 @@ the difference is named in the rule.
 | Price lists | `FileBox` |
 | Sales orders | `ShoppingCart` |
 | Purchase orders | `BaggageClaim` |
-| Items | `Box` |
+| Items | `BoxIcon` |
 | Inventory | `Layers` |
 | Receiving | `PackageOpen` |
 | Planning | `CalendarRange` |
@@ -491,14 +491,14 @@ the difference is named in the rule.
 | Money | `DollarSign` |
 | Percent | `Percent` |
 | Count | `Hash` |
-| Text | `Text` |
+| Text | `TextIcon` |
 | SKU | `Bookmark` |
 | Person | `CircleUserRound` |
 | Company | `Building2` |
 | Custom field | `TextCursorInput` |
 | Actions | `Zap` |
 | Tags | `Tags` |
-| Links | `Link` |
+| Links | `LinkIcon` |
 
 **Empty and multi-value display**
 - Missing text shows "None" in `text.tertiary`.
@@ -525,7 +525,7 @@ the difference is named in the rule.
 
 **Name cells and files**
 - A name cell uses `RecordName`: name, placeholder or thumbnail, status and meta.
-- Placeholder icons: item `Box`, company `Building2`, user `CircleUserRound`, tool `Wrench`.
+- Placeholder icons: item `BoxIcon`, company `Building2`, user `CircleUserRound`, tool `Wrench`.
 - A file upload area uses `FileDropZone`.
 
 **Dividers and motion**

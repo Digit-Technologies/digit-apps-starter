@@ -5,7 +5,7 @@ import Typography from "@mui/material/Typography"
 import { Theme, useTheme } from "@mui/material/styles"
 
 import { type AccentColorName, accentScales } from "../theme/accent-colors"
-import { neutralAlpha } from "../theme/colors"
+import { blue, neutralAlpha } from "../theme/colors"
 
 export type PillColor = "outlined" | "gray" | AccentColorName
 // Public size names are kept for existing callers. `sm` is the Figma xs pill and `md` is the Figma sm pill.
@@ -98,7 +98,18 @@ export const Pill = ({
     <Box
       data-testid="pill"
       role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event: React.KeyboardEvent<HTMLElement>) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault()
+                onClick(event as unknown as React.MouseEvent<HTMLElement>)
+              }
+            }
+          : undefined
+      }
       sx={{
         display: "inline-flex",
         alignItems: "center",
@@ -120,6 +131,10 @@ export const Pill = ({
         textOverflow: "ellipsis",
         userSelect: "none",
         cursor: onClick ? "pointer" : undefined,
+        "&:focus-visible": {
+          outline: `2px solid ${theme.palette.mode === "dark" ? blue[400] : blue[600]}`,
+          outlineOffset: "2px",
+        },
       }}
     >
       {icon}

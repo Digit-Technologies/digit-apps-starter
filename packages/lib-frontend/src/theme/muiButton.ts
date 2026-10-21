@@ -110,23 +110,36 @@ export const muiButton = (): Components<
       endIcon: {
         marginLeft: "4px",
       },
-      // MUI positions the indicator where the start icon sits when loadingPosition="start".
+      // With loadingPosition="start", the indicator takes the start icon's place. The center and
+      // end positions keep MUI's own placement.
       loadingIndicator: ({ ownerState }) => ({
         width: "16px",
         height: "16px",
         color: "currentColor",
-        left:
-          ownerState.variant === "text"
-            ? "6px"
-            : ownerState.size && loadingIndicatorLeftBySize[ownerState.size],
+        ...(ownerState.loadingPosition === "start" && {
+          left:
+            ownerState.variant === "text"
+              ? "6px"
+              : ownerState.size && loadingIndicatorLeftBySize[ownerState.size],
+        }),
       }),
-      loading: ({ theme, ownerState }) => ({
-        "&.MuiButton-loading.Mui-disabled": loadingColours(
-          isLightMode(theme),
-          ownerState.variant,
-          ownerState.color,
-        ),
-      }),
+      loading: ({ theme, ownerState }) => {
+        const colours = loadingColours(isLightMode(theme), ownerState.variant, ownerState.color)
+        // A centred spinner replaces the label: the label goes transparent, and the spinner keeps
+        // the colour the label would have had.
+        const centred = (ownerState.loadingPosition ?? "center") === "center"
+        return {
+          "&.MuiButton-loading.Mui-disabled": centred
+            ? {
+                ...colours,
+                color: "transparent",
+                "& .MuiButton-loadingIndicator": {
+                  color: colours.color ?? theme.palette.text.primary,
+                },
+              }
+            : colours,
+        }
+      },
       sizeXs: {
         borderRadius: "6px",
         fontSize: "13px",

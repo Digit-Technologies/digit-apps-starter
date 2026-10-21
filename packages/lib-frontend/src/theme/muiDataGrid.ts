@@ -27,12 +27,21 @@ export const muiDataGrid = (): Components<Omit<Theme, "components">>["MuiDataGri
       "& .MuiDataGrid-columnSeparator": {
         color: theme.palette.divider,
       },
+      // Custom cells (RecordName, Pill) centre vertically like plain text cells do.
       "& .MuiDataGrid-cell": {
+        display: "flex",
+        alignItems: "center",
         padding: "0 8px",
         color: theme.palette.text.primary,
         fontSize: "13px",
         fontWeight: 400,
         borderBottomColor: theme.palette.divider,
+      },
+      "& .MuiDataGrid-cell--textRight": {
+        justifyContent: "flex-end",
+      },
+      "& .MuiDataGrid-cell--textCenter": {
+        justifyContent: "center",
       },
       "& .MuiDataGrid-row:hover": {
         backgroundColor: theme.palette.action.hover,
