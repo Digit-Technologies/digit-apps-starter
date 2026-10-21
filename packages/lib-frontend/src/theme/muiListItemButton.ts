@@ -33,7 +33,8 @@ export const muiListItemButton = ({
         fontWeight: theme.typography.button.fontWeight,
         lineHeight: theme.typography.button.lineHeight,
         flexDirection: "row",
-        gap: theme.spacing(1),
+        // Figma nav item: a 16px icon, then a 4px gap to the label.
+        gap: theme.spacing(0.5),
         alignItems: "center",
 
         "& .MuiListItemIcon-root": {
@@ -60,11 +61,24 @@ export const muiListItemButton = ({
             : alpha(neutral.black, 0.05),
         },
 
-        "&:active, &.Mui-selected": {
+        "&.Mui-focusVisible": {
+          color: theme.palette.text.primary,
+          background: darkMode
+            ? alpha(neutral.white, 0.1)
+            : alpha(neutral.black, 0.05),
+        },
+
+        // MUI tints a selected row with primary.main, and again on hover. Keep the pressed tone.
+        "&:active, &.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focusVisible": {
           color: theme.palette.text.primary,
           background: darkMode
             ? alpha(neutral.white, 0.05)
             : alpha(neutral.black, 0.1),
+        },
+
+        "&.Mui-disabled": {
+          opacity: 1,
+          color: theme.palette.text.tertiary,
         },
       }),
     },

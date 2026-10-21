@@ -1,19 +1,13 @@
 import { Components, Theme } from "@mui/material/styles"
 
-import { neutral } from "./colors"
-
+// Figma Divider/Set is drawn in paper/border/solid/strong (#e5e5e5 / #525252) in both modes.
 export const muiDivider = (): Components<
   Omit<Theme, "components">
 >["MuiDivider"] => {
   return {
     styleOverrides: {
       root: ({ theme }) => ({
-        ...(theme.palette.mode === "light" && {
-          borderColor: neutral[200],
-        }),
-        ...theme.applyStyles("dark", {
-          borderColor: neutral[800],
-        }),
+        borderColor: theme.palette.border.solidStrong,
       }),
     },
   }

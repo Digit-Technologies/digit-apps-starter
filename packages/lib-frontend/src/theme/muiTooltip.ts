@@ -18,7 +18,8 @@ export const muiTooltip = (): Components<
         boxShadow: outer.md,
         color: neutral.white,
         minHeight: theme.spacing(3.5),
-        maxWidth: theme.spacing(28),
+        // Figma tooltip/width/max.
+        maxWidth: theme.spacing(32),
         display: "flex",
         flexDirection: "row",
         padding: theme.spacing(1),

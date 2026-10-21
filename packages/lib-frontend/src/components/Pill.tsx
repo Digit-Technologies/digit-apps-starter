@@ -5,15 +5,18 @@ import Typography from "@mui/material/Typography"
 import { Theme, useTheme } from "@mui/material/styles"
 
 import { type AccentColorName, accentScales } from "../theme/accent-colors"
-import { blue, neutralAlpha } from "../theme/colors"
+import { neutralAlpha } from "../theme/colors"
+import { focusRing } from "../theme/focus"
 
 export type PillColor = "outlined" | "gray" | AccentColorName
 // Public size names are kept for existing callers. `sm` is the Figma xs pill and `md` is the Figma sm pill.
 export type PillSize = "sm" | "md"
 
+// Figma pill tokens in theme-spacing units, so a pill grows ×1.25 below 600px (16→20, 20→25),
+// as the Figma mobile pills do. The text styles carry the same mobile step.
 const sizeTokens = {
-  sm: { height: 16, px: "4px", gap: "2px", radius: "4px", fontSize: "11px", lineHeight: "12px" },
-  md: { height: 20, px: "6px", gap: "4px", radius: "6px", fontSize: "12px", lineHeight: "16px" },
+  sm: { height: 2, px: 0.5, gap: 0.25, radius: 0.5, typography: "pillSm" },
+  md: { height: 2.5, px: 0.75, gap: 0.5, radius: 0.75, typography: "pillMd" },
 } as const
 
 // Generic statuses only. Each maps to the colour the platform uses for the same meaning.
@@ -21,6 +24,7 @@ const sizeTokens = {
 const statusColors: Readonly<Record<string, PillColor>> = {
   draft: "outlined",
   open: "blue",
+  ready: "orange",
   sent: "violet",
   shipped: "yellow",
   stopped: "red",
@@ -51,11 +55,11 @@ const sentenceCase = (status: string): string => {
   return text.charAt(0).toUpperCase() + text.slice(1)
 }
 
-// Gray uses the neutral alpha overlay. Accents use the 250 tint in light mode and the 750 tint in dark mode.
+// Gray is Figma pill/background/gray, a.05 in light mode and w.15 in dark. Accents use the 250 tint in light mode and the 750 tint in dark mode.
 const tint = (color: PillColor, theme: Theme): string => {
   const isDark = theme.palette.mode === "dark"
   if (color === "gray") {
-    return isDark ? neutralAlpha.lighten[50] : neutralAlpha.darken[50]
+    return isDark ? neutralAlpha.lighten[150] : neutralAlpha.darken[50]
   }
   const scale = accentScales[color as AccentColorName]
   return isDark ? scale[750] : scale[250]
@@ -118,10 +122,11 @@ export const Pill = ({
         width: "fit-content",
         flexShrink: 0,
         maxWidth: "100%",
-        height: token.height,
-        minWidth: token.height,
+        boxSizing: "border-box",
+        height: theme.spacing(token.height),
+        minWidth: theme.spacing(token.height),
         px: token.px,
-        borderRadius: token.radius,
+        borderRadius: theme.spacing(token.radius),
         border: "1px solid",
         borderColor: fill ? "transparent" : theme.palette.border.extrastrong,
         backgroundColor: fill ? tint(fill, theme) : "transparent",
@@ -131,9 +136,15 @@ export const Pill = ({
         textOverflow: "ellipsis",
         userSelect: "none",
         cursor: onClick ? "pointer" : undefined,
+        // Figma pill icons (lead, trail, chevron, x) are all 12px.
+        "& svg": {
+          width: theme.spacing(1.5),
+          height: theme.spacing(1.5),
+          flexShrink: 0,
+        },
         "&:focus-visible": {
-          outline: `2px solid ${theme.palette.mode === "dark" ? blue[400] : blue[600]}`,
-          outlineOffset: "2px",
+          outline: "none",
+          boxShadow: focusRing(theme),
         },
       }}
     >
@@ -141,7 +152,14 @@ export const Pill = ({
       {text != null && text !== "" && (
         <Typography
           component="span"
-          sx={{ fontSize: token.fontSize, lineHeight: token.lineHeight, fontWeight: 500 }}
+          variant={token.typography}
+          sx={{
+            color: "inherit",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            // An icon inside the label (e.g. `label={<>Default <Info size={12} /></>}`) sits on the text.
+            "& svg": { verticalAlign: "-0.125em" },
+          }}
         >
           {text}
         </Typography>

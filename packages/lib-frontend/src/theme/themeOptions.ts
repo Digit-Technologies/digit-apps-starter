@@ -10,10 +10,17 @@ xl, extra-large: 1536px
 import { ThemeOptions } from "@mui/material/styles"
 
 import { muiAlert } from "./muiAlert"
+import { muiListItemIcon } from "./muiListItemIcon"
+import { muiListItemText } from "./muiListItemText"
+import { muiListSubheader } from "./muiListSubheader"
+import { muiPopover } from "./muiPopover"
+import { muiAlertTitle } from "./muiAlertTitle"
+import { muiAvatarGroup } from "./muiAvatarGroup"
+import { muiSvgIcon } from "./muiSvgIcon"
 import { muiAvatar } from "./muiAvatar"
 import { muiBadge } from "./muiBadge"
 import { muiSkeleton } from "./muiSkeleton"
-import { muiSnackbarContent } from "./muiSnackbar"
+import { muiSnackbar, muiSnackbarContent } from "./muiSnackbar"
 import { outer } from "./shadows"
 import { muiAppBar } from "./muiAppBar"
 import { muiAutocomplete } from "./muiAutocomplete"
@@ -48,6 +55,7 @@ import { muiTextField } from "./muiTextField"
 import { muiToggleButton } from "./muiToggleButton"
 import { muiToggleButtonGroup } from "./muiToggleButtonGroup"
 import { muiTooltip } from "./muiTooltip"
+import { muiTypography } from "./muiTypography"
 import { palette } from "./palette"
 import { typography } from "./typography"
 
@@ -56,6 +64,14 @@ export { mobileScaleFactor } from "./mobileScaleFactor"
 export const themeOptions = (darkMode: boolean): ThemeOptions => ({
   components: {
     MuiAlert: muiAlert({ darkMode }),
+    MuiAlertTitle: muiAlertTitle(),
+    MuiAvatarGroup: muiAvatarGroup(),
+    MuiListItemIcon: muiListItemIcon(),
+    MuiListItemText: muiListItemText(),
+    MuiListSubheader: muiListSubheader(),
+    MuiPopover: muiPopover(),
+    MuiSnackbar: muiSnackbar(),
+    MuiSvgIcon: muiSvgIcon(),
     MuiAppBar: muiAppBar({ darkMode }),
     MuiAutocomplete: muiAutocomplete(),
     MuiAvatar: muiAvatar(),
@@ -103,6 +119,7 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiToggleButtonGroup: muiToggleButtonGroup(),
     MuiToggleButton: muiToggleButton(),
     MuiTooltip: muiTooltip(),
+    MuiTypography: muiTypography(),
   },
   palette: palette({ darkMode }),
   // MUI's material elevations (Dialog 24, Popover 8, contained Button 2 and 4) are replaced with

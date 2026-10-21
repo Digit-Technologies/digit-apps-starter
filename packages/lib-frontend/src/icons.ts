@@ -8,6 +8,7 @@ export {
   Archive,
   ArrowLeft,
   ArrowRight,
+  ArrowUp,
   ArrowUpDown,
   ArrowUpRight,
   BaggageClaim,
