@@ -2,16 +2,9 @@ import { useState } from 'react';
 
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Grid from '@mui/material/Grid';
-import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
-import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert } from '@digit/lib-frontend';
+import { AppErrorAlert, PageBody, PageHeader, Section, SwitchField } from '@digit/lib-frontend';
 
-import ChartCard from './components/ChartCard';
 import MosChart from './components/MosChart';
 import MosCompletedTile from './components/MosCompletedTile';
 import OnTimeGaugeTile from './components/OnTimeGaugeTile';
@@ -21,6 +14,20 @@ import UnitsProducedTile from './components/UnitsProducedTile';
 import { localTimezoneAbbreviation } from './dateWindow';
 import { useDailyMetrics } from './useDailyMetrics';
 
+// Dashboard recipe (design-patterns.md › Dashboard): tiles are Cards in a grid with an 8px
+// column gap and a 16px row gap, grouped under Section headings, inside PageBody on the grey page.
+const tileGrid = {
+  display: 'grid',
+  gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+  columnGap: 1,
+  rowGap: 2,
+} as const;
+
+const chartGrid = {
+  ...tileGrid,
+  gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' },
+} as const;
+
 export default function App() {
   // Real data by default; flip on to demo/screenshot the layout with realistic fake numbers.
   const [previewMode, setPreviewMode] = useState(false);
@@ -29,155 +36,60 @@ export default function App() {
   const tzAbbreviation = localTimezoneAbbreviation();
 
   return (
-    <Box sx={{ maxWidth: '72rem', mx: 'auto', px: 3, py: 4 }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        spacing={0.5}
-        sx={{
-          justifyContent: "space-between",
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          mb: 3
-        }}>
-        <Box>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              alignItems: "center",
-              mb: 0.5
-            }}>
-            <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
-              Digit App
-            </Typography>
-            {previewMode && (
-              <Chip
-                label="Preview data"
-                size="small"
-                color="warning"
-                variant="filled"
-                sx={{ height: 20, fontSize: '0.6875rem', fontWeight: 600 }}
-              />
-            )}
-          </Stack>
-          <Typography variant="h1" component="h1">
-            Production Dashboard
-          </Typography>
-        </Box>
-        <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={{ xs: 0.5, sm: 2 }}
-          sx={{
-            alignItems: { xs: 'flex-start', sm: 'center' }
-          }}
-        >
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Today &amp; day boundaries shown in your local time ({tzAbbreviation})
-          </Typography>
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                checked={previewMode}
-                onChange={(_, checked) => setPreviewMode(checked)}
-              />
-            }
-            label={
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Preview data
-              </Typography>
-            }
-            sx={{ ml: 0 }}
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+      <PageHeader
+        title="Production dashboard"
+        titleAdornment={previewMode ? <Chip size="small" variant="outlined" label="Preview data" /> : undefined}
+        actions={
+          <SwitchField
+            label="Preview data"
+            checked={previewMode}
+            onChange={(_, checked) => setPreviewMode(checked)}
           />
-        </Stack>
-      </Stack>
+        }
+      />
+      <Box sx={{ flex: 1, bgcolor: 'background.secondary' }}>
+        <PageBody>
+          {error ? (
+            <AppErrorAlert error={error} onRetry={() => void refetch()} />
+          ) : (
+            <>
+              <Section title="Today" subtitle={`Day boundaries in your local time (${tzAbbreviation})`}>
+                <Box sx={tileGrid}>
+                  <UnitsProducedTile
+                    loading={loading}
+                    values={series.inventoryQuantityProduced}
+                    unitSymbol={inventoryQuantityProducedUnit}
+                  />
+                  <MosCompletedTile loading={loading} todayValue={series.numMOsCompleted.at(-1) ?? null} />
+                  <OnTimeGaugeTile
+                    loading={loading}
+                    todayValue={series.percentMOsCompletedOnTime.at(-1) ?? null}
+                  />
+                  <OpenLateTile loading={loading} todayValue={series.numMOsOpenLate.at(-1) ?? null} />
+                </Box>
+              </Section>
 
-      {error && (
-        <Box sx={{ mb: 3 }}>
-          <AppErrorAlert error={error} onRetry={() => void refetch()} />
-        </Box>
-      )}
-
-      {loading && !error && (
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{
-            alignItems: "center",
-            mb: 3
-          }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Loading today&rsquo;s metrics…
-          </Typography>
-        </Stack>
-      )}
-
-      {!error && (
-        <>
-          <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              {loading ? (
-                <ChartCard title="Units produced today" noData noDataMessage="Loading…" />
-              ) : (
-                <UnitsProducedTile
-                  values={series.inventoryQuantityProduced}
-                  unitSymbol={inventoryQuantityProducedUnit}
-                />
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              {loading ? (
-                <ChartCard title="MOs completed today" noData noDataMessage="Loading…" />
-              ) : (
-                <MosCompletedTile todayValue={series.numMOsCompleted.at(-1) ?? null} />
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              {loading ? (
-                <ChartCard title="MOs completed on time" noData noDataMessage="Loading…" />
-              ) : (
-                <OnTimeGaugeTile todayValue={series.percentMOsCompletedOnTime.at(-1) ?? null} />
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-              {loading ? (
-                <ChartCard title="MOs open & late" noData noDataMessage="Loading…" />
-              ) : (
-                <OpenLateTile todayValue={series.numMOsOpenLate.at(-1) ?? null} />
-              )}
-            </Grid>
-          </Grid>
-
-          <Grid container spacing={2.5}>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {loading ? (
-                <ChartCard title="Units produced (last 8 days)" noData noDataMessage="Loading…" />
-              ) : (
-                <UnitsProducedChart
-                  days={days}
-                  values={series.inventoryQuantityProduced}
-                  unitSymbol={inventoryQuantityProducedUnit}
-                />
-              )}
-            </Grid>
-            <Grid size={{ xs: 12, md: 6 }}>
-              {loading ? (
-                <ChartCard
-                  title="MOs completed vs. open late (last 8 days)"
-                  noData
-                  noDataMessage="Loading…"
-                />
-              ) : (
-                <MosChart
-                  days={days}
-                  completedValues={series.numMOsCompleted}
-                  openLateValues={series.numMOsOpenLate}
-                />
-              )}
-            </Grid>
-          </Grid>
-        </>
-      )}
+              <Section title="Last 8 days">
+                <Box sx={chartGrid}>
+                  <UnitsProducedChart
+                    loading={loading}
+                    days={days}
+                    values={series.inventoryQuantityProduced}
+                    unitSymbol={inventoryQuantityProducedUnit}
+                  />
+                  <MosChart
+                    loading={loading}
+                    days={days}
+                    completedValues={series.numMOsCompleted}
+                    openLateValues={series.numMOsOpenLate}
+                  />
+                </Box>
+              </Section>
+            </>
+          )}
+        </PageBody>
+      </Box>
     </Box>
   );
 }

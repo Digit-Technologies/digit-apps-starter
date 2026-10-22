@@ -165,6 +165,9 @@ jobs:
           npm run pack -w apps/app
           unzip -Z1 apps/app/app.zip | grep -Fx 'frontend/index.js' >/dev/null
 
+          # Agents copy the skill's examples verbatim, so a stale prop name ships as a bug.
+          npm run check:skill-docs
+
       - name: Build curated archive
         run: |
           set -euo pipefail

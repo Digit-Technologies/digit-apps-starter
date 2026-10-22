@@ -6,9 +6,10 @@ description: >-
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Digit app, editing an app in a local clone
-  of this starter, publishing via MCP, or when the user mentions Digit apps,
-  manifest.json, AppProxy, DigitThemeProvider, /proxy/digit, or
-  /proxy/backend.
+  of this starter, publishing via MCP, laying out screens, or when the user mentions
+  Digit apps, manifest.json, AppProxy, DigitThemeProvider, /proxy/digit, /proxy/backend,
+  settings panels, status pills, tables, checklists, chat boxes, or confirmation dialogs, or
+  asks for an app to look like Digit, match the design system, or match a Figma mockup.
 ---
 
 # Create Digit App
@@ -211,9 +212,7 @@ only; still upload the zip **unchanged**. Details:
   iframe can't do something itself (camera, scanning, navigating Digit), check
   `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
-- **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
-  hard-coded colors or custom CSS. Do not invent a parallel CSS design system or
-  restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
+- **Look and layout:** follow [Design system](#design-system-required-for-every-screen) below.
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
@@ -223,12 +222,9 @@ only; still upload the zip **unchanged**. Details:
   sort, filter, or connection/page inputs, use those — do not fetch a full list and
   sort/filter client-side when the API can do it. Confirm arg names via
   `graphql-schema://…`.
-- **Tables need pagination:** Any MUI `Table` (or equivalent list of many rows) must be
-  paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
-  unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
-  `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
+- **Errors:** pair a hook's `error` with `AppErrorAlert` (`onRetry` when retryable) — do not
+  branch on `AppErrorCode` in UI.
 
 #### Printing
 
@@ -299,6 +295,45 @@ hand-rolled call fails with "Too many calls" or "Invalid params". Use the label 
 `window.DigitHost` still works, including its `download(...)` and `print(...)`, but it is
 deprecated. Write new code against `AppHost`, and migrate `window.DigitHost` calls in any
 existing file you edit.
+
+### Design system (required for every screen)
+
+Digit apps sit next to the platform's own screens, so they must look like them. The **Figma
+design system is the source of truth**, and `@digit/lib-frontend` implements it in two layers:
+
+- **The theme** (`DigitThemeProvider`) restyles every MUI component to the Figma values, in light
+  and dark. A plain `<Button>`, `<TextField>` or `<Tabs>` already looks right.
+- **Library components** (`PageHeader`, `DataTable`, `StatusPill`, `SidePanel`, `Modal`, …) group themed
+  MUI parts into the larger pieces Figma defines, such as a page header, an index table or a
+  form dialog.
+
+You pick and compose those pieces. You never restyle them.
+
+**Work in this order:**
+
+1. Before any UI, read [reference/design-system.md](reference/design-system.md). It has the
+   rules, the component picker and the tokens.
+2. For each screen, copy the closest recipe in
+   [reference/design-patterns.md](reference/design-patterns.md) (list page, details panel,
+   record page, settings, form dialog, confirm, dashboard, …).
+3. Look up a component's props in [reference/components.md](reference/components.md) when you use it.
+4. When you finish, run the self-check at the end of design-system.md on every screen and fix
+   what fails.
+
+**The rules that matter most.** Breaking any of these makes an app look like stock MUI instead
+of Digit:
+
+- Use the library component when one exists. Never rebuild it from `Box` and `Typography`.
+- Never set colour, background, border, radius, shadow, font, height or padding on a themed
+  component, and never use hex colours, px font sizes or `fontWeight`. Layout props (`gap`,
+  `flex`, `width`, margins) are fine.
+- Every screen starts with `PageHeader`. Lists are a full-bleed `DataTable` with no card around them.
+- Every status is a `StatusPill`. Icons are Lucide, imported from `@digit/lib-frontend`.
+
+If a screen needs something the library and the recipes do not cover, build it from themed MUI
+parts with layout props only, and mention the gap in `SPEC.md`. Do not invent new colours,
+sizes or shapes.
+
 
 ### 5. `manifest.json`
 
@@ -389,6 +424,9 @@ upstream starter.
 | Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
 | Codes / JSON validation               | `@digit/lib-common`                                             |
 | Print a Sutton inventory or item label | `LabelPrintPanel` → [reference/labels.md](reference/labels.md)  |
+| Which component to use, and how it should look | [reference/design-system.md](reference/design-system.md) |
+| A component's props                   | [reference/components.md](reference/components.md)              |
+| Screen layout: lists, records, panels, settings, dialogs, dashboards | Recipe from [reference/design-patterns.md](reference/design-patterns.md) |
 
 ## Packages (`lib-*`)
 
@@ -397,7 +435,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, design-system components (`PageHeader`, `DataTable`, `StatusPill`, `SidePanel`, `Modal`, `ConfirmDialog`, …), Lucide icons, `AppErrorAlert`, label printing |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
@@ -423,6 +461,9 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
 - [reference/labels.md](reference/labels.md) for Sutton label preview and print, permissions, and failures
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
+- [reference/design-system.md](reference/design-system.md) — **read before any UI**: rules, component picker, type, colour, spacing, icons, self-check
+- [reference/design-patterns.md](reference/design-patterns.md) — screen recipes from the product mockups: list page, details panel, record page, settings, form dialog, confirm, dashboard
+- [reference/components.md](reference/components.md) — props and conventions for each component; look up as needed
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key

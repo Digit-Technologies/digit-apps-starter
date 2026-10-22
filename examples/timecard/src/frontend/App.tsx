@@ -1,27 +1,34 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
+import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
-import Divider from '@mui/material/Divider';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
-import Switch from '@mui/material/Switch';
+import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
-
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined';
 
 import {
   AppErrorAlert,
+  Calendar,
+  Clock,
+  DataTable,
+  EmptyState,
+  LogIn,
+  LogOut,
+  PageBody,
+  PageHeader,
+  PropertyGrid,
+  Section,
+  StatusPill,
+  SwitchField,
   useBackendMutation,
   useBackendQuery,
   useDigitApiQuery,
+  type DataTableColumn,
+  type PropertyGridRow,
 } from '@digit/lib-frontend';
 
 import {
+  currentZoneAbbreviation,
   endOfLocalDay,
   formatDate,
   formatDurationHM,
@@ -65,38 +72,13 @@ type ShiftsData = {
   totalPages: number;
 };
 
-// Matches the backend's PAGE_SIZE — used to slice the client-side preview data the same way.
+// Matches the backend's PAGE_SIZE. The backend pages the history; preview data is sliced the
+// same way in the browser.
 const PAGE_SIZE = 10;
 
-// Tabular numerals keep the ticking elapsed-time display from jittering as digits change width.
-const tabularNums = { fontVariantNumeric: 'tabular-nums' as const };
-
-/** Small breathing dot shown next to the status chip while a shift is open. */
-function LivePulse() {
-  return (
-    <Box
-      component="span"
-      sx={{
-        display: 'inline-block',
-        width: 12,
-        height: 12,
-        borderRadius: '50%',
-        bgcolor: 'success.dark',
-        animation: 'timecard-pulse 1.6s ease-in-out infinite',
-        '@keyframes timecard-pulse': {
-          '0%, 100%': { opacity: 1, transform: 'scale(1)' },
-          '50%': { opacity: 0.35, transform: 'scale(0.8)' },
-        },
-      }}
-    />
-  );
-}
-
 /**
- * Fabricated data for "Preview data" mode — lets someone see the UI with no real shifts
- * yet. Always shown clocked out with some hours already logged today, so the toggle
- * button stays a normal, fully-interactive-looking "Clock in" state rather than needing
- * a fake "currently open" shift.
+ * Fabricated data for "Preview data" mode, so someone can see the UI before any real shifts
+ * exist. It is always clocked out with some hours already logged today.
  */
 function buildPreviewData() {
   const now = Date.now();
@@ -137,11 +119,55 @@ function buildPreviewData() {
   };
 }
 
+const none = (
+  <Typography variant="body1" color="text.tertiary" component="span">
+    None
+  </Typography>
+);
+
+// History columns. The backend pages and orders the list (most recent first) and has no sort
+// or search, so every column is unsortable and the table has no toolbar.
+const columns: DataTableColumn<Shift>[] = [
+  {
+    field: 'clockInTime',
+    headerName: 'Date',
+    flex: 1,
+    minWidth: 100,
+    icon: Calendar,
+    sortable: false,
+    valueFormatter: (value: string) => formatDate(value),
+  },
+  {
+    field: 'clockOutTime',
+    headerName: 'Time',
+    width: 170,
+    icon: Clock,
+    sortable: false,
+    valueGetter: (_value, row) =>
+      row.clockOutTime
+        ? `${formatTime(row.clockInTime)} – ${formatTime(row.clockOutTime)}`
+        : `Since ${formatTime(row.clockInTime)}`,
+  },
+  {
+    field: 'durationSeconds',
+    headerName: 'Duration',
+    width: 110,
+    icon: Clock,
+    type: 'number',
+    sortable: false,
+    renderCell: (params) =>
+      params.row.durationSeconds === null ? (
+        <StatusPill status="active" label="In progress" />
+      ) : (
+        formatDurationHM(params.row.durationSeconds)
+      ),
+  },
+];
+
 export default function App() {
   const [previewMode, setPreviewMode] = useState(false);
 
-  // Generated once per session so the fake "since" time actually ticks forward like a real
-  // open shift would, instead of jumping back to the same offset on every re-render.
+  // Generated once per session so the preview timestamps stay put across re-renders.
   const previewData = useMemo(buildPreviewData, []);
 
   const { data: userData, error: userError, loading: userLoading } =
@@ -165,6 +191,7 @@ export default function App() {
     };
   }, []);
 
+  // 1-based, as the backend's `page` query parameter expects.
   const [page, setPage] = useState(1);
 
   // Tick once a second so the live elapsed-time display advances while clocked in.
@@ -224,257 +251,107 @@ export default function App() {
     await Promise.all([refetchStatus(), refetchShifts()]);
   };
 
-  const previewTotalPages = Math.max(1, Math.ceil(previewData.shifts.length / PAGE_SIZE));
   const previewShiftsPage = useMemo(
     () => previewData.shifts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [previewData, page],
   );
 
   const shifts = previewMode ? previewShiftsPage : shiftsData?.shifts ?? [];
-  const totalPages = previewMode ? previewTotalPages : shiftsData?.totalPages ?? 1;
+  const totalCount = previewMode ? previewData.shifts.length : shiftsData?.totalCount ?? 0;
 
-  const initialLoading =
+  // Until the user and their status have loaded, values show skeletons rather than zeros.
+  const statusPending =
     !previewMode && (userLoading || (Boolean(userId) && statusLoading && !status));
+  const historyPending = !previewMode && (userLoading || (shiftsLoading && !shiftsData));
+  const value = (node: ReactNode) =>
+    statusPending ? <Skeleton variant="text" width={96} /> : node;
+
+  const todayRows: PropertyGridRow[] = [
+    { label: 'Employee', value: value(identityLine || none) },
+    {
+      label: 'Status',
+      // An open shift is being worked on (the "active" stage); off the clock is a neutral end.
+      value: value(
+        isClockedIn ? (
+          <StatusPill status="active" label="Clocked in" />
+        ) : (
+          <StatusPill status="closed" label="Clocked out" />
+        ),
+      ),
+    },
+    ...(isClockedIn && activeShift
+      ? [{ label: 'Clocked in at', value: formatTimeWithZone(activeShift.clockInTime) }]
+      : []),
+    { label: 'Worked today', value: value(formatDurationHM(todaySeconds)) },
+  ];
 
   return (
-    <Box sx={{ maxWidth: 480, mx: 'auto', px: 2, py: 3 }}>
-      <Stack spacing={3}>
-        <Stack
-          direction="row"
-          sx={{
-            justifyContent: "space-between",
-            alignItems: "flex-start",
-            flexWrap: "wrap",
-            rowGap: 1
-          }}>
-          <Box>
-            <Typography variant="overline" component="p" sx={{ color: 'primary.main', mb: 0.5 }}>
-              Digit App
-            </Typography>
-            <Typography variant="h1" component="h1">
-              Time card
-            </Typography>
-          </Box>
-          <FormControlLabel
-            labelPlacement="start"
-            sx={{ gap: 1 }}
-            control={
-              <Switch
-                checked={previewMode}
-                onChange={(event) => {
-                  setPreviewMode(event.target.checked);
-                  setPage(1);
-                }}
-              />
-            }
-            label="Preview data"
-          />
-        </Stack>
-
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <PageHeader
+        title="Time card"
+        actions={
+          <>
+            <SwitchField
+              label="Preview data"
+              checked={previewMode}
+              onChange={(_, checked) => {
+                setPreviewMode(checked);
+                setPage(1);
+              }}
+            />
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={isClockedIn ? <LogOut /> : <LogIn />}
+              loading={mutating}
+              loadingPosition="start"
+              disabled={previewMode || !userId || statusPending}
+              onClick={() => void toggleClock()}
+            >
+              {isClockedIn ? 'Clock out' : 'Clock in'}
+            </Button>
+          </>
+        }
+      />
+      <PageBody maxWidth={720}>
+        {previewMode && (
+          <Alert severity="info">
+            Showing sample shifts. Turn off preview data to clock in or out.
+          </Alert>
+        )}
         {!previewMode && userError && <AppErrorAlert error={userError} />}
         {!previewMode && statusError && (
           <AppErrorAlert error={statusError} onRetry={() => void refetchStatus()} />
         )}
+        {!previewMode && mutateError && <AppErrorAlert error={mutateError} />}
 
-        {initialLoading ? (
-          <Stack
-            direction="row"
-            spacing={1.5}
-            sx={{
-              alignItems: "center",
-              justifyContent: "center",
-              py: 6
-            }}>
-            <CircularProgress size={22} />
-            <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-              Loading…
-            </Typography>
-          </Stack>
-        ) : (
-          <>
-            <Paper
-              variant="outlined"
-              sx={{ px: 3, py: 3.5, borderRadius: 1, textAlign: 'center' }}
-            >
-              <Stack spacing={1.5} sx={{
-                alignItems: "center"
-              }}>
-                {identityLine && (
-                  <Typography variant="body2" sx={{ color: 'text.secondary', mb: 0.5 }}>
-                    {identityLine}
-                  </Typography>
-                )}
-                <Stack direction="row" spacing={1} sx={{
-                  alignItems: "center"
-                }}>
-                  <Chip
-                    label={isClockedIn ? 'Clocked in' : 'Clocked out'}
-                    sx={{
-                      fontSize: '1rem',
-                      px: 1.5,
-                      py: 2.5,
-                      fontWeight: 600,
-                      borderRadius: '10px',
-                      ...(isClockedIn && {
-                        bgcolor: 'success.dark',
-                        color: 'common.white',
-                      }),
-                    }}
-                  />
-                  {isClockedIn && <LivePulse />}
-                </Stack>
+        <Section title="Today" subtitle={formatDate(new Date(dayStartMs).toISOString())}>
+          <PropertyGrid rows={todayRows} />
+        </Section>
 
-                <Typography
-                  variant="h2"
-                  component="p"
-                  sx={{ fontWeight: 700, lineHeight: 1.1, mt: 1, ...tabularNums }}
-                >
-                  {formatDurationHM(todaySeconds)}
-                </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  Today
-                </Typography>
-
-                {isClockedIn && activeShift && (
-                  <Typography variant="body1" sx={{ color: 'text.secondary', ...tabularNums }}>
-                    Since {formatTimeWithZone(activeShift.clockInTime)}
-                  </Typography>
-                )}
-              </Stack>
-            </Paper>
-
-            {!previewMode && mutateError && <AppErrorAlert error={mutateError} />}
-
-            <Button
-              variant="contained"
-              color={isClockedIn ? 'error' : 'primary'}
-              size="large"
-              fullWidth
-              disabled={!previewMode && (!userId || mutating)}
-              onClick={previewMode ? undefined : () => void toggleClock()}
-              startIcon={
-                mutating ? undefined : isClockedIn ? <StopCircleOutlinedIcon /> : <AccessTimeIcon />
-              }
-              sx={{
-                py: 1.75,
-                fontSize: '1.05rem',
-                fontWeight: 600,
-                ...(isClockedIn && {
-                  bgcolor: 'error.dark',
-                  '&:hover': { bgcolor: 'error.dark' },
-                  '&:active': { bgcolor: 'error.dark' },
-                }),
-              }}
-            >
-              {mutating ? <CircularProgress size={22} color="inherit" /> : isClockedIn ? 'Clock out' : 'Clock in'}
-            </Button>
-
-            <Divider />
-
-            <Stack spacing={1.5}>
-              <Typography variant="h3" component="h2" sx={{ fontSize: '1.1rem', fontWeight: 600 }}>
-                Recent shifts
-              </Typography>
-
-              {!previewMode && shiftsError && (
-                <AppErrorAlert error={shiftsError} onRetry={() => void refetchShifts()} />
-              )}
-
-              {!previewMode && shiftsLoading && !shiftsData ? (
-                <Stack
-                  direction="row"
-                  spacing={1.5}
-                  sx={{
-                    alignItems: "center",
-                    py: 2
-                  }}>
-                  <CircularProgress size={18} />
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Loading shifts…
-                  </Typography>
-                </Stack>
-              ) : shifts.length === 0 ? (
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                  No shifts yet.
-                </Typography>
-              ) : (
-                <Stack spacing={0} divider={<Divider flexItem />}>
-                  {shifts.map((shift) => (
-                    <Stack key={shift.id} spacing={0.25} sx={{ py: 1.25 }}>
-                      <Stack
-                        direction="row"
-                        sx={{
-                          alignItems: "center",
-                          justifyContent: "space-between"
-                        }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {formatDate(shift.clockInTime)}
-                        </Typography>
-                        {shift.durationSeconds !== null ? (
-                          <Typography
-                            variant="body2"
-                            sx={{ fontWeight: 600, color: 'text.primary', ...tabularNums }}
-                          >
-                            {formatDurationHM(shift.durationSeconds)}
-                          </Typography>
-                        ) : (
-                          <Chip
-                            label="In progress"
-                            size="small"
-                            sx={{
-                              height: 22,
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
-                              bgcolor: 'rgba(225, 113, 0, 0.14)',
-                              // Literal hex, not a theme.palette token: warning.dark (amber 600)
-                              // only reaches ~2.9:1 contrast against this background — well under
-                              // WCAG AA's 4.5:1. This darker amber measures ~6.5:1.
-                              color: '#973C00',
-                            }}
-                          />
-                        )}
-                      </Stack>
-                      <Typography variant="body2" sx={{ color: 'text.secondary', ...tabularNums }}>
-                        {formatTime(shift.clockInTime)}
-                        {' – '}
-                        {shift.clockOutTime ? formatTimeWithZone(shift.clockOutTime) : '—'}
-                      </Typography>
-                    </Stack>
-                  ))}
-                </Stack>
-              )}
-
-              {shifts.length > 0 && (
-                <Stack
-                  direction="row"
-                  sx={{
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    pt: 0.5
-                  }}>
-                  <Button
-                    size="small"
-                    disabled={page <= 1}
-                    onClick={() => setPage((value) => Math.max(1, value - 1))}
-                  >
-                    Previous
-                  </Button>
-                  <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                    Page {page} of {totalPages}
-                  </Typography>
-                  <Button
-                    size="small"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((value) => Math.min(totalPages, value + 1))}
-                  >
-                    Next
-                  </Button>
-                </Stack>
-              )}
-            </Stack>
-          </>
-        )}
-      </Stack>
+        <Section title="Recent shifts" subtitle={`Times in ${currentZoneAbbreviation()}`}>
+          {!previewMode && shiftsError ? (
+            <AppErrorAlert error={shiftsError} onRetry={() => void refetchShifts()} />
+          ) : !historyPending && shifts.length === 0 ? (
+            <EmptyState
+              icon={<Clock size={20} />}
+              title="No shifts yet"
+              description="Clock in to start your first shift. Each shift you finish shows up here."
+            />
+          ) : (
+            <DataTable
+              inset="none"
+              rows={shifts}
+              columns={columns}
+              rowCount={totalCount}
+              paginationModel={{ page: page - 1, pageSize: PAGE_SIZE }}
+              onPaginationModelChange={(model) => setPage(model.page + 1)}
+              pageSizeOptions={[PAGE_SIZE]}
+              loading={historyPending}
+            />
+          )}
+        </Section>
+      </PageBody>
     </Box>
   );
 }

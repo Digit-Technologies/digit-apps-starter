@@ -1,11 +1,20 @@
-import CircularProgress from '@mui/material/CircularProgress';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemText from '@mui/material/ListItemText';
-import Stack from '@mui/material/Stack';
+import { useState } from 'react';
+
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
+import {
+  AppErrorAlert,
+  Bookmark,
+  BoxIcon,
+  DataTable,
+  EmptyState,
+  PageBody,
+  RecordName,
+  TextIcon,
+  useDigitApiQuery,
+  type DataTableColumn,
+} from '@digit/lib-frontend';
+
 
 type ItemNode = { id: string; name?: string | null; sku?: string | null };
 
@@ -13,6 +22,7 @@ type ItemsData = {
   items?: { nodes?: ItemNode[] };
 };
 
+// Needs READ_ITEM in manifest.json.
 const ITEMS_QUERY = `
   query Items($connection: ConnectionInput) {
     items(connection: $connection) {
@@ -25,55 +35,74 @@ const ITEMS_QUERY = `
   }
 `;
 
+const columns: DataTableColumn<ItemNode>[] = [
+  {
+    field: 'name',
+    headerName: 'Item',
+    flex: 1,
+    minWidth: 240,
+    icon: TextIcon,
+    sortable: false,
+    renderCell: (params) => <RecordName name={params.row.name || 'Untitled'} />,
+  },
+  {
+    field: 'sku',
+    headerName: 'SKU',
+    width: 200,
+    icon: Bookmark,
+    sortable: false,
+    renderCell: (params) =>
+      params.row.sku ? (
+        <Typography variant="body1" color="text.secondary" noWrap>
+          {params.row.sku}
+        </Typography>
+      ) : (
+        <Typography variant="body1" color="text.tertiary">
+          None
+        </Typography>
+      ),
+  },
+];
+
 export default function DigitApiPanel() {
+  // The template asks for the first 10 items. For a full list, send `connection` (first/after)
+  // and sort arguments from the table's models and refetch when they change.
   const { data, error, loading, refetch } = useDigitApiQuery<ItemsData>({
     query: ITEMS_QUERY,
     variables: { connection: { first: 10 } },
   });
-  const nodes = data?.items?.nodes ?? [];
+  const items = data?.items?.nodes ?? [];
+  const [paging, setPaging] = useState({ page: 0, pageSize: 10 });
+
+  if (error) {
+    return (
+      <PageBody maxWidth={720}>
+        <AppErrorAlert error={error} onRetry={() => void refetch()} />
+      </PageBody>
+    );
+  }
+
+  if (!loading && items.length === 0) {
+    return (
+      <PageBody maxWidth={720}>
+        <EmptyState
+          icon={<BoxIcon size={20} />}
+          title="No items"
+          description="Items you can see in Digit show up here."
+        />
+      </PageBody>
+    );
+  }
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="h2" component="h2">
-        Digit API
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-        <code>useDigitApiQuery</code> from <code>@digit/lib-frontend</code> with{' '}
-        <code>READ_ITEM</code>. Platform vs GraphQL errors are normalized for{' '}
-        <code>AppErrorAlert</code>.
-      </Typography>
-
-      {loading && (
-        <Stack direction="row" spacing={1.5} sx={{
-          alignItems: "center"
-        }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Loading items…
-          </Typography>
-        </Stack>
-      )}
-
-      {error && <AppErrorAlert error={error} onRetry={() => void refetch()} />}
-
-      {!loading && !error && nodes.length === 0 && (
-        <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-          No items returned.
-        </Typography>
-      )}
-
-      {!loading && !error && nodes.length > 0 && (
-        <List dense>
-          {nodes.map((node) => (
-            <ListItem key={node.id} disableGutters>
-              <ListItemText
-                primary={node.name || 'Untitled'}
-                secondary={node.sku ? `SKU ${node.sku}` : node.id}
-              />
-            </ListItem>
-          ))}
-        </List>
-      )}
-    </Stack>
+    <DataTable
+      rows={items}
+      columns={columns}
+      rowCount={items.length}
+      paginationModel={paging}
+      onPaginationModelChange={setPaging}
+      onRefresh={() => void refetch()}
+      loading={loading}
+    />
   );
 }

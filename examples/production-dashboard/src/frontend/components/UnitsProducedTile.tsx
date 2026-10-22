@@ -1,6 +1,5 @@
-import Stack from '@mui/material/Stack';
+import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
-import { useTheme } from '@mui/material/styles';
 
 import KpiTile from './KpiTile';
 
@@ -11,67 +10,50 @@ export type UnitsProducedTileProps = {
   values: Array<number | null>;
   /** Unit-of-measure symbol, e.g. "ea", "kg" — null when no data. */
   unitSymbol: string | null;
+  loading?: boolean;
 };
 
-export default function UnitsProducedTile({ values, unitSymbol }: UnitsProducedTileProps) {
-  const theme = useTheme();
+export default function UnitsProducedTile({ values, unitSymbol, loading }: UnitsProducedTileProps) {
   const today = values.at(-1) ?? null;
   const priorDays = values.slice(0, -1);
   const priorValues = priorDays.filter((v): v is number => v !== null);
   const trailingAverage =
     priorValues.length > 0 ? priorValues.reduce((sum, v) => sum + v, 0) / priorValues.length : null;
-
-  if (today === null) {
-    return <KpiTile label="Units produced today" noData />;
-  }
-
-  const delta = trailingAverage !== null ? today - trailingAverage : null;
-  const deltaColor =
-    delta === null
-      ? 'text.tertiary'
-      : delta > 0
-        ? theme.palette.success.main
-        : delta < 0
-          ? theme.palette.error.main
-          : 'text.tertiary';
-  const deltaSign = delta !== null && delta > 0 ? '+' : '';
   const unitSuffix = unitSymbol ? ` ${unitSymbol}` : '';
 
-  return (
-    <KpiTile label="Units produced today">
-      <Typography variant="h2" component="p" sx={{ fontWeight: 700 }}>
-        {numberFormatter.format(today)}
-        {unitSymbol && (
-          <Typography component="span" variant="h5" sx={{ color: 'text.tertiary', ml: 0.75 }}>
-            {unitSymbol}
-          </Typography>
-        )}
+  let footer;
+  if (today !== null && trailingAverage !== null) {
+    const delta = Math.round(today - trailingAverage);
+    // The trend is a pill (`Chip`; category colour only appears inside a pill), not coloured text.
+    const color = delta > 0 ? 'green' : delta < 0 ? 'red' : 'default';
+    footer = (
+      <>
+        <Chip
+          size="small"
+          color={color}
+          label={`${delta > 0 ? '+' : ''}${numberFormatter.format(delta)}${unitSuffix}`}
+        />
+        <Typography variant="overline" color="text.tertiary">
+          vs 7-day avg of {numberFormatter.format(Math.round(trailingAverage))}
+          {unitSuffix}
+        </Typography>
+      </>
+    );
+  } else if (today !== null) {
+    footer = (
+      <Typography variant="overline" color="text.tertiary">
+        No 7-day average yet
       </Typography>
-      <Stack
-        direction="row"
-        spacing={0.5}
-        sx={{
-          alignItems: "baseline",
-          mt: 0.5
-        }}>
-        {delta !== null ? (
-          <>
-            <Typography variant="body2" sx={{ color: deltaColor, fontWeight: 600 }}>
-              {deltaSign}
-              {numberFormatter.format(Math.round(delta))}
-              {unitSuffix}
-            </Typography>
-            <Typography variant="caption" sx={{ color: 'text.tertiary' }}>
-              vs 7-day avg ({numberFormatter.format(Math.round(trailingAverage as number))}
-              {unitSuffix})
-            </Typography>
-          </>
-        ) : (
-          <Typography variant="caption" sx={{ color: 'text.tertiary' }}>
-            No 7-day average available
-          </Typography>
-        )}
-      </Stack>
-    </KpiTile>
+    );
+  }
+
+  return (
+    <KpiTile
+      title="Units produced"
+      loading={loading}
+      value={today === null ? null : numberFormatter.format(today)}
+      unit={today === null ? null : unitSymbol}
+      footer={footer}
+    />
   );
 }

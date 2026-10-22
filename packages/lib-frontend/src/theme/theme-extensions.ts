@@ -1,67 +1,32 @@
-import { neutralAlpha, purple } from "./colors"
+import { type PaletteOptions } from "@mui/material/styles"
 
-/**
- * Shared theme extension constants used by both the actual theme
- * and test utilities to ensure consistency.
- *
- * These values are extracted from the actual theme implementation
- * to maintain a single source of truth.
- */
-export const themeExtensions = {
-  border: {
-    default: {
-      light: neutralAlpha.darken[50], // "rgba(0, 0, 0, 0.05)"
-      dark: neutralAlpha.lighten[50], // "rgba(255, 255, 255, 0.05)"
-    },
-    strong: {
-      light: neutralAlpha.darken[100], // "rgba(0, 0, 0, 0.1)"
-      dark: neutralAlpha.lighten[100], // "rgba(255, 255, 255, 0.1)"
-      extrastrong: {
-        light: neutralAlpha.darken[200], // "rgba(0, 0, 0, 0.1)"
-        dark: neutralAlpha.lighten[200], // "rgba(255, 255, 255, 0.1)"
-      },
-    },
-    extrastrong: {
-      light: neutralAlpha.darken[200], // "rgba(0, 0, 0, 0.1)"
-      dark: neutralAlpha.lighten[200], // "rgba(255, 255, 255, 0.1)"
-    },
-  },
-  divider: {
-    light: neutralAlpha.darken[50], // "rgba(0, 0, 0, 0.05)"
-    dark: neutralAlpha.lighten[50], // "rgba(255, 255, 255, 0.05)"
-  },
-  opacity: {
-    helper: 0.6,
-    disabled: 0.4,
-  },
-  tabFocus: purple[500], // "#a855f7"
-} as const
+import { neutral, neutralAlpha, stone } from "./colors"
 
-/**
- * Helper function to get theme extension values for a specific mode
- */
+/** The palette keys Digit adds on top of MUI's, per mode. See the augmentation in types.ts. */
 export const getThemeExtensions = (
   darkMode: boolean,
-): {
-  border: { default: string; strong: string; extrastrong: string }
-  divider: string
-  opacity: { helper: number; disabled: number }
-  tabFocus: string
-} => ({
+): Required<Pick<PaletteOptions, "border" | "table" | "divider" | "opacity">> => ({
   border: {
-    default: darkMode
-      ? themeExtensions.border.default.dark
-      : themeExtensions.border.default.light,
-    strong: darkMode
-      ? themeExtensions.border.strong.dark
-      : themeExtensions.border.strong.light,
-    extrastrong: darkMode
-      ? themeExtensions.border.extrastrong.dark
-      : themeExtensions.border.extrastrong.light,
+    // Figma paper/border/alpha/default, /strong and /extraStrong.
+    default: darkMode ? neutralAlpha.lighten[50] : neutralAlpha.darken[50],
+    strong: darkMode ? neutralAlpha.lighten[100] : neutralAlpha.darken[100],
+    extrastrong: darkMode ? neutralAlpha.lighten[200] : neutralAlpha.darken[200],
+    // Figma paper/border/solid/strong and /default. Solid lines for page chrome (page header,
+    // toolbar, menu outlines, sidebar edge) and for section dividers inside a page or card.
+    solidStrong: darkMode ? neutral[600] : neutral[200],
+    solidDefault: darkMode ? neutral[700] : neutral[100],
+    // Figma containers/cards/border/solid/default: the line between sections in a modal or panel.
+    solidCard: darkMode ? neutral[700] : neutral[150],
   },
-  divider: darkMode
-    ? themeExtensions.divider.dark
-    : themeExtensions.divider.light,
-  opacity: themeExtensions.opacity,
-  tabFocus: themeExtensions.tabFocus,
+  // Figma table/row/background/*.
+  table: {
+    hover: darkMode ? stone[750] : stone[50],
+    selected: darkMode ? stone[700] : stone[100],
+  },
+  divider: darkMode ? neutralAlpha.lighten[50] : neutralAlpha.darken[50],
+  // Figma all/opacity/helper and all/opacity/disabled.
+  opacity: {
+    helper: 0.6,
+    disabled: 0.3,
+  },
 })

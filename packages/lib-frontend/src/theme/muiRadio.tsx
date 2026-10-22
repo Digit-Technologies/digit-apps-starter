@@ -3,155 +3,78 @@ import React from "react"
 import SvgIcon from "@mui/material/SvgIcon"
 import { Components, Theme } from "@mui/material/styles"
 
-import { neutralAlpha, blue, stone, neutral } from "./colors"
-import { outer } from "./shadows"
-import { getThemeExtensions } from "./theme-extensions"
+import { neutral } from "./colors"
+import { focusColor } from "./focus"
+import { selectionControlColors } from "./selectionControl"
+import { inner, outer } from "./shadows"
 import { defaultTransition } from "./transitions"
 
-// Empty checked icon - removes the checked icon completely
-const CustomCheckedIcon = () => (
+// The root span is the 16px circle, so the icons only carry the white dot.
+const CheckedDot = () => (
   <SvgIcon viewBox="0 0 8 8">
-    <path
-      d="M4 8C6.20914 8 8 6.20914 8 4C8 1.79086 6.20914 0 4 0C1.79086 0 0 1.79086 0 4C0 6.20914 1.79086 8 4 8Z"
-      fill="white"
-    />
+    <circle cx={4} cy={4} r={4} fill={neutral.white} />
   </SvgIcon>
 )
 
-// Empty unchecked icon - removes the unchecked icon completely
-const EmptyUncheckedIcon = () => (
-  <SvgIcon viewBox="0 0 0 0">{/* Empty - no icon content */}</SvgIcon>
-)
+const NoDot = () => <SvgIcon viewBox="0 0 0 0" />
 
-export const muiRadio = (
-  darkMode: boolean,
-): Components<Omit<Theme, "components">>["MuiRadio"] => {
-  const extensions = getThemeExtensions(darkMode)
-
-  return {
-    defaultProps: {
-      disableRipple: true,
-      icon: <EmptyUncheckedIcon />,
-      checkedIcon: <CustomCheckedIcon />,
-    },
-    styleOverrides: {
-      root: ({ theme }) => ({
-        borderRadius: `${theme.spacing(2)}!important`,
-        width: `${theme.spacing(2)}!important`,
-        height: `${theme.spacing(2)}!important`,
-        border: `1px solid ${neutralAlpha.darken[200]}`,
+// Figma Inputs/radioButton (spec 2.11): the checkbox container tokens on a circle. Focus swaps the
+// border colour, disabled fades the whole control to 30%.
+export const muiRadio = (): Components<Omit<Theme, "components">>["MuiRadio"] => ({
+  defaultProps: {
+    disableRipple: true,
+    icon: <NoDot />,
+    checkedIcon: <CheckedDot />,
+  },
+  styleOverrides: {
+    root: ({ theme }) => {
+      const c = selectionControlColors(theme)
+      return {
+        boxSizing: "border-box",
+        width: theme.spacing(2),
+        height: theme.spacing(2),
+        borderRadius: "50%",
+        padding: 0,
+        border: `1px solid ${c.border}`,
         boxShadow: outer.sm,
-        background: neutral.white,
+        backgroundColor: c.off,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         color: neutral.white,
-        padding: 0,
         transition: defaultTransition(theme),
-        ...(darkMode && {
-          color: neutralAlpha.lighten[200],
-          "&.Mui-disabled": {
-            color: stone[750],
-          },
-        }),
 
         "& input": {
           width: "100%",
           height: "100%",
         },
-
-        "&.Mui-focusVisible": {
-          outline: `2px auto ${extensions.tabFocus}`,
-          outlineOffset: 2,
-        },
-
         "& .MuiSvgIcon-root": {
           display: "none",
-          visibility: "hidden",
         },
 
-        "&.Mui-disabled": {
-          color: stone[50],
-        },
-
-        "&:hover": {
-          background: stone[50],
-          border: `1px solid ${neutralAlpha.darken[200]}`,
-          ...theme.applyStyles("dark", {
-            background: stone[650],
-          }),
-        },
-
-        "&:active": {
-          background: stone[100],
-          ...theme.applyStyles("dark", {
-            background: neutral[700],
-          }),
-        },
-
-        "&:disabled ~ &": {
-          boxShadow: "none",
-          background: stone[50],
-          border: `1px solid ${neutralAlpha.darken[50]}`,
-          ...theme.applyStyles("dark", {
-            border: `1px solid ${neutralAlpha.lighten[50]}`,
-            background: stone[750],
-          }),
-        },
+        "&:hover": { backgroundColor: c.offHover },
+        "&:active": { backgroundColor: c.offPressed, boxShadow: inner.sm },
 
         "&.Mui-checked": {
-          background: blue[500],
-          color: neutral.white,
-          outline: "none",
-          ...theme.applyStyles("dark", {
-            background: blue[600],
-          }),
-
+          backgroundColor: c.on,
           "& .MuiSvgIcon-root": {
             display: "block",
-            visibility: "visible",
-            width: theme.spacing(1),
-            height: theme.spacing(1),
-            borderRadius: theme.spacing(1),
-            color: neutral.white,
+            width: theme.spacing(0.75),
+            height: theme.spacing(0.75),
+            borderRadius: "50%",
             boxShadow: outer.sm,
-            outline: `1px solid ${theme.palette.border.strong}`,
-
-            // Scale up inner dot on small viewports
-            [theme.breakpoints.down("sm")]: {
-              width: theme.spacing(1.75), // 1 * 1.75
-              height: theme.spacing(1.75), // 1 * 1.75
-              borderRadius: theme.spacing(1.75), // 1 * 1.75
-            },
           },
-
-          "&:hover": {
-            background: blue[550],
-            ...theme.applyStyles("dark", {
-              background: blue[650],
-            }),
-          },
-          "&:active": {
-            background: blue[600],
-            ...theme.applyStyles("dark", {
-              background: blue[700],
-            }),
-          },
-          "&:disabled": {
-            background: blue[50],
-            ...theme.applyStyles("dark", {
-              background: blue[750],
-            }),
-          },
+          "&:hover": { backgroundColor: c.onHover },
+          "&:active": { backgroundColor: c.onPressed },
         },
 
-        // Scale up on small viewports
-        [theme.breakpoints.down("sm")]: {
-          width: `${theme.spacing(3.5)}!important`, // 2 * 1.75
-          height: `${theme.spacing(3.5)}!important`, // 2 * 1.75
-          borderRadius: `${theme.spacing(3.5)}!important`, // 2 * 1.75
+        "&.Mui-focusVisible": {
+          borderColor: focusColor(theme),
         },
-      }),
+        "&.Mui-disabled": {
+          opacity: theme.palette.opacity.disabled,
+        },
+      }
     },
-  }
-}
+  },
+})

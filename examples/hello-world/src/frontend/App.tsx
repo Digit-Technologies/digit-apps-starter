@@ -1,10 +1,14 @@
 import Box from '@mui/material/Box';
-import CircularProgress from '@mui/material/CircularProgress';
-import Paper from '@mui/material/Paper';
-import Stack from '@mui/material/Stack';
+import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useDigitApiQuery } from '@digit/lib-frontend';
+import {
+  AppErrorAlert,
+  PageBody,
+  PageHeader,
+  Section,
+  useDigitApiQuery,
+} from '@digit/lib-frontend';
 
 type CurrentUserData = {
   currentUser?: { username: string | null; email: string | null } | null;
@@ -19,6 +23,9 @@ const CURRENT_USER_QUERY = `
   }
 `;
 
+// Every screen is a PageHeader, then content. Pick a recipe from
+// .agents/skills/create-digit-app/reference/design-patterns.md (list page, record page, settings,
+// dashboard, …) and build it from the @digit/lib-frontend components it names.
 export default function App() {
   const { data, error, loading, refetch } = useDigitApiQuery<CurrentUserData>({
     query: CURRENT_USER_QUERY,
@@ -27,30 +34,16 @@ export default function App() {
     data?.currentUser?.username?.trim() || data?.currentUser?.email?.trim() || 'world';
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'grid', placeItems: 'center', p: 3 }}>
-      <Paper sx={{ width: '100%', maxWidth: 560, p: { xs: 3, sm: 5 } }}>
-        <Stack spacing={1.5}>
-          <Typography variant="overline" component="p" sx={{ color: 'primary.main' }}>
-            Digit App
-          </Typography>
-          {loading ? (
-            <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-              <CircularProgress size={18} />
-              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Loading…
-              </Typography>
-            </Stack>
-          ) : (
-            <Typography variant="h1" component="h1">
-              Hello, {name}!
-            </Typography>
-          )}
-          {error && <AppErrorAlert error={error} onRetry={() => void refetch()} />}
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <PageHeader title="Hello world" />
+      <PageBody maxWidth={720}>
+        {error && <AppErrorAlert error={error} onRetry={() => void refetch()} />}
+        <Section title={loading ? <Skeleton width={120} /> : `Hello, ${name}`}>
+          <Typography variant="body1" color="text.secondary">
             Start building your app in src/frontend/App.tsx.
           </Typography>
-        </Stack>
-      </Paper>
+        </Section>
+      </PageBody>
     </Box>
   );
 }

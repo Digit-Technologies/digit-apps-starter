@@ -9,9 +9,9 @@ HTML/CSS UI for new apps.
 
 ## Package
 
-[`packages/lib-frontend`](../../../../packages/lib-frontend) is a public snapshot of
-Digit web’s MUI theme (palette, typography, component overrides). The private
-`digit-web` repo is **not** a dependency — keep this package self-contained.
+[`packages/lib-frontend`](../../../../packages/lib-frontend) implements the Digit Figma design
+system as an MUI theme (palette, typography, component overrides) plus the components that group
+themed parts. It is self-contained: the private `digit-web` repo is **not** a dependency.
 
 Depend on it from an app:
 
@@ -70,17 +70,11 @@ digit-web). Do not add a Google Fonts or other CDN stylesheet. The harness sets
 `data-theme` and `lang` on `<html>`. App look-and-feel comes from MUI +
 `DigitThemeProvider`, not a parallel CSS design system.
 
-## UI rules for agents
+## Building UI
 
-- Prefer MUI components styled by the theme (`Button`, `TextField`, `Typography`,
-  `Stack`, `Box`, `Table`, `Alert`, …)
-- Prefer `theme.palette.*` / typography variants over hard-coded hex colors
-- Do not restyle MUI from scratch, and do not invent a parallel CSS design system
-- Do not reintroduce cream/teal “starter” palettes or IBM Plex / decorative
-  gradients from older vanilla examples
-- Do not invent a CSS custom-property theme — use MUI + `DigitThemeProvider`
-- Stay inside the host iframe: no downloads, new tabs/popups, or
-  `alert`/`confirm`/`prompt`. MUI Dialog/Drawer are fine. See
-  [iframe-constraints.md](iframe-constraints.md).
-- Do not assume the harness injects React, MUI, or fonts — only host APIs.
-  Inter comes from `DigitThemeProvider`
+This file covers wiring the theme up. For how screens should look, follow
+[design-system.md](design-system.md) (rules, component picker, tokens),
+[components.md](components.md) (props per component) and
+[design-patterns.md](design-patterns.md) (screen recipes).
+
+Do not assume the harness injects React, MUI or fonts; it injects only host APIs.

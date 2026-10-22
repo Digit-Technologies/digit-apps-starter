@@ -8,7 +8,52 @@ Snapshot of Digit web’s theme adapted for the public apps starter.
 
 Import from the package root only. Theme tokens, error parsers, and other modules
 under `src/` are implementation details — use `DigitThemeProvider`, the hooks,
-`AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, and `useLabelPrint`.
+`AppErrorAlert`, the design-system components, the Lucide icons, `printLabel`,
+`LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, and `useLabelPrint`.
+
+## Design system
+
+The theme implements the Figma design system (file `C3TddYPmYbAEpsPMRPoKpw`: the Styles, Atoms
+and Molecules pages), in light and dark. Every MUI component an app uses is restyled to the
+Figma values, so apps compose components and never style them. The components below are the
+composite pieces from the Figma molecules and the product mockups:
+
+| Area | Components |
+| --- | --- |
+| Page structure | `PageHeader`, `PageBody`, `Section`, `RecordCard`, `PropertyGrid` |
+| Lists and records | `DataTable`, `RecordName`, `StatusPill` |
+| Dialogs and panels | `Modal`, `SidePanel`, `ConfirmDialog` |
+| Settings and forms | `FormField`, `SwitchField`, `SettingsSection`, `SettingsRow`, `RadioCard`, `FileDropZone`, `FileUploadRow` |
+| Feedback | `EmptyState`, `ProgressBar`, `AppErrorAlert` |
+
+There is one `Section` for every titled block. Inside a `Modal`, `SidePanel` or `RecordCard` its
+direct `Section` children become padded bands with a line between them, so there is no separate
+modal or record-card section component. Atoms have no wrapper: a category pill is a themed
+`Chip`, a bare bar is `LinearProgress`, a switch without a label row is MUI's `Switch`.
+
+Names that would shadow an MUI component or a DOM global are avoided: the list component is
+`DataTable` (MUI has `Table`), the labelled switch is `SwitchField` (MUI has `Switch`), and the
+icons `Box`, `Link`, `Text`, `File`, `Image`, `History` and `Lock` are exported with an `Icon`
+suffix.
+
+The agent-facing usage guide is
+[`.agents/skills/create-digit-app/reference/design-system.md`](../../.agents/skills/create-digit-app/reference/design-system.md),
+with per-component props in `components.md` and screen recipes in `design-patterns.md` next to
+it. Run `npm run check:skill-docs` after changing a component's API; it fails when the guide
+names a component, prop or value that no longer exists.
+
+Theme notes worth knowing:
+
+- `theme.spacing(n)` returns `calc(var(--digit-spacing-base, 8px) * n)`, a string. CssBaseline
+  sets the base to 8px, and 10px below 600px, so spacing scales on mobile as in Figma. Do not
+  do arithmetic on spacing values.
+- Every text style scales ×1.25 below 600px. Transitions are 20ms ease-in.
+- Field sizes: `xs` 20px, `small`/`medium` 28px, `large` 36px. `variant="standard"` is the Figma
+  invisible field; `outlined` renders the filled field, since Figma has no stroked field.
+- `Typography color="text.secondary"` (any palette path) works; MUI 9 alone ignores it.
+- Palette additions: `text.tertiary`, `background.secondary`, `border.default`/`strong`/
+  `extrastrong`/`solidStrong`/`solidDefault`/`solidCard`, `table.hover`/`selected`, `opacity`.
+- `focusRing(theme)` and `focusColor(theme)` in `theme/focus.ts` are the Figma focus treatment.
 
 ## Why a copy (not an import from digit-web)
 
@@ -22,9 +67,10 @@ tokens here without recording the reason below.
 
 ### Intentional diffs from digit-web
 
-Source of truth: `digit-web` `staging`, `src/providers/AppThemeProvider` plus
-`src/constants/colors.ts`, `shadows.ts`, `transitions.ts`, and
-`theme-extensions.ts`.
+Colour scales, shadows and transitions come from `digit-web` `staging`
+(`src/providers/AppThemeProvider` plus `src/constants/colors.ts`, `shadows.ts`,
+`transitions.ts`, and `theme-extensions.ts`). Component looks follow the Figma design system;
+where `digit-web` and Figma differ, Figma wins.
 
 - `DigitThemeProvider` replaces `AppThemeProvider`. It follows `AppHost` theme
   settings. It does not use web’s view-mode storage, Lucide provider, or Clerk.
@@ -123,8 +169,8 @@ limit of one per second. It rejects on a host that doesn't offer it, for a label
 another label renders. The host loads the records. Look up the label id through the Sutton API
 before shipping.
 
-Use MUI components (`Button`, `TextField`, `Typography`, …). Prefer theme palette
-tokens over hard-coded colors.
+Use the design-system components and themed MUI components (`Button`, `TextField`,
+`Typography`, …). Use palette tokens, never hard-coded colors.
 
 ## Digit API & backend hooks
 

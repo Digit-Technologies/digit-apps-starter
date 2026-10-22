@@ -2,7 +2,7 @@
  * Preview stub data — realistic-looking numbers for demoing/screenshotting the dashboard
  * layout without needing real manufacturing activity. Toggled at runtime via a switch in
  * the header (see `App.tsx`); this file only supplies the fake data, it does not decide
- * when it's shown. When the toggle is on, a "Preview data" chip renders next to the
+ * when it's shown. When the toggle is on, a "Preview data" Pill renders next to the
  * header so the fake numbers are never mistaken for live output.
  */
 

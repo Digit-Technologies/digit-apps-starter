@@ -5,6 +5,6 @@ export const defaultTransition = (
   props: string[] = ["all"],
 ): string =>
   theme.transitions.create(props, {
-    duration: theme.transitions.duration.short,
-    easing: theme.transitions.easing.easeInOut,
+    duration: 20,
+    easing: theme.transitions.easing.easeIn,
   })

@@ -1,9 +1,7 @@
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useBackendQuery } from '@digit/lib-frontend';
+import { AppErrorAlert, Globe, PropertyGrid, Section, useBackendQuery } from '@digit/lib-frontend';
 
 type WeatherData = {
   latitude: number;
@@ -13,57 +11,47 @@ type WeatherData = {
   observedAt: string | null;
 };
 
+const none = (
+  <Typography variant="body1" color="text.tertiary" component="span">
+    None
+  </Typography>
+);
+
 export default function PublicApiPanel() {
+  // The Worker calls Open-Meteo; the browser only talks to /proxy/backend/weather.
   const { data, error, loading, refetch } = useBackendQuery<WeatherData>({
     path: '/weather',
     skip: true,
   });
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="h2" component="h2">
-        Public API
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-        Worker calls Open-Meteo (no API key). The browser never talks to the third party — only{' '}
-        <code>/proxy/backend/weather</code>.
-      </Typography>
-
-      <Button
-        variant="contained"
-        onClick={() => void refetch()}
-        disabled={loading}
-        sx={{ alignSelf: 'flex-start' }}
-      >
-        Fetch weather (NYC)
-      </Button>
-
-      {loading && (
-        <Stack direction="row" spacing={1.5} sx={{
-          alignItems: "center"
-        }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Calling backend…
-          </Typography>
-        </Stack>
-      )}
-
+    <Section
+      title="Public API"
+      subtitle="The Worker calls Open-Meteo for New York. No API key needed."
+      subtitlePlacement="below"
+      actions={
+        <Button
+          startIcon={<Globe />}
+          loading={loading}
+          loadingPosition="start"
+          onClick={() => void refetch()}
+        >
+          Fetch weather
+        </Button>
+      }
+    >
       {error && <AppErrorAlert error={error} onRetry={() => void refetch()} />}
-
-      {data && (
-        <Stack spacing={0.5}>
-          <Typography variant="body1">
-            Temperature: <strong>{data.temperatureF ?? '—'}°F</strong>
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Weather code {data.weatherCode ?? '—'} · observed {data.observedAt ?? '—'}
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-            {data.latitude}, {data.longitude}
-          </Typography>
-        </Stack>
-      )}
-    </Stack>
+      <PropertyGrid
+        rows={[
+          {
+            label: 'Temperature',
+            value: data?.temperatureF != null ? `${data.temperatureF.toFixed(1)}°F` : none,
+          },
+          { label: 'Weather code', value: data?.weatherCode != null ? data.weatherCode : none },
+          { label: 'Observed', value: data?.observedAt ?? none },
+          { label: 'Location', value: data ? `${data.latitude}, ${data.longitude}` : none },
+        ]}
+      />
+    </Section>
   );
 }
