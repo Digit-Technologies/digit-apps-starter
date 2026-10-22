@@ -4,7 +4,7 @@ import { neutralAlpha } from "./colors"
 
 import { ThemeProps } from "./types"
 
-import { mobileScaleFactor } from "./mobileScaleFactor"
+import { mobileMediaQuery, mobileScaleFactor } from "./mobileScaleFactor"
 
 // Figma link-hover: a 1px underline at 25% of the text colour. Links have no underline at rest.
 const linkHoverStyles = (darkMode: boolean) => ({
@@ -33,7 +33,7 @@ const createTypography = ({
   lineHeight: `${lineHeight / 16}rem`,
   fontWeight,
   letterSpacing: 0,
-  "@media screen and (max-width: 599px)": {
+  [mobileMediaQuery]: {
     fontSize: `${(size * mobileScaleFactor) / 16}rem`,
     lineHeight: `${(lineHeight * mobileScaleFactor) / 16}rem`,
   },
@@ -73,16 +73,13 @@ export const typography = ({
       fontWeight: 400,
       letterSpacing: 0,
     },
+    // Figma button/Sm and button/Md are the same 13/16 500 style.
     button: {
       ...createTypography({ size: 13, lineHeight: 16, fontWeight: 500 }),
       textTransform: "none",
     },
-    buttonSm: {
-      ...createTypography({ size: 13, lineHeight: 16, fontWeight: 500 }),
-      textTransform: "none",
-    },
+    // Not a Figma style: MUI's caption (helper text and the like) at pill/Md's 12/16.
     caption: createTypography({ size: 12, lineHeight: 16, fontWeight: 400 }),
-    caption2: createTypography({ size: 12, lineHeight: 16, fontWeight: 500 }),
     overline: {
       ...createTypography({ size: 11, lineHeight: 12, fontWeight: 400 }),
       textTransform: "none",

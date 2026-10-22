@@ -23,7 +23,7 @@ export const muiDataGrid = (): Components<Omit<Theme, "components">>["MuiDataGri
         border: "none",
         borderRadius: 0,
         backgroundColor: background.paper,
-        fontSize: "13px",
+        fontSize: theme.typography.body1.fontSize,
         // Every line in the grid reads this variable: row lines, column lines, header bottom.
         "--DataGrid-rowBorderColor": border.default,
         // The grid mixes 5% white into paper in dark mode. Figma keeps the table on paper.
@@ -39,10 +39,10 @@ export const muiDataGrid = (): Components<Omit<Theme, "components">>["MuiDataGri
           backgroundColor: "transparent",
         },
         "& .MuiDataGrid-columnHeader": {
-          padding: "0 8px",
+          padding: theme.spacing(0, 1),
         },
         "& .MuiDataGrid-columnHeaderTitleContainer": {
-          gap: "4px",
+          gap: theme.spacing(0.5),
         },
         "& .MuiDataGrid-columnHeaderTitle, & .digit-Table-headerLabel": {
           ...theme.typography.body1,
@@ -53,7 +53,7 @@ export const muiDataGrid = (): Components<Omit<Theme, "components">>["MuiDataGri
         "& .digit-Table-header": {
           display: "flex",
           alignItems: "center",
-          gap: "4px",
+          gap: theme.spacing(0.5),
           minWidth: 0,
           color: text.secondary,
           "& svg": { flexShrink: 0 },
@@ -78,7 +78,7 @@ export const muiDataGrid = (): Components<Omit<Theme, "components">>["MuiDataGri
         "& .MuiDataGrid-cell": {
           display: "flex",
           alignItems: "center",
-          padding: "0 8px",
+          padding: theme.spacing(0, 1),
           ...theme.typography.body1,
           color: text.primary,
         },

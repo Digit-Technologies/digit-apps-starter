@@ -27,9 +27,8 @@ export const muiTextField = (): Components<Omit<Theme, "components">>["MuiTextFi
       },
       // Helper and error text, as FormField draws them.
       "& .MuiFormHelperText-root": {
+        ...theme.typography.caption,
         margin: theme.spacing(0.5, 1, 0),
-        fontSize: "12px",
-        lineHeight: "16px",
         color: theme.palette.text.secondary,
         "&.Mui-error": { color: theme.palette.error.main },
       },

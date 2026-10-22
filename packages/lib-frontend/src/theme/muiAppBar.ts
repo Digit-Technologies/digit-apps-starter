@@ -1,11 +1,11 @@
 import { Components, Theme } from "@mui/material/styles"
 
+import { mobileMediaQuery } from "./mobileScaleFactor"
+
 // Figma appBar (11800:69168) is the page header, not a coloured Material bar: page background,
 // primary text, the solid strong bottom line and no shadow. Prefer `PageHeader`; this keeps a
-// stray MUI AppBar from looking like default MUI. `darkMode` is kept for the existing call site.
-export const muiAppBar = (_options: {
-  darkMode: boolean
-}): Components<Omit<Theme, "components">>["MuiAppBar"] => {
+// stray MUI AppBar from looking like default MUI.
+export const muiAppBar = (): Components<Omit<Theme, "components">>["MuiAppBar"] => {
   return {
     defaultProps: {
       elevation: 0,
@@ -26,7 +26,7 @@ export const muiAppBar = (_options: {
           gap: theme.spacing(1),
           paddingLeft: 36,
           paddingRight: 36,
-          "@media (max-width: 599px)": { paddingLeft: 20, paddingRight: 20 },
+          [mobileMediaQuery]: { paddingLeft: 20, paddingRight: 20 },
         },
       }),
       colorPrimary: ({ theme }) => ({

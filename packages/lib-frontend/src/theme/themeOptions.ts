@@ -59,11 +59,9 @@ import { muiTypography } from "./muiTypography"
 import { palette } from "./palette"
 import { typography } from "./typography"
 
-export { mobileScaleFactor } from "./mobileScaleFactor"
-
 export const themeOptions = (darkMode: boolean): ThemeOptions => ({
   components: {
-    MuiAlert: muiAlert({ darkMode }),
+    MuiAlert: muiAlert(),
     MuiAlertTitle: muiAlertTitle(),
     MuiAvatarGroup: muiAvatarGroup(),
     MuiListItemIcon: muiListItemIcon(),
@@ -72,16 +70,16 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiPopover: muiPopover(),
     MuiSnackbar: muiSnackbar(),
     MuiSvgIcon: muiSvgIcon(),
-    MuiAppBar: muiAppBar({ darkMode }),
+    MuiAppBar: muiAppBar(),
     MuiAutocomplete: muiAutocomplete(),
     MuiAvatar: muiAvatar(),
     MuiBadge: muiBadge(),
     MuiSkeleton: muiSkeleton(),
     MuiSnackbarContent: muiSnackbarContent(),
-    MuiCssBaseline: muiCssBaseline({ darkMode }),
+    MuiCssBaseline: muiCssBaseline(),
     MuiBackdrop: muiBackdrop(),
     MuiCard: muiCard(),
-    MuiCheckbox: muiCheckbox({ darkMode }),
+    MuiCheckbox: muiCheckbox(),
     MuiChip: muiChip(),
     MuiButton: muiButton(),
     MuiDialog: muiDialog(),
@@ -90,7 +88,7 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
     MuiDialogActions: muiDialogActions(),
     MuiFilledInput: muiFilledInput(),
     MuiFormControlLabel: muiFormControlLabel(),
-    MuiIconButton: muiIconButton({ darkMode }),
+    MuiIconButton: muiIconButton(),
     MuiInput: muiInput(),
     MuiInputAdornment: muiInputAdornment(),
     MuiInputBase: {
@@ -98,14 +96,14 @@ export const themeOptions = (darkMode: boolean): ThemeOptions => ({
         disableInjectingGlobalStyles: true,
       },
     },
-    MuiListItemButton: muiListItemButton({ darkMode }),
+    MuiListItemButton: muiListItemButton(),
     MuiMenuItem: muiMenuItem(),
     MuiMenu: muiMenu(),
     MuiOutlinedInput: muiOutlinedInput(),
     MuiPaper: muiPaper(),
     // MuiPickersInputBase / MuiPickersOutlinedInput stay on digit-web (need
     // @mui/x-date-pickers). Do not copy them into the starter.
-    MuiRadio: muiRadio(darkMode),
+    MuiRadio: muiRadio(),
     MuiSelect: muiSelect(),
     MuiSwitch: muiSwitch(),
     MuiTab: muiTab(),

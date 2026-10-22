@@ -226,64 +226,47 @@ interface SizeTokens {
   icon: number
 }
 
-// Figma button/height, padding-x, gap, border-radius and icon size. MUI's "large" has no Figma
-// size, so it uses md.
+/**
+ * Figma button/height, padding-x, gap, border-radius and icon size, in theme-spacing units (8px,
+ * 10px below 600px), so buttons grow ×1.25 on mobile with everything else. xs 20/4/2/6 icon 16,
+ * sm 28/8/4/8 icon 16, md 36/12/6/10 icon 20. MUI's "large" has no Figma size, so it uses md.
+ * Shared with IconButton.
+ */
 const sizeTokens: Record<string, SizeTokens> = {
-  xs: { height: 20, paddingX: 4, gap: 2, radius: 6, icon: 16 },
-  small: { height: 28, paddingX: 8, gap: 4, radius: 8, icon: 16 },
-  medium: { height: 36, paddingX: 12, gap: 6, radius: 10, icon: 20 },
-  large: { height: 36, paddingX: 12, gap: 6, radius: 10, icon: 20 },
+  xs: { height: 2.5, paddingX: 0.5, gap: 0.25, radius: 0.75, icon: 2 },
+  small: { height: 3.5, paddingX: 1, gap: 0.5, radius: 1, icon: 2 },
+  medium: { height: 4.5, paddingX: 1.5, gap: 0.75, radius: 1.25, icon: 2.5 },
+  large: { height: 4.5, paddingX: 1.5, gap: 0.75, radius: 1.25, icon: 2.5 },
 }
 
-const MOBILE = "@media (max-width: 599px)"
-const mobileScale = 1.25
-const px = (n: number, scale = 1): string => `${n * scale}px`
-
-const tokensFor = (size: string | undefined): SizeTokens =>
+export const buttonSizeTokens = (size: string | undefined): SizeTokens =>
   sizeTokens[size ?? "small"] ?? sizeTokens.small
 
-const sizeStyles = (s: SizeTokens, scale: number): CSSObject => ({
-  minHeight: px(s.height, scale),
-  minWidth: px(s.height, scale),
-  padding: `0 ${px(s.paddingX, scale)}`,
-  gap: px(s.gap, scale),
-  borderRadius: px(s.radius, scale),
-})
-
 // Icons are sized here so a caller's `size` on a lucide icon can't drift from Figma.
-const iconStyles = (s: SizeTokens, scale: number): CSSObject => ({
-  "& > *:nth-of-type(1)": { fontSize: px(s.icon, scale) },
-  "& svg, & .MuiButton-loadingIconPlaceholder": {
-    width: px(s.icon, scale),
-    height: px(s.icon, scale),
-  },
-})
-
-const iconSlot = (size: string | undefined): CSSObject => {
-  const s = tokensFor(size)
-  return {
-    // The root's gap is the Figma icon-label gap; MUI's own margins would add to it.
-    marginLeft: 0,
-    marginRight: 0,
-    ...iconStyles(s, 1),
-    [MOBILE]: iconStyles(s, mobileScale),
+const iconSlot =
+  ({ theme, ownerState }: { theme: Theme; ownerState: { size?: string } }): CSSObject => {
+    const icon = theme.spacing(buttonSizeTokens(ownerState.size).icon)
+    return {
+      // The root's gap is the Figma icon-label gap; MUI's own margins would add to it.
+      marginLeft: 0,
+      marginRight: 0,
+      "& > *:nth-of-type(1)": { fontSize: icon },
+      "& svg, & .MuiButton-loadingIconPlaceholder": { width: icon, height: icon },
+    }
   }
-}
 
 export const muiButton = (): Components<Omit<Theme, "components">>["MuiButton"] => {
   return {
     styleOverrides: {
       root: ({ theme, ownerState }) => {
-        const s = tokensFor(ownerState.size)
+        const s = buttonSizeTokens(ownerState.size)
         return {
           ...theme.typography.button,
-          ...sizeStyles(s, 1),
-          [MOBILE]: {
-            ...sizeStyles(s, mobileScale),
-            // Figma button/Sm|Md on mobile: 16.25 / 20 (theme.typography.button at ×1.25).
-            fontSize: `${(13 * mobileScale) / 16}rem`,
-            lineHeight: `${(16 * mobileScale) / 16}rem`,
-          },
+          minHeight: theme.spacing(s.height),
+          minWidth: theme.spacing(s.height),
+          padding: theme.spacing(0, s.paddingX),
+          gap: theme.spacing(s.gap),
+          borderRadius: theme.spacing(s.radius),
           ...buttonLookStyles(
             theme,
             lookFor(ownerState.variant, ownerState.color),
@@ -298,24 +281,20 @@ export const muiButton = (): Components<Omit<Theme, "components">>["MuiButton"] 
           },
         }
       },
-      startIcon: ({ ownerState }) => iconSlot(ownerState.size),
-      endIcon: ({ ownerState }) => iconSlot(ownerState.size),
+      startIcon: iconSlot,
+      endIcon: iconSlot,
       // The indicator box matches the icon. With loadingPosition="start" it sits exactly on the
       // start icon (which MUI hides), at the button's padding. Center and end keep MUI's placement.
-      loadingIndicator: ({ ownerState }) => {
-        const s = tokensFor(ownerState.size)
-        const box = (scale: number): CSSObject => ({
-          width: px(s.icon, scale),
-          height: px(s.icon, scale),
-          ...(ownerState.loadingPosition === "start" &&
-            !ownerState.fullWidth && { left: px(s.paddingX, scale) }),
-        })
+      loadingIndicator: ({ theme, ownerState }) => {
+        const s = buttonSizeTokens(ownerState.size)
         return {
           alignItems: "center",
           justifyContent: "center",
           color: "currentColor",
-          ...box(1),
-          [MOBILE]: box(mobileScale),
+          width: theme.spacing(s.icon),
+          height: theme.spacing(s.icon),
+          ...(ownerState.loadingPosition === "start" &&
+            !ownerState.fullWidth && { left: theme.spacing(s.paddingX) }),
         }
       },
       // MUI disables a loading button, and the disabled colours would grey it out. A loading

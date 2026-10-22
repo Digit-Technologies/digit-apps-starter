@@ -20,9 +20,3 @@ export const fieldColors = (theme: Theme) => {
     selection: dark ? blue[750] : blue[250],
   }
 }
-
-/**
- * The fill a typeable field shows on hover (form/input/field/default/background/hover:
- * a.10 / w.10). Kept for the PickersInputBase override in digit-web.
- */
-export const inputHoverFillColor = (theme: Theme): string => fieldColors(theme).hoverFill

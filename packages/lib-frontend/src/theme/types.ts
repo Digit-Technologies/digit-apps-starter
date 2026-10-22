@@ -65,11 +65,9 @@ declare module "@mui/material/Chip" {
 
 declare module "@mui/material/Typography" {
   interface TypographyPropsVariantOverrides {
-    caption2: true
     overline2: true
     body1Link: true
     body2Link: true
-    buttonSm: true
     overlineLink: true
     pillSm: true
     pillMd: true
@@ -79,38 +77,31 @@ declare module "@mui/material/Typography" {
 
 declare module "@mui/material/styles" {
   interface TypographyVariants {
-    caption2: CSSProperties
     overline2: CSSProperties
     body1Link: CSSObject
     body2Link: CSSObject
-    button: CSSProperties
-    buttonSm: CSSProperties
-    overlineLink: CSSProperties
+    overlineLink: CSSObject
     pillSm: CSSProperties
     pillMd: CSSProperties
     mono: CSSProperties
   }
 
   interface TypographyVariantsOptions {
-    caption2?: CSSProperties
     overline2?: CSSProperties
     body1Link?: CSSObject
     body2Link?: CSSObject
-    button?: CSSProperties
-    buttonSm?: CSSProperties
-    overlineLink?: CSSProperties
+    overlineLink?: CSSObject
     pillSm?: CSSProperties
     pillMd?: CSSProperties
     mono?: CSSProperties
   }
 
   interface TypeText {
-    tertiary?: string
+    tertiary: string
   }
 
   interface TypeBackground {
-    surface?: string
-    secondary?: string
+    secondary: string
   }
 
   interface Palette extends Record<AccentColorName, PaletteColor> {
@@ -127,12 +118,10 @@ declare module "@mui/material/styles" {
       hover: string
       selected: string
     }
-    divider: string
     opacity: {
       helper: number
       disabled: number
     }
-    tabFocus: string
   }
   interface PaletteOptions extends Partial<Record<AccentColorName, PaletteColorOptions>> {
     border?: {
@@ -146,12 +135,9 @@ declare module "@mui/material/styles" {
       hover?: string
       selected?: string
     }
-    divider?: string
     opacity?: {
       helper?: number
       disabled?: number
     }
-    tabFocus?: string
   }
-
 }

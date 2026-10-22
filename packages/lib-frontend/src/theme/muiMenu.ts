@@ -26,24 +26,10 @@ export const menuListStyles = (theme: Theme) => ({
 })
 
 export const muiMenu = (): Components<Omit<Theme, "components">>["MuiMenu"] => {
+  // The page is not dimmed behind a menu: Popover already gives Menu an invisible backdrop, and
+  // muiBackdrop drops the tint and blur for invisible backdrops.
   return {
-    defaultProps: {
-      // digit-web passes BackdropProps. MUI 9 removed that prop; slotProps.backdrop
-      // is the same invisible menu backdrop.
-      slotProps: {
-        backdrop: {
-          invisible: true,
-        },
-      },
-    },
     styleOverrides: {
-      root: {
-        // The page is not dimmed behind a menu.
-        "& .MuiBackdrop-root": {
-          backgroundColor: "transparent",
-          backdropFilter: "none",
-        },
-      },
       paper: ({ theme }) => menuPaperStyles(theme),
       list: ({ theme }) => menuListStyles(theme),
     },

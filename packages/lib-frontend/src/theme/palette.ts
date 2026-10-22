@@ -7,8 +7,6 @@ import { getThemeExtensions } from "./theme-extensions"
 import { ThemeProps } from "./types"
 
 export const palette = ({ darkMode }: ThemeProps): ThemeOptions["palette"] => {
-  const extensions = getThemeExtensions(darkMode)
-
   return {
     mode: darkMode ? "dark" : "light",
     primary: {
@@ -57,9 +55,9 @@ export const palette = ({ darkMode }: ThemeProps): ThemeOptions["palette"] => {
     background: {
       // Figma page/background/primary is #292524 in dark mode, the same as paper.
       default: darkMode ? stone[800] : neutral.white,
+      // Figma page/background/secondary.
       secondary: darkMode ? stone[900] : neutral[50],
       paper: darkMode ? stone[800] : neutral.white,
-      surface: darkMode ? stone[900] : neutral[50],
     },
     ...accentPalette,
     // MUI's own grey scale would show up in components. Use the stone scale instead.
@@ -75,7 +73,6 @@ export const palette = ({ darkMode }: ThemeProps): ThemeOptions["palette"] => {
       800: stone[800],
       900: stone[900],
     },
-    // All palette extensions beyond standard MUI colors should be added here
-    ...extensions,
+    ...getThemeExtensions(darkMode),
   }
 }

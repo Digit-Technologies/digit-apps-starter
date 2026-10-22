@@ -1,6 +1,6 @@
 import { CSSObject, Components, Theme } from "@mui/material/styles"
 
-import { ButtonLook, buttonLookRestStyles, buttonLookStyles } from "./muiButton"
+import { ButtonLook, buttonLookRestStyles, buttonLookStyles, buttonSizeTokens } from "./muiButton"
 import { defaultTransition } from "./transitions"
 
 /**
@@ -21,24 +21,13 @@ const lookFor = (color: string | undefined): ButtonLook => {
 const isDestructive = (color: string | undefined): boolean =>
   color === "error" || color === "errorSecondary"
 
-// Figma sizes: xs 20 (radius 6, icon 16), sm 28 (8, 16), md 36 (10, 20). MUI small = sm,
-// medium = md; large has no Figma size and keeps md.
-const sizeTokens: Record<string, { box: number; radius: number; icon: number }> = {
-  xs: { box: 20, radius: 6, icon: 16 },
-  small: { box: 28, radius: 8, icon: 16 },
-  medium: { box: 36, radius: 10, icon: 20 },
-  large: { box: 36, radius: 10, icon: 20 },
-}
-
-const MOBILE = "@media (max-width: 599px)"
-const mobileScale = 1.25
-
-const sizeStyles = (size: string | undefined, scale: number): CSSObject => {
-  const s = sizeTokens[size ?? "small"] ?? sizeTokens.small
-  const box = `${s.box * scale}px`
-  const icon = `${s.icon * scale}px`
+// The Button sizes, square: xs 20 (radius 6, icon 16), sm 28 (8, 16), md 36 (10, 20).
+const sizeStyles = (theme: Theme, size: string | undefined): CSSObject => {
+  const s = buttonSizeTokens(size)
+  const box = theme.spacing(s.height)
+  const icon = theme.spacing(s.icon)
   return {
-    borderRadius: `${s.radius * scale}px`,
+    borderRadius: theme.spacing(s.radius),
     height: box,
     minWidth: box,
     width: box,
@@ -54,9 +43,7 @@ const sizeStyles = (size: string | undefined, scale: number): CSSObject => {
   }
 }
 
-export const muiIconButton = (_: {
-  darkMode: boolean
-}): Components<Omit<Theme, "components">>["MuiIconButton"] => {
+export const muiIconButton = (): Components<Omit<Theme, "components">>["MuiIconButton"] => {
   return {
     defaultProps: {
       disableRipple: true,
@@ -72,8 +59,7 @@ export const muiIconButton = (_: {
           lineHeight: "1rem", // 16px
           transition: defaultTransition(theme),
           whiteSpace: "nowrap",
-          ...sizeStyles(ownerState.size, 1),
-          [MOBILE]: sizeStyles(ownerState.size, mobileScale),
+          ...sizeStyles(theme, ownerState.size),
           ...buttonLookStyles(theme, look, isDestructive(ownerState.color)),
           // Disabled dims once, through the disabled foreground token (no extra opacity).
           "&.Mui-disabled .MuiSvgIcon-root, &.Mui-disabled svg:not(.MuiCircularProgress-svg)": {

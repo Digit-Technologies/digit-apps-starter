@@ -5,7 +5,6 @@ import { Components, Theme } from "@mui/material/styles"
 import { CircleAlert, CircleCheck, Info, TriangleAlert, X } from "../icons"
 import { blue, emerald, green, red, yellow } from "./colors"
 import { outer } from "./shadows"
-import { ThemeProps } from "./types"
 
 declare module "@mui/material/Alert" {
   interface AlertPropsVariantOverrides {
@@ -81,7 +80,7 @@ const CloseIcon = ({
  * `variant="neutral"` is the untinted Neutral alert; pass `icon` (or `icon={false}`) with it,
  * since MUI picks the default icon from `severity`.
  */
-export const muiAlert = (_props: ThemeProps): Components<Omit<Theme, "components">>["MuiAlert"] => ({
+export const muiAlert = (): Components<Omit<Theme, "components">>["MuiAlert"] => ({
   defaultProps: {
     iconMapping,
     slots: { closeIcon: CloseIcon },

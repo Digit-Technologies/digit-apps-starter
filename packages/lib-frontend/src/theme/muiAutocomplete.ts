@@ -25,9 +25,9 @@ export const muiAutocomplete = (): Components<
     },
     styleOverrides: {
       root: ({ theme }) => ({
-        fontSize: "0.8125rem", // body2
+        fontSize: theme.typography.body1.fontSize,
         "& ::placeholder": {
-          fontSize: "0.8125rem", // body2
+          fontSize: theme.typography.body1.fontSize,
         },
         // MUI pads the field for its floating label and 48px touch targets (filled paddingTop
         // 19, outlined padding 9, input 7px 4px). The themed field already has the Figma height
