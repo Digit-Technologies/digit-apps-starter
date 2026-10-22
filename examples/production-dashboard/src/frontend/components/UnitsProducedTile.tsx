@@ -1,6 +1,5 @@
+import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
-
-import { Pill } from '@digit/lib-frontend';
 
 import KpiTile from './KpiTile';
 
@@ -25,12 +24,12 @@ export default function UnitsProducedTile({ values, unitSymbol, loading }: Units
   let footer;
   if (today !== null && trailingAverage !== null) {
     const delta = Math.round(today - trailingAverage);
-    // The trend is a Pill (category colour only appears inside a Pill), not coloured text.
-    const color = delta > 0 ? 'green' : delta < 0 ? 'red' : 'gray';
+    // The trend is a pill (`Chip`; category colour only appears inside a pill), not coloured text.
+    const color = delta > 0 ? 'green' : delta < 0 ? 'red' : 'default';
     footer = (
       <>
-        <Pill
-          size="sm"
+        <Chip
+          size="small"
           color={color}
           label={`${delta > 0 ? '+' : ''}${numberFormatter.format(delta)}${unitSuffix}`}
         />

@@ -7,7 +7,7 @@ import { SxProps, Theme } from "@mui/material/styles"
 
 import { ArrowLeft } from "../icons"
 import { outer } from "../theme/shadows"
-import { ModalFooter, ModalFooterProps, ModalHeader } from "./Modal"
+import { ModalFooter, ModalFooterProps, ModalHeader, modalSectionBandsSx } from "./Modal"
 
 export interface SidePanelProps {
   open: boolean
@@ -21,7 +21,7 @@ export interface SidePanelProps {
   tabs?: ReactNode
   /** Cancel on the left, secondary and primary on the right. */
   footer?: ModalFooterProps
-  /** `ModalSection`s, or any content (it gets 16px padding). */
+  /** `Section`s, which become padded bands, or any content (it gets 16px padding). */
   children: ReactNode
   /**
    * `overlay` (default): a 448px panel that floats over a list page with a shadow and no
@@ -54,15 +54,7 @@ const PanelBody = ({ title, titleId, actions, onBack, onClose, tabs, footer, chi
       // Record-page chrome uses the solid line; the floating panel uses the 10% line.
       sx={solid ? (theme) => ({ borderBottomColor: theme.palette.border.solidStrong }) : undefined}
     />
-    <Box
-      sx={{
-        flex: 1,
-        minHeight: 0,
-        overflowY: "auto",
-        p: 2,
-        "&:has(> .digit-ModalSection)": { p: 0 },
-      }}
-    >
+    <Box sx={[{ flex: 1, minHeight: 0, overflowY: "auto", p: 2 }, modalSectionBandsSx]}>
       {children}
     </Box>
     {footer && (

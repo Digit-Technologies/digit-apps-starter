@@ -113,6 +113,8 @@ declare module "@mui/material/styles" {
       solidStrong: string
       /** Solid #f5f5f5 line: section dividers inside a page or card. */
       solidDefault: string
+      /** Solid #ededed line: section dividers inside a modal or side panel. */
+      solidCard: string
     }
     table: {
       hover: string
@@ -130,6 +132,7 @@ declare module "@mui/material/styles" {
       extrastrong?: string
       solidStrong?: string
       solidDefault?: string
+      solidCard?: string
     }
     table?: {
       hover?: string

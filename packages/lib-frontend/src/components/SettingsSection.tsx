@@ -8,6 +8,7 @@ import Typography from "@mui/material/Typography"
 
 import { ChevronDown } from "../icons"
 import { focusRing } from "../theme/focus"
+import { sectionClassName } from "./Section"
 
 export interface SettingsSectionProps {
   title: ReactNode
@@ -22,12 +23,10 @@ export interface SettingsSectionProps {
    * `sm`: h6 title on a 28px header and a 16px gap before the rows (side panel sections).
    */
   size?: "md" | "sm"
-  /** Pads the section 16px and draws a solid bottom line (none on the last section). */
-  padded?: boolean
   /** Adds a Select All / Deselect All action. Pass it when the rows are grants or checkboxes. */
   selection?: { checked: number; total: number; onChange: (selectAll: boolean) => void }
   /** Right side of the header, after the selection action: a Plus `IconButton` or a "New" button. */
-  action?: ReactNode
+  actions?: ReactNode
   /** SettingsRow rows. */
   children: ReactNode
 }
@@ -42,9 +41,8 @@ export const SettingsSection = ({
   defaultOpen = true,
   collapsible = true,
   size = "md",
-  padded = false,
   selection,
-  action,
+  actions,
   children,
 }: SettingsSectionProps) => {
   const [open, setOpen] = useState(defaultOpen)
@@ -68,18 +66,8 @@ export const SettingsSection = ({
   )
 
   return (
-    <Box
-      className="SettingsSection-root"
-      sx={(theme) =>
-        padded
-          ? {
-              p: 2,
-              borderBottom: `1px solid ${theme.palette.border.solidDefault}`,
-              "&:last-child": { borderBottom: "none" },
-            }
-          : {}
-      }
-    >
+    // The Section class makes it a padded band when it sits directly in a Modal or SidePanel.
+    <Box className={sectionClassName}>
       <Box
         sx={{
           display: "flex",
@@ -110,7 +98,7 @@ export const SettingsSection = ({
                   display: "inline-flex",
                   color: "text.primary",
                   transform: open ? "none" : "rotate(-90deg)",
-                  transition: "transform 150ms ease",
+                  transition: (theme) => theme.transitions.create("transform"),
                 }}
               >
                 <ChevronDown size={16} />
@@ -121,7 +109,7 @@ export const SettingsSection = ({
             heading
           )}
         </Box>
-        {(selection || action) && (
+        {(selection || actions) && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
             {selection && (
               <Button
@@ -133,7 +121,7 @@ export const SettingsSection = ({
                 {allChecked ? "Deselect All" : "Select All"}
               </Button>
             )}
-            {action}
+            {actions}
           </Box>
         )}
       </Box>

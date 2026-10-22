@@ -15,6 +15,8 @@ export const getThemeExtensions = (
     // toolbar, menu outlines, sidebar edge) and for section dividers inside a page or card.
     solidStrong: darkMode ? neutral[600] : neutral[200],
     solidDefault: darkMode ? neutral[700] : neutral[100],
+    // Figma containers/cards/border/solid/default: the line between sections in a modal or panel.
+    solidCard: darkMode ? neutral[700] : neutral[150],
   },
   // Figma table/row/background/*.
   table: {

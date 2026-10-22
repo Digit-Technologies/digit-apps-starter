@@ -20,11 +20,21 @@ composite pieces from the Figma molecules and the product mockups:
 
 | Area | Components |
 | --- | --- |
-| Page structure | `PageHeader`, `Section`, `RecordCard`, `RecordCardSection`, `PropertyGrid` |
-| Lists | `Table`, `RecordName`, `Pill` |
-| Panels and dialogs | `SidePanel`, `Modal`, `ModalHeader`, `ModalSection`, `ModalFooter`, `ConfirmDialog` |
-| Settings and forms | `SettingsSection`, `SettingsRow`, `FormField`, `Switch`, `RadioCard`, `FileDropZone`, `FileUploadRow` |
+| Page structure | `PageHeader`, `PageBody`, `Section`, `RecordCard`, `PropertyGrid` |
+| Lists and records | `DataTable`, `RecordName`, `StatusPill` |
+| Dialogs and panels | `Modal`, `SidePanel`, `ConfirmDialog` |
+| Settings and forms | `FormField`, `SwitchField`, `SettingsSection`, `SettingsRow`, `RadioCard`, `FileDropZone`, `FileUploadRow` |
 | Feedback | `EmptyState`, `ProgressBar`, `AppErrorAlert` |
+
+There is one `Section` for every titled block. Inside a `Modal`, `SidePanel` or `RecordCard` its
+direct `Section` children become padded bands with a line between them, so there is no separate
+modal or record-card section component. Atoms have no wrapper: a category pill is a themed
+`Chip`, a bare bar is `LinearProgress`, a switch without a label row is MUI's `Switch`.
+
+Names that would shadow an MUI component or a DOM global are avoided: the list component is
+`DataTable` (MUI has `Table`), the labelled switch is `SwitchField` (MUI has `Switch`), and the
+icons `Box`, `Link`, `Text`, `File`, `Image`, `History` and `Lock` are exported with an `Icon`
+suffix.
 
 The agent-facing usage guide is
 [`.agents/skills/create-digit-app/reference/design-system.md`](../../.agents/skills/create-digit-app/reference/design-system.md),

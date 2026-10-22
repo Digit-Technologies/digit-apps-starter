@@ -8,7 +8,7 @@ import { accentScales } from "./accent-colors"
 import { focusRing } from "./focus"
 import { neutralAlpha } from "./colors"
 
-// A Chip looks like a Figma Pill (10381:23564) and like components/Pill.tsx. MUI's Chip `color`
+// A Chip is the Figma Pill (10381:23564); StatusPill only picks its colour per record stage. MUI's Chip `color`
 // picks the tone: accents fill with their [250] tint in light mode and [750] in dark, with primary
 // text. The default colour (and primary/secondary) is the Figma gray pill, a.05 / w.15. Outlined
 // chips get the a.20 / w.20 border only. The MUI roles tint like the palette colour they are set
@@ -21,8 +21,7 @@ const tintScales: Partial<Record<string, Record<number, string>>> = {
   info: accentScales.blue,
 }
 
-// Repeats the token values in components/Pill.tsx (muiChip.ts must not import Pill: circular
-// risk). Theme-spacing units, so chips grow ×1.25 below 600px like the Figma mobile pills.
+// Theme-spacing units, so chips grow ×1.25 below 600px like the Figma mobile pills.
 // small = Figma pill "Size Sm" (16 tall), medium = "Size Md" (20 tall).
 const chipSizeTokens = {
   small: { height: 2, px: 0.5, gap: 0.25, radius: 0.5, typography: "pillSm" },

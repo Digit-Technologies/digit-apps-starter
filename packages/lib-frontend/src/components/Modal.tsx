@@ -11,7 +11,7 @@ import { SxProps, Theme } from "@mui/material/styles"
 import Typography from "@mui/material/Typography"
 
 import { X } from "../icons"
-import { neutral } from "../theme/colors"
+import { sectionClassName, sectionHeaderClassName } from "./Section"
 
 export interface ModalFooterProps {
   /** Adds a text "Cancel" button on the left. */
@@ -37,7 +37,7 @@ export interface ModalProps {
   width?: "xs" | "sm" | "md" | "lg"
   /** Takes the full height of the viewport (less 32px each side), so the footer stays put. */
   fullHeight?: boolean
-  /** One or more `ModalSection`s, or any content (it gets 16px padding). */
+  /** One or more `Section`s, which become padded bands, or any content (it gets 16px padding). */
   children: ReactNode
   footer?: ModalFooterProps
   /** Passed to the MUI Dialog, for example `disablePortal` or `TransitionProps`. */
@@ -46,7 +46,7 @@ export interface ModalProps {
 
 /**
  * The footer row shared by Modal and SidePanel: Cancel on the left, secondary and primary on
- * the right.
+ * the right. Internal: apps pass `footer` to Modal or SidePanel.
  */
 export const ModalFooter = ({ onCancel, cancelLabel = "Cancel", secondary, primary }: ModalFooterProps) => (
   <>
@@ -62,7 +62,7 @@ export const ModalFooter = ({ onCancel, cancelLabel = "Cancel", secondary, prima
   </>
 )
 
-export interface ModalHeaderProps {
+interface ModalHeaderProps {
   title: ReactNode
   titleId?: string
   subtitle?: ReactNode
@@ -74,7 +74,7 @@ export interface ModalHeaderProps {
   sx?: SxProps<Theme>
 }
 
-/** The Figma Modal header: title (and subtitle), actions, then the close X. */
+/** The Figma Modal header: title (and subtitle), actions, then the close X. Internal. */
 export const ModalHeader = ({ title, titleId, subtitle, actions, onClose, leading, tabs, sx }: ModalHeaderProps) => (
   <Box
     sx={[
@@ -116,48 +116,20 @@ export const ModalHeader = ({ title, titleId, subtitle, actions, onClose, leadin
   </Box>
 )
 
-export interface ModalSectionProps {
-  /** An h6 section title. */
-  title?: ReactNode
-  /** Right side of the title row, such as an add button. */
-  action?: ReactNode
-  children?: ReactNode
-  sx?: SxProps<Theme>
-}
-
 /**
- * One block of Modal or SidePanel content: 16px padding, 16px between children, and a line
- * under it (none under the last section).
+ * Lays out the direct `Section` children of a Modal or SidePanel body as Figma modal sections:
+ * 16px padding, 16px between children, a 20px title row, and a line under each one but the last.
+ * The body drops its own padding when it holds sections. Internal.
  */
-export const ModalSection = ({ title, action, children, sx }: ModalSectionProps) => (
-  <Box
-    className="digit-ModalSection"
-    sx={[
-      (theme) => ({
-        display: "flex",
-        flexDirection: "column",
-        gap: 2,
-        p: 2,
-        // Figma containers/cards/border/solid/default (#ededed). Dark uses the solid default line.
-        borderBottom: `1px solid ${theme.palette.mode === "dark" ? theme.palette.border.solidDefault : neutral[150]}`,
-        "&:last-child": { borderBottom: 0 },
-      }),
-      ...(Array.isArray(sx) ? sx : [sx]),
-    ]}
-  >
-    {(title || action) && (
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1, minHeight: 20 }}>
-        {title && (
-          <Typography variant="h6" component="h3" sx={{ flex: 1 }}>
-            {title}
-          </Typography>
-        )}
-        {action && <Box sx={{ ml: "auto", display: "flex", gap: 1 }}>{action}</Box>}
-      </Box>
-    )}
-    {children}
-  </Box>
-)
+export const modalSectionBandsSx = (theme: Theme) => ({
+  [`&:has(> .${sectionClassName})`]: { p: 0 },
+  [`& > .${sectionClassName}`]: {
+    p: 2,
+    borderBottom: `1px solid ${theme.palette.border.solidCard}`,
+    "&:last-child": { borderBottom: 0 },
+    [`& > .${sectionHeaderClassName}`]: { minHeight: 20 },
+  },
+})
 
 /**
  * The Figma Modal (form dialog): a header with the title, optional subtitle and tabs, and a close
@@ -167,7 +139,7 @@ export const ModalSection = ({ title, action, children, sx }: ModalSectionProps)
  * ```tsx
  * <Modal open={open} onClose={close} title="Edit item"
  *   footer={{ onCancel: close, primary: <Button variant="contained" color="primary">Save</Button> }}>
- *   <ModalSection title="General">…</ModalSection>
+ *   <Section title="General">…</Section>
  * </Modal>
  * ```
  */
@@ -211,7 +183,7 @@ export const Modal = ({
       }}
     >
       <ModalHeader title={title} titleId={titleId} subtitle={subtitle} actions={actions} onClose={onClose} tabs={tabs} />
-      <DialogContent>{children}</DialogContent>
+      <DialogContent sx={modalSectionBandsSx}>{children}</DialogContent>
       {footer && (
         <DialogActions>
           <ModalFooter {...footer} />

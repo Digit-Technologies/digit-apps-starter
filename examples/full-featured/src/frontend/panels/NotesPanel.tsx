@@ -16,23 +16,23 @@ import {
   AppErrorAlert,
   Calendar,
   ConfirmDialog,
+  DataTable,
   Ellipsis,
   EmptyState,
   FileText,
+  FormField,
   Modal,
-  ModalSection,
   PageBody,
   Pencil,
   Plus,
   RecordName,
   Save,
-  SettingsRow,
-  Table,
+  Section,
   TextIcon,
   Trash2,
   useBackendMutation,
   useBackendQuery,
-  type TableColumn,
+  type DataTableColumn,
 } from '@digit/lib-frontend';
 
 
@@ -91,7 +91,7 @@ export default function NotesPanel({ createOpen, onCreateOpen, onCreateClose }: 
     await refetch();
   };
 
-  const columns: TableColumn<Note>[] = [
+  const columns: DataTableColumn<Note>[] = [
     {
       field: 'title',
       headerName: 'Title',
@@ -164,7 +164,7 @@ export default function NotesPanel({ createOpen, onCreateOpen, onCreateClose }: 
             icon={<FileText size={20} />}
             title="No notes yet"
             description="Notes are stored in the app's own database."
-            action={
+            actions={
               <Button startIcon={<Plus />} onClick={onCreateOpen}>
                 New note
               </Button>
@@ -173,7 +173,7 @@ export default function NotesPanel({ createOpen, onCreateOpen, onCreateClose }: 
         </PageBody>
       ) : (
         !error && (
-          <Table
+          <DataTable
             rows={pageRows}
             columns={columns}
             rowCount={notes.length}
@@ -306,24 +306,19 @@ function NoteDialog({ open, note, onClose, onSaved }: NoteDialogProps) {
         ),
       }}
     >
-      <ModalSection>
-        <SettingsRow
-          variant="form"
-          label="Title"
-          required
-          control={
-            <TextField
-              hiddenLabel
-              fullWidth
-              autoFocus
-              placeholder="Enter value"
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-            />
-          }
-        />
-      </ModalSection>
-      <ModalSection title="Body">
+      <Section>
+        <FormField horizontal label="Title" required>
+          <TextField
+            hiddenLabel
+            fullWidth
+            autoFocus
+            placeholder="Enter value"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+          />
+        </FormField>
+      </Section>
+      <Section title="Body">
         <TextField
           hiddenLabel
           fullWidth
@@ -335,7 +330,7 @@ function NoteDialog({ open, note, onClose, onSaved }: NoteDialogProps) {
           onChange={(event) => setBody(event.target.value)}
         />
         {error && <AppErrorAlert error={error} />}
-      </ModalSection>
+      </Section>
     </Modal>
   );
 }

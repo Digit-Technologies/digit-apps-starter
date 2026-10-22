@@ -1,8 +1,7 @@
+import Chip, { type ChipProps } from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import { useTheme, type Theme } from '@mui/material/styles';
 import { Gauge, gaugeClasses } from '@mui/x-charts/Gauge';
-
-import { Pill, type PillColor } from '@digit/lib-frontend';
 
 import KpiTile from './KpiTile';
 
@@ -11,7 +10,7 @@ export type OnTimeGaugeTileProps = {
   loading?: boolean;
 };
 
-type Band = { pill: PillColor; label: string; arc: (theme: Theme) => string };
+type Band = { pill: ChipProps['color']; label: string; arc: (theme: Theme) => string };
 
 /** Good ≥ 90%, needs attention < 70%, otherwise a middle "watch" state. */
 function bandForPercent(percent: number): Band {
@@ -33,7 +32,7 @@ export default function OnTimeGaugeTile({ todayValue, loading }: OnTimeGaugeTile
       footer={
         band && (
           <>
-            <Pill size="sm" color={band.pill} label={band.label} />
+            <Chip size="small" color={band.pill} label={band.label} />
             <Typography variant="overline" color="text.tertiary">
               Target 90%
             </Typography>

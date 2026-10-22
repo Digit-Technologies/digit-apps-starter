@@ -18,8 +18,6 @@ export interface ProgressBarProps {
   unit?: string
   /** Formats `value` and `total`. Defaults to two decimals with grouping, e.g. "1,200.00". */
   format?: (n: number) => string
-  /** Hides the caption row and leaves only the bar. */
-  hideCaption?: boolean
   /** Names the bar for screen readers. Defaults to the caption text. */
   "aria-label"?: string
   sx?: SxProps<Theme>
@@ -33,13 +31,13 @@ const defaultFormat = (n: number) =>
  * caption 4 below it, "value / total unit" with a 2 gap. At zero the caption is tertiary. In
  * progress, the numbers and unit are primary and only "/" is secondary. Over the limit, an
  * arrow-up 12 and the value turn orange (foreground/orange/primary) and the rest is secondary.
+ * For a bar with no caption, use the themed MUI `LinearProgress` directly.
  */
 export const ProgressBar = ({
   value,
   total,
   unit,
   format = defaultFormat,
-  hideCaption = false,
   "aria-label": ariaLabel,
   sx,
 }: ProgressBarProps) => {
@@ -55,8 +53,7 @@ export const ProgressBar = ({
   return (
     <Box sx={[{ display: "flex", flexDirection: "column", gap: 0.5 }, ...(Array.isArray(sx) ? sx : [sx])]}>
       <LinearProgress variant="determinate" value={percent} aria-label={ariaLabel ?? caption} />
-      {!hideCaption && (
-        <Typography
+      <Typography
           variant="overline"
           component="div"
           aria-hidden
@@ -102,8 +99,7 @@ export const ProgressBar = ({
               {unit}
             </Box>
           )}
-        </Typography>
-      )}
+      </Typography>
     </Box>
   )
 }

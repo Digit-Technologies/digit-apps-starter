@@ -7,7 +7,7 @@ import { neutralAlpha } from "./colors"
 
 // DataGrid matches the Figma index table (Molecules 12255:55508): 36px header and rows, px 8,
 // 1px border.default lines below and right of every cell, 13/16 text, and no outer border.
-// Behaviour props (sorting, paging, selection) and the page gutter stay in components/Table.tsx.
+// Behaviour props (sorting, paging, selection) and the page gutter stay in components/DataTable.tsx.
 export const muiDataGrid = (): Components<Omit<Theme, "components">>["MuiDataGrid"] => ({
   defaultProps: {
     rowHeight: 36,

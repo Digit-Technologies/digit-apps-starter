@@ -1,8 +1,9 @@
 import { useState } from 'react';
 
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
-import MuiTable from '@mui/material/Table';
+import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableRow from '@mui/material/TableRow';
@@ -12,25 +13,43 @@ import Typography from '@mui/material/Typography';
 import {
   AppErrorAlert,
   Calendar,
+  DataTable,
   EmptyState,
-  History,
+  HistoryIcon,
   Loader,
   PageBody,
-  Pill,
   RecordName,
   RefreshCw,
   Section,
-  Table,
+  StatusPill,
   Tags,
   TextIcon,
   useBackendMutation,
   useBackendQuery,
   Zap,
-  type TableColumn,
+  type DataTableColumn,
+  type RecordStatus,
 } from '@digit/lib-frontend';
 
 
 type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
+
+// Each run status word, mapped to its Figma record-status stage.
+const runStatusStage: Record<RunStatus, RecordStatus> = {
+  queued: 'open',
+  running: 'active',
+  succeeded: 'done',
+  failed: 'stopped',
+  cancelled: 'closed',
+};
+
+const runStatusLabel: Record<RunStatus, string> = {
+  queued: 'Queued',
+  running: 'Running',
+  succeeded: 'Succeeded',
+  failed: 'Failed',
+  cancelled: 'Cancelled',
+};
 
 type JobRun = {
   runId: string;
@@ -63,7 +82,7 @@ const formatEvery = (seconds: number) =>
     ? `Every ${seconds / 3600 === 1 ? 'hour' : `${seconds / 3600} hours`}`
     : `Every ${Math.round(seconds / 60)} min`;
 
-const columns: TableColumn<JobRun>[] = [
+const columns: DataTableColumn<JobRun>[] = [
   {
     field: 'name',
     headerName: 'Job',
@@ -80,7 +99,7 @@ const columns: TableColumn<JobRun>[] = [
     icon: Tags,
     sortable: false,
     renderCell: (params) => (
-      <Pill size="sm" color="gray" label={params.row.kind === 'job' ? 'On demand' : 'Schedule'} />
+      <Chip size="small" label={params.row.kind === 'job' ? 'On demand' : 'Schedule'} />
     ),
   },
   {
@@ -89,7 +108,9 @@ const columns: TableColumn<JobRun>[] = [
     width: 120,
     icon: Loader,
     sortable: false,
-    renderCell: (params) => <Pill status={params.row.status} />,
+    renderCell: (params) => (
+      <StatusPill status={runStatusStage[params.row.status]} label={runStatusLabel[params.row.status]} />
+    ),
   },
   {
     field: 'createdAt',
@@ -161,7 +182,7 @@ export default function JobsPanel() {
           />
         ) : (
           !schedulesQuery.loading && (
-            <MuiTable>
+            <Table>
               <TableBody>
                 {schedules.map((schedule) => (
                   <TableRow key={schedule.name} hover>
@@ -182,15 +203,15 @@ export default function JobsPanel() {
                     </TableCell>
                     <TableCell align="right">
                       {schedule.autoPaused ? (
-                        <Pill status="stopped" label="Auto-paused" />
+                        <StatusPill status="stopped" label="Auto-paused" />
                       ) : (
-                        <Pill status="active" />
+                        <StatusPill status="active" label="Active" />
                       )}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
-            </MuiTable>
+            </Table>
           )
         )}
       </Section>
@@ -221,12 +242,12 @@ export default function JobsPanel() {
           <AppErrorAlert error={runsQuery.error} onRetry={() => void runsQuery.refetch()} />
         ) : !runsQuery.loading && runs.length === 0 ? (
           <EmptyState
-            icon={<History size={20} />}
+            icon={<HistoryIcon size={20} />}
             title="No runs yet"
             description="Run note-stats, or wait for the hourly schedule."
           />
         ) : (
-          <Table
+          <DataTable
             inset="none"
             rows={pageRuns}
             columns={columns}

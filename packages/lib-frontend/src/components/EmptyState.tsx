@@ -10,8 +10,8 @@ export interface EmptyStateProps {
   icon?: ReactNode
   title: ReactNode
   description?: ReactNode
-  /** At most one action. Use a secondary button unless it is the only way forward. */
-  action?: ReactNode
+  /** At most one button. Use a secondary button unless it is the only way forward. */
+  actions?: ReactNode
 }
 
 /**
@@ -21,7 +21,7 @@ export interface EmptyStateProps {
  * description body1 tertiary (8 below), then the action (16 below). It sits where the content
  * would be.
  */
-export const EmptyState = ({ icon, title, description, action }: EmptyStateProps) => (
+export const EmptyState = ({ icon, title, description, actions }: EmptyStateProps) => (
   <Box
     sx={(theme) => ({
       display: "flex",
@@ -62,7 +62,7 @@ export const EmptyState = ({ icon, title, description, action }: EmptyStateProps
           </Typography>
         )}
       </Box>
-      {action}
+      {actions}
     </Box>
   </Box>
 )

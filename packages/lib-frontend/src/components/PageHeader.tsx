@@ -2,10 +2,9 @@ import React, { ReactNode } from "react"
 
 import Box from "@mui/material/Box"
 import Button from "@mui/material/Button"
-import IconButton from "@mui/material/IconButton"
 import Typography from "@mui/material/Typography"
 
-import { ChevronRight, X } from "../icons"
+import { ChevronRight } from "../icons"
 
 export interface Crumb {
   label: string
@@ -16,29 +15,22 @@ export interface PageHeaderProps {
   title: string
   /** Parent crumbs. When set, `title` renders as the current crumb. */
   trail?: Crumb[]
-  /**
-   * Caption for the title, such as "Let's get Acme set up". Pages show it inline after the
-   * title; dialogs and panels show it under the title.
-   */
+  /** Caption shown inline after the title, such as "Let's get Acme set up". */
   subtitle?: ReactNode
-  /** Sits right after the title with an 8px gap, such as a Beta or Custom `Pill`. */
+  /** Sits right after the title with an 8px gap, such as a Beta or Custom `Chip`. */
   titleAdornment?: ReactNode
   /**
-   * Right side, before the close button. Order them from least to most used: LearningCenter and
-   * Star icon buttons, then secondary buttons, then ONE contained primary button, last.
+   * Right side. Order them from least to most used: LearningCenter and Star icon buttons, then
+   * secondary buttons, then ONE contained primary button, last.
    */
   actions?: ReactNode
-  /** Adds a close button. Use it as the cancel for a panel or dialog. */
-  onClose?: () => void
   /** MUI Tabs, under the title row and above the divider. */
   tabs?: ReactNode
   /**
    * `page` for list and index screens. `record` for a single record under a list: same bar on
-   * the secondary page background, usually with `trail`. `dialog` inside a Dialog or side panel.
+   * the secondary page background, usually with `trail`.
    */
-  variant?: "page" | "record" | "dialog"
-  /** Draws the bottom line. Form dialogs in Figma have none (title, description, then rows). */
-  divider?: boolean
+  variant?: "page" | "record"
 }
 
 // Figma page/padding/x/default is 36px on desktop and 20px below 600px. It is its own token, so it
@@ -48,14 +40,14 @@ const PAGE_GUTTER_MOBILE = "20px"
 const MOBILE = "@media (max-width: 599px)"
 
 /**
- * The title row at the top of a screen, side panel or form dialog (Figma appBar 11800:69168).
+ * The title row at the top of a screen (Figma appBar 11800:69168). For the header of a dialog
+ * or side panel, use `Modal` or `SidePanel`, which draw their own.
  *
  * - Page: 60px bar, 36px side padding, solid bottom line, h5 title.
  * - With `tabs`: the title row is 52px (pt 16, pb 8) and the tab row sits under it; there is one
  *   line, under the tabs.
  * - `variant="record"`: the breadcrumb header of a single record (11829:51332), on
  *   `background.secondary`. Pass `trail` for the parent list.
- * - `variant="dialog"`: 16px padding, the 10% strong line, the subtitle under the title.
  *
  * Action order, left to right, runs from least used to most used: LearningCenter
  * (`BookOpenText`) and Star icon buttons, then secondary buttons, then one primary button last.
@@ -66,15 +58,12 @@ export const PageHeader = ({
   subtitle,
   titleAdornment,
   actions,
-  onClose,
   tabs,
   variant = "page",
-  divider = true,
 }: PageHeaderProps) => {
-  const isDialog = variant === "dialog"
   // A crumb is a text button with 8px padding. The row starts 8px early so the first crumb's
   // label sits on the 36px gutter (Figma page/padding/x/minus-input-padding, 28px).
-  const startsWithCrumb = !isDialog && Boolean(trail?.length)
+  const startsWithCrumb = Boolean(trail?.length)
 
   const titleNode = trail ? (
     <Box component="nav" aria-label="Breadcrumb" sx={{ display: "flex", alignItems: "center", gap: 0.5, minWidth: 0 }}>
@@ -102,14 +91,13 @@ export const PageHeader = ({
           </Box>
         </React.Fragment>
       ))}
-      {/* The current crumb is a disabled text button in Figma: tertiary label, same padding. */}
-      {/* The current crumb is the page's heading. */}
+      {/* The current crumb is the page's heading: a disabled text button in Figma, tertiary label. */}
       <Typography variant="subtitle2" color="text.tertiary" component="h1" aria-current="page" noWrap sx={{ px: 1, m: 0 }}>
         {title}
       </Typography>
     </Box>
   ) : (
-    <Typography variant="h5" component={isDialog ? "h2" : "h1"} noWrap>
+    <Typography variant="h5" component="h1" noWrap>
       {title}
     </Typography>
   )
@@ -119,40 +107,27 @@ export const PageHeader = ({
       className="PageHeader-root"
       sx={(theme) => ({
         backgroundColor: variant === "record" ? theme.palette.background.secondary : undefined,
-        // Pages use the solid strong line. Dialogs use the 10% strong line, per Figma.
-        borderBottom: divider
-          ? `1px solid ${isDialog ? theme.palette.border.strong : theme.palette.border.solidStrong}`
-          : undefined,
+        borderBottom: `1px solid ${theme.palette.border.solidStrong}`,
       })}
     >
       <Box
         sx={{
           display: "flex",
-          // Dialog headers are items-start, so the close button stays on the title line when a
-          // subtitle wraps under it.
-          alignItems: isDialog ? "flex-start" : "center",
+          alignItems: "center",
           gap: 1,
           boxSizing: "border-box",
           // 60px bar; 52px (16 + 28 + 8) title row when tabs follow.
           minHeight: tabs ? 52 : 60,
-          pl: isDialog ? 2 : startsWithCrumb ? 3.5 : PAGE_GUTTER,
-          pr: isDialog ? 2 : PAGE_GUTTER,
+          pl: startsWithCrumb ? 3.5 : PAGE_GUTTER,
+          pr: PAGE_GUTTER,
           pt: 2,
           pb: tabs ? 1 : 2,
           // Below 600px the spacing base is 10px, so pt and pb already grow to 20 and 10. Only the
           // page gutter needs its own value.
-          [MOBILE]: isDialog ? {} : { pl: startsWithCrumb ? 1 : PAGE_GUTTER_MOBILE, pr: PAGE_GUTTER_MOBILE },
+          [MOBILE]: { pl: startsWithCrumb ? 1 : PAGE_GUTTER_MOBILE, pr: PAGE_GUTTER_MOBILE },
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: isDialog ? "column" : "row",
-            alignItems: isDialog ? "flex-start" : "center",
-            gap: isDialog ? 0.5 : 1,
-            minWidth: 0,
-          }}
-        >
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0, maxWidth: "100%" }}>
             {titleNode}
             {titleAdornment && (
@@ -162,26 +137,18 @@ export const PageHeader = ({
             )}
           </Box>
           {subtitle && (
-            <Typography variant="body1" color="text.secondary" component={isDialog ? "p" : "span"} noWrap={!isDialog}>
+            <Typography variant="body1" color="text.secondary" component="span" noWrap>
               {subtitle}
             </Typography>
           )}
         </Box>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto", flexShrink: 0 }}>
-          {actions}
-          {onClose && (
-            // The close X is full opacity. Only the page utility icons (book, star, ellipsis) are 60%.
-            <IconButton aria-label="Close" size="small" onClick={onClose}>
-              <X size={16} />
-            </IconButton>
-          )}
-        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, ml: "auto", flexShrink: 0 }}>{actions}</Box>
       </Box>
       {tabs && (
         <Box
           sx={{
-            px: isDialog ? 2 : PAGE_GUTTER,
-            [MOBILE]: { px: isDialog ? 2 : PAGE_GUTTER_MOBILE },
+            px: PAGE_GUTTER,
+            [MOBILE]: { px: PAGE_GUTTER_MOBILE },
             // The header draws the one line under the tabs, so the Tabs' own line is dropped.
             "& .MuiTabs-root": { borderBottom: "none" },
           }}

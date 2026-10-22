@@ -7,12 +7,12 @@ available, so this file is how a later session understands the app.
 
 Mobile-first, single-view clock in / clock out app for one employee at a time — no tabs,
 no secondary navigation. Built from the Digit design system (`@digit/lib-frontend`):
-a `PageHeader` ("Time card") whose actions hold the "Preview data" `Switch` and the one
+a `PageHeader` ("Time card") whose actions hold the "Preview data" `SwitchField` and the one
 primary button ("Clock in" / "Clock out", `loading` while the request runs); then a
-`PageBody` (720 max) with a "Today" `Section` (a `PropertyGrid`: employee, status `Pill`,
+`PageBody` (720 max) with a "Today" `Section` (a `PropertyGrid`: employee, status `StatusPill`,
 clocked-in-at time while a shift is open, live "Worked today" total) and a "Recent shifts"
-`Section` holding a server-paged `Table` (10 per page, most recent first; date, time range,
-duration, or an "In progress" `Pill` for the open shift), or an `EmptyState` when there are
+`Section` holding a server-paged `DataTable` (10 per page, most recent first; date, time range,
+duration, or an "In progress" `StatusPill` for the open shift), or an `EmptyState` when there are
 no shifts. It is intentionally not a timesheet, does not compute weekly/period totals, and
 has no payroll export.
 
@@ -53,8 +53,8 @@ Key behaviors:
   button sits in the `PageHeader` because it is the page's single primary action. Clock out
   is not destructive, so it uses the same primary button (no red, no confirm). Preview mode
   disables the button and says why in an info `Alert`. Loading uses `Skeleton` values and
-  `Table loading`; failures use `AppErrorAlert`. "Clocked in" / "Clocked out" are not in
-  `Pill`'s shared status list, so the status pill passes `color` (blue / gray).
+  `DataTable loading`; failures use `AppErrorAlert`. "Clocked in" is the `active` record-status
+  stage and "Clocked out" the `closed` one (`StatusPill status`).
   `@mui/icons-material` is still listed in `package.json` but no longer imported.
 - **Gotcha (fixed):** `parseJsonResponse({ fields })` expects an object mapping each key to
   a parser *function* (`{ userId: (obj) => requiredString({ obj, key: 'userId' }) }`) — not

@@ -4,6 +4,7 @@ import Alert from '@mui/material/Alert';
 import AlertTitle from '@mui/material/AlertTitle';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
@@ -19,16 +20,25 @@ import {
   Factory,
   FormField,
   PageBody,
-  Pill,
   Plus,
   PropertyGrid,
   Save,
   Section,
-  Switch,
+  StatusPill,
+  SwitchField,
+  type RecordStatus,
 } from '@digit/lib-frontend';
 
 
-const STATUSES = ['draft', 'open', 'in progress', 'ready', 'sent', 'completed', 'blocked', 'closed'];
+// One example status word for each Figma record-status stage.
+const STATUSES: { status: RecordStatus; label: string }[] = [
+  { status: 'preliminary', label: 'Draft' },
+  { status: 'open', label: 'Not started' },
+  { status: 'active', label: 'In progress' },
+  { status: 'stopped', label: 'Overdue' },
+  { status: 'done', label: 'Complete' },
+  { status: 'closed', label: 'Archived' },
+];
 
 const row = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 } as const;
 
@@ -68,7 +78,7 @@ export default function ComponentsPanel() {
         </Box>
       </Section>
 
-      <Section title="Fields" subtitle="Label above with FormField; SettingsRow in panels and dialogs">
+      <Section title="Fields" subtitle="FormField: label above, or beside with horizontal">
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 1 }}>
           <FormField label="Name" required>
             <TextField hiddenLabel fullWidth placeholder="Enter value" />
@@ -117,7 +127,7 @@ export default function ComponentsPanel() {
           </ToggleButtonGroup>
         </Box>
         <Box sx={{ maxWidth: 320 }}>
-          <Switch
+          <SwitchField
             label="Email me when a run fails"
             description="Sent to the app owner."
             checked={notify}
@@ -126,16 +136,16 @@ export default function ComponentsPanel() {
         </Box>
       </Section>
 
-      <Section title="Pills" subtitle="Every status or category">
+      <Section title="Pills" subtitle="StatusPill for a record status, Chip for a category">
         <Box sx={row}>
-          {STATUSES.map((status) => (
-            <Pill key={status} status={status} />
+          {STATUSES.map(({ status, label }) => (
+            <StatusPill key={status} status={status} label={label} />
           ))}
         </Box>
         <Box sx={row}>
-          <Pill size="sm" color="sky" label="Category" />
-          <Pill size="sm" color="gray" label="System" />
-          <Pill color="violet" icon={<Factory size={12} />} label="MO 277" />
+          <Chip size="small" color="sky" label="Category" />
+          <Chip size="small" label="System" />
+          <Chip color="violet" icon={<Factory />} label="MO 277" />
         </Box>
       </Section>
 

@@ -3,7 +3,7 @@ import React, { ReactNode } from "react"
 import Box from "@mui/material/Box"
 import IconButton from "@mui/material/IconButton"
 import Typography from "@mui/material/Typography"
-import { SxProps, Theme, keyframes } from "@mui/material/styles"
+import { Theme, keyframes } from "@mui/material/styles"
 
 import { Check, CircleAlert, FileText, LoaderCircle, RefreshCw, X } from "../icons"
 import { outer } from "../theme/shadows"
@@ -35,16 +35,6 @@ const defaultLabel: Record<FileUploadStatus, string> = {
   uploading: "Uploading...",
   uploaded: "Ready",
   failed: "Failed",
-}
-
-// Figma IconButton xs text: 20px square, radius 6, 16px icon.
-const xsIconButtonSx: SxProps<Theme> = {
-  width: (t) => t.spacing(2.5),
-  height: (t) => t.spacing(2.5),
-  minWidth: 0,
-  p: 0,
-  borderRadius: 0.75,
-  flexShrink: 0,
 }
 
 /**
@@ -133,12 +123,12 @@ export const FileUploadRow = ({
         </Typography>
       </Box>
       {failed && onRetry && (
-        <IconButton aria-label="Retry upload" onClick={onRetry} sx={xsIconButtonSx}>
+        <IconButton aria-label="Retry upload" size="xs" onClick={onRetry} sx={{ flexShrink: 0 }}>
           <RefreshCw size={16} />
         </IconButton>
       )}
       {onRemove && (
-        <IconButton aria-label="Remove file" onClick={onRemove} sx={xsIconButtonSx}>
+        <IconButton aria-label="Remove file" size="xs" onClick={onRemove} sx={{ flexShrink: 0 }}>
           <X size={16} />
         </IconButton>
       )}

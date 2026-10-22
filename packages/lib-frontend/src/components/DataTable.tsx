@@ -33,17 +33,30 @@ import { ChevronLeft, ChevronRight, Download, RefreshCw, Search, X } from "../ic
  * label, for example `{ field: "quantity", headerName: "Quantity", icon: Cylinder }`. It is
  * ignored when the column has its own `renderHeader`.
  */
-export type TableColumn<Row extends GridValidRowModel = GridValidRowModel> = GridColDef<Row> & {
+export type DataTableColumn<Row extends GridValidRowModel = GridValidRowModel> = GridColDef<Row> & {
   icon?: LucideIcon
 }
 
-/** A saved view in the toolbar, for example "All", "Open", "Archived". */
-export interface TableView {
+/** Saved views on the left of the toolbar, for example "All", "Open", "Archived". */
+export interface DataTableViews {
+  options: { value: string; label: string }[]
+  /** The selected view's value. It gets the grey (outlined) fill. */
   value: string
-  label: string
+  onChange: (value: string) => void
 }
 
-export interface TableSelection {
+/**
+ * Search text. It shows a search icon button in the toolbar that opens an inline field, and
+ * stays open while the text is not empty. Search runs on the server, like paging.
+ */
+export interface DataTableSearch {
+  value: string
+  onChange: (value: string) => void
+  /** Defaults to "Search…". */
+  placeholder?: string
+}
+
+export interface DataTableSelection {
   /** Selected row ids. Kept across pages, so the app owns the list. */
   model: GridRowId[]
   onChange: (ids: GridRowId[]) => void
@@ -56,7 +69,7 @@ export interface TableSelection {
  * "page": the 36px page gutter (20px below 600px), for a full-bleed table under a PageHeader.
  * "panel": 16px, inside a side panel or dialog. "none": 0, when the parent already pads.
  */
-export type TableInset = "page" | "panel" | "none"
+export type DataTableInset = "page" | "panel" | "none"
 
 const colSelector = (index: number) =>
   `& .MuiDataGrid-cell[aria-colindex="${index}"], & .MuiDataGrid-columnHeader[aria-colindex="${index}"]`
@@ -66,9 +79,9 @@ const gutterRules = <T,>(first: number, last: number, inset: T) =>
     ? { [colSelector(first)]: { pl: inset, pr: inset } }
     : { [colSelector(first)]: { pl: inset }, [colSelector(last)]: { pr: inset } }
 
-export interface TableProps<Row extends GridValidRowModel> {
+export interface DataTableProps<Row extends GridValidRowModel> {
   rows: Row[]
-  columns: TableColumn<Row>[]
+  columns: DataTableColumn<Row>[]
   getRowId?: (row: Row) => GridRowId
   /** Total rows across every page, from the server. Drives the pager. */
   rowCount: number
@@ -77,17 +90,8 @@ export interface TableProps<Row extends GridValidRowModel> {
   /** Sort state. Sorting happens on the server, so the app refetches when it changes. */
   sortModel?: GridSortModel
   onSortModelChange?: (model: GridSortModel) => void
-  /**
-   * Search text. Pass both props to show a search icon button in the toolbar. It opens an inline
-   * field, and stays open while the text is not empty. Search runs on the server too.
-   */
-  search?: string
-  onSearchChange?: (search: string) => void
-  searchPlaceholder?: string
-  /** Saved views on the left of the toolbar. The selected one gets the grey (outlined) fill. */
-  views?: TableView[]
-  view?: string
-  onViewChange?: (view: string) => void
+  search?: DataTableSearch
+  views?: DataTableViews
   /** Shows a refresh icon button in the toolbar. */
   onRefresh?: () => void
   /** Shows a "Download .csv" icon button in the toolbar. */
@@ -99,9 +103,9 @@ export interface TableProps<Row extends GridValidRowModel> {
    */
   actions?: ReactNode
   /** Adds a checkbox column. While rows are selected the toolbar becomes the bulk-action bar. */
-  selection?: TableSelection
+  selection?: DataTableSelection
   /** Defaults to "page". */
-  inset?: TableInset
+  inset?: DataTableInset
   /**
    * Row height in px. Defaults to 36. Pass 52 when the name column shows a `RecordName` with
    * `meta` (36px tile plus 8px above and below).
@@ -115,7 +119,7 @@ export interface TableProps<Row extends GridValidRowModel> {
 const insetVar = "var(--digit-table-inset)"
 
 // Figma page/padding/x/default (36, 20 on mobile) and peek/padding/x/default (16).
-const useInsetPx = (inset: TableInset) => {
+const useInsetPx = (inset: DataTableInset) => {
   const mobile = useMediaQuery("(max-width:599px)")
   if (inset === "none") return 0
   if (inset === "panel") return 16
@@ -123,8 +127,8 @@ const useInsetPx = (inset: TableInset) => {
 }
 
 // Pager (Molecules 12255:56444): 44px, top border, range label and previous/next on the right.
-// Reads paging state from the grid API, so it needs no props from Table.
-function TableFooter() {
+// Reads paging state from the grid API, so it needs no props from DataTable.
+function DataTableFooter() {
   const apiRef = useGridApiContext()
   const { page, pageSize } = useGridSelector(apiRef, gridPaginationModelSelector)
   const rowCount = useGridSelector(apiRef, gridPaginationRowCountSelector)
@@ -177,15 +181,7 @@ const HeaderLabel = ({ icon: Icon, label }: { icon: LucideIcon; label: string })
 )
 
 // Search starts as an icon button and opens into an invisible field ("Search…").
-function TableSearch({
-  value,
-  onChange,
-  placeholder,
-}: {
-  value: string
-  onChange: (value: string) => void
-  placeholder: string
-}) {
+function DataTableSearchField({ value, onChange, placeholder = "Search…" }: DataTableSearch) {
   const [opened, setOpened] = useState(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const returnFocus = useRef(false)
@@ -264,7 +260,7 @@ const toolbarSx = {
  * `<RecordName name link />` (pass `rowHeight={52}` when it has `meta`). Give one column
  * `flex: 1` so the table fills the width and the last column reaches the right gutter.
  */
-export function Table<Row extends GridValidRowModel>({
+export function DataTable<Row extends GridValidRowModel>({
   rows,
   columns,
   getRowId,
@@ -274,11 +270,7 @@ export function Table<Row extends GridValidRowModel>({
   sortModel,
   onSortModelChange,
   search,
-  onSearchChange,
-  searchPlaceholder = "Search…",
   views,
-  view,
-  onViewChange,
   onRefresh,
   onDownload,
   actions,
@@ -288,7 +280,7 @@ export function Table<Row extends GridValidRowModel>({
   loading = false,
   onRowClick,
   pageSizeOptions = [10, 25, 50],
-}: TableProps<Row>) {
+}: DataTableProps<Row>) {
   const sortable = Boolean(onSortModelChange)
   const insetPx = useInsetPx(inset)
   const selecting = Boolean(selection)
@@ -331,8 +323,8 @@ export function Table<Row extends GridValidRowModel>({
     ])
   }
 
-  const hasViews = Boolean(views && views.length > 0)
-  const hasTools = Boolean(onSearchChange || onRefresh || onDownload || actions)
+  const hasViews = Boolean(views && views.options.length > 0)
+  const hasTools = Boolean(search || onRefresh || onDownload || actions)
   const showBulkBar = selected.length > 0
   const firstColIndex = 1
   const lastColIndex = gridColumns.length
@@ -366,14 +358,14 @@ export function Table<Row extends GridValidRowModel>({
               aria-label={hasViews ? "Views" : undefined}
               sx={{ alignItems: "center", gap: 1, minWidth: 0, overflowX: "auto" }}
             >
-              {views?.map((option) => {
-                const current = option.value === view
+              {views?.options.map((option) => {
+                const current = option.value === views.value
                 return (
                   <Button
                     key={option.value}
                     variant={current ? "outlined" : "text"}
                     aria-pressed={current}
-                    onClick={() => onViewChange?.(option.value)}
+                    onClick={() => views.onChange(option.value)}
                     sx={{ flexShrink: 0 }}
                   >
                     {option.label}
@@ -382,13 +374,7 @@ export function Table<Row extends GridValidRowModel>({
               })}
             </Stack>
             <Stack direction="row" sx={{ alignItems: "center", gap: 1, flexShrink: 0 }}>
-              {onSearchChange && (
-                <TableSearch
-                  value={search ?? ""}
-                  onChange={onSearchChange}
-                  placeholder={searchPlaceholder}
-                />
-              )}
+              {search && <DataTableSearchField {...search} />}
               {onRefresh && (
                 <Tooltip title="Refresh">
                   <IconButton aria-label="Refresh" onClick={onRefresh}>
@@ -431,7 +417,7 @@ export function Table<Row extends GridValidRowModel>({
         rowHeight={rowHeight}
         loading={loading}
         autoHeight
-        slots={{ footer: TableFooter }}
+        slots={{ footer: DataTableFooter }}
         onRowClick={onRowClick ? (params) => onRowClick(params.row) : undefined}
         sx={{
           "& .MuiDataGrid-row": {

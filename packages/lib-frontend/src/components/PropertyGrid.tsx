@@ -3,7 +3,7 @@ import React, { ReactNode } from "react"
 import Box from "@mui/material/Box"
 import Typography from "@mui/material/Typography"
 
-import { neutralAlpha } from "../theme/colors"
+import { fieldColors } from "../theme/inputHoverFill"
 
 export interface PropertyGridRow {
   label: ReactNode
@@ -78,7 +78,7 @@ export const PropertyGrid = ({ rows, labelWidth = 128 }: PropertyGridProps) => (
               borderRadius: 0,
               backgroundColor: "transparent",
               "&:hover": {
-                backgroundColor: theme.palette.mode === "dark" ? neutralAlpha.lighten[100] : neutralAlpha.darken[50],
+                backgroundColor: fieldColors(theme).invisibleHoverFill,
               },
               "&::before, &::after": { display: "none" },
             },

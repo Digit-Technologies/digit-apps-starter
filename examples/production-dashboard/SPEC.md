@@ -6,7 +6,7 @@ Single-page production dashboard for a manufacturing team to check at a glance. 
 `dailyMetrics` for today plus the prior 7 days (8 calendar days total, in the viewer's
 local timezone) and renders four KPI tiles (units produced today w/ delta vs trailing
 7-day average, MOs completed today, percent MOs completed on time with a gauge and a status
-`Pill`, MOs open & late with a "Needs attention" / "On track" `Pill`) plus two 8-day charts
+`Chip`, MOs open & late with a "Needs attention" / "On track" `Chip`) plus two 8-day charts
 (line/area of units produced; grouped bar of MOs completed vs. MOs open late). UI-only — no
 backend/Worker/D1.
 
@@ -53,10 +53,10 @@ chart), never faked as zero.
   first. It's toggled at runtime via a "Preview data" switch in the header (state lives in
   `App.tsx`, passed into `useDailyMetrics(previewMode)`), defaulting to **off** — real
   `dailyMetrics` data is the default experience. When on, the real query is skipped
-  entirely (`useDigitApiQuery({ ..., skip: previewMode })`) and a "Preview data" `Pill`
+  entirely (`useDigitApiQuery({ ..., skip: previewMode })`) and a "Preview data" outlined `Chip`
   renders as the `PageHeader` title adornment so the fake numbers are never mistaken for
   live output.
-- **Layout (design-patterns.md › Dashboard):** `PageHeader` (title, the library `Switch`
+- **Layout (design-patterns.md › Dashboard):** `PageHeader` (title, the library `SwitchField`
   for preview data in `actions`), then `PageBody` on `background.secondary` with two
   `Section`s, "Today" and "Last 8 days". Tiles are themed `Card`s (`p: 2`, nothing else on
   the Card) in a CSS grid with an 8px column gap and a 16px row gap: 4 / 2 / 1 columns for
@@ -64,7 +64,7 @@ chart), never faked as zero.
   under the page `Section`'s `h3`); the KPI number is `Typography variant="h2"`. Loading is
   `Skeleton` blocks in each tile, errors are `AppErrorAlert` with retry. No hex colours, no
   `fontSize`/`fontWeight`, no tinted or restyled cards: states that the first version showed
-  with a red tile or coloured text are `Pill`s (`green` / `yellow` / `red`).
+  with a red tile or coloured text are small `Chip`s (`green` / `yellow` / `red`).
 - **Chart styling:** series colours come only from palette accents —
   `theme.palette.blue.main` for units produced, `emerald.main` / `red.main` for MOs completed
   vs. open & late, and `emerald` / `amber` / `red` for the gauge arc by band (≥ 90%, ≥ 70%,

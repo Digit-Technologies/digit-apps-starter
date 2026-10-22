@@ -4,9 +4,9 @@ import Typography from '@mui/material/Typography';
 import {
   AppErrorAlert,
   LockKeyhole,
-  Pill,
   PropertyGrid,
   Section,
+  StatusPill,
   useBackendQuery,
 } from '@digit/lib-frontend';
 
@@ -52,9 +52,9 @@ export default function SecretsPanel() {
             label: 'Status',
             value: data ? (
               data.authenticated ? (
-                <Pill status="approved" label="Authenticated" />
+                <StatusPill status="done" label="Authenticated" />
               ) : (
-                <Pill status="failed" label="Not authenticated" />
+                <StatusPill status="stopped" label="Not authenticated" />
               )
             ) : (
               none

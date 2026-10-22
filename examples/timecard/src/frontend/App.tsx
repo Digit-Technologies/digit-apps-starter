@@ -10,21 +10,21 @@ import {
   AppErrorAlert,
   Calendar,
   Clock,
+  DataTable,
+  EmptyState,
   LogIn,
   LogOut,
-  EmptyState,
   PageBody,
   PageHeader,
-  Pill,
   PropertyGrid,
   Section,
-  Switch,
-  Table,
+  StatusPill,
+  SwitchField,
   useBackendMutation,
   useBackendQuery,
   useDigitApiQuery,
+  type DataTableColumn,
   type PropertyGridRow,
-  type TableColumn,
 } from '@digit/lib-frontend';
 
 import {
@@ -127,7 +127,7 @@ const none = (
 
 // History columns. The backend pages and orders the list (most recent first) and has no sort
 // or search, so every column is unsortable and the table has no toolbar.
-const columns: TableColumn<Shift>[] = [
+const columns: DataTableColumn<Shift>[] = [
   {
     field: 'clockInTime',
     headerName: 'Date',
@@ -157,7 +157,7 @@ const columns: TableColumn<Shift>[] = [
     sortable: false,
     renderCell: (params) =>
       params.row.durationSeconds === null ? (
-        <Pill status="in progress" />
+        <StatusPill status="active" label="In progress" />
       ) : (
         formatDurationHM(params.row.durationSeconds)
       ),
@@ -270,10 +270,13 @@ export default function App() {
     { label: 'Employee', value: value(identityLine || none) },
     {
       label: 'Status',
-      // "Clocked in" / "Clocked out" are not in Pill's shared status list, so the colour is
-      // passed: blue for an open shift (like "active"), gray when off the clock.
+      // An open shift is being worked on (the "active" stage); off the clock is a neutral end.
       value: value(
-        <Pill status={isClockedIn ? 'clocked in' : 'clocked out'} />,
+        isClockedIn ? (
+          <StatusPill status="active" label="Clocked in" />
+        ) : (
+          <StatusPill status="closed" label="Clocked out" />
+        ),
       ),
     },
     ...(isClockedIn && activeShift
@@ -288,7 +291,7 @@ export default function App() {
         title="Time card"
         actions={
           <>
-            <Switch
+            <SwitchField
               label="Preview data"
               checked={previewMode}
               onChange={(_, checked) => {
@@ -336,7 +339,7 @@ export default function App() {
               description="Clock in to start your first shift. Each shift you finish shows up here."
             />
           ) : (
-            <Table
+            <DataTable
               inset="none"
               rows={shifts}
               columns={columns}

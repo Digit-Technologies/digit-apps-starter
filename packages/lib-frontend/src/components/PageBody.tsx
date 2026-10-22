@@ -13,8 +13,8 @@ export interface PageBodyProps {
 }
 
 /**
- * Content under a `PageHeader` that is not a full-bleed `Table`. It applies the page gutter
- * (36px, and 20px below 600px, the same as `PageHeader` and `Table`), 24px above and below, and
+ * Content under a `PageHeader` that is not a full-bleed `DataTable`. It applies the page gutter
+ * (36px, and 20px below 600px, the same as `PageHeader` and `DataTable`), 24px above and below, and
  * stacks its children 32px apart. Use it instead of padding a `Box` by hand: `px: 4.5` alone
  * comes out at 45px on mobile, where the spacing base is 10px.
  */

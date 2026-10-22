@@ -6,13 +6,13 @@ import {
   AppErrorAlert,
   Bookmark,
   BoxIcon,
+  DataTable,
   EmptyState,
   PageBody,
   RecordName,
-  Table,
   TextIcon,
   useDigitApiQuery,
-  type TableColumn,
+  type DataTableColumn,
 } from '@digit/lib-frontend';
 
 
@@ -35,7 +35,7 @@ const ITEMS_QUERY = `
   }
 `;
 
-const columns: TableColumn<ItemNode>[] = [
+const columns: DataTableColumn<ItemNode>[] = [
   {
     field: 'name',
     headerName: 'Item',
@@ -95,7 +95,7 @@ export default function DigitApiPanel() {
   }
 
   return (
-    <Table
+    <DataTable
       rows={items}
       columns={columns}
       rowCount={items.length}

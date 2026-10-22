@@ -22,11 +22,6 @@ export interface ConfirmDialogProps {
   destructive?: boolean
   /** An optional 20px icon above the title, such as a warning mark for a blocked action. */
   icon?: ReactNode
-  /**
-   * An optional icon on the confirm button. Figma's buttons are label-only, so there is none by
-   * default.
-   */
-  confirmIcon?: ReactNode
   /** Shows a spinner on the confirm button and disables cancel while the action runs. */
   busy?: boolean
   /**
@@ -52,14 +47,12 @@ export const ConfirmDialog = ({
   cancelLabel = "Cancel",
   destructive = false,
   icon,
-  confirmIcon,
   busy = false,
   error,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) => {
   const titleId = useId()
-  const startIcon = confirmIcon ?? undefined
 
   return (
     <Dialog
@@ -90,7 +83,7 @@ export const ConfirmDialog = ({
       <Stack sx={{ p: 2, gap: 2 }}>
         <Stack sx={{ gap: 1 }}>
           {icon && (
-            <Box sx={{ display: "flex", "& svg": { width: 20, height: 20 } }}>{icon}</Box>
+            <Box sx={{ display: "flex", "& svg": { width: (t) => t.spacing(2.5), height: (t) => t.spacing(2.5) } }}>{icon}</Box>
           )}
           <Typography id={titleId} component="h2" variant="h5">
             {title}
@@ -118,8 +111,6 @@ export const ConfirmDialog = ({
             color={destructive ? "error" : "primary"}
             onClick={onConfirm}
             loading={busy}
-            loadingPosition={startIcon ? "start" : "center"}
-            startIcon={startIcon}
             sx={{ flex: 1, whiteSpace: "nowrap" }}
           >
             {confirmLabel}

@@ -23,8 +23,8 @@ export const muiDialogContent = (): Components<Omit<Theme, "components">>["MuiDi
       ".MuiDialogTitle-root + &": {
         paddingTop: theme.spacing(2),
       },
-      // Figma content is a stack of sections (ModalSection) that pad themselves.
-      "&:has(> .digit-ModalSection)": {
+      // Figma content is a stack of sections (Section children) that pad themselves.
+      "&:has(> .digit-Section)": {
         padding: 0,
       },
     }),

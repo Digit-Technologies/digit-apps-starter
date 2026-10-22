@@ -77,7 +77,7 @@ export const FileDropZone = ({
         }}
         sx={{
           display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center",
-          width: "100%", gap: "8px", px: "16px", py: "20px", border: 0, borderRadius: "8px",
+          width: "100%", gap: 1, px: 2, py: 2.5, border: 0, borderRadius: "8px",
           font: "inherit", color: "text.secondary",
           bgcolor: isDragging ? dragFill : restFill,
           cursor: disabled ? "not-allowed" : "pointer",

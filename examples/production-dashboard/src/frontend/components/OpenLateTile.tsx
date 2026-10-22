@@ -1,6 +1,5 @@
+import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
-
-import { Pill } from '@digit/lib-frontend';
 
 import KpiTile from './KpiTile';
 
@@ -12,14 +11,14 @@ export type OpenLateTileProps = {
 };
 
 export default function OpenLateTile({ todayValue, loading }: OpenLateTileProps) {
-  // The state is a Pill, never a tinted card or red number (design-system.md › Pill).
+  // The state is a pill (`Chip`), never a tinted card or red number (design-system.md › Pill).
   const footer =
     todayValue === null ? undefined : (
       <>
         {todayValue > 0 ? (
-          <Pill size="sm" color="red" label="Needs attention" />
+          <Chip size="small" color="red" label="Needs attention" />
         ) : (
-          <Pill size="sm" color="green" label="On track" />
+          <Chip size="small" color="green" label="On track" />
         )}
         <Typography variant="overline" color="text.tertiary">
           Lower is better

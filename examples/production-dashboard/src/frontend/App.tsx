@@ -1,8 +1,9 @@
 import { useState } from 'react';
 
 import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 
-import { AppErrorAlert, PageBody, PageHeader, Pill, Section, Switch } from '@digit/lib-frontend';
+import { AppErrorAlert, PageBody, PageHeader, Section, SwitchField } from '@digit/lib-frontend';
 
 import MosChart from './components/MosChart';
 import MosCompletedTile from './components/MosCompletedTile';
@@ -38,9 +39,9 @@ export default function App() {
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       <PageHeader
         title="Production dashboard"
-        titleAdornment={previewMode ? <Pill size="sm" label="Preview data" /> : undefined}
+        titleAdornment={previewMode ? <Chip size="small" variant="outlined" label="Preview data" /> : undefined}
         actions={
-          <Switch
+          <SwitchField
             label="Preview data"
             checked={previewMode}
             onChange={(_, checked) => setPreviewMode(checked)}

@@ -26,7 +26,7 @@ export interface RecordNameProps {
   image?: string
   /** The icon shown when there is no image, or the image fails to load. Defaults to "item". */
   placeholder?: RecordNamePlaceholder
-  /** Usually a `Pill`, drawn beside the name. */
+  /** Usually a `StatusPill`, drawn beside the name. */
   status?: ReactNode
   /**
    * Second line under the name, which also switches to the 36px tile. Pass a list of groups, or
@@ -39,7 +39,7 @@ export interface RecordNameProps {
   href?: string
   /**
    * Styles the name as a link (600, underlines on row hover) without making it focusable. Use it
-   * in a Table name column whose row already opens the record through `onRowClick`.
+   * in a DataTable name column whose row already opens the record through `onRowClick`.
    * Defaults to true when `onClick` or `href` is given.
    */
   link?: boolean

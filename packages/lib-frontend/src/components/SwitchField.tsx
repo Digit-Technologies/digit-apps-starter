@@ -7,7 +7,7 @@ import Typography from "@mui/material/Typography"
 
 import { Info } from "../icons"
 
-export interface SwitchProps {
+export interface SwitchFieldProps {
   /** The label. Sits on the left, with the switch on the right and a gap between them. */
   label: ReactNode
   /** A short line under the label (overline, tertiary), as on settings rows. */
@@ -23,8 +23,9 @@ export interface SwitchProps {
 /**
  * An on or off setting with its label. The label is clickable, and the label and the switch keep
  * a gap between them, as the platform does. Use it instead of a bare MUI Switch next to text.
+ * Named SwitchField (like FormField) so it does not shadow the MUI `Switch` it wraps.
  */
-export const Switch = ({
+export const SwitchField = ({
   label,
   description,
   info,
@@ -32,7 +33,7 @@ export const Switch = ({
   defaultChecked,
   disabled,
   onChange,
-}: SwitchProps) => {
+}: SwitchFieldProps) => {
   const descriptionId = useId()
 
   return (
