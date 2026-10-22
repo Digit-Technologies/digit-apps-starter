@@ -1,16 +1,17 @@
 # Screen recipes
 
-[design-system.md](design-system.md) says what each component looks like and when to use it.
-These recipes say how a whole screen is put together. They are taken from the Digit product
-mockups, so a screen built from one sits naturally next to the platform's own screens.
+[design-system.md](design-system.md) has the rules and says which component to use;
+[components.md](components.md) has each component's props. These recipes say how a whole screen
+is put together. They are taken from the Digit product mockups, so a screen built from one sits
+naturally next to the platform's own screens.
 
 ## How to use this file
 
-1. Find the recipe closest to what the user asked for.
+1. Find the recipe closest to what the user asked for. Most apps combine a few: a list page, a
+   details panel and a form dialog, say.
 2. Copy its structure: the same components, in the same order, with the same props.
 3. Fill in the app's data and copy.
-4. Name the recipe you used in your summary. If none fits, say so and build from the closest one;
-   do not invent a new layout.
+4. If none fits, build from the closest one; do not invent a new layout.
 
 ## Index
 

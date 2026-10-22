@@ -212,15 +212,7 @@ only; still upload the zip **unchanged**. Details:
   iframe can't do something itself (camera, scanning, navigating Digit), check
   `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
-- **Stack:** React + MUI + `DigitThemeProvider`. The theme already matches the Figma design
-  system; do not restyle MUI or invent a parallel CSS design system. See
-  [Design system](#design-system-required-for-every-screen) below and
-  [reference/theming.md](reference/theming.md).
-- **Layout:** The theme makes an app look like Digit; the recipes make it behave like
-  Digit. Before you lay out a screen, find the closest recipe in
-  [reference/design-patterns.md](reference/design-patterns.md) (list page, details panel,
-  record page, settings, form dialog, confirm, dashboard), copy its structure, and name the
-  recipe you used in your summary. Do not invent a new layout when a recipe fits.
+- **Look and layout:** follow [Design system](#design-system-required-for-every-screen) below.
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
@@ -230,18 +222,9 @@ only; still upload the zip **unchanged**. Details:
   sort, filter, or connection/page inputs, use those — do not fetch a full list and
   sort/filter client-side when the API can do it. Confirm arg names via
   `graphql-schema://…`.
-- **Lists use `Table`:** Use `Table` from `@digit/lib-frontend` for any list of records. It is
-  server-paged, sorted and searched, so pass the page and sort models and refetch in the
-  handlers. Do not render a list of many rows as an unbounded dump. See
-  [reference/design-patterns.md](reference/design-patterns.md#list-page).
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + layout and data components (`PageHeader`, `PageBody`, `Table`,
-  `RecordName`, `Pill`, `SidePanel`, `Modal`/`ModalSection`, `ConfirmDialog`, `SettingsSection`,
-  `SettingsRow`, `Section`, `RecordCard`/`RecordCardSection`, `PropertyGrid`, `FormField`,
-  `Switch`, `RadioCard`, `EmptyState`, `ProgressBar`, `FileDropZone`, `FileUploadRow`) + Lucide
-  icons (`Plus`, `Search`, …) + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` /
-  `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
-  `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
+- **Errors:** pair a hook's `error` with `AppErrorAlert` (`onRetry` when retryable) — do not
+  branch on `AppErrorCode` in UI.
 
 #### Printing
 
@@ -316,49 +299,40 @@ existing file you edit.
 ### Design system (required for every screen)
 
 Digit apps sit next to the platform's own screens, so they must look like them. The **Figma
-design system is the source of truth**, and `@digit/lib-frontend` implements it: the theme
-restyles every MUI component to the Figma values in light and dark, and the library adds the
-composite pieces the product mockups use. You compose those pieces; you never restyle them.
+design system is the source of truth**, and `@digit/lib-frontend` implements it in two layers:
 
-**Before you write any UI:**
+- **The theme** (`DigitThemeProvider`) restyles every MUI component to the Figma values, in light
+  and dark. A plain `<Button>`, `<TextField>` or `<Tabs>` already looks right.
+- **Library components** (`PageHeader`, `Table`, `Pill`, `SidePanel`, `Modal`, …) group themed
+  MUI parts into the larger pieces Figma defines, such as a page header, an index table or a
+  form dialog.
 
-1. Read [reference/design-system.md](reference/design-system.md): the component picker, type
-   roles, colour tokens, spacing, icons and the self-check list.
-2. Pick the closest recipe in [reference/design-patterns.md](reference/design-patterns.md) (list
-   page, details panel, record page, settings, form dialog, confirm, dashboard, …) and copy its
-   structure. Name the recipe in your summary.
-3. When you finish, run the self-check at the end of design-system.md on every screen and fix
+You pick and compose those pieces. You never restyle them.
+
+**Work in this order:**
+
+1. Before any UI, read [reference/design-system.md](reference/design-system.md). It has the
+   rules, the component picker and the tokens.
+2. For each screen, copy the closest recipe in
+   [reference/design-patterns.md](reference/design-patterns.md) (list page, details panel,
+   record page, settings, form dialog, confirm, dashboard, …).
+3. Look up a component's props in [reference/components.md](reference/components.md) when you use it.
+4. When you finish, run the self-check at the end of design-system.md on every screen and fix
    what fails.
 
-**Hard rules** (each one is a common way apps end up looking like stock MUI):
+**The rules that matter most.** Breaking any of these makes an app look like stock MUI instead
+of Digit:
 
-- Use the library component when one exists: `PageHeader`, `PageBody`, `Table`, `RecordName`, `Pill`,
-  `SidePanel`, `Modal` + `ModalSection`, `ConfirmDialog`, `SettingsSection` + `SettingsRow`,
-  `Section`, `RecordCard`, `PropertyGrid`, `FormField`, `Switch`, `RadioCard`, `EmptyState`,
-  `ProgressBar`, `FileDropZone`, `FileUploadRow`, `AppErrorAlert`.
-- Never set colour, background, border, radius, shadow, font size, font weight, line height,
-  height or padding on a themed MUI component (`Button`, `TextField`, `Select`, `Tabs`, `Dialog`,
-  `Menu`, `Chip`, `Alert`, `Card`, …). Layout props (`gap`, `flex`, `width`, margins) are fine.
-- No hex or `rgb()` colours, no px font sizes, no `fontWeight`. Use palette tokens
-  (`text.secondary`, `border.solidDefault`, …) and `Typography` variants.
-- Every screen starts with `PageHeader`; never an `h1` or a centred title block. Lists are a
-  full-bleed `Table` with no card around it; the create action sits in the page header.
-- One primary button (`variant="contained" color="primary"`) per surface, last in its group;
-  secondary is the default `Button`; Cancel is `variant="text"`. Never `fullWidth` buttons.
-- Every status or category is a `Pill`. Icons are Lucide from `@digit/lib-frontend` at 12, 16 or
-  20px. Sentence case everywhere. Everything left-aligned except `EmptyState` and
-  `FileDropZone`.
-- Fields are the themed grey field (`<TextField hiddenLabel>`) or the invisible field
-  (`variant="standard"`), labelled by `FormField` (label above, on records and page forms) or
-  `SettingsRow` (label left, in panels and dialogs). Never floating labels.
-- Destructive actions go through `ConfirmDialog destructive`. Saving uses
-  `loading` + `loadingPosition="start"` on the Save button, which stays disabled until the form
-  is dirty.
-- Do not branch on `theme.palette.mode`; following the rules gives dark mode for free.
+- Use the library component when one exists. Never rebuild it from `Box` and `Typography`.
+- Never set colour, background, border, radius, shadow, font, height or padding on a themed
+  component, and never use hex colours, px font sizes or `fontWeight`. Layout props (`gap`,
+  `flex`, `width`, margins) are fine.
+- Every screen starts with `PageHeader`. Lists are a full-bleed `Table` with no card around them.
+- Every status is a `Pill`. Icons are Lucide, imported from `@digit/lib-frontend`.
 
-If a screen needs something the library and the recipes do not cover, say so in your summary and
-build it from themed MUI parts with layout props only. Do not invent new colours, sizes or
-shapes.
+If a screen needs something the library and the recipes do not cover, build it from themed MUI
+parts with layout props only, and mention the gap in `SPEC.md`. Do not invent new colours,
+sizes or shapes.
 
 
 ### 5. `manifest.json`
@@ -451,6 +425,7 @@ upstream starter.
 | Codes / JSON validation               | `@digit/lib-common`                                             |
 | Print a Sutton inventory or item label | `LabelPrintPanel` → [reference/labels.md](reference/labels.md)  |
 | Which component to use, and how it should look | [reference/design-system.md](reference/design-system.md) |
+| A component's props                   | [reference/components.md](reference/components.md)              |
 | Screen layout: lists, records, panels, settings, dialogs, dashboards | Recipe from [reference/design-patterns.md](reference/design-patterns.md) |
 
 ## Packages (`lib-*`)
@@ -486,8 +461,9 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
 - [reference/labels.md](reference/labels.md) for Sutton label preview and print, permissions, and failures
 - [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
-- [reference/design-system.md](reference/design-system.md) — **read before any UI**: component picker, type, colour, spacing, icons, self-check
+- [reference/design-system.md](reference/design-system.md) — **read before any UI**: rules, component picker, type, colour, spacing, icons, self-check
 - [reference/design-patterns.md](reference/design-patterns.md) — screen recipes from the product mockups: list page, details panel, record page, settings, form dialog, confirm, dashboard
+- [reference/components.md](reference/components.md) — props and conventions for each component; look up as needed
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key
