@@ -38,7 +38,9 @@ suffix.
 
 The agent-facing usage guide is
 [`.agents/skills/create-digit-app/reference/design-system.md`](../../.agents/skills/create-digit-app/reference/design-system.md),
-with screen recipes in `design-patterns.md` next to it.
+with per-component props in `components.md` and screen recipes in `design-patterns.md` next to
+it. Run `npm run check:skill-docs` after changing a component's API; it fails when the guide
+names a component, prop or value that no longer exists.
 
 Theme notes worth knowing:
 
@@ -49,8 +51,8 @@ Theme notes worth knowing:
 - Field sizes: `xs` 20px, `small`/`medium` 28px, `large` 36px. `variant="standard"` is the Figma
   invisible field; `outlined` renders the filled field, since Figma has no stroked field.
 - `Typography color="text.secondary"` (any palette path) works; MUI 9 alone ignores it.
-- Palette additions: `text.tertiary`, `background.secondary`/`surface`, `border.default`/
-  `strong`/`extrastrong`/`solidStrong`/`solidDefault`, `table.hover`/`selected`, `opacity`.
+- Palette additions: `text.tertiary`, `background.secondary`, `border.default`/`strong`/
+  `extrastrong`/`solidStrong`/`solidDefault`/`solidCard`, `table.hover`/`selected`, `opacity`.
 - `focusRing(theme)` and `focusColor(theme)` in `theme/focus.ts` are the Figma focus treatment.
 
 ## Why a copy (not an import from digit-web)

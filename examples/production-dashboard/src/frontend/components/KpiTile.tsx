@@ -14,7 +14,7 @@ export type KpiTileProps = {
   value?: ReactNode;
   /** Small text after the value, such as the unit of measure ("ea"). */
   unit?: string | null;
-  /** One line under the value: a `Pill` and/or an `overline` hint. */
+  /** One line under the value: a `Chip` delta and/or an `overline` hint. */
   footer?: ReactNode;
   /** Trailing visual beside the value, such as a gauge. */
   aside?: ReactNode;

@@ -6,6 +6,13 @@ convention. [design-system.md](design-system.md) has the rules and the component
 
 Look up a component here when you use it. You do not need to read this file end to end.
 
+Two kinds of component appear below:
+
+- **Themed MUI components** (`Button`, `TextField`, `Chip`, `Tabs`, `Alert`, …). Import them from
+  `@mui/material`. The theme already gives them the Figma look; use their normal MUI props.
+- **Library components** (`PageHeader`, `DataTable`, `StatusPill`, `Modal`, …). Import them from
+  `@digit/lib-frontend`. Each one groups themed parts into a larger piece that Figma defines.
+
 ## Contents
 
 - [Page structure](#page-structure)
@@ -17,12 +24,13 @@ Look up a component here when you use it. You do not need to read this file end 
 
 ## Page structure
 
-**`PageHeader`** is the top of every screen, side panel and form dialog. Never build a header bar.
+**`PageHeader`** is the top of every screen. Never build a header bar. (Dialogs and side panels
+have their own header: see [Dialogs and panels](#dialogs-and-panels).)
 
 ```tsx
 <PageHeader
   title="Bins"
-  titleAdornment={<Pill size="sm" label="Beta" />}
+  titleAdornment={<Chip size="small" label="Beta" />}
   actions={<>
     <Button startIcon={<SlidersHorizontal />}>Bin settings</Button>
     <Button variant="contained" color="primary" startIcon={<Plus />}>New bin</Button>
@@ -31,29 +39,37 @@ Look up a component here when you use it. You do not need to read this file end 
 />
 ```
 
-- `variant="page"` (default) for list and index screens; `variant="record"` with `trail` for a
-  single record under a list; `variant="dialog"` inside a `Dialog` or panel.
+- `variant="page"` (default) for list and index screens; `variant="record"` with `trail` (parent
+  crumbs, `[{ label: "Orders", onClick: goBack }]`) for a single record under a list.
 - Actions run from least to most used: icon buttons (learning center, star), then secondary
   buttons, then **one** contained primary button, last. A page-level mode toggle (such as
-  "Preview data") is a library `Switch label` at the start of `actions`.
-- `subtitle` for a short caption; `onClose` adds the X.
+  "Preview data") is a `SwitchField` at the start of `actions`.
+- `subtitle` is a short caption after the title.
 
 **`PageBody`**: the page gutter, 24px above and below, and a 32px gap between its children.
-Everything under a `PageHeader` that is not a full-bleed `Table` goes in it: `Section`s,
-`AppErrorAlert`, `EmptyState`, dashboards.
+Everything under a `PageHeader` that is not a full-bleed `DataTable` goes in it: `Section`s,
+`AppErrorAlert`, `EmptyState`, dashboards. `maxWidth={720}` for settings and forms.
 
-**`Section`**: an h6 heading row with an overline count or hint and right-side actions, for blocks
-on a page or panel ("Tasks · 4 active" with a "View all" text button).
+**`Section`**: a heading row (h6 `title`, overline `subtitle` such as a count or hint, `actions`
+on the right) over a block of content.
+
+- On a page or a dashboard: "Tasks · 4 active" with a "View all" text button.
+- **Inside a `Modal`, `SidePanel` or `RecordCard`**, each direct `Section` child becomes a band:
+  padded, with a line between bands. Do not add padding or dividers yourself, and do not wrap
+  sections in a `Box`, which breaks the band layout. `title` is optional for a band with no
+  heading.
+- `subtitlePlacement="below"` puts a one-line description under the title instead of beside it.
 
 **`RecordCard`**: the document on a record page. It sits on `background.secondary`, 850px max,
-centred, with `title` (h2), `meta` (owner, date) and `status` (a `Pill`) in its title row. Each
-block is a `RecordCardSection` (h6 title, optional subtitle and actions), separated by lines.
+centred, with `title` (h2), `meta` (owner, date) and `status` (a `StatusPill`) in its title row.
+Its children are `Section`s, one per block (Customer, Items, Notes).
 
-**`PropertyGrid`**: bordered label/value rows (128px label column). Values are text or invisible
-controls (`Select variant="standard"`, `TextField variant="standard"`).
+**`PropertyGrid`**: bordered label/value rows (128px label column), as
+`rows={[{ label, value }]}`. Values are text or invisible controls (`Select variant="standard"`,
+`TextField variant="standard"`).
 
 **In-app section navigation** (only if the app has sub-pages; the platform owns app navigation):
-a 240px `Box` with `bgcolor: "background.surface"` and a right `border.solidStrong` line; items are
+a 240px `Box` with `bgcolor: "background.secondary"` and a right `border.solidStrong` line; items are
 `ListItemButton selected` with a 16px icon and the label; group labels are `overline`
 `text.secondary`.
 
@@ -87,37 +103,40 @@ are `MenuItem` with a 16px `ListItemIcon`. The destructive item goes last, and o
 
 ## Data display
 
-**`Table`**: every list that can outgrow a screen. Full bleed (no card), page gutter on the first
-and last column, server-side paging, sorting and search.
+**`DataTable`**: every list that can outgrow a screen. Full bleed (no card), page gutter on the
+first and last column, server-side paging, sorting and search. (MUI's own `Table` is only for a
+short fixed list; see the component picker.)
 
 ```tsx
-const columns: TableColumn<Order>[] = [
+const columns: DataTableColumn<Order>[] = [
   { field: "name", headerName: "Order", flex: 1, icon: Bookmark,
     renderCell: (p) => <RecordName name={p.row.name} link /> },
-  { field: "status", headerName: "Status", width: 120, icon: Loader,
-    renderCell: (p) => <Pill status={p.row.status} /> },
+  { field: "status", headerName: "Status", width: 140, icon: Loader, sortable: false,
+    renderCell: (p) => <StatusPill status={orderStage[p.row.status]} label={p.row.statusLabel} /> },
   { field: "total", headerName: "Total", width: 120, icon: DollarSign, type: "number" },
   { field: "dueAt", headerName: "Due", width: 120, icon: Calendar },
 ]
 
-<Table
+<DataTable
   rows={rows} columns={columns} rowCount={total}
   paginationModel={paging} onPaginationModelChange={setPaging}
   sortModel={sort} onSortModelChange={setSort}
-  search={search} onSearchChange={setSearch}
-  views={[{ value: "all", label: "All" }, { value: "open", label: "Open" }]}
-  view={view} onViewChange={setView}
+  search={{ value: search, onChange: setSearch }}
+  views={{ options: [{ value: "open", label: "Open" }, { value: "all", label: "All" }], value: view, onChange: setView }}
   onRefresh={refetch}
   onRowClick={(row) => openPanel(row.id)}
   loading={loading}
 />
 ```
 
-- Column header icons come from the data type table. Numbers are `type: "number"` (right aligned).
+- Column header icons come from the data type table in design-system.md. Numbers are
+  `type: "number"` (right aligned).
 - The name column renders `RecordName ... link` (600 weight, underlines on row hover); give one
   column `flex: 1` so the last column reaches the gutter.
-- `selection={{ model, onChange, actions }}` adds checkboxes and a bulk-action bar.
-- `inset="panel"` inside a side panel or dialog.
+- `selection={{ model, onChange, actions }}` adds checkboxes; while rows are selected the toolbar
+  becomes a bulk-action bar showing `actions`.
+- `onDownload` adds a download button to the toolbar (export through `AppHost.invoke("download", …)`).
+- `inset="panel"` inside a side panel or dialog; `inset="none"` inside a `Section` band.
 - The create action goes in `PageHeader actions`, not in the table toolbar.
 - Paging: `paginationModel` is `{ page, pageSize }`. For a GraphQL connection, request
   `first: pageSize` and keep the `endCursor` of each page you have loaded, so page `n` asks for
@@ -128,44 +147,60 @@ const columns: TableColumn<Order>[] = [
   or view is active, in which case keep the table and say nothing matched.
 
 **`RecordName`**: 20px tile + name; with `meta` (a list of `{ icon, label?, value }`) a 36px tile
-and an overline meta line (then pass `rowHeight={52}` to `Table`). `placeholder` picks the tile
-icon (`item`, `company`, `user`, `tool`, or `document` for anything else: notes, files,
-reports, runs); `image` shows a thumbnail. `onClick`/`href` make it a
-real link.
+and an overline meta line (then pass `rowHeight={52}` to `DataTable`). `placeholder` picks the
+tile icon (`item`, `company`, `user`, `tool`, or `document` for anything else: notes, files,
+reports, runs); `image` shows a thumbnail. `onClick`/`href` make it a real link.
 
-**`Pill`**: every status and category. Never `Chip` for a status.
+**`StatusPill`**: every record status. Figma groups every status into six stages, and the stage
+picks the colour, so the same stage looks the same everywhere in the platform.
 
-| Tone | Status words (`status=`) |
-| --- | --- |
-| `gray` | closed, cancelled, archived, paused |
-| `blue` | open, not started, active, building, running, scheduled |
-| `green` | live, approved, received, complete, completed, done, succeeded, success |
-| `yellow` | pending, queued, waiting, in progress, shipped |
-| `orange` | ready |
-| `violet` | sent |
-| `red` | blocked, failed, stopped, rejected |
-| outlined | draft, and any word not listed |
+| `status` | Colour | Meaning | Example words |
+| --- | --- | --- | --- |
+| `preliminary` | outlined | A starting point or draft | Draft |
+| `open` | blue | Open or ready for work | Open, Sent, Not started, Scheduled |
+| `active` | yellow | Being worked on | In progress, Running, Pending, Partially fulfilled |
+| `stopped` | red | Needs action to restart | Stopped, Failed, Rejected, Overdue, Blocked |
+| `done` | green | Finished, good outcome | Complete, Approved, Paid, Received |
+| `closed` | gray | Finished, neutral outcome | Closed, Cancelled, Archived |
 
-Pass the record's own status word (`<Pill status={run.status} />`); the label is the word in
-sentence case. If a word your data uses is missing, pass `color` for now and tell the user the
-word should be added to the list in `Pill.tsx`.
+Map the app's own status words to a stage once, and pass the word as `label`:
 
-- `color="sky"` (any accent) for a category; `color="gray"` for built-in or system categories.
-- `size="md"` (20px, default) for record status; `size="sm"` (16px) for inline facts and
-  categories next to names.
-- A status that opens a menu: `endAdornment={<ChevronDown size={12} />}` and `onClick`.
-- A linked record: `<Pill color="violet" icon={<Factory size={12} />} label="MO 277" />`.
+```tsx
+const runStage: Record<RunStatus, RecordStatus> = {
+  queued: "open", running: "active", failed: "stopped", succeeded: "done", cancelled: "closed",
+}
+
+<StatusPill status={runStage[run.status]} label="Running" />
+```
+
+- `size="small"` (16px) for inline facts next to names; the default (20px) for a record status.
+- A status that opens a menu: `onClick` plus `onDelete={openMenu}` with
+  `deleteIcon={<ChevronDown size={12} />}`.
+
+**`Chip`** (MUI, themed as the Figma pill): anything pill-shaped that is not a status.
+
+- A category: `<Chip size="small" color="sky" label="Hardware" />`. Any Tailwind-style accent
+  works as `color` (`red`, `orange`, `amber`, `yellow`, `lime`, `green`, `emerald`, `teal`,
+  `cyan`, `sky`, `blue`, `indigo`, `violet`, `purple`, `fuchsia`, `pink`, `rose`). Give each
+  category one colour and keep it. Built-in or system categories use the default gray (no
+  `color`).
+- A linked record: `<Chip size="small" color="violet" icon={<Factory size={12} />} label="MO 277" />`.
+- A good or bad delta on a dashboard tile: `color="green"` / `color="red"`, not coloured text.
+- A tag next to a title (Beta, Custom): `<Chip size="small" label="Beta" />`.
 
 **`Avatar`**: people are round, 20px by default (a table cell), with initials or a photo. For
 16px inline (an owner beside a date) set the size variable, which also scales the initials:
 `<Avatar sx={{ "--digit-avatar-size": "16px" }}>SB</Avatar>`. Stacks use `AvatarGroup` (16px,
 overlapping). Companies and items use `variant="rounded"`.
 
-**`ProgressBar`**: an 8px emerald bar with a right-aligned "value / total unit" overline caption.
+**`ProgressBar`**: an 8px emerald bar with a right-aligned "value / total unit" overline
+caption: `<ProgressBar value={done} total={qty} unit="pcs" />`. Over the total, the caption's
+value turns orange with an up arrow.
+For a bare bar with no caption, use MUI's `LinearProgress`.
 
-**`EmptyState`**: a tinted horizontal box at the content width: icon or illustration, an
-`body2` title, an optional description and at most one action (usually `variant="outlined"`
-"Learn more" or the secondary create button).
+**`EmptyState`**: a tinted horizontal box at the content width: `icon`, a `title`, an optional
+`description` and at most one button in `actions` (usually `variant="outlined"` "Learn more" or
+the secondary create button).
 
 ## Forms
 
@@ -175,15 +210,23 @@ overlapping). Companies and items use `variant="rounded"`.
 - **Invisible fields** read as text until hover: `variant="standard"` on `TextField` or `Select`.
   Use them for selects in side panels, property grids and record cards, and for values the user
   rarely edits.
-- **Labels**:
-  - On a record or page form, the label sits **above**: wrap the control in `FormField label`
-    (`required`, `helperText`, `error`). Lay several fields out in equal columns with `gap: 1`.
+- **Labels** come from `FormField`, which links the label to the control for screen readers:
+  - On a record or page form, the label sits **above**: `<FormField label="Name">` around the
+    control (`required`, `helperText`, `error`). Lay several fields out in equal columns with
+    `gap: 1`.
   - In a side panel or form dialog, the label sits **left** in a 128px column:
-    `SettingsRow variant="form" label control={...}`.
-  - On a settings page, label and tertiary description on the left, control in a 256px column on
-    the right: `SettingsRow variant="setting" label description control={...}`.
-  - `<TextField label>` also renders the label above (never a floating label), but prefer
+    `<FormField horizontal label="Name">`.
+  - On a settings page, use `SettingsRow variant="setting"` (label and description left, control
+    in a 256px column right). The row does not label the control, so give the control an
+    `aria-label` with the same text.
+  - Never a floating label. `<TextField label>` also renders the label above, but prefer
     `FormField`.
+
+  ```tsx
+  <FormField horizontal label="Customer" required>
+    <Select variant="standard" fullWidth displayEmpty value={customerId} onChange={…}>…</Select>
+  </FormField>
+  ```
 - Placeholders: "Enter value", "Select value", "MM/DD/YYYY", "Search…".
 - Select: `<Select variant="standard" displayEmpty>` for invisible, plain `<Select>` for the grey
   field. Options are `MenuItem`. For a placeholder, use `displayEmpty` with
@@ -192,21 +235,35 @@ overlapping). Companies and items use `variant="rounded"`.
 - Dates: `<TextField type="date" hiddenLabel />` (do not add `@mui/x-date-pickers`).
 - Multiline notes: `<TextField hiddenLabel multiline minRows={3} />`.
 - Lead and trail icons and units go in `InputAdornment` (16px icons).
-- `Checkbox`, `Radio` and `Switch` are 16px blue controls. A bare MUI `Switch` next to text is
-  wrong; use the library `Switch label` (it keeps the gap and the label click).
+- `Checkbox`, `Radio` and `Switch` are 16px blue controls.
+- **An on/off setting with its label** is a `SwitchField`: the label on the left, the switch on
+  the right, a gap between, and the label is clickable. Add `description` for a tertiary line
+  under the label and `info` for a tooltip icon. Use MUI's bare `Switch` only where a row already
+  draws the label (`SettingsRow`), with an `aria-label`.
+
+  ```tsx
+  <SwitchField
+    label="Email me when a run fails"
+    description="Sent to the app owner."
+    checked={notify}
+    onChange={(_, checked) => setNotify(checked)}
+  />
+  ```
 - `ToggleButtonGroup exclusive` for a view switch (floating items); `size="small"` gives the
   outlined grey track with xs items (All / Active / Archived).
+- Two or three options that each need a sentence: `RadioGroup` with one `RadioCard` per option.
 - Uploads: `FileDropZone` for the drop area, one `FileUploadRow` per file (uploading, uploaded,
   failed).
 
 ## Dialogs and panels
 
 - **`ConfirmDialog`**: the yes/no question before a destructive or blocked action. 240px, optional
-  20px icon, h5 question, one-line consequence, two equal answers (outlined back-out, contained
-  go-ahead), no X. `destructive` for anything that deletes or cannot be undone: the go-ahead turns
-  red on hover and press, and the back-out answer takes focus. `busy` while it runs. Answers are
-  phrased as answers ("Delete", "No, keep it", "Go to users"), never "OK". If the action fails,
-  keep the dialog open and pass the hook's error as `error`; it shows inside the dialog.
+  20px `icon`, the question as `title`, a one-line `description`, two equal answers (outlined
+  back-out, contained go-ahead), no X. `destructive` for anything that deletes or cannot be
+  undone: the go-ahead turns red on hover and press, and the back-out answer takes focus. `busy`
+  while it runs. Answers are phrased as answers ("Delete", "No, keep it", "Go to users"), never
+  "OK". If the action fails, keep the dialog open and pass the hook's error as `error`; it shows
+  inside the dialog.
 
   ```tsx
   <ConfirmDialog
@@ -217,14 +274,15 @@ overlapping). Companies and items use `variant="rounded"`.
     cancelLabel="Keep role"
     destructive
     busy={deleting}
+    error={deleteError}
     onConfirm={handleDelete}
     onCancel={() => setConfirmOpen(false)}
   />
   ```
-- **`Modal`**: any dialog with fields or several steps. Header (title, optional subtitle, tabs,
-  X), scrolling content made of `ModalSection`s (16px padding, h6 title, separator lines), and a
-  footer with Cancel (text) on the left and secondary + primary on the right. `width` xs/sm/md/lg
-  (336/480/680/960). On mobile it becomes a bottom sheet.
+- **`Modal`**: any dialog with fields or several steps. Header (`title`, optional `subtitle`,
+  `tabs`, X), scrolling content made of `Section` bands, and a `footer` with Cancel (text) on the
+  left and `secondary` + `primary` on the right. `width` xs/sm/md/lg (336/480/680/960). On mobile
+  it becomes a bottom sheet.
 
   ```tsx
   <Modal
@@ -240,17 +298,20 @@ overlapping). Companies and items use `variant="rounded"`.
       ),
     }}
   >
-    <ModalSection title="Details">
-      <SettingsRow variant="form" label="Name" control={<TextField hiddenLabel fullWidth placeholder="Enter value" />} />
-      <SettingsRow variant="form" label="Copy from" control={<Select variant="standard" fullWidth displayEmpty>…</Select>} />
-    </ModalSection>
+    <Section title="Details">
+      <FormField horizontal label="Name">
+        <TextField hiddenLabel fullWidth placeholder="Enter value" />
+      </FormField>
+      <FormField horizontal label="Copy from">
+        <Select variant="standard" fullWidth displayEmpty>…</Select>
+      </FormField>
+    </Section>
   </Modal>
   ```
 - **`SidePanel`**: details or settings for one thing, beside the content so the list stays
   visible. `variant="overlay"` (448px, over a list) or `variant="docked"` (367px, in the layout of
-  a record page). Header with title and X, scrolling body of `SettingsSection size="sm"` /
-  `SettingsRow variant="form"` rows, footer with Cancel left and the primary right when it edits
-  data. Build one panel per app and reuse it.
+  a record page). Header with `title`, `actions` and X, a scrolling body of `Section` bands, and a
+  `footer` (Cancel left, primary right) when it edits data. Build one panel per app and reuse it.
 
   ```tsx
   <SidePanel
@@ -260,11 +321,15 @@ overlapping). Companies and items use `variant="rounded"`.
     actions={<IconButton aria-label="More actions"><Ellipsis /></IconButton>}
     footer={{ onCancel: close, primary: <Button variant="contained" color="primary" startIcon={<Save />}>Save</Button> }}
   >
-    <ModalSection title="General">
-      <SettingsRow variant="form" label="Owner" control={<Select variant="standard" fullWidth displayEmpty>…</Select>} />
-    </ModalSection>
+    <Section title="General">
+      <FormField horizontal label="Owner">
+        <Select variant="standard" fullWidth displayEmpty>…</Select>
+      </FormField>
+    </Section>
   </SidePanel>
   ```
+- A collapsible group of rows inside a panel (permissions, a long settings group) is a
+  `SettingsSection size="sm"`; it also becomes a band.
 - Never a full-screen settings page inside the app iframe for a handful of settings; use a
   `SidePanel`.
 
@@ -278,5 +343,5 @@ overlapping). Companies and items use `variant="rounded"`.
 - **`Snackbar`** for transient results, bottom left, with `SnackbarContent` (message, optional xs
   text action).
 - **`Tooltip`** on every icon-only button and every truncated value.
-- **Loading**: `Table loading`, `Button loading`, `Skeleton` blocks for cards. In-progress items
-  show in place (a spinner and "Uploading..." in a `FileUploadRow`), not with a page spinner.
+- **Loading**: `DataTable loading`, `Button loading`, `Skeleton` blocks for cards. In-progress
+  items show in place (a spinner and "Uploading..." in a `FileUploadRow`), not with a page spinner.

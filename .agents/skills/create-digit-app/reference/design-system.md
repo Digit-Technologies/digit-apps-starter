@@ -27,15 +27,17 @@ Read this file before you write any UI. Then:
 
 ## Non-negotiables
 
-1. **Use the library component when one exists.** `PageHeader`, `PageBody`, `Table`, `Pill`, `RecordName`,
-   `ConfirmDialog`, `Modal`, `SidePanel`, `SettingsRow`, `SettingsSection`, `Section`,
-   `RecordCard`, `PropertyGrid`, `FormField`, `Switch`, `RadioCard`, `EmptyState`, `ProgressBar`,
-   `FileDropZone`, `FileUploadRow` and `AppErrorAlert` exist so you never rebuild them from `Box`
-   and `Typography`. Import them from `@digit/lib-frontend`.
+1. **Use the library component when one exists.** `PageHeader`, `PageBody`, `Section`,
+   `DataTable`, `StatusPill`, `RecordName`, `RecordCard`, `PropertyGrid`, `Modal`, `SidePanel`,
+   `ConfirmDialog`, `FormField`, `SettingsSection`, `SettingsRow`, `SwitchField`, `RadioCard`,
+   `EmptyState`, `ProgressBar`, `FileDropZone`, `FileUploadRow` and `AppErrorAlert` exist so you
+   never rebuild them from `Box` and `Typography`. Import them from `@digit/lib-frontend`.
+   Everything else is a themed MUI component (`Button`, `TextField`, `Chip`, `Tabs`, …): use it
+   as it is.
 2. **Never style a themed component.** No `sx`, `style` or `styled()` that sets colour,
    background, border, border radius, box shadow, font size, font weight, line height, height or
    padding on a `Button`, `IconButton`, `TextField`, `Select`, `Checkbox`, `Switch`, `Radio`,
-   `Tabs`, `Tab`, `Chip`, `Alert`, `Dialog`, `Menu`, `Tooltip`, `Card` or `Table`. The theme
+   `Tabs`, `Tab`, `Chip`, `Alert`, `Dialog`, `Menu`, `Tooltip`, `Card` or `DataTable`. The theme
    already matches Figma; an override breaks it. Layout props (`gap`, `flex`, `width`,
    `maxWidth`, `mt`, `alignSelf`) are fine, and so is content padding on a `Card` (`p: 2`),
    which the theme leaves to you.
@@ -51,35 +53,36 @@ Read this file before you write any UI. Then:
    `width: "100%"`, `flex: 1` or a full-width stack (the two answers in `ConfirmDialog` are the
    built-in exception).
 8. **No cards around pages, lists or forms.** A list page is a `PageHeader` and a full-bleed
-   `Table` on white. A `Card` is only for a grouped block (a dashboard tile, an assistant message).
+   `DataTable` on white. A `Card` is only for a grouped block (a dashboard tile, an assistant message).
 9. **Light and dark both work for free** if you follow rules 2 and 3. Do not branch on
    `theme.palette.mode` in app code.
 10. **Never** browser `alert`/`confirm`/`prompt`; use `ConfirmDialog`. Never `CircularProgress`
-    page spinners for a list; `Table` has `loading`.
+    page spinners for a list; `DataTable` has `loading`.
 
 ## Component picker
 
 | You need | Use |
 | --- | --- |
-| The title bar of any screen, panel or form dialog | `PageHeader` (`variant` page, record or dialog) |
+| The title bar of any screen | `PageHeader` (`variant` page or record). `Modal` and `SidePanel` draw their own |
 | Content under the header that is not a full-bleed table | `PageBody` (page gutter and spacing) |
-| A list of records | `Table` (server paged, sorted, searched) |
+| A list of records | `DataTable` (server paged, sorted, searched) |
 | A short fixed list (roles, config entries) | Plain MUI `Table` + `TableRow hover` + `TableCell`, no `TableHead` |
 | A record's name in a list or header | `RecordName` |
-| Any status or category | `Pill` |
-| A single record's page | `PageHeader variant="record"` + `RecordCard` + `RecordCardSection` |
+| A record's status | `StatusPill` (one of six Figma stages) |
+| A category, tag, linked record or delta | `Chip` (themed as the Figma pill) |
+| A single record's page | `PageHeader variant="record"` + `RecordCard` with a `Section` per block |
 | Details or settings beside a list | `SidePanel variant="overlay"` |
 | Details beside a record | `SidePanel variant="docked"` |
 | A heading over a block of content | `Section` (h6 title, overline count or hint, actions) |
 | Label/value pairs in a bordered block | `PropertyGrid` |
 | A settings page | `SettingsSection` + `SettingsRow variant="setting"` |
 | Grants or permissions | `SettingsSection selection` + `SettingsRow variant="list"` + `Checkbox` |
-| Fields in a side panel or form dialog | `SettingsRow variant="form"` |
+| Fields in a side panel or form dialog | `FormField horizontal` (label left) |
 | Fields on a record or a page form | `FormField` (label above) around a `TextField` or `Select` |
-| On/off | `Switch label` (with optional `description`) |
+| On/off with a label | `SwitchField` (with optional `description`) |
 | Two or three options that each need a sentence | `RadioGroup` + `RadioCard` |
 | A segmented filter or view switch | `ToggleButtonGroup exclusive` (`size="small"` for the outlined track) |
-| A form that creates or edits something | `Modal` (title, `ModalSection`s, footer) |
+| A form that creates or edits something | `Modal` (title, `Section` children, footer) |
 | "Are you sure?" before a destructive or blocked action | `ConfirmDialog` |
 | More actions for a row or record | `IconButton` with `Ellipsis` opening a `Menu` |
 | Nothing to show yet | `EmptyState` |
@@ -120,15 +123,14 @@ Inter, with tabular figures and a slashed zero on every style. Pick the variant 
 
 Charcoal is the action colour. Blue means selected or focused (checkbox, radio, switch, focus
 ring). Red means destructive or error. Everything else is neutral stone. Category colour only ever
-appears inside a `Pill`.
+appears inside a `Chip` or `StatusPill`.
 
 | Token | Use |
 | --- | --- |
 | `text.primary`, `text.secondary`, `text.tertiary`, `text.disabled` | Text and icons |
 | `background.default` | Index and list pages (white; #292524 in dark) |
-| `background.secondary` | Record pages behind the `RecordCard`, docked panels |
+| `background.secondary` | Record pages behind the `RecordCard`, docked panels, an in-app section nav column |
 | `background.paper` | Cards, dialogs, menus, panels |
-| `background.surface` | An in-app section nav column |
 | `border.solidStrong` | Page chrome lines: header bottom, menu outline, nav edge |
 | `border.solidDefault` | Section dividers inside a page or card, table toolbar line |
 | `border.strong` | Card, panel and dialog outlines (10% alpha) |
@@ -137,22 +139,23 @@ appears inside a `Pill`.
 
 Use them through `sx` (`sx={{ color: "text.secondary", borderColor: "border.solidDefault" }}`).
 Never use MUI's `grey.*`, `primary.light` or `info.main`. Accent colours (`violet`, `sky`,
-`emerald`, …) appear only in a `Pill` and as chart series colours
-(`theme.palette.emerald.main`); a good or bad delta on a tile is a `Pill` (`green` / `red`), not
+`emerald`, …) appear only as a `Chip` `color` and as chart series colours
+(`theme.palette.emerald.main`); a good or bad delta on a tile is a `Chip` (`green` / `red`), not
 coloured text.
 
 ## Spacing and layout
 
 - The spacing unit is 8px on desktop and 10px below 600px; `sx` numbers (`p: 2`, `gap: 1`) scale
   with it automatically. Use spacing numbers, not px.
-- **Page gutter**: 36px on desktop, 20px below 600px. `PageHeader`, `Table` (`inset="page"`) and
+- **Page gutter**: 36px on desktop, 20px below 600px. `PageHeader`, `DataTable` (`inset="page"`) and
   `PageBody` apply it. Put every other block under a `PageHeader` inside `<PageBody>` (add
   `maxWidth={720}` for settings and forms); do not pad a `Box` by hand, since `px: 4.5` comes out
   at 45px on mobile.
-- **Panel and dialog gutter**: 16px (`p: 2`). `SidePanel`, `Modal` and `Table inset="panel"`
+- **Panel and dialog gutter**: 16px (`p: 2`). `SidePanel`, `Modal` and `DataTable inset="panel"`
   apply it.
-- Sections inside a card or panel stack with **no gap**, separated by a 1px `border.solidDefault`
-  line, each padded 16px vertically.
+- `Section`s inside a `Modal`, `SidePanel` or `RecordCard` become bands: they stack with **no
+  gap**, separated by a 1px line, each padded 16px vertically. The container does this; add no
+  padding or dividers yourself.
 - Heights: buttons, fields, menu items and side-panel rows are 28px; table rows and headers 36px
   (52px with a `RecordName` meta line); page headers 60px; toolbars and footers 44px.
 - Widths that recur: side panel 448 (overlay) / 367 (docked); record card max 850; dialogs 336
@@ -168,7 +171,7 @@ that is not exported, say so and name it.
   inside `Button` and `IconButton` for you).
 - Trends and deltas: `TrendingUp`, `TrendingDown`, `ArrowUp`, `ArrowDown`; clocking in and out:
   `LogIn`, `LogOut`; durations: `Timer`.
-- **12** next to 11px `overline` text, in table headers, in `Pill`s and meta lines.
+- **12** next to 11px `overline` text, in table headers, in `Chip`s and meta lines.
 - **20** standing alone (the `ConfirmDialog` icon, dashboard task rows).
 - Trailing chevrons, "View all" arrows and other helper icons sit at 60% opacity
   (`sx={{ opacity: (t) => t.palette.opacity.helper }}`).
@@ -218,9 +221,10 @@ Go through this list on every screen you built. Fix anything that fails.
 
 - [ ] Every screen starts with `PageHeader`; there is no hand-built header, no `h1`, no centred
       title block.
-- [ ] Lists use `Table` (or a plain MUI table for a short fixed list), full bleed, with no card
+- [ ] Lists use `DataTable` (or a plain MUI `Table` for a short fixed list), full bleed, with no card
       around them; the create action is in the page header.
-- [ ] Every status or category is a `Pill`; no `Chip`, no coloured text for status.
+- [ ] Every status is a `StatusPill` on the right stage, every category a `Chip`; no coloured
+      text for status.
 - [ ] No `sx` sets colour, background, border, radius, shadow, font or height on a themed MUI
       component; no hex values; no px font sizes; no `fontWeight`.
 - [ ] Buttons: one primary per surface, last in its group; secondary is the default `Button`;

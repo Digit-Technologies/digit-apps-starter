@@ -303,7 +303,7 @@ design system is the source of truth**, and `@digit/lib-frontend` implements it 
 
 - **The theme** (`DigitThemeProvider`) restyles every MUI component to the Figma values, in light
   and dark. A plain `<Button>`, `<TextField>` or `<Tabs>` already looks right.
-- **Library components** (`PageHeader`, `Table`, `Pill`, `SidePanel`, `Modal`, …) group themed
+- **Library components** (`PageHeader`, `DataTable`, `StatusPill`, `SidePanel`, `Modal`, …) group themed
   MUI parts into the larger pieces Figma defines, such as a page header, an index table or a
   form dialog.
 
@@ -327,8 +327,8 @@ of Digit:
 - Never set colour, background, border, radius, shadow, font, height or padding on a themed
   component, and never use hex colours, px font sizes or `fontWeight`. Layout props (`gap`,
   `flex`, `width`, margins) are fine.
-- Every screen starts with `PageHeader`. Lists are a full-bleed `Table` with no card around them.
-- Every status is a `Pill`. Icons are Lucide, imported from `@digit/lib-frontend`.
+- Every screen starts with `PageHeader`. Lists are a full-bleed `DataTable` with no card around them.
+- Every status is a `StatusPill`. Icons are Lucide, imported from `@digit/lib-frontend`.
 
 If a screen needs something the library and the recipes do not cover, build it from themed MUI
 parts with layout props only, and mention the gap in `SPEC.md`. Do not invent new colours,
@@ -435,7 +435,7 @@ do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
 
 | Package               | When                            | Role                                                           |
 | --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, design-system components (`PageHeader`, `Table`, `Pill`, `SidePanel`, `Modal`, `ConfirmDialog`, …), Lucide icons, `AppErrorAlert`, label printing |
+| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, design-system components (`PageHeader`, `DataTable`, `StatusPill`, `SidePanel`, `Modal`, `ConfirmDialog`, …), Lucide icons, `AppErrorAlert`, label printing |
 | `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
 | `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
 | `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
