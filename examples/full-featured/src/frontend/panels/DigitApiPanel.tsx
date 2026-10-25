@@ -88,7 +88,7 @@ export default function DigitApiPanel() {
         <EmptyState
           icon={<BoxIcon size={20} />}
           title="No items"
-          description="Items you can see in Digit show up here."
+          description="Items you can see in Sutton show up here."
         />
       </PageBody>
     );

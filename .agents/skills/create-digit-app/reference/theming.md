@@ -9,7 +9,7 @@ HTML/CSS UI for new apps.
 
 ## Package
 
-[`packages/lib-frontend`](../../../../packages/lib-frontend) implements the Digit Figma design
+[`packages/lib-frontend`](../../../../packages/lib-frontend) implements the Sutton Figma design
 system as an MUI theme (palette, typography, component overrides) plus the components that group
 themed parts. It is self-contained: the private `digit-web` repo is **not** a dependency.
 

@@ -10,8 +10,7 @@
     "apps/*"
   ],
   "scripts": {
-    "new-app": "node scripts/new-app.mjs",
-    "check:skill-docs": "node scripts/check-skill-docs.mjs"
+    "new-app": "node scripts/new-app.mjs"
   },
   "engines": {
     "node": ">=22"

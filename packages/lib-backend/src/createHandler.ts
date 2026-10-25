@@ -41,7 +41,7 @@ export type HandlerFetchArgs = {
   env: unknown;
   /** Cloudflare `ExecutionContext` (`waitUntil`, …) — not an application context bag. */
   ctx: unknown;
-  /** The Digit API, acting as the user this request is for. */
+  /** The Sutton API, acting as the user this request is for. */
   api: PlatformApi;
 };
 

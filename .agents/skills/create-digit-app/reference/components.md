@@ -1,6 +1,6 @@
 # Components
 
-How to use each `@digit/lib-frontend` component and each themed MUI component that has a Digit
+How to use each `@digit/lib-frontend` component and each themed MUI component that has a Sutton
 convention. [design-system.md](design-system.md) has the rules and the component picker, and
 [design-patterns.md](design-patterns.md) shows how whole screens combine these pieces.
 

@@ -68,7 +68,7 @@ const FIXTURES: { id: string; label: string; error: AppError }[] = [
     error: {
       kind: 'backend',
       code: 'MISSING_CONFIG',
-      message: 'Set WELCOME_MESSAGE on the Digit app (env var or secret), then republish.',
+      message: 'Set WELCOME_MESSAGE on the Sutton app (env var or secret), then republish.',
       requestId: null,
       status: 500,
     },
@@ -79,7 +79,7 @@ const FIXTURES: { id: string; label: string; error: AppError }[] = [
     error: {
       kind: 'unavailable',
       code: 'CLIENT_UNAVAILABLE',
-      message: 'AppProxy is unavailable. This page only works inside the Digit app harness.',
+      message: 'AppProxy is unavailable. This page only works inside the Sutton app harness.',
       requestId: null,
       status: null,
     },
@@ -145,7 +145,7 @@ export default function ErrorLabPanel() {
 
       <Section
         title="Live triggers"
-        subtitle="Calls the real Digit API and Worker. Outside Digit they fail as unavailable."
+        subtitle="Calls the real Sutton API and Worker. Outside Sutton they fail as unavailable."
         subtitlePlacement="below"
       >
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>

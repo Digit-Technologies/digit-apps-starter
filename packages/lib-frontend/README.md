@@ -39,8 +39,7 @@ suffix.
 The agent-facing usage guide is
 [`.agents/skills/create-digit-app/reference/design-system.md`](../../.agents/skills/create-digit-app/reference/design-system.md),
 with per-component props in `components.md` and screen recipes in `design-patterns.md` next to
-it. Run `npm run check:skill-docs` after changing a component's API; it fails when the guide
-names a component, prop or value that no longer exists.
+it.
 
 Theme notes worth knowing:
 

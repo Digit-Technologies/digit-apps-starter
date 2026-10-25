@@ -31,7 +31,7 @@ uses published env and published secrets (Settings edits update the published ap
 draft, and inbound webhooks are published-only.
 `@digit/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@digit/lib-build`)
 vendors those packages (including `lib-build`) under `project/packages/` in `app.zip`.
-Local Digit runtime draft is not supported; remote draft is the platform deployment path.
+Local Sutton runtime draft is not supported; remote draft is the platform deployment path.
 
 ## Prompts
 

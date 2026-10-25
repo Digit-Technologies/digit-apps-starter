@@ -22,7 +22,7 @@ publishAppZip({ zipPath: "apps/app/app.zip" })
 `publishAppZip` always deploys a draft. It waits for the draft deployment to reach a
 terminal state and reports failure details. A successful result means **the published app is
 unchanged**. The user promotes that exact draft build with the explicit Publish action in
-the Digit web app. The builder must not publish to the published app or describe the draft as
+the Sutton web app. The builder must not publish to the published app or describe the draft as
 production.
 
 ### Standalone MCP
@@ -108,12 +108,12 @@ only after the platform has completed that deployment.
 
 Publish ships the reviewed build and applies pending migrations on the published app only — it is not a
 config promote. **Promote does not wipe published env/secrets.** Draft shares published env and
-secrets; Digit Settings write the published app only. Nothing is copied from draft onto the published app for env
+secrets; Sutton Settings write the published app only. Nothing is copied from draft onto the published app for env
 or secrets — draft already shares them, and promote is not a config copy.
 
-Published D1 migrations are **fail-closed** on Time Travel. Digit captures a D1 Time Travel
+Published D1 migrations are **fail-closed** on Time Travel. Sutton captures a D1 Time Travel
 bookmark before migrating production; if bookmark capture fails, promotion fails and does
-not migrate. Digit does not auto-restore from that bookmark if a later step fails — traffic on
+not migrate. Sutton does not auto-restore from that bookmark if a later step fails — traffic on
 the published app keeps writing after the bookmark, so a restore would drop those rows. The bookmark
 stays on the promote row as an operator recovery aid.
 

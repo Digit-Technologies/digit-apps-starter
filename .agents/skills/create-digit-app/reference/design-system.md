@@ -1,6 +1,6 @@
 # Design system
 
-Digit apps run inside the Digit platform, next to its own screens. They must look like those
+Sutton apps run inside the Sutton platform, next to its own screens. They must look like those
 screens. The **Figma design system is the source of truth** for what every component looks like,
 and `@digit/lib-frontend` implements it: `DigitThemeProvider` restyles every MUI component to the
 Figma values (light and dark), and the library adds the composite pieces the product mockups use.

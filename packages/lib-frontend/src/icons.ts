@@ -1,4 +1,4 @@
-// The icons the Digit design uses. Import them from the package root, for example
+// The icons the Sutton design uses. Import them from the package root, for example
 // `import { Plus } from "@digit/lib-frontend"`. Add a name here when a screen needs a new icon,
 // rather than importing lucide-react directly in an app. Icons whose plain name is also an MUI
 // component or a browser global (Box, Link, Text, File, Image, History, Lock) are exported with

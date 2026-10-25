@@ -29,8 +29,8 @@ Scripts:
 
 - `npm run pack` — `digit-app pack`: build + `app.zip` for Digit upload
 
-Local Digit runtime draft is not supported (there is no local Worker / env / D1 harness).
-Pack this example for a remote Digit draft first — a draft isolates Worker/D1/R2 from the published app
+Local Sutton runtime draft is not supported (there is no local Worker / env / D1 harness).
+Pack this example for a remote Sutton draft first — a draft isolates Worker/D1/R2 from the published app
 but shares published env vars and secrets; schedules and inbound webhooks stay published-only.
 
 ### What `pack` puts in `app.zip`
@@ -57,7 +57,7 @@ declares a `database` binding. Draft migrations apply to draft D1; promotion app
 migrations to the published D1 — no manual apply step.
 
 The example's secret-backed HTTP call uses the **same published env and published secrets** as
-production. Digit Settings edits update the published app only. There is no documented app-facing
+production. Sutton Settings edits update the published app only. There is no documented app-facing
 `isPreview()` helper yet, so do not add irreversible external side effects without an explicit
 guard. Draft schedules and inbound webhooks stay off.
 

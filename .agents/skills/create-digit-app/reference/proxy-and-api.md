@@ -77,7 +77,7 @@ tables.
 - Do **not** call Digit GraphQL with a bearer token from app JS
 - Do **not** invent a different proxy URL
 
-On a draft Host, Digit GraphQL reads and writes use the viewer's permissions, still
+On a draft Host, Sutton GraphQL reads and writes use the viewer's permissions, still
 limited to `manifest.permissions`. App-owned D1/R2 writes stay in draft resources.
 
 ## App backend
@@ -114,9 +114,9 @@ export default createHandler({
 Import codes / validation from `@digit/lib-common`; Worker Response helpers from
 `@digit/lib-backend` (no re-exports between packages).
 
-## Digit API from the backend
+## Sutton API from the backend
 
-The backend `fetch` handler gets an `api` argument for Digit GraphQL. Never ask the user for an API token,
+The backend `fetch` handler gets an `api` argument for Sutton GraphQL. Never ask the user for an API token,
 org id or anything similar: the platform brokers every call.
 
 ```js
@@ -132,7 +132,7 @@ export default createHandler({
 
 - Scope is `manifest.permissions`, exactly as for `/proxy/digit` — declare what the backend needs
 - It acts as **the user whose request it is serving**. Jobs, schedules and webhooks have no
-  Digit API for now: do Digit work in `fetch`, or pass the data a job needs in its payload
+  Sutton API for now: do Sutton work in `fetch`, or pass the data a job needs in its payload
 - Always use the `api` argument — never `env.__API`
 - Results come back as GraphQL `{ data, errors }` — check `errors`
 

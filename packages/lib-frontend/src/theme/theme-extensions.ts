@@ -2,7 +2,7 @@ import { type PaletteOptions } from "@mui/material/styles"
 
 import { neutral, neutralAlpha, stone } from "./colors"
 
-/** The palette keys Digit adds on top of MUI's, per mode. See the augmentation in types.ts. */
+/** The palette keys Sutton adds on top of MUI's, per mode. See the augmentation in types.ts. */
 export const getThemeExtensions = (
   darkMode: boolean,
 ): Required<Pick<PaletteOptions, "border" | "table" | "divider" | "opacity">> => ({

@@ -12,6 +12,3 @@ apps/*/backend/
 examples/*/frontend/
 examples/*/backend/
 .claude/*
-
-# scratch output of scripts/check-skill-docs.mjs
-.skill-docs-check/

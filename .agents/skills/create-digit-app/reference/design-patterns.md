@@ -2,7 +2,7 @@
 
 [design-system.md](design-system.md) has the rules and says which component to use;
 [components.md](components.md) has each component's props. These recipes say how a whole screen
-is put together. They are taken from the Digit product mockups, so a screen built from one sits
+is put together. They are taken from the Sutton product mockups, so a screen built from one sits
 naturally next to the platform's own screens.
 
 ## How to use this file

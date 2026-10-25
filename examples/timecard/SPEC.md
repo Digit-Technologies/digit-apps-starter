@@ -6,7 +6,7 @@ available, so this file is how a later session understands the app.
 ## What it does
 
 Mobile-first, single-view clock in / clock out app for one employee at a time — no tabs,
-no secondary navigation. Built from the Digit design system (`@digit/lib-frontend`):
+no secondary navigation. Built from the Sutton design system (`@digit/lib-frontend`):
 a `PageHeader` ("Time card") whose actions hold the "Preview data" `SwitchField` and the one
 primary button ("Clock in" / "Clock out", `loading` while the request runs); then a
 `PageBody` (720 max) with a "Today" `Section` (a `PropertyGrid`: employee, status `StatusPill`,

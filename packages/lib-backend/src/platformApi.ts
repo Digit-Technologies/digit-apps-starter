@@ -2,13 +2,13 @@ import { AppErrorCode } from '@digit/lib-common';
 
 import { HandlerError } from './createHandler';
 
-/** A GraphQL result from the Digit API, relayed as-is: check `errors` as well as `data`. */
+/** A GraphQL result from the Sutton API, relayed as-is: check `errors` as well as `data`. */
 export type GraphqlResult<T = unknown> = {
   data?: T | null;
   errors?: { message: string; extensions?: { code?: string } }[];
 };
 
-/** The Digit API in `fetch`, acting as the requesting user within the manifest's `permissions`. */
+/** The Sutton API in `fetch`, acting as the requesting user within the manifest's `permissions`. */
 export type PlatformApi = {
   query<T = unknown>(query: string, variables?: Record<string, unknown>): Promise<GraphqlResult<T>>;
 };
@@ -43,7 +43,7 @@ export function platformApi({ env, request }: { env: unknown; request: Request }
         if (code === 'SESSION_EXPIRED') {
           throw new HandlerError({
             code: 'SESSION_EXPIRED',
-            message: 'Your session expired. Re-open the app from Digit.',
+            message: 'Your session expired. Re-open the app from Sutton.',
             status: 401,
           });
         }
