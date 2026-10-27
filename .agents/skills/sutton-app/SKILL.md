@@ -1,5 +1,5 @@
 ---
-name: create-digit-app
+name: sutton-app
 description: >-
   Build, draft, and publish Digit custom apps (React + MUI + Digit theme via
   @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,

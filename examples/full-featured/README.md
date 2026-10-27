@@ -48,7 +48,7 @@ project/                  # Required in the zip — source, SPEC, tooling (not d
 2. Add env var `WELCOME_MESSAGE`
 3. Add env var `API_BASE_URL` (e.g. `https://httpbin.org`) and secret `THIRD_PARTY_API_KEY`
 4. `npm run pack`, deploy a draft, and promote it only through the explicit Publish action
-   (see the create-digit-app skill). Standalone MCP clients can choose a publish channel.
+   (see the sutton-app skill). Standalone MCP clients can choose a publish channel.
 
 D1 migrations in `src/backend/migrations/` run during the platform deployment when the manifest
 declares a `database` binding. Draft migrations apply to draft D1; promotion applies pending
