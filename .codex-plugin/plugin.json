@@ -1,0 +1,25 @@
+{
+  "name": "sutton",
+  "version": "0.1.0",
+  "description": "Sutton agent skills. The current skill, create-digit-app, builds, drafts, and publishes Sutton Studio and custom apps.",
+  "author": {
+    "name": "Sutton"
+  },
+  "homepage": "https://github.com/hey-sutton/sdk",
+  "repository": "https://github.com/hey-sutton/sdk",
+  "license": "MIT",
+  "keywords": ["sutton", "skills", "sdk", "custom-apps", "mcp"],
+  "skills": "./.agents/skills/",
+  "interface": {
+    "displayName": "Sutton",
+    "shortDescription": "Sutton agent skills",
+    "longDescription": "Sutton agent skills. The current skill, create-digit-app, scaffolds, builds, packs, drafts, and publishes Sutton Studio and custom apps (React + MUI frontends with optional Worker backends). Publishing needs a Sutton account and the Sutton MCP connection.",
+    "developerName": "Sutton",
+    "category": "Developer Tools",
+    "capabilities": [],
+    "defaultPrompt": [
+      "Build a Sutton app that shows today's open work orders.",
+      "Publish my Sutton app as a draft."
+    ]
+  }
+}
