@@ -40,6 +40,31 @@ That skill covers:
 - Deploying a draft or publishing the app with Digit tools (`publishAppZip` in App Builder, or
   MCP upload → `publishApp` with a channel → poll)
 
+## Agent plugin
+
+This repo is also the **Sutton** plugin, the home for Sutton agent skills in
+[`.agents/skills/`](.agents/skills). The current skill is `create-digit-app`, which
+builds, drafts, and publishes Sutton Studio and custom apps:
+
+- **Claude Code:** `/plugin marketplace add hey-sutton/sdk`, then
+  `/plugin install sutton@sutton` (or `/plugin install sutton --marketplace hey-sutton/sdk` on 2.1.275+)
+- **Codex:** `codex plugin marketplace add hey-sutton/sdk`, then
+  `codex plugin add sutton@sutton`
+- **Cursor:** a team admin imports this repo under **Import from Repo** in the team marketplace,
+  or clone it into `~/.cursor/plugins/local/sutton`
+- **Any other agent:** `npx skills add hey-sutton/sdk`
+
+Manifests live in `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and
+`.agents/plugins/marketplace.json`. Check Claude manifests with `claude plugin validate --strict .`.
+None of these files ship in the starter zip.
+
+Installed copies update when `version` changes. Don't edit it by hand: Release Please owns it.
+A `feat:`, `fix:`, `docs:` or `chore:` commit that touches `.agents/` opens (or updates) a
+`release sutton-plugin` PR that bumps `version` in all three `plugin.json` files and
+`.release-please-manifest.json`, and adds an entry to `.agents/CHANGELOG.md`.
+Merging it tags `sutton-plugin-vX.Y.Z`, and agents pick up the new version on their next
+marketplace refresh. `feat:` bumps the minor version; the others bump the patch.
+
 ## Packages
 
 | Package | Role |
@@ -82,12 +107,12 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 
 On every merge to `main`, CI publishes a curated zip for other repos / agent sessions:
 
-- Latest zip: [GitHub Releases (latest)](https://github.com/Digit-Technologies/digit-apps-starter/releases/latest)
+- Latest zip: [GitHub Releases (latest)](https://github.com/hey-sutton/sdk/releases/latest)
 - Dated snapshots: `starter-YYYY.MM.DD-<sha>` (immutable git tags; the newest is marked latest)
 
 ```bash
 curl -fsSL -o digit-apps-starter.zip \
-  https://github.com/Digit-Technologies/digit-apps-starter/releases/latest/download/digit-apps-starter.zip
+  https://github.com/hey-sutton/sdk/releases/latest/download/digit-apps-starter.zip
 unzip digit-apps-starter.zip
 ```
 

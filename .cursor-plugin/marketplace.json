@@ -1,0 +1,16 @@
+{
+  "name": "sutton",
+  "owner": {
+    "name": "Sutton"
+  },
+  "metadata": {
+    "description": "Official Sutton agent plugins."
+  },
+  "plugins": [
+    {
+      "name": "sutton",
+      "source": "./",
+      "description": "Sutton agent skills. The current skill builds, drafts, and publishes Sutton Studio and custom apps."
+    }
+  ]
+}

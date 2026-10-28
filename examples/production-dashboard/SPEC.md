@@ -73,7 +73,7 @@ as an explicit "No data" state, never faked as zero.
 ```
 Can you clone this repo and use the skill within it and the Digit MCP connector to build me an application and publish it to the Digit Staging - Digit org platform?
 
-https://github.com/Digit-Technologies/digit-apps-starter
+https://github.com/hey-sutton/sdk
 
 App to publish to:
 - name: Production dashboard
