@@ -2,7 +2,7 @@
 
 This is the app source for the "Production Dashboard" Digit app, exported from
 `apps/production-dashboard` in a local clone of
-[`digit-apps-starter`](https://github.com/hey-sutton/sdk).
+[`sdk`](https://github.com/hey-sutton/sdk).
 
 It's UI-only (no backend/Worker/D1) and depends on `@digit/lib-frontend` via a `file:`
 link, so it can't be built standalone — it needs to live inside the starter monorepo.
