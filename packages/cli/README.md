@@ -1,6 +1,23 @@
-# `@heysutton/sdk-build`
+# `@heysutton/cli`
 
-Build tooling for Sutton custom apps. **v1 public CLI:** `digit-app pack` only.
+The `sutton` CLI for Sutton custom apps.
+**v1 public CLI:** `sutton studio pack`, plus `sutton --help` and `sutton --version`.
+Unknown commands, and unknown or missing `studio` subcommands, exit non-zero with usage.
+
+`digit-app` stays as a bin for already-built apps: its `pack` runs
+`sutton studio pack`, and it prints a one-line deprecation warning pointing to
+`sutton studio pack`.
+
+Programmatic use:
+
+```js
+import { pack } from '@heysutton/cli';
+
+await pack({ root: process.cwd() });
+```
+
+`pack` loads its code only when it runs, so `--help` and `--version` don't
+import Vite. Vite is a regular dependency of this package.
 
 Local Digit runtime draft is not supported (Worker, env/secrets, and D1 are injected by
 the platform). Pack builds the channel-neutral deploy assets and writes `app.zip` for a
@@ -12,10 +29,10 @@ flow.
 ```json
 {
   "scripts": {
-    "pack": "digit-app pack"
+    "pack": "sutton studio pack"
   },
   "devDependencies": {
-    "@heysutton/sdk-build": "file:../../packages/sdk-build"
+    "@heysutton/cli": "file:../../packages/cli"
   }
 }
 ```
@@ -40,7 +57,7 @@ Zip root: `manifest.json` + `frontend/` (+ `backend/`) for Digit deploy, plus re
 ## Commands
 
 ```bash
-npm run pack   # digit-app pack → build + app.zip
+npm run pack   # sutton studio pack → build + app.zip
 ```
 
 Do not add per-app Vite configs or `scripts/pack.sh` — this package owns them.

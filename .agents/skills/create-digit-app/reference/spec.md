@@ -62,12 +62,12 @@ realistic builder-perspective SPEC.
 - `src/backend/` — Worker source (when the app has a backend)
 - Root config: `manifest.json`, `package.json`, `package-lock.json`, `tsconfig.json`,
   `index.html` (if any), `README.md`, `SPEC.md`
-- `package.json` must use `@heysutton/sdk-build` (`"pack": "digit-app pack"`)
+- `package.json` must use `@heysutton/cli` (`"pack": "sutton studio pack"`)
 
 ### Do not keep / do not commit
 
 - Built `frontend/` and `backend/` (gitignored; only packed into `app.zip`)
-- Per-app Vite configs or `scripts/pack.sh` — owned by `@heysutton/sdk-build`
+- Per-app Vite configs or `scripts/pack.sh` — owned by `@heysutton/cli`
 - `node_modules/`
 - `.vite/`
 - `*.zip` (`npm run pack` creates `app.zip` for Digit upload only)
@@ -76,6 +76,6 @@ realistic builder-perspective SPEC.
 
 ```bash
 # …verify… update SPEC.md if purpose/constraints changed…
-npm run pack           # digit-app pack → build + app.zip
+npm run pack           # sutton studio pack → build + app.zip
 # Optional: local git commit in the clone for the user's own history — never push upstream
 ```

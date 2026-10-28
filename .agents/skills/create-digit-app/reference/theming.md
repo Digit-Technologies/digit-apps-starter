@@ -34,7 +34,7 @@ Use `file:../packages/sdk-react` when the app sits at the repo root (not under
 
 For Worker helpers (`createHandler`, `backendPath`, `ok`/`err`, `requireEnv`), depend on
 [`@heysutton/sdk-server`](../../../../packages/sdk-server). Bundling is handled by
-`@heysutton/sdk-build` (`digit-app pack`) — see `examples/full-featured`.
+`@heysutton/cli` (`sutton studio pack`) — see `examples/full-featured`.
 
 ## Provider
 

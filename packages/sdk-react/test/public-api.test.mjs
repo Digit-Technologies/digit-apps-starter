@@ -63,12 +63,16 @@ test('runtime SDK packages publish dist/ publicly and depend on @heysutton/sdk b
   }
 });
 
-test('sdk-build publishes the digit-app CLI', () => {
-  const pkg = readPkg('sdk-build');
-  assert.equal(pkg.name, '@heysutton/sdk-build');
+test('@heysutton/cli publishes the sutton CLI with a digit-app alias', () => {
+  const pkg = readPkg('cli');
+  assert.equal(pkg.name, '@heysutton/cli');
   assert.equal(pkg.private, undefined);
   assert.equal(pkg.publishConfig.access, 'public');
-  assert.deepEqual(pkg.bin, { 'digit-app': 'src/cli.js' });
+  assert.deepEqual(pkg.bin, {
+    sutton: 'src/cli.js',
+    'digit-app': 'src/digit-app.js',
+  });
+  assert.deepEqual(pkg.exports, { '.': './src/index.js' });
   assert.ok(pkg.dependencies.vite, 'vite is a regular dependency');
 });
 
@@ -84,8 +88,8 @@ test('the four packages share one version; the only other package is the private
   );
   const pkgs = all.filter((p) => !p.private);
   assert.deepEqual(pkgs.map((p) => p.name).sort(), [
+    '@heysutton/cli',
     '@heysutton/sdk',
-    '@heysutton/sdk-build',
     '@heysutton/sdk-react',
     '@heysutton/sdk-server',
   ]);

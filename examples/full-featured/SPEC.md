@@ -29,8 +29,8 @@ wired to a real host).
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code. Draft
 uses published env and published secrets (Settings edits update the published app only); schedules do not run on
 draft, and inbound webhooks are published-only.
-`@heysutton/sdk*` is linked via `file:` in the monorepo; `digit-app pack` (`@heysutton/sdk-build`)
-vendors those packages (including `sdk-build`) under `project/packages/` in `app.zip`.
+`@heysutton/sdk*` is linked via `file:` in the monorepo; `sutton studio pack` (`@heysutton/cli`)
+vendors those packages (including `@heysutton/cli`) under `project/packages/` in `app.zip`.
 Local Digit runtime draft is not supported; remote draft is the platform deployment path.
 
 ## Prompts

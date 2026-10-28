@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "pack": "digit-app pack"
+    "pack": "sutton studio pack"
   },
   "dependencies": {
     "@heysutton/sdk-react": "file:../../packages/sdk-react",
@@ -16,7 +16,7 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@heysutton/sdk-build": "file:../../packages/sdk-build",
+    "@heysutton/cli": "file:../../packages/cli",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "typescript": "^7.0.2"

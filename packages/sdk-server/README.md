@@ -151,7 +151,7 @@ Handler args: `{ path, method, query, headers, body, env, ctx }`; return
 
 ## Bundle
 
-Use `@heysutton/sdk-build` (`digit-app pack`) — do not add a per-app Vite backend config.
+Use `@heysutton/cli` (`sutton studio pack`) — do not add a per-app Vite backend config.
 See `examples/full-featured`.
 
 ## Depend

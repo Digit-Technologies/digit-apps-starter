@@ -9,7 +9,7 @@ routes you don’t need rather than inventing a new project shape.
 **Stack:** React + MUI + [`@heysutton/sdk-react`](../packages/sdk-react). Workers use
 [`@heysutton/sdk-server`](../packages/sdk-server) + [`@heysutton/sdk`](../packages/sdk)
 (codes / validation — depend directly; packages do not re-export each other). Tooling:
-[`@heysutton/sdk-build`](../packages/sdk-build) (`digit-app pack`).
+[`@heysutton/cli`](../packages/cli) (`sutton studio pack`).
 
 Shared conventions (also enforced by the skill):
 
@@ -22,9 +22,9 @@ Shared conventions (also enforced by the skill):
   (hooks only — pair errors with `AppErrorAlert`)
 - Workers: `createHandler` + `backendPath` + `requireEnv` / `ok` / `err` from
   `sdk-server`; `AppErrorCode` / parsers from `sdk`
-- Root `manifest.json`; `digit-app pack` stages it at the zip root
+- Root `manifest.json`; `sutton studio pack` stages it at the zip root
 - `npm run pack` → `app.zip` with root `manifest.json` + `frontend/` (+ `backend/`) for
   Digit deploy and required `project/` (source, `SPEC.md`, tooling, vendored
-  `@heysutton/sdk*` incl. `sdk-build` — not deployed)
-- Do not copy Vite configs or pack scripts into each example — use `@heysutton/sdk-build`
+  `@heysutton/sdk*` incl. `@heysutton/cli` — not deployed)
+- Do not copy Vite configs or pack scripts into each example — use `@heysutton/cli`
 - Ignore `node_modules/`, `.vite/`, `*.zip`, and build folders
