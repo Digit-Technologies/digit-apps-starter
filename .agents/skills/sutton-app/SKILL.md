@@ -2,12 +2,12 @@
 name: sutton-app
 description: >-
   Build, draft, and publish Digit custom apps (React + MUI + Digit theme via
-  @digit/lib-frontend, optional Cloudflare Worker backends via @digit/lib-backend,
+  @heysutton/sdk-react, optional Cloudflare Worker backends via @heysutton/sdk-server,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Digit app, editing an app in a local clone
   of this starter, publishing via MCP, or when the user mentions Digit apps,
-  manifest.json, AppProxy, DigitThemeProvider, /proxy/digit, or
+  manifest.json, AppProxy, ThemeProvider, /proxy/digit, or
   /proxy/backend.
 ---
 
@@ -19,13 +19,13 @@ mount targets, stacks, or publish flows, and do not build features the iframe ca
 support (new tabs/popups, direct browser dialogs, clipboard read, camera, etc.). The
 host can do some of these on the app's behalf (scanning, for example), so call
 `getHostCapabilities` before telling the user a feature can't be built.
-Use `AppHost.invoke` from `@digit/lib-frontend` for every host-mediated action:
+Use `AppHost.invoke` from `@heysutton/sdk-react` for every host-mediated action:
 `invoke("download", ...)` for files, `invoke("print", ...)` for printable HTML. `window.DigitHost`
 (including its `download` and `print`) is deprecated — migrate it to `AppHost` in any file you
 touch. See
 [reference/iframe-constraints.md](reference/iframe-constraints.md).
 
-**Default stack (required):** React + MUI + `@digit/lib-frontend` (`DigitThemeProvider`).
+**Default stack (required):** React + MUI + `@heysutton/sdk-react` (`ThemeProvider`).
 Do not build vanilla HTML/CSS UI, invent a parallel design system, or skip the theme
 package. Users are often non-developers — one path keeps apps looking and behaving
 like Digit.
@@ -51,8 +51,8 @@ stop and ask the user to connect the Digit tools before continuing.
 | Public GraphQL schema     | MCP resources `graphql-schema://index`, `graphql-schema://type/{TypeName}`, `graphql-schema://search/{query}` |
 | Manifest permissions      | MCP tool **`appPermissions`** — put each permission’s **`key`** in `manifest.json`                            |
 | Find an existing app’s id | MCP tool **`apps`**                                                                                           |
-| Standalone publish       | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** (`channel`) → poll **`appPublish`**       |
-| App Builder deploy       | **`publishAppZip`** → draft; the Digit web app's Publish action promotes it to the published app      |
+| Standalone publish        | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** (`channel`) → poll **`appPublish`**            |
+| App Builder deploy        | **`publishAppZip`** → draft; the Digit web app's Publish action promotes it to the published app              |
 
 There are **no** MCP tools to create, update, or delete apps, or to manage env/secrets —
 those stay in the Digit UI. Do not invent them.
@@ -70,7 +70,7 @@ Copy this checklist and track progress:
 Digit app progress:
 - [ ] 1. Use the starter's apps/app, or scaffold apps/<name> for an additional app
 - [ ] 2. Confirm the user created the app in Digit (get appId via apps)
-- [ ] 3. Implement frontend (React + MUI + DigitThemeProvider → #root)
+- [ ] 3. Implement frontend (React + MUI + ThemeProvider → #root)
 - [ ] 4. Add src/backend/ only if env/secrets or server logic needed
 - [ ] 5. Look up GraphQL via graphql-schema://… and permissions via appPermissions
 - [ ] 6. Write root manifest.json (permissions[].key from appPermissions)
@@ -112,16 +112,16 @@ npm run new-app -- my-app       # copies examples/full-featured → apps/my-app
 `npm install` so the workspace links the new app. Trim what you don't need from the copy —
 do not invent a new project shape.
 
-The template covers theme, errors, Digit GraphQL (`useDigitApiQuery`), public API, secrets,
-D1 via the Worker (`useBackendQuery` / `@digit/lib-backend`), and env config. Keep the
-`@digit/lib-build` devDependency and `"pack": "digit-app pack"` — do **not** add Vite
+The template covers theme, errors, Digit GraphQL (`useApiQuery`), public API, secrets,
+D1 via the Worker (`useBackendQuery` / `@heysutton/sdk-server`), and env config. Keep the
+`@heysutton/cli` devDependency and `"pack": "sutton studio pack"` — do **not** add Vite
 configs, a local pack script, or a per-app `npm install`.
 
-**Always install from the repo root.** `@digit/lib-build` is a `file:` link, so npm puts
+**Always install from the repo root.** `@heysutton/cli` is a `file:` link, so npm puts
 its build toolchain (Vite) in the root `node_modules`, not the app's. Running `npm install`
 only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
-All apps share React + MUI + `@digit/lib-frontend` and the same folder conventions.
+All apps share React + MUI + `@heysutton/sdk-react` and the same folder conventions.
 There is no local Digit runtime draft (Worker, env/secrets, and D1 are platform-injected).
 `npm run pack` produces the same channel-neutral `app.zip` for a remote draft or a published
 deployment.
@@ -176,16 +176,16 @@ then resolve its `id` with MCP **`apps`** (or have the user paste it).
 
 ```
 apps/my-app/
-├── package.json            # @digit/lib-* ; "pack": "digit-app pack"
-├── manifest.json           # staged at zip root by digit-app pack
+├── package.json            # @heysutton/sdk* ; "pack": "sutton studio pack"
+├── manifest.json           # staged at zip root by sutton studio pack
 ├── SPEC.md
-├── src/frontend/           # main.tsx → #root + DigitThemeProvider; App.tsx
+├── src/frontend/           # main.tsx → #root + ThemeProvider; App.tsx
 ├── src/backend/            # optional Worker (index.js, migrations/)
 ├── frontend/               # BUILD — gitignored; frontend/index.js entry
 └── backend/                # BUILD when Worker present — gitignored
 ```
 
-Edit `src/frontend` and `src/backend` only. Harness types come from `@digit/lib-frontend`
+Edit `src/frontend` and `src/backend` only. Harness types come from `@heysutton/sdk-react`
 — no local `digit.d.ts`. Prefer data hooks over calling `window.AppProxy`.
 
 ```bash
@@ -193,9 +193,16 @@ npm run pack -w apps/my-app     # from repo root → app.zip
 ```
 
 `app.zip` has root `manifest.json`, `frontend/` (+ `backend/` when declared), and
-`project/` (source + vendored `@digit/lib-*`). Digit deploys `frontend/` / `backend/`
+`project/` (source + vendored `@heysutton/sdk*`). Digit deploys `frontend/` / `backend/`
 only; still upload the zip **unchanged**. Details:
 [reference/manifest.md](reference/manifest.md), [reference/publish.md](reference/publish.md).
+
+**Older apps on `@digit/lib-*`.** Apps packed before the SDK rename import `@digit/lib-*`
+and carry their own vendored copies under `packages/lib-*`. They keep working as they are.
+Don't migrate them to `@heysutton/sdk*`, and don't mix the two names in one app: leave
+their `package.json` and imports on `@digit/lib-*` and pack them as usual.
+Some lack `packages/lib-common`; the starter's private `packages/lib-common` shim (re-exports
+`@heysutton/sdk`) resolves it, so don't copy or recreate it in the app.
 
 ### 4. Frontend rules
 
@@ -211,13 +218,13 @@ only; still upload the zip **unchanged**. Details:
   iframe can't do something itself (camera, scanning, navigating Digit), check
   `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
-- **Stack:** React + MUI + `DigitThemeProvider`. Prefer theme palette / typography over
+- **Stack:** React + MUI + `ThemeProvider`. Prefer theme palette / typography over
   hard-coded colors or custom CSS. Do not invent a parallel CSS design system or
   restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
-- **Wrap the tree** with `DigitThemeProvider` in `main.tsx` (see the template).
-- **Entry is IIFE `frontend/index.js`.** `@digit/lib-build` packs it — no alternate bundler.
-- **Digit API:** `useDigitApiQuery` / `useDigitApiMutation`. Look up operations via
+- **Wrap the tree** with `ThemeProvider` in `main.tsx` (see the template).
+- **Entry is IIFE `frontend/index.js`.** `@heysutton/cli` packs it — no alternate bundler.
+- **Digit API:** `useApiQuery` / `useApiMutation`. Look up operations via
   `graphql-schema://…` first. Never call Digit GraphQL with a bearer token from the browser.
 - **Sort / filter / page via the API:** When the GraphQL field (or backend route) accepts
   sort, filter, or connection/page inputs, use those — do not fetch a full list and
@@ -270,7 +277,7 @@ accepts HTML and opens the browser print dialog.
 #### Host-mediated actions (`AppHost.invoke`)
 
 Every host-mediated action goes through one generic call, `AppHost.invoke(method, params?)`
-(`import { AppHost } from "@digit/lib-frontend"`), which returns a promise:
+(`import { AppHost } from "@heysutton/sdk-react"`), which returns a promise:
 
 - the host succeeded — it **resolves with the result data**.
 - the user dismissed a host UI — it **resolves with `null`**. That is a normal outcome, not
@@ -382,25 +389,28 @@ upstream starter.
 
 ## Decision guide
 
-| Need                                  | Path                                                            |
-| ------------------------------------- | --------------------------------------------------------------- |
-| Any new app                           | Copy `full-featured`, delete unused tabs/routes                 |
-| Digit GraphQL                         | Schema resources → hooks + `appPermissions` → `key` in manifest |
-| Env / secrets / D1 / third-party HTTP | Worker + `@digit/lib-backend`                                   |
-| Codes / JSON validation               | `@digit/lib-common`                                             |
+| Need                                   | Path                                                            |
+| -------------------------------------- | --------------------------------------------------------------- |
+| Any new app                            | Copy `full-featured`, delete unused tabs/routes                 |
+| Digit GraphQL                          | Schema resources → hooks + `appPermissions` → `key` in manifest |
+| Env / secrets / D1 / third-party HTTP  | Worker + `@heysutton/sdk-server`                                |
+| Codes / JSON validation                | `@heysutton/sdk`                                                |
 | Print a Sutton inventory or item label | `LabelPrintPanel` → [reference/labels.md](reference/labels.md)  |
 
-## Packages (`lib-*`)
+## Packages (`@heysutton/sdk*`)
 
 Import from each package **root only**. Helpers use **named arguments**. Runtime packages
-do **not** re-export each other. Use `@digit/lib-build` only via `npm run pack`.
+do **not** re-export each other. Use `@heysutton/cli` only via `npm run pack`.
+Use the current export names (`ThemeProvider`, `useApiQuery`, `useApiMutation`, `appJobs`).
+The old `Digit*` names (`DigitThemeProvider`, `useDigitApiQuery`, `digitJobs`, …) are
+deprecated aliases; don't use them in new code.
 
-| Package               | When                            | Role                                                           |
-| --------------------- | ------------------------------- | -------------------------------------------------------------- |
-| `@digit/lib-frontend` | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
-| `@digit/lib-backend`  | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs |
-| `@digit/lib-common`   | With Worker (or code branching) | `AppErrorCode`, result types, validation                       |
-| `@digit/lib-build`    | Always (devDependency)          | `digit-app pack`                                               |
+| Package                 | When                            | Role                                                                                                                                    |
+| ----------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `@heysutton/sdk-react`  | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
+| `@heysutton/sdk-server` | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs                                                                          |
+| `@heysutton/sdk`        | With Worker (or code branching) | `AppErrorCode`, result types, validation                                                                                                |
+| `@heysutton/cli`  | Always (devDependency)          | `sutton studio pack`                                                                                                                 |
 
 ### Backend Worker
 
@@ -409,7 +419,7 @@ Always wrap with `createHandler`. Strip `/proxy/backend` via `backendPath`, matc
 Digit API: use the `api` argument `fetch` receives (`api.query(...)`) — never an API token;
 it acts as the requesting user, and jobs/schedules/webhooks have no Digit API for now —
 [reference/proxy-and-api.md](reference/proxy-and-api.md#digit-api-from-the-backend).
-Jobs/schedules: `createHandler({ jobs })` + `digitJobs({ env })` —
+Jobs/schedules: `createHandler({ jobs })` + `appJobs({ env })` —
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md). Webhooks:
 `createHandler({ webhooks })`, verify with `verifyWebhookSignature` before acting —
 [reference/webhooks.md](reference/webhooks.md). SQL migrations:
@@ -422,7 +432,7 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
 - [reference/labels.md](reference/labels.md) for Sutton label preview and print, permissions, and failures
-- [reference/theming.md](reference/theming.md) — DigitThemeProvider, MUI theme, AppHost settings
+- [reference/theming.md](reference/theming.md) — ThemeProvider, MUI theme, AppHost settings
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key
@@ -433,4 +443,4 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/publish.md](reference/publish.md) — draft/published deployment workflows and zip rules
 - [reference/draft-and-publish.md](reference/draft-and-publish.md) — channel behavior and draft safety
 - [reference/spec.md](reference/spec.md) — SPEC.md iteration context
-- [`packages/lib-build`](../../../packages/lib-build) — `digit-app pack` shared tooling
+- [`packages/cli`](../../../packages/cli) — `sutton studio pack` shared tooling

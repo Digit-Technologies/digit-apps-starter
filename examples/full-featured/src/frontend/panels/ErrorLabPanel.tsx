@@ -11,9 +11,9 @@ import Typography from '@mui/material/Typography';
 import {
   AppErrorAlert,
   useBackendMutation,
-  useDigitApiMutation,
+  useApiMutation,
   type AppError,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
 const FIXTURES: Record<string, AppError> = {
   platform_session: {
@@ -73,7 +73,7 @@ export default function ErrorLabPanel() {
   const fixture = useMemo(() => FIXTURES[fixtureKey]!, [fixtureKey]);
   const [live, setLive] = useState<LiveState>({ status: 'idle' });
 
-  const [runGraphql] = useDigitApiMutation({ mutation: BAD_GRAPHQL });
+  const [runGraphql] = useApiMutation({ mutation: BAD_GRAPHQL });
   const [runBackend] = useBackendMutation();
 
   const runLive = async (kind: 'graphql' | 'validation' | 'server') => {

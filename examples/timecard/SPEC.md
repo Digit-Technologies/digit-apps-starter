@@ -69,7 +69,7 @@ Key behaviors:
 
 Can you clone this repo and use the skill within it and the Digit MCP connector to build me an application and publish it to the Digit Staging - Dgit org platform?
 
-https://github.com/Digit-Technologies/digit-apps-starter
+https://github.com/hey-sutton/sdk
 
 App to publish to:
 - name: Timecard

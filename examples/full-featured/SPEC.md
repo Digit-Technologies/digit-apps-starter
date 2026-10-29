@@ -3,7 +3,7 @@
 ## What it does
 
 Kitchen-sink reference Digit app used as the default template for new apps. It is a
-tabbed demo of platform surfaces — theme/MUI via `DigitThemeProvider`, shared error UI,
+tabbed demo of platform surfaces — theme/MUI via `ThemeProvider`, shared error UI,
 Digit GraphQL (`READ_ITEM` / items), Worker-backed public weather, secrets-backed third-party
 HTTP, D1 notes CRUD, an env-driven greeting, and platform jobs & schedules (an hourly
 `prune-notes` schedule plus an on-demand `note-stats` job) — not a production business app. Agents
@@ -23,28 +23,28 @@ wired to a real host).
 - Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets tab hits an external HTTP API
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
 - Schedule `prune-notes` (hourly, manifest `backend.schedules`) deletes notes older than
-  `payload.maxAgeDays`; job `note-stats` is submitted via `digitJobs` from
+  `payload.maxAgeDays`; job `note-stats` is submitted via `appJobs` from
   `POST /jobs/note-stats` — handlers in `src/backend/jobs.js`, UI in the Jobs tab
 
 Gotchas: secrets and env are Worker bindings only — never put them in frontend code. Draft
 uses published env and published secrets (Settings edits update the published app only); schedules do not run on
 draft, and inbound webhooks are published-only.
-`@digit/lib-*` is linked via `file:` in the monorepo; `digit-app pack` (`@digit/lib-build`)
-vendors those packages (including `lib-build`) under `project/packages/` in `app.zip`.
+`@heysutton/sdk*` is linked via `file:` in the monorepo; `sutton studio pack` (`@heysutton/cli`)
+vendors those packages (including `@heysutton/cli`) under `project/packages/` in `app.zip`.
 Local Digit runtime draft is not supported; remote draft is the platform deployment path.
 
 ## Prompts
 
 ```
 Build a full-featured reference Digit app we can use as the default example for the
-starter repo. It should exercise theme/MUI via DigitThemeProvider, shared error handling
+starter repo. It should exercise theme/MUI via ThemeProvider, shared error handling
 UI, Digit GraphQL, a Worker calling a public API, secrets-backed third-party HTTP, D1
 CRUD, and env-driven config — as separate tabs so someone can copy the example and delete
 what they don't need.
 
-Use the shared @digit/lib-frontend / lib-backend / lib-common helpers instead of
+Use the shared @heysutton/sdk-react / sdk-server / sdk helpers instead of
 hand-rolling proxy fetches and Worker response shapes. Keep the stack React + MUI +
-DigitThemeProvider.
+ThemeProvider.
 
 Make sure pack produces a zip we can publish and later rehydrate: Digit deploy assets
 plus source, SPEC, and tooling, since end users won't have Git.

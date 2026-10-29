@@ -51,7 +51,7 @@ as an explicit "No data" state, never faked as zero.
   first. It's toggled at runtime via a "Preview data" switch in the header (state lives in
   `App.tsx`, passed into `useDailyMetrics(previewMode)`), defaulting to **off** — real
   `dailyMetrics` data is the default experience. When on, the real query is skipped
-  entirely (`useDigitApiQuery({ ..., skip: previewMode })`) and a small "Preview data" chip
+  entirely (`useApiQuery({ ..., skip: previewMode })`) and a small "Preview data" chip
   renders next to the header so the fake numbers are never mistaken for live output.
 - **Chart styling:** the units-produced area chart originally filled with
   `theme.palette.primary.main`, which in this theme is near-black (it's the button/text
@@ -73,7 +73,7 @@ as an explicit "No data" state, never faked as zero.
 ```
 Can you clone this repo and use the skill within it and the Digit MCP connector to build me an application and publish it to the Digit Staging - Digit org platform?
 
-https://github.com/Digit-Technologies/digit-apps-starter
+https://github.com/hey-sutton/sdk
 
 App to publish to:
 - name: Production dashboard

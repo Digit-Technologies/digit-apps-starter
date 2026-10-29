@@ -55,7 +55,7 @@ do not assume a draft is published just because its `appPublish` row succeeded.
    If the app does not exist, stop and ask the user to create it in Digit.
 3. GraphQL operations were checked against `graphql-schema://…`, and
    `manifest.permissions` contains the `key` values returned by `appPermissions`.
-4. `app.zip` is ready via `npm run pack` (`digit-app pack` from `@digit/lib-build`).
+4. `app.zip` is ready via `npm run pack` (`sutton studio pack` from `@heysutton/cli`).
 
 ## Standalone MCP upload
 
@@ -89,7 +89,7 @@ app.zip
 ├── backend/                  # when manifest.backend is set
 │   ├── index.js
 │   └── migrations/
-└── project/                  # required — source, SPEC, vendored @digit/lib-*
+└── project/                  # required — source, SPEC, vendored @heysutton/sdk*
 ```
 
 Do not modify the zip after packing. Digit deploys `frontend/` and `backend/`; `project/`
@@ -124,7 +124,7 @@ upload is single-use.
 
 - `manifest.json` at the zip root and `frontend/index.js`
 - When `manifest.backend` is set: `backend/index.js`
-- `project/` with source, `SPEC.md`, and vendored `@digit/lib-*` including `lib-build`
+- `project/` with source, `SPEC.md`, and vendored `@heysutton/sdk*` including `@heysutton/cli`
 - `manifest.permissions` are **`key`** values from `appPermissions`
 
 See [draft-and-publish.md](draft-and-publish.md) for channel isolation, migrations,

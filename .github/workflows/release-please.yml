@@ -1,0 +1,46 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+# contents + pull-requests: Release Please opens the Release PR and creates the
+# GitHub Release.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    outputs:
+      # "true" only when this run created GitHub releases (Release PR merged).
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      # Sutton agent plugin (.agents). Tagged sutton-plugin-v*.
+      plugin_release_created: ${{ steps.release.outputs['.agents--release_created'] }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Component releases must never become GitHub's "latest": digit-api downloads
+      # the starter zip from /releases/latest. release-please can't pass
+      # make_latest: false, so it creates them as drafts (drafts are never latest)
+      # with the tag pushed up front (force-tag-creation), and this step
+      # publishes them with --latest=false.
+      - name: Publish component releases without marking them latest
+        if: steps.release.outputs.releases_created == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTPUTS: ${{ toJSON(steps.release.outputs) }}
+        run: |
+          set -euo pipefail
+          jq -r '. as $o | ($o.paths_released | fromjson)[] | $o[. + "--tag_name"] // empty' <<<"$OUTPUTS" |
+            while read -r tag; do
+              case "$tag" in
+                starter-*) echo "::error::refusing to touch starter release $tag"; exit 1 ;;
+              esac
+              echo "Publishing ${tag} (not latest)"
+              gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --draft=false --latest=false
+            done

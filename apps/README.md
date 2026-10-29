@@ -1,7 +1,7 @@
 # apps/
 
 Digit apps live here, one folder per app. They are npm workspaces of this clone, which is
-what lets `digit-app pack` find its build toolchain.
+what lets `sutton studio pack` find its build toolchain.
 
 The curated starter archive includes `apps/app/`, a packable source scaffold generated
 from the frontend-only `examples/hello-world`. Start there when no retained publish exists.

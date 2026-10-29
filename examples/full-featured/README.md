@@ -4,17 +4,17 @@ Reference Digit app that exercises the main platform surfaces in one place:
 
 | Tab | What it shows |
 | --- | --- |
-| Theme | Typography, buttons, fields, chips, alerts, table via `DigitThemeProvider` |
+| Theme | Typography, buttons, fields, chips, alerts, table via `ThemeProvider` |
 | Error lab | Canned + live failures through `AppErrorAlert` / mutation hooks |
-| Digit API | `useDigitApiQuery` items query (`READ_ITEM`) |
+| Digit API | `useApiQuery` items query (`READ_ITEM`) |
 | Public API | Worker → Open-Meteo (no key) via `/proxy/backend/weather` |
 | Secrets | Worker → httpbin bearer using `API_BASE_URL` + `THIRD_PARTY_API_KEY` |
 | Notes | D1 CRUD (`FULL_FEATURED_DB`) |
-| Jobs | Submit `note-stats` via `digitJobs`, watch runs; hourly `prune-notes` schedule |
+| Jobs | Submit `note-stats` via `appJobs`, watch runs; hourly `prune-notes` schedule |
 | Config | Env `WELCOME_MESSAGE` via `/proxy/backend/greeting` |
 
-Uses `@digit/lib-frontend`, `@digit/lib-backend`, `@digit/lib-common`, and
-`@digit/lib-build` (`digit-app pack`).
+Uses `@heysutton/sdk-react`, `@heysutton/sdk-server`, `@heysutton/sdk`, and
+`@heysutton/cli` (`sutton studio pack`).
 
 Layout:
 
@@ -25,7 +25,7 @@ Layout:
 
 Scripts:
 
-- `npm run pack` — `digit-app pack`: build + `app.zip` for Digit upload
+- `npm run pack` — `sutton studio pack`: build + `app.zip` for Digit upload
 
 Local Digit runtime draft is not supported (there is no local Worker / env / D1 harness).
 Pack this example for a remote Digit draft first — a draft isolates Worker/D1/R2 from the published app
@@ -39,7 +39,7 @@ frontend/                 # Digit deploy
 backend/                  # Digit deploy
 project/                  # Required in the zip — source, SPEC, tooling (not deployed)
   src/, SPEC.md, configs
-  packages/lib-*          # vendored (incl. lib-build) until registry publish
+  packages/sdk*          # vendored (incl. cli) until registry publish
 ```
 
 ## Setup in Digit

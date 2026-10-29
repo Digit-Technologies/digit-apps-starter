@@ -15,7 +15,7 @@ npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
 ```
 
 This repo is one npm workspace (`packages/*`, `examples/*`, `apps/*`). Always install from
-the repo root — `@digit/lib-build` is linked with `file:`, so npm installs its Vite build
+the repo root — `@heysutton/cli` is linked with `file:`, so npm installs its Vite build
 toolchain into the root `node_modules` rather than the app's.
 
 The curated starter archive includes `apps/app/`, pre-scaffolded from the frontend-only
@@ -31,30 +31,56 @@ Agents should follow:
 
 That skill covers:
 
-- **React + MUI + `@digit/lib-frontend`** (required default stack)
+- **React + MUI + `@heysutton/sdk-react`** (required default stack)
 - `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
-- Mounting to `#root` with `DigitThemeProvider`
+- Mounting to `#root` with `ThemeProvider`
 - Root `manifest.json` (staged at the zip root by pack)
-- Digit API access via `useDigitApiQuery` / `/proxy/digit`
+- Digit API access via `useApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
 - Deploying a draft or publishing the app with Digit tools (`publishAppZip` in App Builder, or
   MCP upload → `publishApp` with a channel → poll)
+
+## Agent plugin
+
+This repo is also the **Sutton** plugin, the home for Sutton agent skills in
+[`.agents/skills/`](.agents/skills). The current skill is `sutton-app`, which
+builds, drafts, and publishes Sutton Studio and custom apps:
+
+- **Claude Code:** `/plugin marketplace add hey-sutton/sdk`, then
+  `/plugin install sutton@sutton` (or `/plugin install sutton --marketplace hey-sutton/sdk` on 2.1.275+)
+- **Codex:** `codex plugin marketplace add hey-sutton/sdk`, then
+  `codex plugin add sutton@sutton`
+- **Cursor:** a team admin imports this repo under **Import from Repo** in the team marketplace,
+  or clone it into `~/.cursor/plugins/local/sutton`
+- **Any other agent:** `npx skills add hey-sutton/sdk`
+
+Manifests live in `.claude-plugin/`, `.cursor-plugin/`, `.codex-plugin/`, and
+`.agents/plugins/marketplace.json`. Check Claude manifests with `claude plugin validate --strict .`.
+None of these files ship in the starter zip.
+
+Installed copies update when `version` changes. Don't edit it by hand: Release Please owns it.
+A `feat:`, `fix:`, `docs:` or `chore:` commit that touches `.agents/` opens (or updates) a
+`release sutton-plugin` PR that bumps `version` in all three `plugin.json` files and
+`.release-please-manifest.json`, and adds an entry to `.agents/CHANGELOG.md`.
+Merging it tags `sutton-plugin-vX.Y.Z`, and agents pick up the new version on their next
+marketplace refresh. `feat:` bumps the minor version; the others bump the patch.
 
 ## Packages
 
 | Package | Role |
 | --- | --- |
-| [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
-| [`packages/lib-frontend`](packages/lib-frontend) (`@digit/lib-frontend`) | Theme, harness types, Digit/backend **hooks**, error UI, `printLabel` |
-| [`packages/lib-backend`](packages/lib-backend) (`@digit/lib-backend`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
-| [`packages/lib-build`](packages/lib-build) (`@digit/lib-build`) | `digit-app pack` — shared Vite build + `app.zip` |
+| [`packages/sdk`](packages/sdk) (`@heysutton/sdk`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
+| [`packages/sdk-react`](packages/sdk-react) (`@heysutton/sdk-react`) | Theme, harness types, Digit/backend **hooks**, error UI, `printLabel` |
+| [`packages/sdk-server`](packages/sdk-server) (`@heysutton/sdk-server`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
+| [`packages/cli`](packages/cli) (`@heysutton/cli`) | `sutton studio pack` — shared Vite build + `app.zip` |
+| [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Private, never published: re-exports `@heysutton/sdk` so apps packed before the rename still build. Don't use in new apps |
 
 Runtime packages expose a slim root export for everyday app/Worker code. Other files
 under `src/` are implementation details — do not deep-import them. Helpers use named
 arguments. Runtime packages do **not** re-export each other.
 
 Apps depend on them via `file:…` — not on private `digit-web`. With a Worker, depend on
-`lib-frontend` + `lib-backend` + `lib-common`, plus `lib-build` as a devDependency.
+`sdk-react` + `sdk-server` + `sdk`, plus `@heysutton/cli` as a devDependency.
 
 ## Example
 
@@ -81,12 +107,12 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 
 On every merge to `main`, CI publishes a curated zip for other repos / agent sessions:
 
-- Latest zip: [GitHub Releases (latest)](https://github.com/Digit-Technologies/digit-apps-starter/releases/latest)
+- Latest zip: [GitHub Releases (latest)](https://github.com/hey-sutton/sdk/releases/latest)
 - Dated snapshots: `starter-YYYY.MM.DD-<sha>` (immutable git tags; the newest is marked latest)
 
 ```bash
 curl -fsSL -o digit-apps-starter.zip \
-  https://github.com/Digit-Technologies/digit-apps-starter/releases/latest/download/digit-apps-starter.zip
+  https://github.com/hey-sutton/sdk/releases/latest/download/digit-apps-starter.zip
 unzip digit-apps-starter.zip
 ```
 

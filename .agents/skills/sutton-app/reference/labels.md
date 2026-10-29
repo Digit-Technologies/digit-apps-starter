@@ -7,7 +7,7 @@ Do not draw the label or load its records. Pass ids. The host renders it exactly
 `LabelPrintPanel` is an inline preview with a Print button. Place it anywhere.
 
 ```tsx
-import { LabelPrintPanel } from '@digit/lib-frontend';
+import { LabelPrintPanel } from '@heysutton/sdk-react';
 
 <LabelPrintPanel labelId={labelId} entityType="inventory" entityId={inventoryId} copies={2} />
 ```
