@@ -59,9 +59,32 @@ A `feat:` or `fix:` commit touching `packages/` opens or updates one release PR 
 `feat!:` / `BREAKING CHANGE:` major. Merging **that** PR publishes. Merging this setup PR
 does not publish by itself.
 
-To put the `1.0.0` baseline on npm before any bump, run **Publish NPM packages** with
-`dry_run: false`. Publishing uses npm trusted publishing (OIDC, no token), so each
-`@heysutton/*` package needs this repo and workflow registered as its trusted publisher.
+## Trusted publishing
+
+CI publishes with npm trusted publishing (OIDC). There's no npm token: the job's
+`id-token: write` lets GitHub mint a short-lived token naming this repo and workflow, and npm
+accepts it only for packages that list that repo and workflow as a trusted publisher.
+
+npm only lets you add a trusted publisher to a package that already exists, so the `1.0.0`
+baseline is published once by hand, by an `@heysutton` org member (the `sutton_dev` bot
+account), from a clean checkout of `main`:
+
+```bash
+npm ci && npm run build:packages
+npm publish --access public -w @heysutton/sdk
+npm publish --access public -w @heysutton/sdk-react
+npm publish --access public -w @heysutton/sdk-server
+npm publish --access public -w @heysutton/cli
+```
+
+Publish `sdk` first, since `sdk-react` and `sdk-server` depend on it. Leave off
+`--provenance` (it only works in CI), so don't use `scripts/publish-packages.sh` for this.
+
+Then register the trusted publisher on each of the four packages, on the package's Settings
+page or with `npm trust github @heysutton/<pkg> --file release-please.yml --repo hey-sutton/sdk --allow-publish`.
+Owner, repository and workflow file are case-sensitive, and there is no environment. A new
+configuration expires if no publish uses it within 48 hours, so add it shortly before merging
+a release PR. Add `publish-npm-packages.yml` the same way only when you're about to run it.
 
 ## Cadence
 
@@ -70,7 +93,7 @@ To put the `1.0.0` baseline on npm before any bump, run **Publish NPM packages**
 | Push or merge to `main` that does not create a release                 | No publish. Release Please may open or update the release PR.                          |
 | Merge the Release Please release PR                                    | Same workflow publishes all four `@heysutton/sdk*` packages.                            |
 | `workflow_dispatch` on Publish NPM packages, `dry_run: true` (default) | Dry-run only.                                                                          |
-| `workflow_dispatch` with `dry_run: false`                              | Real publish via trusted publishing. Use for the 1.0.0 baseline or an emergency republish. |
+| `workflow_dispatch` with `dry_run: false`                              | Real publish via trusted publishing. Use for an emergency republish.                     |
 
 A `release: published` workflow would not run: Release Please creates the GitHub Release
 with `GITHUB_TOKEN`, and GitHub does not start workflows from events that token produces.
