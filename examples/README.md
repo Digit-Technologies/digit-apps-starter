@@ -6,6 +6,12 @@
 [`full-featured/`](full-featured) is the reference Digit app. Copy it and remove tabs /
 routes you don’t need rather than inventing a new project shape.
 
+[`production-dashboard/`](production-dashboard) and [`timecard/`](timecard) are Sutton
+Studio's official templates. Each ships a `preview.jpg`: the card image Studio shows for
+that template under starting points (digit-api serves its `raw.githubusercontent.com` URL
+from `main`). Pack leaves it out of `app.zip`, and `npm run new-app -- --from <example>`
+does not copy it.
+
 **Stack:** React + MUI + [`@heysutton/sdk-react`](../packages/sdk-react). Workers use
 [`@heysutton/sdk-server`](../packages/sdk-server) + [`@heysutton/sdk`](../packages/sdk)
 (codes / validation — depend directly; packages do not re-export each other). Tooling:

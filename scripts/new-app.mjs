@@ -13,8 +13,9 @@ link it into the workspace so \`npm run pack\` works.
 `;
 
 const SKIP_ANYWHERE = new Set(['node_modules', '.vite', '.DS_Store']);
-// Build outputs only — siblings of package.json, never src/frontend or src/backend.
-const SKIP_AT_ROOT = new Set(['frontend', 'backend', 'package-lock.json']);
+// Build outputs (siblings of package.json, never src/frontend or src/backend) and the
+// example's Studio card image, which belongs to the example rather than a scaffolded app.
+const SKIP_AT_ROOT = new Set(['frontend', 'backend', 'package-lock.json', 'preview.jpg']);
 
 function parseArgs(argv) {
   const options = { from: 'full-featured', install: true };
