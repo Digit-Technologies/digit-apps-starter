@@ -5,30 +5,131 @@
   "draft": true,
   "force-tag-creation": true,
   "changelog-sections": [
-    { "type": "feat", "section": "Features" },
-    { "type": "fix", "section": "Bug Fixes" },
-    { "type": "perf", "section": "Performance Improvements" },
-    { "type": "revert", "section": "Reverts" },
-    { "type": "docs", "section": "Documentation", "hidden": true },
-    { "type": "style", "section": "Styles", "hidden": true },
-    { "type": "chore", "section": "Miscellaneous Chores", "hidden": true },
-    { "type": "refactor", "section": "Code Refactoring", "hidden": true },
-    { "type": "test", "section": "Tests", "hidden": true },
-    { "type": "build", "section": "Build System", "hidden": true },
-    { "type": "ci", "section": "Continuous Integration", "hidden": true }
-  ],
-  "plugins": [
     {
-      "type": "node-workspace",
-      "merge": false
+      "type": "feat",
+      "section": "Features"
     },
     {
-      "type": "linked-versions",
-      "groupName": "@heysutton/sdk",
-      "components": ["sdk", "sdk-react", "sdk-server", "cli"]
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "perf",
+      "section": "Performance Improvements"
+    },
+    {
+      "type": "revert",
+      "section": "Reverts"
+    },
+    {
+      "type": "docs",
+      "section": "Documentation",
+      "hidden": true
+    },
+    {
+      "type": "style",
+      "section": "Styles",
+      "hidden": true
+    },
+    {
+      "type": "chore",
+      "section": "Miscellaneous Chores",
+      "hidden": true
+    },
+    {
+      "type": "refactor",
+      "section": "Code Refactoring",
+      "hidden": true
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    },
+    {
+      "type": "build",
+      "section": "Build System",
+      "hidden": true
+    },
+    {
+      "type": "ci",
+      "section": "Continuous Integration",
+      "hidden": true
     }
   ],
   "packages": {
+    ".agents": {
+      "component": "sutton-plugin",
+      "release-type": "simple",
+      "changelog-sections": [
+        {
+          "type": "feat",
+          "section": "Features"
+        },
+        {
+          "type": "fix",
+          "section": "Bug Fixes"
+        },
+        {
+          "type": "perf",
+          "section": "Performance Improvements"
+        },
+        {
+          "type": "revert",
+          "section": "Reverts"
+        },
+        {
+          "type": "docs",
+          "section": "Skill Updates"
+        },
+        {
+          "type": "chore",
+          "section": "Skill Updates"
+        },
+        {
+          "type": "style",
+          "section": "Styles",
+          "hidden": true
+        },
+        {
+          "type": "refactor",
+          "section": "Code Refactoring",
+          "hidden": true
+        },
+        {
+          "type": "test",
+          "section": "Tests",
+          "hidden": true
+        },
+        {
+          "type": "build",
+          "section": "Build System",
+          "hidden": true
+        },
+        {
+          "type": "ci",
+          "section": "Continuous Integration",
+          "hidden": true
+        }
+      ],
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "/.claude-plugin/plugin.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "/.cursor-plugin/plugin.json",
+          "jsonpath": "$.version"
+        },
+        {
+          "type": "json",
+          "path": "/.codex-plugin/plugin.json",
+          "jsonpath": "$.version"
+        }
+      ]
+    },
     "packages/sdk": {
       "component": "sdk",
       "release-type": "node"
@@ -45,5 +146,21 @@
       "component": "cli",
       "release-type": "node"
     }
-  }
+  },
+  "plugins": [
+    {
+      "type": "node-workspace",
+      "merge": false
+    },
+    {
+      "type": "linked-versions",
+      "groupName": "@heysutton/sdk",
+      "components": [
+        "sdk",
+        "sdk-react",
+        "sdk-server",
+        "cli"
+      ]
+    }
+  ]
 }

@@ -16,6 +16,8 @@ jobs:
     outputs:
       # "true" only when this run created GitHub releases (Release PR merged).
       releases_created: ${{ steps.release.outputs.releases_created }}
+      # Sutton agent plugin (.agents). Tagged sutton-plugin-v*.
+      plugin_release_created: ${{ steps.release.outputs['.agents--release_created'] }}
       # @heysutton/sdk* (linked versions, released together). Tagged sdk*-v*.
       sdk_release_created: ${{ steps.release.outputs['packages/sdk--release_created'] }}
       all: ${{ toJSON(steps.release.outputs) }}

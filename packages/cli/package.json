@@ -19,7 +19,6 @@
   ],
   "bin": {
     "sutton": "src/cli.js",
-    "sutton-app": "src/sutton-app.js",
     "digit-app": "src/digit-app.js"
   },
   "main": "./src/index.js",
@@ -28,7 +27,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "^6.0.5",
-    "vite": "^8.2.1",
+    "vite": "^8.2.4",
     "vite-plugin-css-injected-by-js": "^5.0.2"
   }
 }

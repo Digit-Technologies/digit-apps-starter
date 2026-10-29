@@ -63,14 +63,13 @@ test('runtime SDK packages publish dist/ publicly and depend on @heysutton/sdk b
   }
 });
 
-test('@heysutton/cli publishes the sutton CLI with sutton-app and digit-app aliases', () => {
+test('@heysutton/cli publishes the sutton CLI with a digit-app alias', () => {
   const pkg = readPkg('cli');
   assert.equal(pkg.name, '@heysutton/cli');
   assert.equal(pkg.private, undefined);
   assert.equal(pkg.publishConfig.access, 'public');
   assert.deepEqual(pkg.bin, {
     sutton: 'src/cli.js',
-    'sutton-app': 'src/sutton-app.js',
     'digit-app': 'src/digit-app.js',
   });
   assert.deepEqual(pkg.exports, { '.': './src/index.js' });

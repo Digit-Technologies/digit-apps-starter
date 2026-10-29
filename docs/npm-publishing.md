@@ -14,7 +14,7 @@ This is separate from the curated starter zip (`publish-starter-asset.yml`, tags
 | `@heysutton/sdk`        | `packages/sdk`        | Error codes, result types, pure validation                                               |
 | `@heysutton/sdk-react`  | `packages/sdk-react`  | `ThemeProvider`, `AppHost`, API hooks, `AppErrorAlert`, label printing               |
 | `@heysutton/sdk-server` | `packages/sdk-server` | Worker handlers, env/secrets, jobs, webhooks, platform API                               |
-| `@heysutton/cli`        | `packages/cli`        | The `sutton` CLI (`sutton studio pack`) and `import { pack }`; `sutton-app` / `digit-app` aliases |
+| `@heysutton/cli`        | `packages/cli`        | The `sutton` CLI (`sutton studio pack`) and `import { pack }`; `digit-app` legacy bin |
 
 `sdk-react` and `sdk-server` depend on `@heysutton/sdk` at a plain version (`"1.0.0"` at
 bootstrap). npm workspaces link the local package because the version matches. Don't put
@@ -23,8 +23,8 @@ bootstrap). npm workspaces link the local package because the version matches. D
 `@heysutton/cli` is the `sutton` command. Commands are grouped by product area, so its
 public surface for 1.0.0 is `sutton studio pack`, `sutton studio --help`, `sutton --help`
 and `sutton --version`; unknown commands and unknown or missing `studio` subcommands exit
-non-zero. `sutton-app pack` and `digit-app pack` keep working for already-built apps and
-run `sutton studio pack`; `digit-app` prints a one-line deprecation warning. Code can
+non-zero. `digit-app pack` keeps working for already-built apps: it runs
+`sutton studio pack` and prints a one-line deprecation warning. Code can
 call `import { pack } from '@heysutton/cli'`. Subcommands load their own code only when
 they run. Vite is a regular dependency, so installing `@heysutton/cli` brings the build
 toolchain with it. There's no separate build library.
@@ -60,7 +60,8 @@ A `feat:` or `fix:` commit touching `packages/` opens or updates one release PR 
 does not publish by itself.
 
 To put the `1.0.0` baseline on npm before any bump, run **Publish NPM packages** with
-`dry_run: false` after `NPM_TOKEN` is set.
+`dry_run: false`. Publishing uses npm trusted publishing (OIDC, no token), so each
+`@heysutton/*` package needs this repo and workflow registered as its trusted publisher.
 
 ## Cadence
 
@@ -68,8 +69,8 @@ To put the `1.0.0` baseline on npm before any bump, run **Publish NPM packages**
 | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
 | Push or merge to `main` that does not create a release                 | No publish. Release Please may open or update the release PR.                          |
 | Merge the Release Please release PR                                    | Same workflow publishes all four `@heysutton/sdk*` packages.                            |
-| `workflow_dispatch` on Publish NPM packages, `dry_run: true` (default) | Dry-run only. No token required.                                                       |
-| `workflow_dispatch` with `dry_run: false`                              | Real publish. Requires `NPM_TOKEN`. Use for the 1.0.0 baseline or an emergency republish. |
+| `workflow_dispatch` on Publish NPM packages, `dry_run: true` (default) | Dry-run only.                                                                          |
+| `workflow_dispatch` with `dry_run: false`                              | Real publish via trusted publishing. Use for the 1.0.0 baseline or an emergency republish. |
 
 A `release: published` workflow would not run: Release Please creates the GitHub Release
 with `GITHUB_TOKEN`, and GitHub does not start workflows from events that token produces.
