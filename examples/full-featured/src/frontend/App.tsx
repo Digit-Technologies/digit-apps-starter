@@ -5,7 +5,7 @@ import Button from '@mui/material/Button';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
 
-import { PageBody, PageHeader, Plus } from '@digit/lib-frontend';
+import { PageBody, PageHeader, Plus } from '@heysutton/sdk-react';
 
 import ComponentsPanel from './panels/ComponentsPanel';
 import ConfigPanel from './panels/ConfigPanel';

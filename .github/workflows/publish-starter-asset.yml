@@ -6,6 +6,9 @@ on:
   pull_request:
     paths:
       - '.agents/**'
+      - '.claude-plugin/**'
+      - '.cursor-plugin/**'
+      - '.codex-plugin/**'
       - 'examples/**'
       - 'packages/**'
       - 'scripts/**'
@@ -16,6 +19,13 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - '.github/workflows/publish-starter-asset.yml'
+      - '.github/workflows/publish-npm-packages.yml'
+      - '.github/workflows/release-please.yml'
+      - '.github/workflows/test-packages.yml'
+      - '.github/workflows/release-please.yml'
+      - 'release-please-config.json'
+      - '.release-please-manifest.json'
+      - 'docs/**'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -40,7 +50,72 @@ jobs:
       - name: Set up Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 24
+          node-version-file: .nvmrc
+
+      # The repo root doubles as an agent plugin (Claude Code, Cursor, Codex). These
+      # manifests are not part of the starter zip.
+      - name: Validate agent plugin manifests
+        run: |
+          set -euo pipefail
+
+          SKILLS="./.agents/skills/"
+          for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .codex-plugin/plugin.json; do
+            jq -e --arg skills "$SKILLS" '
+              .name == "sutton" and
+              (.version | type) == "string" and
+              .skills == $skills
+            ' "$f" >/dev/null || { echo "::error file=$f::unexpected plugin manifest"; exit 1; }
+          done
+
+          # One version for every agent, so a bump reaches all of them.
+          versions="$(jq -r .version .claude-plugin/plugin.json .cursor-plugin/plugin.json .codex-plugin/plugin.json | sort -u)"
+          if [ "$(printf '%s\n' "$versions" | wc -l)" -ne 1 ]; then
+            echo "::error::plugin manifest versions differ: $(echo "$versions" | tr '\n' ' ')"
+            exit 1
+          fi
+
+          jq -e '.displayName == "Sutton"' .claude-plugin/plugin.json >/dev/null
+          jq -e '.displayName == "Sutton"' .cursor-plugin/plugin.json >/dev/null
+          jq -e '.interface.displayName == "Sutton"' .codex-plugin/plugin.json >/dev/null
+
+          # Release Please owns the version: its manifest must match, and every
+          # plugin.json must be in the plugin component's extra-files.
+          version="$(printf '%s' "$versions")"
+          jq -e --arg v "$version" '.[".agents"] == $v' .release-please-manifest.json >/dev/null \
+            || { echo "::error file=.release-please-manifest.json::.agents is not $version"; exit 1; }
+          for f in .claude-plugin/plugin.json .cursor-plugin/plugin.json .codex-plugin/plugin.json; do
+            jq -e --arg p "/$f" '
+              .packages[".agents"] as $pkg |
+              $pkg.component == "sutton-plugin" and
+              any($pkg["extra-files"][]; .type == "json" and .path == $p and .jsonpath == "$.version")
+            ' release-please-config.json >/dev/null \
+              || { echo "::error file=release-please-config.json::$f is not bumped by Release Please"; exit 1; }
+          done
+
+          # Claude: version lives in plugin.json only, or the marketplace entry silently loses.
+          jq -e '
+            .name == "sutton" and
+            any(.plugins[]; .name == "sutton" and .source == "./" and (has("version") | not))
+          ' .claude-plugin/marketplace.json >/dev/null
+          jq -e '
+            .name == "sutton" and
+            any(.plugins[]; .name == "sutton" and .source == "./")
+          ' .cursor-plugin/marketplace.json >/dev/null
+          jq -e '
+            .name == "sutton" and
+            any(.plugins[]; .name == "sutton" and .source.path == "./" and
+              (.policy.installation | type) == "string" and (.category | type) == "string")
+          ' .agents/plugins/marketplace.json >/dev/null
+
+          # Every bundled skill has a SKILL.md whose name matches its folder.
+          found=0
+          for dir in .agents/skills/*/; do
+            name="$(basename "$dir")"
+            test -f "$dir/SKILL.md" || { echo "::error::$dir has no SKILL.md"; exit 1; }
+            grep -Eq "^name: ${name}\$" "$dir/SKILL.md" || { echo "::error::$dir/SKILL.md name is not $name"; exit 1; }
+            found=$((found + 1))
+          done
+          test "$found" -gt 0
 
       - name: Stage curated tree
         run: |
@@ -53,8 +128,8 @@ jobs:
             --exclude node_modules \
             --exclude .DS_Store \
             --exclude .vite \
-            .agents/skills/create-digit-app/ \
-            "$STAGE/.agents/skills/create-digit-app/"
+            .agents/skills/sutton-app/ \
+            "$STAGE/.agents/skills/sutton-app/"
 
           rsync -a \
             --exclude node_modules \
@@ -90,6 +165,12 @@ jobs:
           test ! -d "$STAGE/apps/app/backend"
           test ! -f "$STAGE/apps/app/app.zip"
 
+          # Plugin manifests are for repo installs only, not the starter zip.
+          test ! -e "$STAGE/.claude-plugin"
+          test ! -e "$STAGE/.cursor-plugin"
+          test ! -e "$STAGE/.codex-plugin"
+          test ! -e "$STAGE/.agents/plugins"
+
           echo "STAGE=$STAGE" >> "$GITHUB_ENV"
 
       # Stamped before the official templates are packed so their manifests carry this tag.
@@ -104,13 +185,13 @@ jobs:
             echo "sha=${GITHUB_SHA}"
           } >> "$GITHUB_OUTPUT"
 
-          # Read by digit-app pack: stamps the release tag into each published app's manifest.
+          # Read by sutton studio pack: stamps the release tag into each published app's manifest.
           jq --arg tag "$DATE_TAG" '. + {starterRelease: $tag}' "$STAGE/package.json" \
             > "$STAGE/package.json.tmp" && mv "$STAGE/package.json.tmp" "$STAGE/package.json"
 
           # Read by digit-api (readSkillReleaseTag): stamps this release's tag into the skill's own
           # frontmatter so a rebuilt builder session can detect a stale cached copy of the skill.
-          SKILL_MD="$STAGE/.agents/skills/create-digit-app/SKILL.md"
+          SKILL_MD="$STAGE/.agents/skills/sutton-app/SKILL.md"
           awk -v tag="$DATE_TAG" '
             NR==1 && $0=="---" { print; infm=1; next }
             infm==1 && $0=="---" { print "metadata:"; print "  releaseTag: " tag; print; infm=0; next }
@@ -148,9 +229,10 @@ jobs:
           cp -R "$STAGE" "$CHECK"
           cd "$CHECK"
 
+          # The root `prepare` script builds the packages' dist/, as in the harness.
           npm install --no-audit --no-fund
 
-          # A second copy means the seed's pins disagree with lib-frontend's peers, and
+          # A second copy means the seed's pins disagree with sdk-react's peers, and
           # every app built from it bundles two Reacts.
           for pkg in react react-dom @mui/material; do
             copies="$(find . -path "*/node_modules/$pkg/package.json")"
@@ -231,7 +313,7 @@ jobs:
           - Source commit: \`${GITHUB_SHA}\`
 
           ### Contents
-          - \`.agents/skills/create-digit-app\`
+          - \`.agents/skills/sutton-app\`
           - Pre-scaffolded, frontend-only, packable \`apps/app/\`
           - \`examples/\`, \`packages/\`, \`scripts/\`
           - Prebuilt \`examples/<name>/app.zip\` for every example

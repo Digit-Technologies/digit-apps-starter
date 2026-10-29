@@ -7,8 +7,8 @@ import {
   PageBody,
   PageHeader,
   Section,
-  useDigitApiQuery,
-} from '@digit/lib-frontend';
+  useApiQuery,
+} from '@heysutton/sdk-react';
 
 type CurrentUserData = {
   currentUser?: { username: string | null; email: string | null } | null;
@@ -24,10 +24,10 @@ const CURRENT_USER_QUERY = `
 `;
 
 // Every screen is a PageHeader, then content. Pick a recipe from
-// .agents/skills/create-digit-app/reference/design-patterns.md (list page, record page, settings,
-// dashboard, …) and build it from the @digit/lib-frontend components it names.
+// .agents/skills/sutton-app/reference/design-patterns.md (list page, record page, settings,
+// dashboard, …) and build it from the @heysutton/sdk-react components it names.
 export default function App() {
-  const { data, error, loading, refetch } = useDigitApiQuery<CurrentUserData>({
+  const { data, error, loading, refetch } = useApiQuery<CurrentUserData>({
     query: CURRENT_USER_QUERY,
   });
   const name =

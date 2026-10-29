@@ -29,7 +29,7 @@ import {
   Zap,
   type DataTableColumn,
   type RecordStatus,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
 
 type RunStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';

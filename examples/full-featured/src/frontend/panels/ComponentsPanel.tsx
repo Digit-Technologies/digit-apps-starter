@@ -27,7 +27,7 @@ import {
   StatusPill,
   SwitchField,
   type RecordStatus,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
 
 // One example status word for each Figma record-status stage.

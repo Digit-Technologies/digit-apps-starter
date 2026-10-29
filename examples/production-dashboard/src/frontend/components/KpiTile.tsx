@@ -5,7 +5,7 @@ import Card from '@mui/material/Card';
 import Skeleton from '@mui/material/Skeleton';
 import Typography from '@mui/material/Typography';
 
-import { Section } from '@digit/lib-frontend';
+import { Section } from '@heysutton/sdk-react';
 
 export type KpiTileProps = {
   /** Sentence-case metric name, shown as the tile's `Section` heading. */

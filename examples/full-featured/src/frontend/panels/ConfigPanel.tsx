@@ -7,7 +7,7 @@ import {
   RefreshCw,
   Section,
   useBackendQuery,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
 type GreetingData = { message: string };
 

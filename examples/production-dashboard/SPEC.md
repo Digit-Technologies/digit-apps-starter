@@ -53,7 +53,7 @@ chart), never faked as zero.
   first. It's toggled at runtime via a "Preview data" switch in the header (state lives in
   `App.tsx`, passed into `useDailyMetrics(previewMode)`), defaulting to **off** — real
   `dailyMetrics` data is the default experience. When on, the real query is skipped
-  entirely (`useDigitApiQuery({ ..., skip: previewMode })`) and a "Preview data" outlined `Chip`
+  entirely (`useApiQuery({ ..., skip: previewMode })`) and a "Preview data" outlined `Chip`
   renders as the `PageHeader` title adornment so the fake numbers are never mistaken for
   live output.
 - **Layout (design-patterns.md › Dashboard):** `PageHeader` (title, the library `SwitchField`
@@ -79,7 +79,7 @@ chart), never faked as zero.
 ```
 Can you clone this repo and use the skill within it and the Digit MCP connector to build me an application and publish it to the Digit Staging - Digit org platform?
 
-https://github.com/Digit-Technologies/digit-apps-starter
+https://github.com/hey-sutton/sdk
 
 App to publish to:
 - name: Production dashboard
@@ -116,7 +116,7 @@ Behavior:
 
 ## Context supplied
 
-- Started from `examples/full-featured` per the `create-digit-app` skill, then removed
+- Started from `examples/full-featured` per the `sutton-app` skill, then removed
   `src/backend` and the example tabs/panels since this app is Digit-API-only.
 - Schema/permission lookups done live via the Digit Staging MCP resources
   (`graphql-schema://search/dailyMetrics`, `graphql-schema://type/Query`,

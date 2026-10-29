@@ -8,7 +8,7 @@ import {
   Section,
   StatusPill,
   useBackendQuery,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
 type StatusData = {
   authenticated: boolean;

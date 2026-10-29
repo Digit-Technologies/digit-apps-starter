@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "sutton",
+  "displayName": "Sutton",
+  "version": "0.1.0",
+  "description": "Sutton agent skills. The current skill, sutton-app, builds, drafts, and publishes Sutton Studio and custom apps.",
+  "author": {
+    "name": "Sutton"
+  },
+  "homepage": "https://github.com/hey-sutton/sdk",
+  "repository": "https://github.com/hey-sutton/sdk",
+  "license": "MIT",
+  "keywords": ["sutton", "skills", "sdk", "custom-apps", "mcp"],
+  "skills": "./.agents/skills/"
+}

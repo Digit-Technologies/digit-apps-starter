@@ -33,7 +33,7 @@ import {
   useBackendMutation,
   useBackendQuery,
   type DataTableColumn,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
 
 type Note = {

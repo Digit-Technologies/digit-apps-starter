@@ -3,7 +3,7 @@ import { useState } from 'react';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 
-import { AppErrorAlert, PageBody, PageHeader, Section, SwitchField } from '@digit/lib-frontend';
+import { AppErrorAlert, PageBody, PageHeader, Section, SwitchField } from '@heysutton/sdk-react';
 
 import MosChart from './components/MosChart';
 import MosCompletedTile from './components/MosCompletedTile';

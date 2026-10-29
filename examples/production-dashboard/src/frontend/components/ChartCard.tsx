@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import Card from '@mui/material/Card';
 import Skeleton from '@mui/material/Skeleton';
 
-import { ChartLine, EmptyState, Section } from '@digit/lib-frontend';
+import { ChartLine, EmptyState, Section } from '@heysutton/sdk-react';
 
 /** Plot height shared by every chart, its skeleton and its empty state. */
 export const CHART_HEIGHT = 280;

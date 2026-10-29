@@ -1,7 +1,7 @@
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, Globe, PropertyGrid, Section, useBackendQuery } from '@digit/lib-frontend';
+import { AppErrorAlert, Globe, PropertyGrid, Section, useBackendQuery } from '@heysutton/sdk-react';
 
 type WeatherData = {
   latitude: number;

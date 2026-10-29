@@ -6,7 +6,7 @@ available, so this file is how a later session understands the app.
 ## What it does
 
 Mobile-first, single-view clock in / clock out app for one employee at a time — no tabs,
-no secondary navigation. Built from the Sutton design system (`@digit/lib-frontend`):
+no secondary navigation. Built from the Sutton design system (`@heysutton/sdk-react`):
 a `PageHeader` ("Time card") whose actions hold the "Preview data" `SwitchField` and the one
 primary button ("Clock in" / "Clock out", `loading` while the request runs); then a
 `PageBody` (720 max) with a "Today" `Section` (a `PropertyGrid`: employee, status `StatusPill`,
@@ -49,7 +49,7 @@ Key behaviors:
     already in the requested state, so the single toggle button can't double-fire into an
     inconsistent state.
 - No env vars or secrets.
-- **UI:** icons are Lucide from `@digit/lib-frontend` (`Clock`, `Calendar`). The clock
+- **UI:** icons are Lucide from `@heysutton/sdk-react` (`Clock`, `Calendar`). The clock
   button sits in the `PageHeader` because it is the page's single primary action. Clock out
   is not destructive, so it uses the same primary button (no red, no confirm). Preview mode
   disables the button and says why in an info `Alert`. Loading uses `Skeleton` values and
@@ -71,7 +71,7 @@ Key behaviors:
 
 Can you clone this repo and use the skill within it and the Digit MCP connector to build me an application and publish it to the Digit Staging - Dgit org platform?
 
-https://github.com/Digit-Technologies/digit-apps-starter
+https://github.com/hey-sutton/sdk
 
 App to publish to:
 - name: Timecard
@@ -103,7 +103,7 @@ Behavior:
 ## Context supplied
 
 Scaffolded from `examples/full-featured` via `npm run new-app -- timecard`. Built by
-reading the `create-digit-app` skill end-to-end (manifest, permissions, proxy-and-api,
+reading the `sutton-app` skill end-to-end (manifest, permissions, proxy-and-api,
 backend-env-secrets, publish, spec references) plus the full-featured example's
 `NotesPanel.tsx` / `DigitApiPanel.tsx` / `src/backend/{index.js,notes.js}` as the D1 CRUD
 and Digit-GraphQL-hook reference patterns. Confirmed `CurrentUser.id` needs no permission

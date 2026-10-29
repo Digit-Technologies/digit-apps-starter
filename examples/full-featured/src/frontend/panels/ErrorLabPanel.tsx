@@ -12,9 +12,9 @@ import {
   PageBody,
   Section,
   useBackendMutation,
-  useDigitApiMutation,
+  useApiMutation,
   type AppError,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
 
 const FIXTURES: { id: string; label: string; error: AppError }[] = [
@@ -102,7 +102,7 @@ export default function ErrorLabPanel() {
   const [fixtureId, setFixtureId] = useState(FIXTURES[0]!.id);
   const fixture = FIXTURES.find((entry) => entry.id === fixtureId) ?? FIXTURES[0]!;
 
-  const [runGraphql] = useDigitApiMutation({ mutation: BAD_GRAPHQL });
+  const [runGraphql] = useApiMutation({ mutation: BAD_GRAPHQL });
   const [runBackend] = useBackendMutation();
   const [running, setRunning] = useState<Trigger | null>(null);
   const [live, setLive] = useState<LiveResult | null>(null);

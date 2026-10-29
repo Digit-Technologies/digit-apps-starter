@@ -11,9 +11,9 @@ import {
   PageBody,
   RecordName,
   TextIcon,
-  useDigitApiQuery,
+  useApiQuery,
   type DataTableColumn,
-} from '@digit/lib-frontend';
+} from '@heysutton/sdk-react';
 
 
 type ItemNode = { id: string; name?: string | null; sku?: string | null };
@@ -67,7 +67,7 @@ const columns: DataTableColumn<ItemNode>[] = [
 export default function DigitApiPanel() {
   // The template asks for the first 10 items. For a full list, send `connection` (first/after)
   // and sort arguments from the table's models and refetch when they change.
-  const { data, error, loading, refetch } = useDigitApiQuery<ItemsData>({
+  const { data, error, loading, refetch } = useApiQuery<ItemsData>({
     query: ITEMS_QUERY,
     variables: { connection: { first: 10 } },
   });
