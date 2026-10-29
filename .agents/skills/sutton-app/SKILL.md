@@ -1,5 +1,5 @@
 ---
-name: create-digit-app
+name: sutton-app
 description: >-
   Build, draft, and publish Digit custom apps (React + MUI + Digit theme via
   @heysutton/sdk-react, optional Cloudflare Worker backends via @heysutton/sdk-server,
@@ -11,7 +11,7 @@ description: >-
   /proxy/backend.
 ---
 
-# Create Digit App
+# Sutton App
 
 Build Digit custom apps that run inside Digit as **sandboxed iframes** with a locked-down
 Permissions Policy. Follow this skill end-to-end — do not invent alternate layouts,

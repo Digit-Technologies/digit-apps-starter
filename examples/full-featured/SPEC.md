@@ -52,7 +52,7 @@ plus source, SPEC, and tooling, since end users won't have Git.
 
 ## Context supplied
 
-- Started from the Digit apps starter conventions (skill `create-digit-app`) and the
+- Started from the Digit apps starter conventions (skill `sutton-app`) and the
   shared lib packages in this monorepo — not from a customer production app
 - Open-Meteo used as the keyless public API for the weather demo
 - httpbin-style bearer check for the secrets demo (`API_BASE_URL` + `THIRD_PARTY_API_KEY`)

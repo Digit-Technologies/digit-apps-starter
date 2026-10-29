@@ -3,7 +3,7 @@
   "name": "sutton",
   "displayName": "Sutton",
   "version": "0.1.0",
-  "description": "Sutton agent skills. The current skill, create-digit-app, builds, drafts, and publishes Sutton Studio and custom apps.",
+  "description": "Sutton agent skills. The current skill, sutton-app, builds, drafts, and publishes Sutton Studio and custom apps.",
   "author": {
     "name": "Sutton"
   },

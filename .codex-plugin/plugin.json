@@ -1,7 +1,7 @@
 {
   "name": "sutton",
   "version": "0.1.0",
-  "description": "Sutton agent skills. The current skill, create-digit-app, builds, drafts, and publishes Sutton Studio and custom apps.",
+  "description": "Sutton agent skills. The current skill, sutton-app, builds, drafts, and publishes Sutton Studio and custom apps.",
   "author": {
     "name": "Sutton"
   },
@@ -13,7 +13,7 @@
   "interface": {
     "displayName": "Sutton",
     "shortDescription": "Sutton agent skills",
-    "longDescription": "Sutton agent skills. The current skill, create-digit-app, scaffolds, builds, packs, drafts, and publishes Sutton Studio and custom apps (React + MUI frontends with optional Worker backends). Publishing needs a Sutton account and the Sutton MCP connection.",
+    "longDescription": "Sutton agent skills. The current skill, sutton-app, scaffolds, builds, packs, drafts, and publishes Sutton Studio and custom apps (React + MUI frontends with optional Worker backends). Publishing needs a Sutton account and the Sutton MCP connection.",
     "developerName": "Sutton",
     "category": "Developer Tools",
     "capabilities": [],

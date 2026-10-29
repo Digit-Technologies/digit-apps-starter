@@ -21,7 +21,7 @@ import Vite. Vite is a regular dependency of this package.
 
 Local Digit runtime draft is not supported (Worker, env/secrets, and D1 are injected by
 the platform). Pack builds the channel-neutral deploy assets and writes `app.zip` for a
-remote draft or published deployment. See the create-digit-app skill for the draft → publish
+remote draft or published deployment. See the sutton-app skill for the draft → publish
 flow.
 
 ## Install (app)
