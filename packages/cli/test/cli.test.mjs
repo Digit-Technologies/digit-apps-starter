@@ -76,6 +76,15 @@ test('an unknown or missing studio subcommand exits non-zero with usage', () => 
   assert.match(none.stderr, /Usage: sutton studio pack/);
 });
 
+test('sutton studio --help prints usage and exits 0 without loading pack', () => {
+  for (const flag of ['--help', '-h']) {
+    const { code, stdout } = cli('sutton', ['studio', flag]);
+    assert.equal(code, 0);
+    assert.match(stdout, /^Usage: sutton studio pack/);
+    assert.doesNotMatch(stdout, /LOADED/);
+  }
+});
+
 test('studio pack rejects arguments', () => {
   const { code, stderr } = cli('sutton', ['studio', 'pack', 'extra']);
   assert.equal(code, 1);
