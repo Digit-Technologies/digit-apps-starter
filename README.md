@@ -15,7 +15,7 @@ npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
 ```
 
 This repo is one npm workspace (`packages/*`, `examples/*`, `apps/*`). Always install from
-the repo root — `@digit/lib-build` is linked with `file:`, so npm installs its Vite build
+the repo root — `@heysutton/cli` is linked with `file:`, so npm installs its Vite build
 toolchain into the root `node_modules` rather than the app's.
 
 The curated starter archive includes `apps/app/`, pre-scaffolded from the frontend-only
@@ -31,11 +31,11 @@ Agents should follow:
 
 That skill covers:
 
-- **React + MUI + `@digit/lib-frontend`** (required default stack)
+- **React + MUI + `@heysutton/sdk-react`** (required default stack)
 - `src/frontend` + `src/backend` source; sibling `frontend/` / `backend/` build outputs (pack only, not committed)
-- Mounting to `#root` with `DigitThemeProvider`
+- Mounting to `#root` with `ThemeProvider`
 - Root `manifest.json` (staged at the zip root by pack)
-- Digit API access via `useDigitApiQuery` / `/proxy/digit`
+- Digit API access via `useApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
 - Deploying a draft or publishing the app with Digit tools (`publishAppZip` in App Builder, or
   MCP upload → `publishApp` with a channel → poll)
@@ -69,17 +69,18 @@ marketplace refresh. `feat:` bumps the minor version; the others bump the patch.
 
 | Package | Role |
 | --- | --- |
-| [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
-| [`packages/lib-frontend`](packages/lib-frontend) (`@digit/lib-frontend`) | Theme, harness types, Digit/backend **hooks**, error UI, `printLabel` |
-| [`packages/lib-backend`](packages/lib-backend) (`@digit/lib-backend`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
-| [`packages/lib-build`](packages/lib-build) (`@digit/lib-build`) | `digit-app pack` — shared Vite build + `app.zip` |
+| [`packages/sdk`](packages/sdk) (`@heysutton/sdk`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
+| [`packages/sdk-react`](packages/sdk-react) (`@heysutton/sdk-react`) | Theme, harness types, Digit/backend **hooks**, error UI, `printLabel` |
+| [`packages/sdk-server`](packages/sdk-server) (`@heysutton/sdk-server`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
+| [`packages/cli`](packages/cli) (`@heysutton/cli`) | `sutton studio pack` — shared Vite build + `app.zip` |
+| [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Private, never published: re-exports `@heysutton/sdk` so apps packed before the rename still build. Don't use in new apps |
 
 Runtime packages expose a slim root export for everyday app/Worker code. Other files
 under `src/` are implementation details — do not deep-import them. Helpers use named
 arguments. Runtime packages do **not** re-export each other.
 
 Apps depend on them via `file:…` — not on private `digit-web`. With a Worker, depend on
-`lib-frontend` + `lib-backend` + `lib-common`, plus `lib-build` as a devDependency.
+`sdk-react` + `sdk-server` + `sdk`, plus `@heysutton/cli` as a devDependency.
 
 ## Example
 

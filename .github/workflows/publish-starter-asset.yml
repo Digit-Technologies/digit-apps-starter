@@ -19,6 +19,7 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - '.github/workflows/publish-starter-asset.yml'
+      - '.github/workflows/test-packages.yml'
       - '.github/workflows/release-please.yml'
       - 'release-please-config.json'
       - '.release-please-manifest.json'
@@ -181,7 +182,7 @@ jobs:
             echo "sha=${GITHUB_SHA}"
           } >> "$GITHUB_OUTPUT"
 
-          # Read by digit-app pack: stamps the release tag into each published app's manifest.
+          # Read by sutton studio pack: stamps the release tag into each published app's manifest.
           jq --arg tag "$DATE_TAG" '. + {starterRelease: $tag}' "$STAGE/package.json" \
             > "$STAGE/package.json.tmp" && mv "$STAGE/package.json.tmp" "$STAGE/package.json"
 
@@ -225,9 +226,10 @@ jobs:
           cp -R "$STAGE" "$CHECK"
           cd "$CHECK"
 
+          # The root `prepare` script builds the packages' dist/, as in the harness.
           npm install --no-audit --no-fund
 
-          # A second copy means the seed's pins disagree with lib-frontend's peers, and
+          # A second copy means the seed's pins disagree with sdk-react's peers, and
           # every app built from it bundles two Reacts.
           for pkg in react react-dom @mui/material; do
             copies="$(find . -path "*/node_modules/$pkg/package.json")"

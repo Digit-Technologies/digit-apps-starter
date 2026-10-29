@@ -12,3 +12,6 @@ apps/*/backend/
 examples/*/frontend/
 examples/*/backend/
 .claude/*
+
+# Temp app copies from packages/cli/test (removed after each run)
+packages/cli/test/.tmp-*/

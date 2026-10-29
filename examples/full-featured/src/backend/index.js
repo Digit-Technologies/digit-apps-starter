@@ -9,15 +9,15 @@
  * D1 binding: FULL_FEATURED_DB (manifest.json). Migrations in migrations/ run on publish.
  */
 
-import { AppErrorCode, parseJsonResponse } from '@digit/lib-common';
+import { AppErrorCode, parseJsonResponse } from '@heysutton/sdk';
 import {
   backendPath,
   createHandler,
-  digitJobs,
+  appJobs,
   err,
   ok,
   requireEnv,
-} from '@digit/lib-backend';
+} from '@heysutton/sdk-server';
 
 import { noteStats, pruneNotes } from './jobs.js';
 import { noteCreated } from './webhooks.js';
@@ -97,17 +97,17 @@ export default createHandler({
     }
 
     if (method === 'POST' && path === '/jobs/note-stats') {
-      const { runId } = await digitJobs({ env }).submit({ name: 'note-stats' });
+      const { runId } = await appJobs({ env }).submit({ name: 'note-stats' });
       return ok({ data: { runId }, status: 202 });
     }
 
     if (method === 'GET' && path === '/jobs/runs') {
-      const runs = await digitJobs({ env }).list({ limit: 20 });
+      const runs = await appJobs({ env }).list({ limit: 20 });
       return ok({ data: { runs } });
     }
 
     if (method === 'GET' && path === '/jobs/schedules') {
-      const schedules = await digitJobs({ env }).schedules();
+      const schedules = await appJobs({ env }).schedules();
       return ok({ data: { schedules } });
     }
 

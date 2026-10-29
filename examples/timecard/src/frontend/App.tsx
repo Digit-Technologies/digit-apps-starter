@@ -18,8 +18,8 @@ import {
   AppErrorAlert,
   useBackendMutation,
   useBackendQuery,
-  useDigitApiQuery,
-} from '@digit/lib-frontend';
+  useApiQuery,
+} from '@heysutton/sdk-react';
 
 import {
   endOfLocalDay,
@@ -145,7 +145,7 @@ export default function App() {
   const previewData = useMemo(buildPreviewData, []);
 
   const { data: userData, error: userError, loading: userLoading } =
-    useDigitApiQuery<CurrentUserData>({ query: CURRENT_USER_QUERY });
+    useApiQuery<CurrentUserData>({ query: CURRENT_USER_QUERY });
   const userId = userData?.currentUser?.id;
   const userName = previewMode ? previewData.userName : userData?.currentUser?.username ?? null;
   const userEmail = previewMode ? previewData.userEmail : userData?.currentUser?.email ?? null;

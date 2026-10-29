@@ -4,7 +4,7 @@
 it is Digit publish config, not a Vite static asset.
 
 **Publish zip:** required at the **zip root**, sibling of `frontend/` and `backend/`.
-`digit-app pack` (`@digit/lib-build`) stages the root file there. Validated at publish
+`sutton studio pack` (`@heysutton/cli`) stages the root file there. Validated at publish
 time. Not uploaded to the serving bucket as-is — Digit snapshots it onto the publish row
 and derives `active.json` / bundle assets from it.
 
@@ -25,7 +25,7 @@ type AppManifest = {
       path: string;        // lowercase [a-z0-9-], max 32, unique — served at /webhooks/{path}
     }[];                   // max 10; see reference/webhooks.md
   };
-  build?: {                // written by `digit-app pack` into the zip copy — do not author it
+  build?: {                // written by `sutton studio pack` into the zip copy — do not author it
     starter: string | null; // starter release tag (or git:<sha> from a checkout)
   };
 };
@@ -37,7 +37,7 @@ type AppManifest = {
   `live` flag to the manifest; the same packed artifact can be deployed as a draft and later promoted.
 - `permissions` must be an array of known Digit permission **`key`** strings from MCP
   **`appPermissions`** — never invent strings (see [permissions.md](permissions.md))
-- `build` is stamped by `digit-app pack` so Digit can tell which starter release a published
+- `build` is stamped by `sutton studio pack` so Digit can tell which starter release a published
   app came from. Never hand-write it — re-pack instead
 - If `backend` is present, the zip **must** include `backend/index.js`
 - If the zip includes `backend/` files but the manifest has no `backend` block → reject
@@ -89,7 +89,7 @@ Digit API + Worker + D1 + an hourly schedule (permission keys come from `appPerm
 
 ## Zip layout
 
-Produced by `digit-app pack`. Upload that zip **unchanged**.
+Produced by `sutton studio pack`. Upload that zip **unchanged**.
 
 ```
 manifest.json            # zip root — Digit publish config
@@ -104,7 +104,7 @@ project/                 # required in the zip — source, SPEC, tooling (not de
   src/
   SPEC.md
   package.json
-  packages/              # vendored @digit/lib-* (+ lib-build)
+  packages/              # vendored @heysutton/sdk* (+ cli)
 ```
 
 Max zip size: **10MB**. Do not strip `project/` or rebuild the archive by hand.
