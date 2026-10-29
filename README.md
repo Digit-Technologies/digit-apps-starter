@@ -9,7 +9,7 @@ This upstream repo does not accept contributions — do not open PRs or push her
 ## Quick start
 
 ```bash
-npm install                     # once per clone, from the repo root (Node 22+)
+npm install                     # once per clone, from the repo root (Node 24)
 npm run new-app -- my-app       # source checkout: scaffold an app
 npm run pack -w apps/my-app     # build frontend/ (+ backend/) and write app.zip
 ```

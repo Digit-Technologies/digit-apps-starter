@@ -47,6 +47,10 @@ export async function run(
     stderr.write(`Unknown command: ${command}\n\n${usage()}`);
     return 1;
   }
+  if (subcommand === '-h' || subcommand === '--help') {
+    stdout.write(usage());
+    return 0;
+  }
   if (subcommand !== 'pack') {
     stderr.write(`Unknown studio command: ${subcommand ?? ''}\n\n${usage()}`);
     return 1;
