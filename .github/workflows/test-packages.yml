@@ -38,8 +38,10 @@ jobs:
         run: scripts/smoke-installed-packages.sh
 
       - name: Dry-run npm pack
+        # npm pack, not npm publish --dry-run: publish checks the registry and
+        # fails once the current version is already on npm.
         run: |
           set -euo pipefail
           for pkg in sdk sdk-react sdk-server cli; do
-            npm publish --dry-run --access public -w "@heysutton/${pkg}"
+            npm pack --dry-run -w "@heysutton/${pkg}"
           done
