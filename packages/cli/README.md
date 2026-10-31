@@ -19,7 +19,7 @@ await pack({ root: process.cwd() });
 `pack` loads its code only when it runs, so `--help` and `--version` don't
 import Vite. Vite is a regular dependency of this package.
 
-Local Digit runtime draft is not supported (Worker, env/secrets, and D1 are injected by
+Local Sutton runtime draft is not supported (Worker, env/secrets, and D1 are injected by
 the platform). Pack builds the channel-neutral deploy assets and writes `app.zip` for a
 remote draft or published deployment. See the sutton-app skill for the draft → publish
 flow.

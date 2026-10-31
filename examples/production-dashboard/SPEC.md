@@ -5,14 +5,16 @@
 Single-page production dashboard for a manufacturing team to check at a glance. Fetches
 `dailyMetrics` for today plus the prior 7 days (8 calendar days total, in the viewer's
 local timezone) and renders four KPI tiles (units produced today w/ delta vs trailing
-7-day average, MOs completed today, percent MOs completed on time as a color-coded gauge,
-MOs open & late as a tinted alert tile) plus two 8-day charts (line/area of units produced;
-grouped bar of MOs completed vs. MOs open late). UI-only — no backend/Worker/D1.
+7-day average, MOs completed today, percent MOs completed on time with a gauge and a status
+`Chip`, MOs open & late with a "Needs attention" / "On track" `Chip`) plus two 8-day charts
+(line/area of units produced; grouped bar of MOs completed vs. MOs open late). UI-only — no
+backend/Worker/D1.
 
 "Today" and day boundaries are computed in the viewer's browser/device local timezone
 (Digit apps have no org timezone field to read), and the resolved timezone abbreviation is
-shown in the page header so the basis is obvious. Missing days or null values are rendered
-as an explicit "No data" state, never faked as zero.
+shown beside the "Today" section heading so the basis is obvious. Missing days or null
+values are rendered as an explicit no-data state ("None" in a tile, an `EmptyState` in a
+chart), never faked as zero.
 
 ## Data & permissions
 
@@ -45,28 +47,32 @@ as an explicit "No data" state, never faked as zero.
   response with no measurement in that UoM is a real `0`, not faked; a day absent from the
   response entirely stays `null`. The resolved UoM symbol is surfaced as
   `inventoryQuantityProducedUnit` and shown next to the number in both the tile and the
-  chart title.
+  chart heading.
 - **Preview stub data (`previewStubData.ts`):** supplies realistic-but-fake 8-day numbers
   so the dashboard can be demoed/screenshotted without needing real manufacturing activity
   first. It's toggled at runtime via a "Preview data" switch in the header (state lives in
   `App.tsx`, passed into `useDailyMetrics(previewMode)`), defaulting to **off** — real
   `dailyMetrics` data is the default experience. When on, the real query is skipped
-  entirely (`useApiQuery({ ..., skip: previewMode })`) and a small "Preview data" chip
-  renders next to the header so the fake numbers are never mistaken for live output.
-- **Chart styling:** the units-produced area chart originally filled with
-  `theme.palette.primary.main`, which in this theme is near-black (it's the button/text
-  accent color, not a chart color) — at the default fill opacity of 1 that rendered as a
-  solid black wedge. Fixed by switching the series color to `theme.palette.info.main` (a
-  blue meant for this kind of accent) and knocking the area's `fillOpacity` down to `0.18`
-  via `sx` targeting `` `.${lineClasses.area}` `` from `@mui/x-charts/LineChart` — the line
-  itself stays fully opaque for precise reading, only the fill underneath is toned down.
-  The bar chart uses `borderRadius={6}` (a direct `BarChart` prop) for rounded bar tops,
-  and the gauge uses `cornerRadius="50%"` (a `Gauge` prop) for a fully rounded arc.
-- **Header layout:** the title row uses `alignItems="center"` (not `"baseline"`) so the
-  "Production Dashboard" heading vertically centers against the timezone-text/preview-switch
-  block on the right, and that block's own inner `Stack` also uses `alignItems="center"` so
-  the switch centers against the timezone text next to it — baseline alignment looked off
-  for a `Switch`, which isn't text.
+  entirely (`useApiQuery({ ..., skip: previewMode })`) and a "Preview data" outlined `Chip`
+  renders as the `PageHeader` title adornment so the fake numbers are never mistaken for
+  live output.
+- **Layout (design-patterns.md › Dashboard):** `PageHeader` (title, the library `SwitchField`
+  for preview data in `actions`), then `PageBody` on `background.secondary` with two
+  `Section`s, "Today" and "Last 8 days". Tiles are themed `Card`s (`p: 2`, nothing else on
+  the Card) in a CSS grid with an 8px column gap and a 16px row gap: 4 / 2 / 1 columns for
+  the KPI row, 2 / 1 for the charts. Each tile's heading is a `Section` (rendered as `h4`
+  under the page `Section`'s `h3`); the KPI number is `Typography variant="h2"`. Loading is
+  `Skeleton` blocks in each tile, errors are `AppErrorAlert` with retry. No hex colours, no
+  `fontSize`/`fontWeight`, no tinted or restyled cards: states that the first version showed
+  with a red tile or coloured text are small `Chip`s (`green` / `yellow` / `red`).
+- **Chart styling:** series colours come only from palette accents —
+  `theme.palette.blue.main` for units produced, `emerald.main` / `red.main` for MOs completed
+  vs. open & late, and `emerald` / `amber` / `red` for the gauge arc by band (≥ 90%, ≥ 70%,
+  below). Never `primary.main`: in this theme it is the near-black action colour, which once
+  rendered the area chart as a solid black wedge. The area under the line is toned down with
+  `fillOpacity` via `` `.${lineClasses.area}` ``; the line stays opaque. The gauge draws no
+  text of its own (`text={() => null}`); its value is the tile's `h2`, so every tile reads
+  the same way.
 
 ## Prompts
 

@@ -17,11 +17,11 @@ into the frontend bundle.
 Draft has a separate Worker and separate app-owned storage (D1/R2), but it uses the
 **same env vars and secrets as the published app**.
 
-Digit Settings that edit env vars or secrets update **the published app only**. A change made while
+Sutton Settings that edit env vars or secrets update **the published app only**. A change made while
 reviewing a draft still writes the published record, and both the draft Worker and the published
 Worker then receive those values.
 
-**Promote does not wipe published env/secrets.** Draft shares published env and secrets; Digit
+**Promote does not wipe published env/secrets.** Draft shares published env and secrets; Sutton
 Settings write the published app only. Nothing is copied from draft onto the published app for env or secrets —
 draft already shares them, and promote is not a config copy.
 
@@ -113,6 +113,6 @@ Do not hand-roll `/proxy/backend` fetches without `X-Digit-Proxy-Client` (the ho
 ## Setup for users
 
 1. Create the app in Digit
-2. Set env vars / secrets in Digit Settings (published values; draft uses them too)
+2. Set env vars / secrets in Sutton Settings (published values; draft uses them too)
 3. Publish a bundle whose manifest declares `backend.kind: "cloudflare-worker"`
 4. Ship `backend/index.js` that reads those keys via `requireEnv` inside `createHandler`

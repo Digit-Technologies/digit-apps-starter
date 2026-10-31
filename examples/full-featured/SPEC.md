@@ -16,11 +16,11 @@ wired to a real host).
 
 ## Data & permissions
 
-- `READ_ITEM` — Digit API tab runs an `items` query; needed so the proxy allows that field
+- `READ_ITEM` — Items tab runs an `items` query; needed so the proxy allows that field
 - D1 binding `FULL_FEATURED_DB` — schema from `src/backend/migrations/`; Digit applies
   pending files during each channel's deployment (not at runtime; upload alone is not enough)
-- Env `WELCOME_MESSAGE` — greeting text for the Config tab (`GET /greeting`)
-- Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets tab hits an external HTTP API
+- Env `WELCOME_MESSAGE` — greeting text for the Config section of the Backend tab (`GET /greeting`)
+- Env `API_BASE_URL` + secret `THIRD_PARTY_API_KEY` — Secrets section of the Backend tab hits an external HTTP API
   from the Worker only; the UI may show a short token prefix for demo, never the full secret
 - Schedule `prune-notes` (hourly, manifest `backend.schedules`) deletes notes older than
   `payload.maxAgeDays`; job `note-stats` is submitted via `appJobs` from
@@ -31,7 +31,7 @@ uses published env and published secrets (Settings edits update the published ap
 draft, and inbound webhooks are published-only.
 `@heysutton/sdk*` is linked via `file:` in the monorepo; `sutton studio pack` (`@heysutton/cli`)
 vendors those packages (including `@heysutton/cli`) under `project/packages/` in `app.zip`.
-Local Digit runtime draft is not supported; remote draft is the platform deployment path.
+Local Sutton runtime draft is not supported; remote draft is the platform deployment path.
 
 ## Prompts
 

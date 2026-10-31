@@ -6,11 +6,15 @@ available, so this file is how a later session understands the app.
 ## What it does
 
 Mobile-first, single-view clock in / clock out app for one employee at a time — no tabs,
-no secondary navigation. Shows a status card (chip + live pulse, today's elapsed
-hours/minutes, "since" time), one full-width toggle button ("Clock in" / "Clock out"),
-and a paginated "Recent shifts" glance-back list (10 per page, most recent first). It is
-intentionally not a timesheet, does not compute weekly/period totals, and has no payroll
-export.
+no secondary navigation. Built from the Sutton design system (`@heysutton/sdk-react`):
+a `PageHeader` ("Time card") whose actions hold the "Preview data" `SwitchField` and the one
+primary button ("Clock in" / "Clock out", `loading` while the request runs); then a
+`PageBody` (720 max) with a "Today" `Section` (a `PropertyGrid`: employee, status `StatusPill`,
+clocked-in-at time while a shift is open, live "Worked today" total) and a "Recent shifts"
+`Section` holding a server-paged `DataTable` (10 per page, most recent first; date, time range,
+duration, or an "In progress" `StatusPill` for the open shift), or an `EmptyState` when there are
+no shifts. It is intentionally not a timesheet, does not compute weekly/period totals, and
+has no payroll export.
 
 Key behaviors:
 - All "today" boundaries and displayed timestamps use the browser/device's local
@@ -45,15 +49,13 @@ Key behaviors:
     already in the requested state, so the single toggle button can't double-fire into an
     inconsistent state.
 - No env vars or secrets.
-- **Dependency:** `@mui/icons-material` (added for the clock-in/out button icons —
-  `AccessTimeIcon` / `StopCircleIcon`). Only these two icons are imported, so tree-shaking
-  keeps the bundle impact small (~1KB after the initial add).
-- **UI polish:** the status chip/time/since-time live inside a `Paper` card for visual
-  grouping; a small CSS `@keyframes` pulse dot appears next to the chip while clocked
-  in; elapsed-time and shift-row timestamps use `fontVariantNumeric: 'tabular-nums'` so
-  ticking digits don't jitter; each "Recent shifts" row puts the date on the left and
-  duration on the right of the same line (receipt-style scan pattern) with the time
-  range as a secondary line below.
+- **UI:** icons are Lucide from `@heysutton/sdk-react` (`Clock`, `Calendar`). The clock
+  button sits in the `PageHeader` because it is the page's single primary action. Clock out
+  is not destructive, so it uses the same primary button (no red, no confirm). Preview mode
+  disables the button and says why in an info `Alert`. Loading uses `Skeleton` values and
+  `DataTable loading`; failures use `AppErrorAlert`. "Clocked in" is the `active` record-status
+  stage and "Clocked out" the `closed` one (`StatusPill status`).
+  `@mui/icons-material` is still listed in `package.json` but no longer imported.
 - **Gotcha (fixed):** `parseJsonResponse({ fields })` expects an object mapping each key to
   a parser *function* (`{ userId: (obj) => requiredString({ obj, key: 'userId' }) }`) — not
   a single function that returns the parsed object. An earlier version of `userIdFields`

@@ -30,7 +30,7 @@ completing the deployment does not apply any SQL.
 - **Never edit a migration file that has already been deployed to a channel.** Digit will not
   re-run it in that D1. To change the schema, **add a new file** with the next number in the
   sequence (`0003_…`, `0004_…`, etc.). If a migration was edited while developing only in
-  draft, reset/replay the draft through the Digit UI rather than relying on the filename
+  draft, reset/replay the draft through the Sutton UI rather than relying on the filename
   ledger to notice the edit.
 - **Always use the naming convention** — zero-padded numeric prefix plus a short snake_case
   description: `0001_init.sql`, not `1_init.sql` or `init.sql`.

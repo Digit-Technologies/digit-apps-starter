@@ -37,7 +37,7 @@ That skill covers:
 - Root `manifest.json` (staged at the zip root by pack)
 - Digit API access via `useApiQuery` / `/proxy/digit`
 - Env vars and secrets (backend Worker injection only)
-- Deploying a draft or publishing the app with Digit tools (`publishAppZip` in App Builder, or
+- Deploying a draft or publishing the app with Sutton tools (`publishAppZip` in App Builder, or
   MCP upload → `publishApp` with a channel → poll)
 
 ## Agent plugin
@@ -70,7 +70,7 @@ marketplace refresh. `feat:` bumps the minor version; the others bump the patch.
 | Package | Role |
 | --- | --- |
 | [`packages/sdk`](packages/sdk) (`@heysutton/sdk`) | Codes, result types, pure validation (no React / no `Response`) — depend directly when using a Worker |
-| [`packages/sdk-react`](packages/sdk-react) (`@heysutton/sdk-react`) | Theme, harness types, Digit/backend **hooks**, error UI, `printLabel` |
+| [`packages/sdk-react`](packages/sdk-react) (`@heysutton/sdk-react`) | Theme (the Figma design system), design-system components, harness types, Sutton/backend **hooks**, error UI, `printLabel` |
 | [`packages/sdk-server`](packages/sdk-server) (`@heysutton/sdk-server`) | `createHandler`, `backendPath`, `ok`/`err`, env/secrets |
 | [`packages/cli`](packages/cli) (`@heysutton/cli`) | `sutton studio pack` — shared Vite build + `app.zip` |
 | [`packages/lib-common`](packages/lib-common) (`@digit/lib-common`) | Private, never published: re-exports `@heysutton/sdk` so apps packed before the rename still build. Don't use in new apps |
@@ -97,7 +97,7 @@ API, public API, secrets, D1 CRUD, and env config. `npm run new-app` copies it i
 2. Write/update `SPEC.md`, then `npm run pack -w apps/<name>`
 3. `app.zip` contains `frontend/` (+ `backend/` if declared) for Digit deploy, plus
    required `project/` (source, SPEC, tooling, vendored libs — not deployed)
-4. Deploy a draft first when using Digit App Builder; use the explicit Digit web Publish
+4. Deploy a draft first when using Sutton App Builder; use the explicit Sutton web Publish
    action to promote it. Standalone MCP clients can choose `channel: "preview"` or
    `channel: "live"`; see the skill for the full flow.
 5. Keep `apps/<name>` source in the local workspace (not build outputs); do not push or

@@ -1,14 +1,15 @@
 ---
 name: sutton-app
 description: >-
-  Build, draft, and publish Digit custom apps (React + MUI + Digit theme via
+  Build, draft, and publish Sutton custom apps (React + MUI + Sutton theme via
   @heysutton/sdk-react, optional Cloudflare Worker backends via @heysutton/sdk-server,
   Vite IIFE bundles, manifest.json, Digit API proxy, env/secrets). Apps run in a
   locked-down sandboxed iframe (no popups, browser dialogs, clipboard read,
   or device APIs). Use when creating a Digit app, editing an app in a local clone
-  of this starter, publishing via MCP, or when the user mentions Digit apps,
-  manifest.json, AppProxy, ThemeProvider, /proxy/digit, or
-  /proxy/backend.
+  of this starter, publishing via MCP, laying out screens, or when the user mentions
+  Sutton apps, manifest.json, AppProxy, ThemeProvider, /proxy/digit, /proxy/backend,
+  settings panels, status pills, tables, checklists, chat boxes, or confirmation dialogs, or
+  asks for an app to look like Sutton, match the design system, or match a Figma mockup.
 ---
 
 # Sutton App
@@ -52,7 +53,7 @@ stop and ask the user to connect the Digit tools before continuing.
 | Manifest permissions      | MCP tool **`appPermissions`** — put each permission’s **`key`** in `manifest.json`                            |
 | Find an existing app’s id | MCP tool **`apps`**                                                                                           |
 | Standalone publish        | **`generateAppUploadLink`** → HTTP POST zip → **`publishApp`** (`channel`) → poll **`appPublish`**            |
-| App Builder deploy        | **`publishAppZip`** → draft; the Digit web app's Publish action promotes it to the published app              |
+| App Builder deploy        | **`publishAppZip`** → draft; the Sutton web app's Publish action promotes it to the published app             |
 
 There are **no** MCP tools to create, update, or delete apps, or to manage env/secrets —
 those stay in the Digit UI. Do not invent them.
@@ -78,7 +79,7 @@ Digit app progress:
 - [ ] 8. Write/update SPEC.md
 - [ ] 9. npm run pack -w apps/<name> → app.zip
 - [ ] 10. Deploy a draft (App Builder: `publishAppZip`; standalone MCP: `publishApp` with `channel: preview`)
-- [ ] 11. If the user explicitly asks to ship, promote the current draft from the Digit web app
+- [ ] 11. If the user explicitly asks to ship, promote the current draft from the Sutton web app
 - [ ] 12. Keep app source under apps/ — not build outputs; no upstream PRs
 ```
 
@@ -122,22 +123,22 @@ its build toolchain (Vite) in the root `node_modules`, not the app's. Running `n
 only inside `apps/<name>` leaves Vite missing and `pack` fails.
 
 All apps share React + MUI + `@heysutton/sdk-react` and the same folder conventions.
-There is no local Digit runtime draft (Worker, env/secrets, and D1 are platform-injected).
+There is no local Sutton runtime draft (Worker, env/secrets, and D1 are platform-injected).
 `npm run pack` produces the same channel-neutral `app.zip` for a remote draft or a published
 deployment.
 
 ### Draft and production
 
-The Digit App Builder is draft-first:
+The Sutton App Builder is draft-first:
 
 - Pack the app, then call `publishAppZip` to deploy the zip to the owner's draft. A
   successful draft deploy does **not** change the published app.
 - Talk about that result as “built a draft,” never “published.” Keep iterating by packing
   and deploying another draft.
-- The Digit web app's explicit Publish action promotes the current draft build to the published app.
+- The Sutton web app's explicit Publish action promotes the current draft build to the published app.
   Publish ships the reviewed build and applies pending migrations on the published app only — it is not a
   config promote. **Promote does not wipe published env/secrets** — draft shares published env and
-  secrets, and Digit Settings write the published app only. Nothing is copied from draft onto the published app for
+  secrets, and Sutton Settings write the published app only. Nothing is copied from draft onto the published app for
   env or secrets.
 
 Standalone MCP clients use `publishApp` directly and may choose `channel: "preview"` or
@@ -147,12 +148,12 @@ Workers, D1 databases, R2 buckets, and bundle pointers; draft is owner-only.
 
 Draft is not production-equivalent for every backend feature:
 
-- Draft sessions use the viewer's Digit permissions for GraphQL reads and writes,
+- Draft sessions use the viewer's Sutton permissions for GraphQL reads and writes,
   still limited to `manifest.permissions`. App-owned D1/R2 writes stay in draft resources.
 - **Schedules run on the published app only.** Draft cron, inbound webhooks, and other timer/webhook side
   effects stay off. On-demand jobs are scoped to the draft job namespace when invoked, but
   should not be treated as a production run.
-- Draft uses the **published env vars and published secrets**. Digit Settings that edit env or
+- Draft uses the **published env vars and published secrets**. Sutton Settings that edit env or
   secrets update **the published app only**. Guard or
   disable external side effects; do not seed published data into draft by default.
 
@@ -162,7 +163,7 @@ Full deployment details and safety notes: [reference/publish.md](reference/publi
 
 **Debugging a published app.** The harness forwards uncaught errors, unhandled rejections,
 `console.error` / `console.warn`, bundle load failures and failed Digit API / backend calls
-to the Digit host. In Digit Studio they appear in the draft's Console tab and are attached
+to the Sutton host. In Sutton Studio they appear in the draft's Console tab and are attached
 to the next chat message automatically; elsewhere ask the user to copy them from the Console
 tab. Report unexpected states with `console.error` (not `console.log`) so they get there, and
 never replace `console.error` or `window.onerror` — wrapping them breaks forwarding.
@@ -218,9 +219,7 @@ Some lack `packages/lib-common`; the starter's private `packages/lib-common` shi
   iframe can't do something itself (camera, scanning, navigating Digit), check
   `getHostCapabilities` for a host method that does it before ruling it out. Full
   list: [reference/iframe-constraints.md](reference/iframe-constraints.md).
-- **Stack:** React + MUI + `ThemeProvider`. Prefer theme palette / typography over
-  hard-coded colors or custom CSS. Do not invent a parallel CSS design system or
-  restyle MUI from scratch. See [reference/theming.md](reference/theming.md).
+- **Look and layout:** follow [Design system](#design-system-required-for-every-screen) below.
 - **Mount to `#root`.** Do not create a different root id or remove `#root`.
 - **Wrap the tree** with `ThemeProvider` in `main.tsx` (see the template).
 - **Entry is IIFE `frontend/index.js`.** `@heysutton/cli` packs it — no alternate bundler.
@@ -230,12 +229,9 @@ Some lack `packages/lib-common`; the starter's private `packages/lib-common` shi
   sort, filter, or connection/page inputs, use those — do not fetch a full list and
   sort/filter client-side when the API can do it. Confirm arg names via
   `graphql-schema://…`.
-- **Tables need pagination:** Any MUI `Table` (or equivalent list of many rows) must be
-  paginated — e.g. `connection: { first, after }` / page size + next/previous — not an
-  unbounded dump of nodes.
 - **Backend:** `useBackendQuery` / `useBackendMutation` — do not hand-roll `/proxy/backend`.
-- **Public surface:** hooks + theme + `AppErrorAlert` + `printLabel` / `LabelPrintPanel` / `LabelPrintDialog` / `LabelPreview` / `useLabelPrint`. Pair hook `error` with
-  `AppErrorAlert` (`onRetry` when retryable) — do not branch on `AppErrorCode` in UI.
+- **Errors:** pair a hook's `error` with `AppErrorAlert` (`onRetry` when retryable) — do not
+  branch on `AppErrorCode` in UI.
 
 #### Printing
 
@@ -307,6 +303,45 @@ hand-rolled call fails with "Too many calls" or "Invalid params". Use the label 
 deprecated. Write new code against `AppHost`, and migrate `window.DigitHost` calls in any
 existing file you edit.
 
+### Design system (required for every screen)
+
+Sutton apps sit next to the platform's own screens, so they must look like them. The **Figma
+design system is the source of truth**, and `@heysutton/sdk-react` implements it in two layers:
+
+- **The theme** (`ThemeProvider`) restyles every MUI component to the Figma values, in light
+  and dark. A plain `<Button>`, `<TextField>` or `<Tabs>` already looks right.
+- **Library components** (`PageHeader`, `DataTable`, `StatusPill`, `SidePanel`, `Modal`, …) group themed
+  MUI parts into the larger pieces Figma defines, such as a page header, an index table or a
+  form dialog.
+
+You pick and compose those pieces. You never restyle them.
+
+**Work in this order:**
+
+1. Before any UI, read [reference/design-system.md](reference/design-system.md). It has the
+   rules, the component picker and the tokens.
+2. For each screen, copy the closest recipe in
+   [reference/design-patterns.md](reference/design-patterns.md) (list page, details panel,
+   record page, settings, form dialog, confirm, dashboard, …).
+3. Look up a component's props in [reference/components.md](reference/components.md) when you use it.
+4. When you finish, run the self-check at the end of design-system.md on every screen and fix
+   what fails.
+
+**The rules that matter most.** Breaking any of these makes an app look like stock MUI instead
+of Sutton:
+
+- Use the library component when one exists. Never rebuild it from `Box` and `Typography`.
+- Never set colour, background, border, radius, shadow, font, height or padding on a themed
+  component, and never use hex colours, px font sizes or `fontWeight`. Layout props (`gap`,
+  `flex`, `width`, margins) are fine.
+- Every screen starts with `PageHeader`. Lists are a full-bleed `DataTable` with no card around them.
+- Every status is a `StatusPill`. Icons are Lucide, imported from `@heysutton/sdk-react`.
+
+If a screen needs something the library and the recipes do not cover, build it from themed MUI
+parts with layout props only, and mention the gap in `SPEC.md`. Do not invent new colours,
+sizes or shapes.
+
+
 ### 5. `manifest.json`
 
 Keep it at the **project root**. Pack stages it at the zip root.
@@ -338,7 +373,7 @@ Full schema: [reference/manifest.md](reference/manifest.md).
 
 ### 6. Permissions
 
-`permissions` is the **ceiling** for `/proxy/digit` and the backend's `api.query`. Digit
+`permissions` is the **ceiling** for `/proxy/digit` and the backend's `api.query`. Sutton
 intersects it with the acting user’s live permissions at runtime (the viewer).
 
 1. Call MCP **`appPermissions`**
@@ -369,7 +404,7 @@ or secrets — draft already shares them, and promote is not a config copy. Deta
 
 ```
 pack → draft (App Builder: publishAppZip; standalone MCP: publishApp channel=preview)
-draft → explicit Digit web Publish action → published app
+draft → explicit Sutton web Publish action → published app
 ```
 
 The zip does **not** travel through standalone MCP. If you cannot upload it, stop and tell the
@@ -396,6 +431,9 @@ upstream starter.
 | Env / secrets / D1 / third-party HTTP  | Worker + `@heysutton/sdk-server`                                |
 | Codes / JSON validation                | `@heysutton/sdk`                                                |
 | Print a Sutton inventory or item label | `LabelPrintPanel` → [reference/labels.md](reference/labels.md)  |
+| Which component to use, and how it should look | [reference/design-system.md](reference/design-system.md) |
+| A component's props                   | [reference/components.md](reference/components.md)              |
+| Screen layout: lists, records, panels, settings, dialogs, dashboards | Recipe from [reference/design-patterns.md](reference/design-patterns.md) |
 
 ## Packages (`@heysutton/sdk*`)
 
@@ -407,18 +445,18 @@ deprecated aliases; don't use them in new code.
 
 | Package                 | When                            | Role                                                                                                                                    |
 | ----------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `@heysutton/sdk-react`  | Always                          | Theme, harness types, data hooks, `AppErrorAlert`, `printLabel`, `LabelPrintPanel`, `LabelPrintDialog`, `LabelPreview`, `useLabelPrint` |
+| `@heysutton/sdk-react`  | Always                          | Theme, harness types, data hooks, design-system components (`PageHeader`, `DataTable`, `StatusPill`, `SidePanel`, `Modal`, `ConfirmDialog`, …), Lucide icons, `AppErrorAlert`, label printing |
 | `@heysutton/sdk-server` | Worker                          | `createHandler`, `backendPath`, `ok`/`err`, `requireEnv`, jobs                                                                          |
 | `@heysutton/sdk`        | With Worker (or code branching) | `AppErrorCode`, result types, validation                                                                                                |
-| `@heysutton/cli`  | Always (devDependency)          | `sutton studio pack`                                                                                                                 |
+| `@heysutton/cli`        | Always (devDependency)          | `sutton studio pack`                                                                                                                    |
 
 ### Backend Worker
 
 Always wrap with `createHandler`. Strip `/proxy/backend` via `backendPath`, match
 `method` + `path`, return `ok` / `err`. Prefer `requireEnv` over reading `env.KEY`.
-Digit API: use the `api` argument `fetch` receives (`api.query(...)`) — never an API token;
-it acts as the requesting user, and jobs/schedules/webhooks have no Digit API for now —
-[reference/proxy-and-api.md](reference/proxy-and-api.md#digit-api-from-the-backend).
+Sutton API: use the `api` argument `fetch` receives (`api.query(...)`) — never an API token;
+it acts as the requesting user, and jobs/schedules/webhooks have no Sutton API for now —
+[reference/proxy-and-api.md](reference/proxy-and-api.md#sutton-api-from-the-backend).
 Jobs/schedules: `createHandler({ jobs })` + `appJobs({ env })` —
 [reference/jobs-and-schedules.md](reference/jobs-and-schedules.md). Webhooks:
 `createHandler({ webhooks })`, verify with `verifyWebhookSignature` before acting —
@@ -433,6 +471,9 @@ Proxy details: [reference/proxy-and-api.md](reference/proxy-and-api.md).
 - [reference/iframe-constraints.md](reference/iframe-constraints.md) — sandboxed iframe limits, host-mediated downloads, and printing
 - [reference/labels.md](reference/labels.md) for Sutton label preview and print, permissions, and failures
 - [reference/theming.md](reference/theming.md) — ThemeProvider, MUI theme, AppHost settings
+- [reference/design-system.md](reference/design-system.md) — **read before any UI**: rules, component picker, type, colour, spacing, icons, self-check
+- [reference/design-patterns.md](reference/design-patterns.md) — screen recipes from the product mockups: list page, details panel, record page, settings, form dialog, confirm, dashboard
+- [reference/components.md](reference/components.md) — props and conventions for each component; look up as needed
 - [reference/manifest.md](reference/manifest.md) — schema, backend block, validation rules
 - [reference/proxy-and-api.md](reference/proxy-and-api.md) — schema resources, hooks, proxies
 - [reference/permissions.md](reference/permissions.md) — appPermissions → key

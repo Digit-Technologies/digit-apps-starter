@@ -1,208 +1,99 @@
 import { ThemeOptions } from "@mui/material/styles"
 
-import { neutral } from "./colors.js"
+import { neutralAlpha } from "./colors.js"
 
 import { ThemeProps } from "./types.js"
 
-import { mobileScaleFactor } from "./mobileScaleFactor.js"
+import { mobileMediaQuery, mobileScaleFactor } from "./mobileScaleFactor.js"
 
-const linkStyles = (darkMode: boolean) => ({
+// Figma link-hover: a 1px underline at 25% of the text colour. Links have no underline at rest.
+const linkHoverStyles = (darkMode: boolean) => ({
   textDecoration: "underline" as const,
   textDecorationSkipInk: "auto" as const,
   textDecorationStyle: "solid" as const,
-  textDecorationColor: darkMode ? neutral.white : neutral[200],
-  textDecorationThickness: "auto" as const,
+  textDecorationColor: darkMode ? neutralAlpha.lighten[250] : neutralAlpha.darken[250],
+  textDecorationThickness: "1px",
   textUnderlinePosition: "from-font" as const,
 })
 
-// Helper function to create responsive typography
+// Every Figma text style is set in theme-spacing units, so below 600px each size and line height
+// grows by the mobile scale factor (8px base on desktop, 10px on mobile).
 const createTypography = ({
-  desktopSize,
-  desktopLineHeight,
-  mobileSize,
-  mobileLineHeight,
+  size,
+  lineHeight,
   fontWeight = 400,
 }: {
-  desktopSize: number
-  desktopLineHeight: number
-  mobileSize?: number
-  mobileLineHeight?: number
+  /** px on desktop */
+  size: number
+  /** px on desktop */
+  lineHeight: number
   fontWeight?: number
 }) => ({
-  fontSize: `${desktopSize}rem`,
-  lineHeight: `${desktopLineHeight}rem`,
+  fontSize: `${size / 16}rem`,
+  lineHeight: `${lineHeight / 16}rem`,
   fontWeight,
   letterSpacing: 0,
-  ...(mobileSize && mobileLineHeight
-    ? {
-        "@media (maxWidth: 899px) and not print": {
-          fontSize: `${mobileSize}rem`,
-          lineHeight: `${mobileLineHeight}rem`,
-        },
-      }
-    : {}),
+  [mobileMediaQuery]: {
+    fontSize: `${(size * mobileScaleFactor) / 16}rem`,
+    lineHeight: `${(lineHeight * mobileScaleFactor) / 16}rem`,
+  },
 })
 
+// Values from the Figma Styles page, Typography section (node 10078:11318).
 export const typography = ({
   darkMode,
 }: ThemeProps): ThemeOptions["typography"] => {
   return {
     fontFamily:
       "InterVariable, Inter var, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji",
-    h1: createTypography({
-      desktopSize: 2, // 32px
-      desktopLineHeight: 2.25, // 36px
-      mobileSize: 2 * mobileScaleFactor,
-      mobileLineHeight: 2.25 * mobileScaleFactor,
-      fontWeight: 600,
-    }),
-    h2: createTypography({
-      desktopSize: 1.75, // 28px
-      desktopLineHeight: 2, // 32px
-      mobileSize: 1.75 * mobileScaleFactor,
-      mobileLineHeight: 2 * mobileScaleFactor,
-      fontWeight: 600,
-    }),
-    h3: createTypography({
-      desktopSize: 1.5, // 24px
-      desktopLineHeight: 1.75, // 28px
-      mobileSize: 1.5 * mobileScaleFactor,
-      mobileLineHeight: 1.75 * mobileScaleFactor,
-      fontWeight: 600,
-    }),
-    h4: createTypography({
-      desktopSize: 1.25, // 20px
-      desktopLineHeight: 1.5, // 24px
-      mobileSize: 1.25 * mobileScaleFactor,
-      mobileLineHeight: 1.5 * mobileScaleFactor,
-      fontWeight: 600,
-    }),
-    h5: createTypography({
-      desktopSize: 1, // 16px
-      desktopLineHeight: 1.25, // 20px
-      mobileSize: 1 * mobileScaleFactor,
-      mobileLineHeight: 1.25 * mobileScaleFactor,
-      fontWeight: 600,
-    }),
-    h6: createTypography({
-      desktopSize: 0.8125, // 13px
-      desktopLineHeight: 1.25, // 20px
-      mobileSize: 0.8125 * mobileScaleFactor,
-      mobileLineHeight: 1.25 * mobileScaleFactor,
-      fontWeight: 600,
-    }),
-    subtitle1: createTypography({
-      desktopSize: 0.8125, // 13px
-      desktopLineHeight: 1, // 16px
-      mobileSize: 0.8125 * mobileScaleFactor,
-      mobileLineHeight: 1 * mobileScaleFactor,
-      fontWeight: 400,
-    }),
-    subtitle2: createTypography({
-      desktopSize: 0.8125, // 13px
-      desktopLineHeight: 1, // 16px
-      mobileSize: 0.8125 * mobileScaleFactor,
-      mobileLineHeight: 1 * mobileScaleFactor,
-      fontWeight: 500,
-    }),
-    body1: createTypography({
-      desktopSize: 0.8125, // 13px
-      desktopLineHeight: 1.25, // 20px
-      mobileSize: 1, // 16px on mobile
-      mobileLineHeight: 1.25 * mobileScaleFactor,
-      fontWeight: 400,
-    }),
+    h1: createTypography({ size: 24, lineHeight: 32, fontWeight: 500 }),
+    h2: createTypography({ size: 22, lineHeight: 28, fontWeight: 600 }),
+    h3: createTypography({ size: 20, lineHeight: 24, fontWeight: 600 }),
+    h4: createTypography({ size: 18, lineHeight: 24, fontWeight: 600 }),
+    h5: createTypography({ size: 16, lineHeight: 24, fontWeight: 600 }),
+    h6: createTypography({ size: 13, lineHeight: 16, fontWeight: 600 }),
+    subtitle1: createTypography({ size: 13, lineHeight: 16, fontWeight: 400 }),
+    subtitle2: createTypography({ size: 13, lineHeight: 16, fontWeight: 500 }),
+    body1: createTypography({ size: 13, lineHeight: 16, fontWeight: 400 }),
     body1Link: {
-      ...createTypography({
-        desktopSize: 0.8125, // 13px
-        desktopLineHeight: 1.25, // 20px
-        mobileSize: 1, // 16px on mobile
-        mobileLineHeight: 1.25 * mobileScaleFactor,
-        fontWeight: 600,
-      }),
-      ":hover": linkStyles(darkMode),
+      ...createTypography({ size: 13, lineHeight: 16, fontWeight: 600 }),
+      ":hover": linkHoverStyles(darkMode),
     },
-    body2: createTypography({
-      desktopSize: 0.8125, // 13px
-      desktopLineHeight: 1.25, // 20px
-      mobileSize: 0.8125 * mobileScaleFactor, // 16px on mobile
-      mobileLineHeight: 1.25 * mobileScaleFactor,
-      fontWeight: 600,
-    }),
+    body2: createTypography({ size: 13, lineHeight: 16, fontWeight: 500 }),
     body2Link: {
-      ...createTypography({
-        desktopSize: 0.8125, // 13px
-        desktopLineHeight: 1.25, // 20px
-        mobileSize: 0.8125 * mobileScaleFactor, // 16px on mobile
-        mobileLineHeight: 1.25 * mobileScaleFactor,
-        fontWeight: 700,
-      }),
-      ":hover": linkStyles(darkMode),
+      ...createTypography({ size: 13, lineHeight: 16, fontWeight: 600 }),
+      ":hover": linkHoverStyles(darkMode),
     },
-    button: {
-      ...createTypography({
-        desktopSize: 0.8125, // 13px
-        desktopLineHeight: 1, // 16px
-        mobileSize: 0.8125 * mobileScaleFactor,
-        mobileLineHeight: 1 * mobileScaleFactor,
-        fontWeight: 500,
-      }),
-      textTransform: "none", // Regular capitalization
-    },
-    buttonSm: {
-      ...createTypography({
-        desktopSize: 0.8125, // 13px
-        // Keep line-height >= font-size so descenders (g/y/p) aren't clipped.
-        desktopLineHeight: 1, // 16px
-        mobileSize: 0.6875 * mobileScaleFactor,
-        mobileLineHeight: 1 * mobileScaleFactor,
-        fontWeight: 500,
-      }),
-      textTransform: "none", // Regular capitalization
-    },
-    caption: createTypography({
-      desktopSize: 0.75, // 12px
-      desktopLineHeight: 1, // 16px
-      mobileSize: 0.75 * mobileScaleFactor,
-      mobileLineHeight: 1 * mobileScaleFactor,
+    // Figma utility/body/mono. Only for code-like strings such as API keys and raw IDs; numbers,
+    // money, dates and record IDs use the normal text styles with Inter's tabular figures.
+    mono: {
+      fontFamily: '"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      fontSize: "0.75rem", // 12px
+      lineHeight: "0.9375rem", // 15px
       fontWeight: 400,
-    }),
-    caption2: createTypography({
-      desktopSize: 0.75, // 12px
-      desktopLineHeight: 1, // 16px
-      mobileSize: 0.75 * mobileScaleFactor,
-      mobileLineHeight: 1 * mobileScaleFactor,
-      fontWeight: 500,
-    }),
+      letterSpacing: 0,
+    },
+    // Figma button/Sm and button/Md are the same 13/16 500 style.
+    button: {
+      ...createTypography({ size: 13, lineHeight: 16, fontWeight: 500 }),
+      textTransform: "none",
+    },
+    // Not a Figma style: MUI's caption (helper text and the like) at pill/Md's 12/16.
+    caption: createTypography({ size: 12, lineHeight: 16, fontWeight: 400 }),
     overline: {
-      ...createTypography({
-        desktopSize: 0.6875, // 11px
-        desktopLineHeight: 1, // 16px
-        mobileSize: 0.6875 * mobileScaleFactor,
-        mobileLineHeight: 1 * mobileScaleFactor,
-        fontWeight: 400,
-      }),
+      ...createTypography({ size: 11, lineHeight: 12, fontWeight: 400 }),
       textTransform: "none",
     },
     overlineLink: {
-      ...createTypography({
-        desktopSize: 0.6875, // 11px
-        desktopLineHeight: 1, // 16px
-        mobileSize: 0.6875 * mobileScaleFactor,
-        mobileLineHeight: 1 * mobileScaleFactor,
-        fontWeight: 600,
-      }),
+      ...createTypography({ size: 11, lineHeight: 12, fontWeight: 600 }),
       textTransform: "none",
-      ...linkStyles(darkMode),
+      ":hover": linkHoverStyles(darkMode),
     },
     overline2: {
-      ...createTypography({
-        desktopSize: 0.6875, // 11px
-        desktopLineHeight: 1, // 16px
-        mobileSize: 0.6875 * mobileScaleFactor,
-        mobileLineHeight: 1 * mobileScaleFactor,
-        fontWeight: 500,
-      }),
+      ...createTypography({ size: 11, lineHeight: 12, fontWeight: 500 }),
+      textTransform: "none",
     },
+    pillSm: createTypography({ size: 11, lineHeight: 12, fontWeight: 500 }),
+    pillMd: createTypography({ size: 12, lineHeight: 16, fontWeight: 500 }),
   }
 }

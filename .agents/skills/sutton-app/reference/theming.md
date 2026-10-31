@@ -9,11 +9,12 @@ HTML/CSS UI for new apps.
 
 ## Package
 
-`@heysutton/sdk-react` ships the Sutton MUI theme (palette, typography, component
-overrides) as `ThemeProvider`. Use it as-is. Don't copy its tokens into your app,
-add Modal / field / icon wrapper libraries, or build a second design system on top.
-Wrap the app in this `ThemeProvider`, not MUI's own `ThemeProvider` (it already wraps
-MUI's). If a file needs MUI's too, import it under another name.
+[`@heysutton/sdk-react`](../../../../packages/sdk-react) implements the Sutton Figma design
+system as an MUI theme (palette, typography, component overrides), exported as `ThemeProvider`,
+plus the components that group themed parts. Use it as-is: don't copy its tokens into your app or
+build a second design system on top. It is self-contained: the private `digit-web` repo is
+**not** a dependency. Wrap the app in this `ThemeProvider`, not MUI's own `ThemeProvider` (it
+already wraps MUI's). If a file needs MUI's too, import it under another name.
 
 Depend on it from an app:
 
@@ -71,17 +72,11 @@ AppHost.onSettingsChange((settings) => { /* ... */ });
 `data-theme` and `lang` on `<html>`. App look-and-feel comes from MUI +
 `ThemeProvider`, not a parallel CSS design system.
 
-## UI rules for agents
+## Building UI
 
-- Prefer MUI components styled by the theme (`Button`, `TextField`, `Typography`,
-  `Stack`, `Box`, `Table`, `Alert`, …)
-- Prefer `theme.palette.*` / typography variants over hard-coded hex colors
-- Do not restyle MUI from scratch, and do not invent a parallel CSS design system
-- Do not reintroduce cream/teal “starter” palettes or IBM Plex / decorative
-  gradients from older vanilla examples
-- Do not invent a CSS custom-property theme — use MUI + `ThemeProvider`
-- Stay inside the host iframe: no downloads, new tabs/popups, or
-  `alert`/`confirm`/`prompt`. MUI Dialog/Drawer are fine. See
-  [iframe-constraints.md](iframe-constraints.md).
-- Do not assume the harness injects React, MUI, or fonts — only host APIs.
-  Inter comes from `ThemeProvider`
+This file covers wiring the theme up. For how screens should look, follow
+[design-system.md](design-system.md) (rules, component picker, tokens),
+[components.md](components.md) (props per component) and
+[design-patterns.md](design-patterns.md) (screen recipes).
+
+Do not assume the harness injects React, MUI or fonts; it injects only host APIs.

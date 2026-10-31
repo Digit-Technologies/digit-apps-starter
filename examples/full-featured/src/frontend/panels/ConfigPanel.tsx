@@ -1,52 +1,50 @@
 import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 
-import { AppErrorAlert, useBackendQuery } from '@heysutton/sdk-react';
+import {
+  AppErrorAlert,
+  PropertyGrid,
+  RefreshCw,
+  Section,
+  useBackendQuery,
+} from '@heysutton/sdk-react';
 
 type GreetingData = { message: string };
 
 export default function ConfigPanel() {
+  // Reads the non-secret env var WELCOME_MESSAGE. When it is missing the Worker answers
+  // MISSING_CONFIG, which AppErrorAlert explains.
   const { data, error, loading, refetch } = useBackendQuery<GreetingData>({ path: '/greeting' });
 
   return (
-    <Stack spacing={2}>
-      <Typography variant="h2" component="h2">
-        Config
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-        Reads non-secret env <code>WELCOME_MESSAGE</code> from the Worker. Missing config
-        surfaces as <code>MISSING_CONFIG</code>.
-      </Typography>
-
-      <Button
-        variant="outlined"
-        onClick={() => void refetch()}
-        disabled={loading}
-        sx={{ alignSelf: 'flex-start' }}
-      >
-        Refresh
-      </Button>
-
-      {loading && (
-        <Stack direction="row" spacing={1.5} sx={{
-          alignItems: "center"
-        }}>
-          <CircularProgress size={18} />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Loading greeting…
-          </Typography>
-        </Stack>
-      )}
-
+    <Section
+      title="Config"
+      subtitle="A greeting from the app's env vars."
+      subtitlePlacement="below"
+      actions={
+        <Button
+          startIcon={<RefreshCw />}
+          loading={loading}
+          loadingPosition="start"
+          onClick={() => void refetch()}
+        >
+          Refresh
+        </Button>
+      }
+    >
       {error && <AppErrorAlert error={error} onRetry={() => void refetch()} />}
-
-      {!loading && !error && data && (
-        <Typography variant="h3" component="p">
-          {data.message}
-        </Typography>
-      )}
-    </Stack>
+      <PropertyGrid
+        rows={[
+          {
+            label: 'Greeting',
+            value: data?.message ?? (
+              <Typography variant="body1" color="text.tertiary" component="span">
+                None
+              </Typography>
+            ),
+          },
+        ]}
+      />
+    </Section>
   );
 }

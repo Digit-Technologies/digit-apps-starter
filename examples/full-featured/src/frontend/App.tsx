@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Tab from '@mui/material/Tab';
 import Tabs from '@mui/material/Tabs';
-import Typography from '@mui/material/Typography';
 
+import { PageBody, PageHeader, Plus } from '@heysutton/sdk-react';
+
+import ComponentsPanel from './panels/ComponentsPanel';
 import ConfigPanel from './panels/ConfigPanel';
 import DigitApiPanel from './panels/DigitApiPanel';
 import ErrorLabPanel from './panels/ErrorLabPanel';
@@ -12,48 +15,77 @@ import JobsPanel from './panels/JobsPanel';
 import NotesPanel from './panels/NotesPanel';
 import PublicApiPanel from './panels/PublicApiPanel';
 import SecretsPanel from './panels/SecretsPanel';
-import ThemePanel from './panels/ThemePanel';
 
-const TABS = [
-  { id: 'theme', label: 'Theme', element: <ThemePanel /> },
-  { id: 'errors', label: 'Error lab', element: <ErrorLabPanel /> },
-  { id: 'digit', label: 'Digit API', element: <DigitApiPanel /> },
-  { id: 'public', label: 'Public API', element: <PublicApiPanel /> },
-  { id: 'secrets', label: 'Secrets', element: <SecretsPanel /> },
-  { id: 'notes', label: 'Notes', element: <NotesPanel /> },
-  { id: 'jobs', label: 'Jobs', element: <JobsPanel /> },
-  { id: 'config', label: 'Config', element: <ConfigPanel /> },
-] as const;
+type TabId = 'notes' | 'items' | 'jobs' | 'backend' | 'errors' | 'components';
+
+type TabConfig = {
+  id: TabId;
+  label: string;
+  /** PageHeader actions while this tab is open: secondary buttons, then one primary, last. */
+  actions?: ReactNode;
+  content: ReactNode;
+};
 
 export default function App() {
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState<TabId>('notes');
+  // A header action that opens something inside a tab: App owns the open flag, the tab owns
+  // the dialog.
+  const [newNoteOpen, setNewNoteOpen] = useState(false);
+
+  const tabs: TabConfig[] = [
+    {
+      id: 'notes',
+      label: 'Notes',
+      actions: (
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<Plus />}
+          onClick={() => setNewNoteOpen(true)}
+        >
+          New note
+        </Button>
+      ),
+      content: (
+        <NotesPanel
+          createOpen={newNoteOpen}
+          onCreateOpen={() => setNewNoteOpen(true)}
+          onCreateClose={() => setNewNoteOpen(false)}
+        />
+      ),
+    },
+    { id: 'items', label: 'Items', content: <DigitApiPanel /> },
+    { id: 'jobs', label: 'Jobs', content: <JobsPanel /> },
+    {
+      id: 'backend',
+      label: 'Backend',
+      content: (
+        <PageBody maxWidth={720}>
+          <PublicApiPanel />
+          <SecretsPanel />
+          <ConfigPanel />
+        </PageBody>
+      ),
+    },
+    { id: 'errors', label: 'Error lab', content: <ErrorLabPanel /> },
+    { id: 'components', label: 'Components', content: <ComponentsPanel /> },
+  ];
+  const current = tabs.find((entry) => entry.id === tab) ?? tabs[0]!;
 
   return (
-    <Box sx={{ maxWidth: '56rem', mx: 'auto', px: 3, py: 4 }}>
-      <Typography variant="overline" component="p" sx={{ color: 'primary.main', mb: 1 }}>
-        Digit App
-      </Typography>
-      <Typography variant="h1" component="h1" sx={{ mb: 1 }}>
-        Full Featured
-      </Typography>
-      <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
-        Reference app for theme, errors, Digit GraphQL, public APIs, secrets, D1 CRUD, and
-        env config — using <code>@heysutton/sdk-react</code> and <code>@heysutton/sdk-server</code>.
-      </Typography>
-
-      <Tabs
-        value={tab}
-        onChange={(_, value: number) => setTab(value)}
-        variant="scrollable"
-        scrollButtons="auto"
-        sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}
-      >
-        {TABS.map((entry) => (
-          <Tab key={entry.id} label={entry.label} />
-        ))}
-      </Tabs>
-
-      {TABS[tab]?.element}
+    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+      <PageHeader
+        title="Full featured"
+        actions={current.actions}
+        tabs={
+          <Tabs value={current.id} onChange={(_, value: TabId) => setTab(value)}>
+            {tabs.map((entry) => (
+              <Tab key={entry.id} value={entry.id} label={entry.label} />
+            ))}
+          </Tabs>
+        }
+      />
+      {current.content}
     </Box>
   );
 }

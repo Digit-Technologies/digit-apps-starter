@@ -16,7 +16,8 @@ const exportSrc = indexSrc
 const readPkg = (folder) =>
   JSON.parse(fs.readFileSync(path.join(repoRoot, 'packages', folder, 'package.json'), 'utf8'));
 
-const FORBIDDEN_WRAPPERS = ['Modal', 'InputTextField', 'IconWrapper', 'InvisibleButton'];
+// digit-web's wrappers. The design-system components (Modal, SidePanel, …) are exported on purpose.
+const FORBIDDEN_WRAPPERS = ['InputTextField', 'IconWrapper', 'InvisibleButton'];
 
 test('root export is theme, host, hooks, AppErrorAlert, and labels', () => {
   assert.match(indexSrc, /export \{ ThemeProvider \} from "\.\/theme\/index\.js"/);

@@ -26,12 +26,14 @@ starter prompt.
   `dailyMetrics`); no `backend` block.
 - `src/frontend/` — React + MUI + `@heysutton/sdk-react` UI:
   - `main.tsx` — mounts `<App />` inside `ThemeProvider`.
-  - `App.tsx` — page layout (KPI row + charts row) and the "Preview data" toggle.
+  - `App.tsx` — the Dashboard recipe: `PageHeader`, then `PageBody` with a "Today" KPI
+    grid and a "Last 8 days" chart grid, plus the "Preview data" switch.
   - `useDailyMetrics.ts` — fetches `dailyMetrics`, normalizes the response (including the
     unit-aware handling for `inventoryQuantityProduced`) into per-day series. Accepts a
     `previewMode` flag; when on, skips the real query and returns stub data instead.
   - `previewStubData.ts` — realistic-but-fake 8-day numbers for demoing/screenshotting the
     layout, toggled at runtime (default off) rather than a code-level flag.
   - `dateWindow.ts` — local-timezone day-boundary + timezone-abbreviation helpers.
-  - `components/` — the four KPI tiles and two charts.
+  - `components/` — `KpiTile` and `ChartCard` (the `Card` + `Section` tile shells), the four
+    KPI tiles and two charts.
 - `SPEC.md` — purpose, permissions rationale, gotchas, and starter prompt.
